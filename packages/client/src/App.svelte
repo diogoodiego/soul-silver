@@ -1,17 +1,30 @@
 <script lang="ts">
-  import type { ServerInfo, ServerStatus } from "@soulsilver/shared";
+  import type { ServerInfo, ServerStatus, UpdateState } from "@soulsilver/shared";
   import { onMount } from "svelte";
+  import UpdateNotice from "./UpdateNotice.svelte";
 
+  let appVersion = $state<string | undefined>();
   let info = $state<ServerInfo | undefined>();
   let status = $state<ServerStatus>({ state: "starting", tick: 0 });
   let failed = $state(false);
+  let update = $state<UpdateState>({ status: "disabled" });
 
   onMount(() => {
-    const unsubscribe = window.soulSilver.onServerStatus((next) => {
+    const api = window.soulSilver;
+    const unsubscribeStatus = api.onServerStatus((next) => {
       status = next;
       if (next.state === "stopped") failed = true;
     });
-    window.soulSilver.getServerInfo().then(
+    const unsubscribeUpdate = api.onUpdateState((next) => {
+      update = next;
+    });
+    void api.getAppVersion().then((version) => {
+      appVersion = version;
+    });
+    void api.getUpdateState().then((state) => {
+      update = state;
+    });
+    api.getServerInfo().then(
       (result) => {
         info = result;
       },
@@ -19,12 +32,17 @@
         failed = true;
       },
     );
-    return unsubscribe;
+    return () => {
+      unsubscribeStatus();
+      unsubscribeUpdate();
+    };
   });
 </script>
 
 <main>
   <h1>SoulSilver Desktop</h1>
+
+  <UpdateNotice {update} onRestart={() => void window.soulSilver.restartToUpdate()} />
 
   {#if failed}
     <p class="error" role="alert">Servidor de jogo indisponível.</p>
@@ -34,7 +52,7 @@
 
   <dl>
     <dt>Versão do app</dt>
-    <dd>{info?.appVersion ?? "—"}</dd>
+    <dd>{appVersion ?? "—"}</dd>
     <dt>Versão do protocolo</dt>
     <dd>{info?.protocolVersion ?? "—"}</dd>
     <dt>Estado do servidor</dt>
