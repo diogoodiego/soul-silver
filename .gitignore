@@ -1,0 +1,11 @@
+node_modules/
+out/
+dist/
+coverage/
+*.log
+.env*
+
+# Extractor output and ROMs (constitution, principle II)
+assets/
+*.nds
+*.NDS

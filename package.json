@@ -1,0 +1,30 @@
+{
+  "name": "soul-silver",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @soulsilver/app",
+    "build": "npm run build -w @soulsilver/app",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "prepare": "node scripts/setup-git-hooks.ts",
+    "check:assets": "node scripts/check-forbidden-files.ts --all"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.13.0",
+    "eslint-plugin-svelte": "^3.23.1",
+    "globals": "^17.13.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
+  }
+}

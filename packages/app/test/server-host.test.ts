@@ -1,0 +1,106 @@
+import { EventEmitter } from "node:events";
+import type { HostToServerMessage, ServerInfo, ServerStatus } from "@soulsilver/shared";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createServerHost } from "../src/main/server-host";
+
+class FakeChild extends EventEmitter {
+  posted: HostToServerMessage[] = [];
+  postMessage(msg: HostToServerMessage) {
+    this.posted.push(msg);
+  }
+  kill() {
+    this.emit("exit", 0);
+    return true;
+  }
+}
+
+function infoReply(requestId: number): { type: "info"; requestId: number; info: ServerInfo } {
+  return {
+    type: "info",
+    requestId,
+    info: {
+      appVersion: "0.1.0",
+      protocolVersion: 1,
+      serverStatus: { state: "running", tick: 5 },
+      tickRateHz: 20,
+      uptimeMs: 250,
+    },
+  };
+}
+
+function setup() {
+  const child = new FakeChild();
+  const statuses: ServerStatus[] = [];
+  const host = createServerHost({
+    fork: () => child,
+    appVersion: "0.1.0",
+    onStatus: (s) => statuses.push(s),
+    log: () => {},
+  });
+  host.start();
+  return { child, statuses, host };
+}
+
+function requestIdOf(msg: HostToServerMessage | undefined): number {
+  if (msg?.type !== "get-info") throw new Error("expected a get-info message");
+  return msg.requestId;
+}
+
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("createServerHost", () => {
+  it("sends init on start and is starting until the first status", () => {
+    const { child, host, statuses } = setup();
+    expect(child.posted).toEqual([{ type: "init", protocolVersion: 1, appVersion: "0.1.0" }]);
+    expect(host.getStatus()).toEqual({ state: "starting", tick: 0 });
+    child.emit("message", { type: "status", status: { state: "running", tick: 1 } });
+    expect(host.getStatus()).toEqual({ state: "running", tick: 1 });
+    expect(statuses).toEqual([{ state: "running", tick: 1 }]);
+  });
+
+  it("resolves getInfo with the reply matching its requestId", async () => {
+    const { child, host } = setup();
+    const first = host.getInfo();
+    const second = host.getInfo();
+    const a = requestIdOf(child.posted[1]);
+    const b = requestIdOf(child.posted[2]);
+    expect(a).not.toBe(b);
+    child.emit("message", infoReply(b));
+    child.emit("message", infoReply(a));
+    await expect(first).resolves.toEqual(infoReply(a).info);
+    await expect(second).resolves.toEqual(infoReply(b).info);
+  });
+
+  it("rejects with server-unavailable after 2000 ms without reply", async () => {
+    const { host } = setup();
+    const assertion = expect(host.getInfo()).rejects.toThrow("server-unavailable");
+    vi.advanceTimersByTime(2000);
+    await assertion;
+  });
+
+  it("ignores unknown requestIds and invalid messages", () => {
+    const { child, host } = setup();
+    expect(() => {
+      child.emit("message", infoReply(999));
+      child.emit("message", { type: "nonsense" });
+      child.emit("message", null);
+    }).not.toThrow();
+    expect(host.getStatus().state).toBe("starting");
+  });
+
+  it("on exit: stopped, keeps the last tick, rejects pending, notifies once", async () => {
+    const { child, host, statuses } = setup();
+    child.emit("message", { type: "status", status: { state: "running", tick: 7 } });
+    const pending = host.getInfo();
+    child.emit("exit", 1);
+    await expect(pending).rejects.toThrow("server-unavailable");
+    expect(host.getStatus()).toEqual({ state: "stopped", tick: 7 });
+    expect(statuses.filter((s) => s.state === "stopped")).toEqual([{ state: "stopped", tick: 7 }]);
+    await expect(host.getInfo()).rejects.toThrow("server-unavailable");
+  });
+});
