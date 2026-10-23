@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findForbiddenFiles } from "../forbidden-files.ts";
+import { findForbiddenFiles, findForbiddenPackageFiles } from "../forbidden-files.ts";
 
 const DS_EXTENSIONS = [
   ".narc", ".arc", ".ncgr", ".nclr", ".nscr", ".ncer", ".nanr", ".nmcr", ".nmar", ".nsbmd",
@@ -70,5 +70,58 @@ describe("findForbiddenFiles", () => {
     const violations = findForbiddenFiles(["assets/a", "a.nds", "a.narc", "a.png"]);
     expect(violations).toHaveLength(4);
     for (const v of violations) expect(v.reason.length).toBeGreaterThan(0);
+  });
+});
+
+describe("findForbiddenPackageFiles", () => {
+  function packageRuleOf(path: string): string | undefined {
+    return findForbiddenPackageFiles([path])[0]?.ruleId;
+  }
+
+  it.each(["resources/app.asar/out/renderer/static/x.narc", "resources/x.NCGR"])(
+    "blocks the DS format %s",
+    (path) => {
+      expect(packageRuleOf(path)).toBe("ds-format");
+    },
+  );
+
+  it("blocks ROMs anywhere", () => {
+    expect(packageRuleOf("resources/app.asar/game.nds")).toBe("rom");
+  });
+
+  it.each(["resources/app.asar/assets/x.json", "foo/Assets/y", "assets/z"])(
+    "blocks any path with an assets segment (%s)",
+    (path) => {
+      expect(packageRuleOf(path)).toBe("asset-dir");
+    },
+  );
+
+  it.each(["resources/app.asar/out/renderer/static/a.png", "art/icon.png", "x/song.WAV"])(
+    "blocks media even under art/ (%s)",
+    (path) => {
+      expect(packageRuleOf(path)).toBe("media");
+    },
+  );
+
+  it("normalizes Windows separators", () => {
+    expect(packageRuleOf("resources\\app.asar\\assets\\x.json")).toBe("asset-dir");
+  });
+
+  it("allows the files of a real Electron package", () => {
+    expect(
+      findForbiddenPackageFiles([
+        "SoulSilver Desktop.exe",
+        "resources.pak",
+        "locales/pt-BR.pak",
+        "icudtl.dat",
+        "LICENSES.chromium.html",
+        "resources/app-update.yml",
+        "resources/elevate.exe",
+        "resources/app.asar/package.json",
+        "resources/app.asar/out/main/index.js",
+        "resources/app.asar/out/renderer/index.html",
+        "resources/app.asar/out/renderer/static/index-abc.js",
+      ]),
+    ).toEqual([]);
   });
 });
