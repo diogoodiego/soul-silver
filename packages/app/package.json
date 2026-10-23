@@ -16,6 +16,7 @@
     "dist": "electron-vite build && electron-builder --win --x64 --publish never"
   },
   "devDependencies": {
+    "@soulsilver/extractor": "*",
     "@soulsilver/server": "*",
     "@soulsilver/shared": "*",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",

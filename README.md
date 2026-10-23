@@ -27,6 +27,39 @@ são mantidos ao desinstalar ou atualizar.
 **Para desinstalar**: Configurações → Aplicativos → Aplicativos instalados → SoulSilver Desktop →
 Desinstalar.
 
+## Preparar o jogo (ROM)
+
+O jogo não vem com nenhum gráfico, mapa ou som: tudo é extraído da **sua própria cópia** de
+Pokémon SoulSilver. Na primeira vez que abrir o app:
+
+1. Tenha em mãos o arquivo do seu cartucho de **Pokémon SoulSilver, versão dos EUA**, com
+   extensão `.nds` (um dump do seu cartucho).
+2. Clique em **Escolher arquivo** ou arraste o arquivo para a janela.
+3. Espere a barra de progresso chegar ao fim. Quando aparecer **Assets prontos**, o jogo abre.
+
+O arquivo nunca sai do seu PC. O app guarda uma cópia dele para refazer a extração sozinho quando
+uma atualização precisar de arquivos novos, sem pedir a ROM de novo. Fechar o app no meio não
+estraga nada: a extração continua na próxima vez.
+
+**Se o arquivo for recusado**, a mensagem diz o motivo:
+
+| Mensagem | O que fazer |
+|----------|-------------|
+| É um arquivo compactado (.zip, .7z, .rar) | Extraia o conteúdo e escolha o `.nds` que estava dentro. |
+| Não é uma ROM de Nintendo DS | Escolha o arquivo `.nds` do jogo. |
+| É de outro jogo / de Pokémon HeartGold | Só SoulSilver é aceito (HeartGold é a versão irmã). |
+| É a versão de outra região | Só a versão dos EUA é aceita. |
+| Está corrompido ou foi alterado | O arquivo está incompleto, danificado ou é um hack. Gere uma cópia nova do cartucho. |
+
+**Onde ficam os arquivos**, dentro de `%APPDATA%\SoulSilver Desktop`:
+
+- `rom\` — a cópia da sua ROM;
+- `extraction\` — os arquivos extraídos;
+- `logs\extractor.log` — o registro da extração.
+
+**Se a extração falhar**, clique em **Abrir log**: o Explorer abre com o `extractor.log`
+selecionado. Envie esse arquivo para quem mantém o jogo. Ele não contém nenhum dado da ROM.
+
 ## Pré-requisitos
 
 - Windows 10 ou 11, 64 bits.
@@ -52,6 +85,23 @@ contador de ticks (20 por segundo).
 
 O `npm install` também baixa o binário do Electron (~100 MB), o que pode levar alguns minutos
 na primeira vez.
+
+## Extrator por linha de comando
+
+A mesma biblioteca que o app usa roda pela linha de comando, sem Electron:
+
+```powershell
+npm run extract -- --list                              # etapas registradas
+npm run extract -- --rom D:\roms\soulsilver.nds        # extrai para assets\ (ignorada pelo git)
+npm run extract -- --rom D:\roms\soulsilver.nds --stages rom-unpack --force rom-unpack
+npm run extract -- --rom D:\roms\soulsilver.nds --verify
+```
+
+Opções e códigos de saída: [contrato da CLI](specs/003-rom-extraction-pipeline/contracts/cli.md).
+
+O extrator é um pipeline de etapas. Cada etapa declara versão, entradas e saídas, e só roda de
+novo quando a versão muda ou a saída some ou é corrompida. Para criar uma etapa nova, veja
+[como uma etapa se pluga](specs/003-rom-extraction-pipeline/contracts/extractor-library-api.md#como-uma-etapa-futura-se-pluga-specs-4-a-9).
 
 ## Checagens
 

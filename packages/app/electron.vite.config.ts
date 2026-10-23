@@ -12,6 +12,7 @@ export default defineConfig({
         input: {
           index: resolve(import.meta.dirname, "src/main/index.ts"),
           "server-host": resolve(import.meta.dirname, "src/server-host/entry.ts"),
+          "extractor-host": resolve(import.meta.dirname, "src/extractor-host/entry.ts"),
         },
       },
     },
