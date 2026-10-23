@@ -4,9 +4,14 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./rom-validation": "./src/rom-validation.ts"
+    "./rom-validation": "./src/rom-validation.ts",
+    "./game-data": "./src/game-data/index.ts",
+    "./text": "./src/text/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
   }
 }
