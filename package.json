@@ -15,9 +15,12 @@
     "lint": "eslint .",
     "test": "vitest run",
     "prepare": "node scripts/setup-git-hooks.ts",
-    "check:assets": "node scripts/check-forbidden-files.ts --all"
+    "check:assets": "node scripts/check-forbidden-files.ts --all",
+    "dist": "npm run dist -w @soulsilver/app",
+    "extract": "node packages/extractor/src/cli.ts"
   },
   "devDependencies": {
+    "@electron/asar": "^4.3.1",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.19.2",
     "eslint": "^10.13.0",
@@ -26,5 +29,8 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.0",
     "vitest": "^5.0.5"
+  },
+  "allowScripts": {
+    "electron-winstaller": false
   }
 }
