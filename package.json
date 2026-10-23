@@ -16,7 +16,8 @@
     "test": "vitest run",
     "prepare": "node scripts/setup-git-hooks.ts",
     "check:assets": "node scripts/check-forbidden-files.ts --all",
-    "dist": "npm run dist -w @soulsilver/app"
+    "dist": "npm run dist -w @soulsilver/app",
+    "extract": "node packages/extractor/src/cli.ts"
   },
   "devDependencies": {
     "@electron/asar": "^4.3.1",

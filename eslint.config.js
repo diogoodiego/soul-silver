@@ -26,8 +26,20 @@ export default ts.config(
     languageOptions: { parserOptions: { parser: ts.parser } },
   },
   {
-    files: ["packages/app/**", "scripts/**", "*.config.{js,ts}"],
+    files: ["packages/app/**", "packages/extractor/**", "scripts/**", "*.config.{js,ts}"],
     languageOptions: { globals: globals.node },
+  },
+  {
+    files: ["packages/extractor/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [{ name: "electron", message: "extractor must run in plain Node (FR-028)." }],
+          patterns: [{ group: ["electron/*"], message: "extractor must run in plain Node (FR-028)." }],
+        },
+      ],
+    },
   },
   {
     files: ["packages/client/**"],
