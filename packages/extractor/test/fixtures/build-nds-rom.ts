@@ -12,6 +12,8 @@ export interface NdsRomOptions {
   arm7?: Uint8Array;
   overlays9?: readonly Uint8Array[];
   overlays7?: readonly Uint8Array[];
+  /** Sets the "compressed" flag (bit 24 of the word at 0x1C) of the matching ARM9 overlay entries. */
+  compressedOverlays9?: readonly boolean[];
   banner?: Uint8Array;
 }
 
@@ -49,14 +51,14 @@ export function buildNdsRom(options: NdsRomOptions = {}): Uint8Array {
 
   const arm9Offset = place(arm9);
   const arm7Offset = place(arm7);
-  const overlayTable = (overlays: readonly Uint8Array[], firstId: number): Uint8Array => {
+  const overlayTable = (overlays: readonly Uint8Array[], firstId: number, compressed: readonly boolean[] = []): Uint8Array => {
     const table = new ByteWriter();
     overlays.forEach((overlay, i) => {
-      table.u32(i).u32(0x02000000).u32(overlay.length).u32(0).u32(0).u32(0).u32(firstId + i).u32(0);
+      table.u32(i).u32(0x02000000).u32(overlay.length).u32(0).u32(0).u32(0).u32(firstId + i).u32(compressed[i] ? 1 << 24 : 0);
     });
     return table.toBytes();
   };
-  const y9 = overlayTable(overlays9, 0);
+  const y9 = overlayTable(overlays9, 0, options.compressedOverlays9);
   const y7 = overlayTable(overlays7, overlays9.length);
   const y9Offset = place(y9);
   const y7Offset = place(y7);

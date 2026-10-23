@@ -1,10 +1,47 @@
 // Developer CLI over the same library the app uses; see
 // specs/003-rom-extraction-pipeline/contracts/cli.md. Run with `npm run extract -- [options]`.
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { romRejectionMessage } from "@soulsilver/shared/rom-validation";
 import { createConsoleLogger, createFileLogger, type Logger } from "./log.ts";
+import { buildSanityReport, type ExpectedCounts, formatSanityReport } from "./data/report.ts";
 import { verifyOutputs } from "./pipeline/check.ts";
+import { loadTextCatalog, loadTranslatedCatalog } from "./text/catalog-files.ts";
+import { findTexts } from "./text/find.ts";
+import { buildTextReport, EXPECTED_TEXT_COUNTS, type NameRef } from "./text/report.ts";
+import { readdir } from "node:fs/promises";
+import { TEXT_REF_BANKS } from "@soulsilver/shared/text";
+
+/** Every { catalog, index } name reference in the feature 004 data files that were extracted. */
+async function collectNameRefs(workspaceDir: string): Promise<NameRef[]> {
+  const refs: NameRef[] = [];
+  const stages = join(workspaceDir, "stages");
+  let names: string[];
+  try {
+    names = await readdir(stages);
+  } catch {
+    return refs;
+  }
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) return value.forEach(visit);
+    if (value === null || typeof value !== "object") return;
+    const node = value as Record<string, unknown>;
+    if (typeof node["catalog"] === "string" && typeof node["index"] === "number" && node["catalog"] in TEXT_REF_BANKS) {
+      refs.push({ catalog: node["catalog"] as NameRef["catalog"], index: node["index"] });
+      return;
+    }
+    Object.values(node).forEach(visit);
+  };
+  for (const stage of names.filter((n) => n.startsWith("data-"))) {
+    const dir = join(stages, stage, "json");
+    for (const file of await readdir(dir).catch(() => [] as string[])) {
+      if (!file.endsWith(".json")) continue;
+      visit(JSON.parse(await readFile(join(dir, file), "utf8")));
+    }
+  }
+  return refs;
+}
 import { createRegistry, type Registry } from "./pipeline/registry.ts";
 import { runPipeline } from "./pipeline/run.ts";
 import { validateRom } from "./rom/validate.ts";
@@ -16,6 +53,8 @@ export interface CliIo {
   isTTY: boolean;
   /** Overrides REFERENCE_ROM_SHA1 (tests). */
   references?: readonly string[];
+  /** Overrides the expected counts of --report (tests). */
+  expected?: ExpectedCounts;
   registry?: Registry;
   signal?: AbortSignal;
 }
@@ -30,6 +69,7 @@ const USAGE = `Uso: npm run extract -- --rom <arquivo> [opções]
   --force <id,id>     roda essas etapas mesmo que estejam em dia
   --list              lista as etapas registradas
   --verify            confere os digests das saídas com o manifesto, sem extrair
+  --report            relatório de sanidade dos dados do jogo já extraídos (não exige --rom)
   --log <arquivo>     também grava o log nesse arquivo
   --help              mostra esta ajuda`;
 
@@ -43,6 +83,53 @@ function tee(...loggers: Logger[]): Logger {
     warn: (message, stageId) => loggers.forEach((l) => l.warn(message, stageId)),
     error: (message, error, stageId) => loggers.forEach((l) => l.error(message, error, stageId)),
   };
+}
+
+/** --find: searches the English catalog, or a language with English as fallback (contracts/stage-and-cli.md). */
+async function runFind(values: { find?: string; out: string; lang: string; limit: string; rom?: string; stages?: string; force?: string; verify: boolean; report: boolean }, io: CliIo): Promise<number> {
+  if (values.rom !== undefined || values.stages !== undefined || values.force !== undefined || values.verify || values.report) {
+    io.stderr(`--find não combina com --rom, --stages, --force, --verify nem --report.
+
+${USAGE}`);
+    return EXIT.usage;
+  }
+  const limit = Number(values.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+    io.stderr("--limit precisa ser um inteiro de 1 a 1000.");
+    return EXIT.usage;
+  }
+  const catalogDir = join(resolve(values.out), "stages", "text-catalog", "catalog");
+  const english = await loadTextCatalog(catalogDir, "en");
+  if (english.length === 0) {
+    io.stderr(`Catálogo de textos não encontrado em ${catalogDir}. Rode a extração primeiro.`);
+    return EXIT.failed;
+  }
+
+  // A translation is searched first; English fills in the texts it lacks.
+  let banks = english;
+  if (values.lang !== "en") {
+    const translated = await loadTranslatedCatalog(catalogDir, values.lang, english);
+    banks = english.map((file) => {
+      const own = new Map((translated.find((t) => t.bank === file.bank)?.records ?? []).map((r) => [r.id, r]));
+      return { ...file, language: values.lang, records: file.records.map((r) => own.get(r.id) ?? r) };
+    });
+  }
+
+  const found = findTexts(banks, values.find!, { limit });
+  if (found.length === 0) {
+    io.stdout(`nenhum texto contém "${values.find}"`);
+    return EXIT.ok;
+  }
+  io.stdout(`${found.length} resultado(s) para "${values.find}"`);
+  io.stdout("");
+  for (const r of found) {
+    const label = r.name === null ? "" : ` (${r.name})`;
+    const shown = r.text.length > 160 ? `${r.text.slice(0, 160)}…` : r.text;
+    io.stdout(`${r.id}${label}  ${shown}`);
+  }
+  if (found.length === limit) io.stdout(`
+(mostrando ${limit}; use --limit para ver mais)`);
+  return EXIT.ok;
 }
 
 export async function main(argv: string[], io: CliIo): Promise<number> {
@@ -59,6 +146,10 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
         list: { type: "boolean", default: false },
         verify: { type: "boolean", default: false },
         log: { type: "string" },
+        report: { type: "boolean", default: false },
+        find: { type: "string" },
+        lang: { type: "string", default: "en" },
+        limit: { type: "string", default: "20" },
         help: { type: "boolean", default: false },
       },
     }));
@@ -80,6 +171,25 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
       io.stdout(`  saídas:   ${stage.outputs.join(", ")}`);
     }
     return EXIT.ok;
+  }
+
+  if (values.find !== undefined) return runFind(values, io);
+
+  if (values.report) {
+    if (values.verify || values.stages !== undefined || values.force !== undefined) {
+      io.stderr(`--report não combina com --verify, --stages nem --force.\n\n${USAGE}`);
+      return EXIT.usage;
+    }
+    const reportDir = resolve(values.out);
+    const report = await buildSanityReport(reportDir, io.expected ? { expected: io.expected } : {});
+    io.stdout(formatSanityReport(report, reportDir).trimEnd());
+    const text = await buildTextReport(join(reportDir, "stages", "text-catalog", "catalog"), {
+      expectedBanks: EXPECTED_TEXT_COUNTS.banks,
+      expectedTexts: EXPECTED_TEXT_COUNTS.texts,
+      references: await collectNameRefs(reportDir),
+    });
+    io.stdout(text.lines.join("\n"));
+    return report.ok && text.ok ? EXIT.ok : EXIT.failed;
   }
 
   if (!values.rom) {

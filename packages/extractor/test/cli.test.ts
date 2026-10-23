@@ -6,9 +6,10 @@ import { acquireLock } from "../src/pipeline/lock.ts";
 import { type Manifest, readManifest } from "../src/pipeline/manifest.ts";
 import { createRegistry } from "../src/pipeline/registry.ts";
 import { runPipeline } from "../src/pipeline/run.ts";
-import { defaultStages } from "../src/stages/index.ts";
+import { romUnpackStage } from "../src/stages/rom-unpack.ts";
 import { buildNarc } from "./fixtures/build-narc.ts";
 import { buildNdsRom, corruptByte } from "./fixtures/build-nds-rom.ts";
+import { SYNTHETIC_EXPECTED_COUNTS, extractSynthetic } from "./data/helpers.ts";
 import { memoryLogger, sandbox, type Sandbox } from "./pipeline/helpers.ts";
 
 const rom = buildNdsRom({ files: { "a/0/0/0": buildNarc([Uint8Array.of(1, 2), Uint8Array.of(3)]), "data/x.bin": Uint8Array.of(9) } });
@@ -36,6 +37,8 @@ function io(extra: Partial<CliIo> = {}): Captured {
     stderr: (line) => err.push(line),
     isTTY: false,
     references: [box.romSha1],
+    // The 003 tests exercise the pipeline with the first stage only.
+    registry: createRegistry([romUnpackStage]),
     ...extra,
   };
 }
@@ -136,12 +139,47 @@ describe("app and CLI parity (SC-008)", () => {
     const result = await runPipeline({
       workspaceDir: appDir,
       romPath: box.romPath,
-      registry: createRegistry(defaultStages),
+      registry: createRegistry([romUnpackStage]),
       log: memoryLogger(),
       references: [box.romSha1],
     });
     expect(result.status).toBe("completed");
     expect(await main(base(), io())).toBe(0);
     expect(withoutDates(await readManifest(out(), memoryLogger()))).toEqual(withoutDates(await readManifest(appDir, memoryLogger())));
+  });
+});
+
+describe("extractor CLI --report", () => {
+  it("prints the sanity report of already extracted data, without a ROM, and exits 0", async () => {
+    await extractSynthetic(box);
+    const captured = io({ expected: SYNTHETIC_EXPECTED_COUNTS });
+    expect(await main(["--out", box.workspaceDir, "--report"], captured)).toBe(0);
+    const text = captured.out.join("\n");
+    expect(text).toContain("Relatório de sanidade");
+    expect(text).toContain("Resultado: ");
+    expect(text).toMatch(/Resultado: OK/);
+  });
+
+  it("exits 1 and prints FALHA when a count does not match", async () => {
+    await extractSynthetic(box);
+    const captured = io({ expected: { ...SYNTHETIC_EXPECTED_COUNTS, species: 493 } });
+    expect(await main(["--out", box.workspaceDir, "--report"], captured)).toBe(1);
+    expect(captured.out.join("\n")).toContain("FALHA");
+  });
+
+  it("exits 1 when there is nothing extracted", async () => {
+    const captured = io({ expected: SYNTHETIC_EXPECTED_COUNTS });
+    expect(await main(["--out", join(box.root, "empty"), "--report"], captured)).toBe(1);
+    expect(captured.out.join("\n")).toContain("ausente");
+  });
+
+  it.each([
+    [["--report", "--verify"]],
+    [["--report", "--stages", "rom-unpack"]],
+    [["--report", "--force", "rom-unpack"]],
+  ])("exits 2 when combined with other modes (%s)", async (argv) => {
+    const captured = io();
+    expect(await main(argv, captured)).toBe(2);
+    expect(captured.err.join("\n")).toMatch(/--report/);
   });
 });

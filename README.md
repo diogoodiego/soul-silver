@@ -103,6 +103,60 @@ O extrator é um pipeline de etapas. Cada etapa declara versão, entradas e saí
 novo quando a versão muda ou a saída some ou é corrompida. Para criar uma etapa nova, veja
 [como uma etapa se pluga](specs/003-rom-extraction-pipeline/contracts/extractor-library-api.md#como-uma-etapa-futura-se-pluga-specs-4-a-9).
 
+## Dados do jogo
+
+Depois do desempacotamento, o extrator converte os números do jogo em arquivos JSON validados
+por schema (`@soulsilver/shared/game-data`). Eles ficam em `stages/<etapa>/json/`, dentro da pasta
+de extração (`assets\` na CLI):
+
+| Etapa | Arquivos |
+|-------|----------|
+| `data-species` | `species.json` (espécies e formas alternativas) |
+| `data-moves` | `moves.json` |
+| `data-learnsets` | `learnsets.json`, `machines.json`, `tutors.json` |
+| `data-evolutions` | `evolutions.json` |
+| `data-items` | `items.json` |
+| `data-tables` | `types.json`, `type-chart.json`, `natures.json`, `growth-rates.json`, `abilities.json` |
+
+Os valores são os **originais da ROM**, sem nenhum ajuste de balanceamento. Identificadores de
+efeito, método de evolução e uso de item são guardados crus, para o combate mapeá-los depois.
+Nomes e descrições não estão aqui: cada registro só aponta para o catálogo de textos. O formato de
+cada arquivo está em [data-model.md](specs/004-game-data-extraction/data-model.md).
+
+Para conferir uma extração, rode o **relatório de sanidade** (precisa dos arquivos já
+extraídos, não da ROM):
+
+```powershell
+npm run extract -- --out assets --report
+```
+
+Ele valida cada arquivo contra o schema, confere as contagens esperadas (493 espécies, 467 golpes
+etc.) e lista valores fora de faixa. Falha (código 1) se um arquivo faltar ou for inválido ou se
+uma contagem não fechar; valores fora de faixa só geram alertas. O relatório é local: a
+integração contínua não o executa.
+
+## Textos
+
+O extrator converte os textos do jogo (diálogos, nomes, menus) para um catálogo de inglês, em
+`stages/text-catalog/catalog/en/NNNN.json` (um arquivo por banco). Cada texto usa uma marcação
+neutra e documentada em [contrato da marcação](specs/005-text-catalog/contracts/markup.md):
+
+- `{n}` quebra de linha, `{page}` espera e nova página, `{scroll}` espera e rola;
+- `{trainer-name:0}`, `{pokemon-name:1}` e outras variáveis, com o slot que o script preenche;
+- `{color:N}` cor, e `{raw:XXXX}` para o que a tabela ainda não nomeia.
+
+Para buscar um trecho e descobrir o identificador dele:
+
+```powershell
+npm run extract -- --out assets --find "new bark town"
+npm run extract -- --out assets --find "photo" --limit 5
+```
+
+O `--report` ganha a seção "Textos" (contagens, ida e volta e referências de nome).
+
+**Dívida conhecida**: alguns símbolos (glifos de botão, japonês) ainda aparecem como `{raw:…}`. Veja
+[tech-debt.md](specs/005-text-catalog/tech-debt.md).
+
 ## Checagens
 
 Cada comando roda na raiz e cobre todos os pacotes (`app`, `client`, `server`, `shared`,

@@ -7,7 +7,7 @@ import type { Stage, StageContext } from "../pipeline/stage.ts";
 
 // Stage 1: raw DS file system and NARC members; layout in research.md R6.
 
-function indexName(index: number, count: number): string {
+export function indexName(index: number, count: number): string {
   return `${String(index).padStart(Math.max(4, String(count - 1).length), "0")}.bin`;
 }
 
