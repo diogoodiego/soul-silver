@@ -30,7 +30,7 @@ describe("handshake", () => {
     const got: unknown[] = [];
     client.onMessage((m) => got.push(m));
     session.connect(server);
-    client.send({ type: "input", seq: 0, dir: "east", buttons: 0 });
+    client.send({ type: "input", seq: 0, move: { x: 1, y: 0 }, run: false, buttons: 0 });
     session.step();
     expect(got).toEqual([]);
     expect(logs.some((l) => l.includes("before hello"))).toBe(true);

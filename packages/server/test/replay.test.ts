@@ -4,12 +4,12 @@ import type { CollisionCell } from "@soulsilver/shared/maps";
 import { describe, expect, it } from "vitest";
 import { createRecorder, replay } from "../src/recorder";
 import { hashWorld } from "../src/world";
-import { setup } from "./harness";
+import { flatWorld, setup } from "./harness";
 
 const free: CollisionCell = { category: "free", raw: 0 };
 const wall: CollisionCell = { category: "blocked", raw: 0x8000 };
 const map: CollisionMap = { width: 8, height: 8, tiles: Array.from({ length: 64 }, (_, i) => (i % 9 === 4 ? wall : free)) };
-const world = { spawn: (id: number) => ({ area: "a", x: 24 + id * 16, y: 24 }), collision: () => map };
+const world = { spawn: (id: number) => ({ area: "a", x: 24 + id * 16, y: 24 }), world: flatWorld(map) };
 
 function record() {
   const recorder = createRecorder(77);

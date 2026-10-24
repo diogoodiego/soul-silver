@@ -2,7 +2,7 @@ import { createRng, type Entity } from "@soulsilver/shared/game";
 import { describe, expect, it } from "vitest";
 import { createInterpolator } from "../../src/net/interpolation";
 
-const at = (x: number, area = "a"): Entity => ({ id: 7, kind: "player", area, x, y: 0, facing: "east", data: {} });
+const at = (x: number, area = "a"): Entity => ({ id: 7, kind: "player", area, x, y: 0, level: 0, facing: "east", data: {} });
 
 describe("createInterpolator", () => {
   it("renders 100 ms in the past, interpolating linearly", () => {

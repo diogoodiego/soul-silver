@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { diffEntity, type Entity } from "../../src/game/entity.ts";
 
-const base: Entity = { id: 1, kind: "player", area: "a", x: 10, y: 20, facing: "south", data: { name: "Ana" } };
+const base: Entity = { id: 1, kind: "player", area: "a", x: 10, y: 20, level: 0, facing: "south", data: { name: "Ana" } };
 
 describe("diffEntity", () => {
   it("returns undefined when nothing changed", () => {

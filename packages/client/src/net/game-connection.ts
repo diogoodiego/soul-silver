@@ -1,5 +1,4 @@
-import type { Direction } from "@soulsilver/shared/maps";
-import { applyDelta, serverMessage, type CloseReason, type CollisionMap, type Entity, type TickMetrics } from "@soulsilver/shared/game";
+import { applyDelta, serverMessage, type CloseReason, type Entity, type MoveInput, type TickMetrics, type WorldLookup } from "@soulsilver/shared/game";
 import { createInterpolator } from "./interpolation";
 import { createPredictor } from "./prediction";
 
@@ -9,7 +8,8 @@ export interface GameConnectionOptions {
   name: string;
   protocolVersion: number;
   send(msg: unknown): void;
-  collision(area: string): CollisionMap | undefined;
+  /** The same maps the server simulates; unknown maps are open ground. */
+  world: WorldLookup;
   log?(message: string): void;
 }
 
@@ -17,7 +17,7 @@ export type GameStatus = "connecting" | "playing" | "rejected" | "closed";
 
 export function createGameConnection(options: GameConnectionOptions) {
   const entities = new Map<number, Entity>();
-  const predictor = createPredictor(options.collision);
+  const predictor = createPredictor(options.world);
   const interpolator = createInterpolator();
   let status: GameStatus = "connecting";
   let rejectMessage: string | undefined;
@@ -74,11 +74,11 @@ export function createGameConnection(options: GameConnectionOptions) {
       options.send({ type: "hello", protocolVersion: options.protocolVersion, name: options.name });
     },
     receive,
-    /** One per local tick while playing; `null` means standing still. */
-    sendInput(dir: Direction | null, buttons = 0): void {
+    /** One per local tick while playing; a zero vector means standing still. */
+    sendInput(move: MoveInput["move"], run: boolean, now: number, buttons = 0): void {
       if (status !== "playing") return;
-      const input = { seq: seq++, dir, buttons };
-      predictor.apply(input);
+      const input = { seq: seq++, move, run, buttons };
+      predictor.apply(input, now);
       options.send({ type: "input", ...input });
     },
     view(now: number): { self: Entity | undefined; others: Entity[] } {

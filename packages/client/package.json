@@ -7,11 +7,13 @@
   },
   "dependencies": {
     "@soulsilver/shared": "*",
-    "svelte": "^5.57.2"
+    "svelte": "^5.57.2",
+    "three": "0.186.1"
   },
   "devDependencies": {
     "@soulsilver/server": "*",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/three": "0.186.0",
     "svelte-check": "^4.7.7"
   }
 }

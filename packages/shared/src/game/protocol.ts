@@ -10,7 +10,9 @@ export const PLAYER_NAME_MAX = 16;
 
 export const playerInput = z.strictObject({
   seq: count(),
-  dir: direction.nullable(),
+  /** Stick or keyboard vector; each axis in [-1, 1]. A length above 1 is normalized by the step, not rejected. */
+  move: z.strictObject({ x: z.number().min(-1).max(1), y: z.number().min(-1).max(1) }),
+  run: z.boolean(),
   buttons: count(),
 });
 export type PlayerInput = z.infer<typeof playerInput>;
@@ -27,6 +29,7 @@ const entityFields = {
   area: z.string(),
   x: z.number(),
   y: z.number(),
+  level: count(),
   facing: direction,
   data: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
 };

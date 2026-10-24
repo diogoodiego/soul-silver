@@ -10,11 +10,12 @@ function garbage(i: number): unknown {
     [],
     {},
     { type: "input" },
-    { type: "input", seq: "1", dir: "east", buttons: 0 },
-    { type: "input", seq: 1, dir: "up", buttons: 0 },
+    { type: "input", seq: "1", move: { x: 1, y: 0 }, run: false, buttons: 0 },
+    { type: "input", seq: 1, dir: "east", buttons: 0 },
+    { type: "input", seq: 1, move: { x: 3, y: 0 }, run: false, buttons: 0 },
     { type: "hello", protocolVersion: 2, name: "x".repeat(10_000) },
     { type: "teleport", x: 0 },
-    { type: "input", seq: -5, dir: null, buttons: 0 },
+    { type: "input", seq: -5, move: { x: 0, y: 0 }, run: false, buttons: 0 },
   ];
   return pool[i % pool.length];
 }

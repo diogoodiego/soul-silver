@@ -6,12 +6,12 @@ import { createGameConnection } from "../../src/net/game-connection";
 
 /** A real session; server -> client messages are held for `lagTicks` ticks. */
 function setup(lagTicks: number, protocolVersion = PROTOCOL_VERSION) {
-  const session = createSession({ seed: 1, spawn: () => ({ area: "a", x: 24, y: 24 }), collision: () => undefined, log: () => {} });
+  const session = createSession({ seed: 1, spawn: () => ({ area: "a", x: 24, y: 24 }), world: () => undefined, log: () => {} });
   let now = 0;
   const inFlight: { due: number; msg: unknown }[] = [];
   const [server, client] = createMemoryConnectionPair();
   session.connect(server);
-  const game = createGameConnection({ name: "Ana", send: (m) => client.send(m), collision: () => undefined, protocolVersion });
+  const game = createGameConnection({ name: "Ana", send: (m) => client.send(m), world: () => undefined, protocolVersion });
   client.onMessage((msg) => inFlight.push({ due: session.tick + lagTicks, msg }));
   const deliver = () => {
     while (inFlight.length && inFlight[0]!.due <= session.tick) game.receive(inFlight.shift()!.msg, now);
@@ -39,8 +39,8 @@ describe("createGameConnection", () => {
     const { session, game, tick, now } = setup(2);
     for (let i = 0; i < 4; i++) tick();
     const before = game.view(now()).self!.x;
-    game.sendInput("east");
-    expect(game.view(now()).self!.x).toBe(before + MOVE_SPEED_PX);
+    game.sendInput({ x: 1, y: 0 }, false, now());
+    expect(game.view(now() + 50).self!.x).toBe(before + MOVE_SPEED_PX);
     for (let i = 0; i < 6; i++) tick();
     const server = session.world.get(game.entityId!)!;
     expect(server.x).toBe(before + MOVE_SPEED_PX);
@@ -49,7 +49,7 @@ describe("createGameConnection", () => {
 
   it("interpolates other players and exposes the reject message", () => {
     const { session, game, tick } = setup(0);
-    const other = createGameConnection({ name: "Bia", send: () => {}, collision: () => undefined, protocolVersion: 1 });
+    const other = createGameConnection({ name: "Bia", send: () => {}, world: () => undefined, protocolVersion: 1 });
     other.receive({ type: "reject", code: "protocol-mismatch", message: "versão", serverProtocolVersion: 2 }, 0);
     expect(other.status).toBe("rejected");
     expect(other.rejectMessage).toBe("versão");

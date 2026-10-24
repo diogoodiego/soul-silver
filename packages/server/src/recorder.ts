@@ -19,7 +19,7 @@ export function createRecorder(seed: number) {
  * Re-runs a recording without connections. Joins and leaves at tick T happened between
  * ticks T and T+1; inputs at tick T were applied by the step that reached T.
  */
-export function replay(recording: Recording, world: Pick<SessionOptions, "spawn" | "collision">): Session {
+export function replay(recording: Recording, world: Pick<SessionOptions, "spawn" | "world">): Session {
   if (recording.protocolVersion !== PROTOCOL_VERSION) {
     throw new Error(`Gravação do protocolo ${recording.protocolVersion}; este servidor usa o protocolo ${PROTOCOL_VERSION}.`);
   }

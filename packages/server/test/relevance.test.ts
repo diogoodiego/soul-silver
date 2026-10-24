@@ -7,7 +7,7 @@ describe("relevance", () => {
   it("never sends entities from another area", () => {
     const { session, connect } = setup(twoAreas);
     const clients = [connect(), connect(), connect(), connect()];
-    session.world.add({ kind: "wild", area: "b", x: 0, y: 0, facing: "south", data: {} });
+    session.world.add({ kind: "wild", area: "b", x: 0, y: 0, level: 0, facing: "south", data: {} });
     for (let t = 0; t < 5; t++) {
       clients.forEach((c) => c.input(t, "south"));
       session.step();
@@ -25,7 +25,7 @@ describe("relevance", () => {
     const { session, connect } = setup(twoAreas);
     const a = connect();
     session.step();
-    const wild = session.world.add({ kind: "wild", area: "b", x: 0, y: 0, facing: "south", data: {} });
+    const wild = session.world.add({ kind: "wild", area: "b", x: 0, y: 0, level: 0, facing: "south", data: {} });
     session.step();
     session.world.update({ ...wild, area: "a" });
     session.step();

@@ -1,9 +1,11 @@
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { checkAssets, createConsoleLogger, createRegistry, defaultStages } from "@soulsilver/extractor";
 import { IpcChannel } from "@soulsilver/shared";
-import { app, BrowserWindow, dialog, ipcMain, session, shell, utilityProcess, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell, utilityProcess, type IpcMainInvokeEvent } from "electron";
 import electronUpdater from "electron-updater";
 import { createAssetsController } from "./assets-controller";
+import { ASSETS_SCHEME, resolveAssetPath } from "./assets-protocol";
 import { isAllowedNavigation, permissionRequestHandler, windowOpenHandler } from "./navigation-guard";
 import { createServerHost } from "./server-host";
 import { createUpdateController } from "./update-controller";
@@ -24,6 +26,8 @@ function createMainWindow(): BrowserWindow {
   }
   return window;
 }
+
+protocol.registerSchemesAsPrivileged([{ scheme: ASSETS_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 
 // Only one instance may run, so only one instance downloads and applies updates.
 if (!app.requestSingleInstanceLock()) {
@@ -50,7 +54,7 @@ if (!app.requestSingleInstanceLock()) {
 
     const serverHost = createServerHost({
       fork: () =>
-        utilityProcess.fork(join(import.meta.dirname, "server-host.js"), [], {
+        utilityProcess.fork(join(import.meta.dirname, "server-host.js"), [join(app.getPath("userData"), "extraction", "stages")], {
           serviceName: "SoulSilver Game Server",
         }),
       appVersion: app.getVersion(),
@@ -88,6 +92,18 @@ if (!app.requestSingleInstanceLock()) {
       workspace: join(userData, "extraction"),
       logFile: join(userData, "logs", "extractor.log"),
     };
+    // The page is file:// (origin "null") in production, so responses carry a CORS header.
+    const cors = { "Access-Control-Allow-Origin": "*" };
+    protocol.handle(ASSETS_SCHEME, async (request) => {
+      const path = resolveAssetPath(assetsPaths.workspace, request.url);
+      if (!path || request.method !== "GET") return new Response(null, { status: 404, headers: cors });
+      try {
+        const file = await net.fetch(pathToFileURL(path).toString());
+        return new Response(file.body, { status: file.status, headers: { ...cors, "Content-Type": file.headers.get("Content-Type") ?? "application/octet-stream" } });
+      } catch {
+        return new Response(null, { status: 404, headers: cors });
+      }
+    });
     const registry = createRegistry(defaultStages);
     const assets = createAssetsController({
       paths: assetsPaths,

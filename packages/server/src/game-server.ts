@@ -4,6 +4,8 @@ import {
   type HostToServerMessage,
   type ServerToHostMessage,
 } from "@soulsilver/shared";
+import type { WorldLookup } from "@soulsilver/shared/game";
+import { MAP_TILE_PX } from "@soulsilver/shared/maps";
 import type { Connection } from "./connection";
 import { createSession, type Session } from "./session";
 import { createTickLoop, type Scheduler, type TickLoop } from "./tick-loop";
@@ -17,12 +19,16 @@ interface HostedConnection {
 }
 
 const TICK_RATE_HZ = 20;
+/** New Bark Town; players start one tile below the door of its first warp. */
+const START_MAP = "60";
 
 export interface GameServerOptions extends Scheduler {
   send(msg: ServerToHostMessage): void;
   /** Called when the server cannot continue (e.g. protocol mismatch); the host process should exit. */
   onFatal(): void;
   log(message: string): void;
+  /** The extracted world; open ground everywhere when omitted. */
+  world?: WorldLookup | undefined;
 }
 
 export interface GameServer {
@@ -40,11 +46,13 @@ export function createGameServer(options: GameServerOptions): GameServer {
   const metrics = createTickMetrics();
 
   function newSession(): Session {
+    const world = options.world ?? (() => undefined);
+    const door = world(START_MAP)?.warps[0];
+    const start = door ? { x: (door.tx + 0.5) * MAP_TILE_PX, y: (door.ty + 1.5) * MAP_TILE_PX } : { x: 0, y: 0 };
     return createSession({
       seed: (Math.random() * 0x100000000) >>> 0,
-      // shortcut: one fixed spawn and no collision until world loading lands (spec 011).
-      spawn: () => ({ area: "start", x: 0, y: 0 }),
-      collision: () => undefined,
+      spawn: () => ({ area: START_MAP, ...start }),
+      world,
       log: options.log,
     });
   }

@@ -15,6 +15,8 @@ export interface Entity {
   /** Feet position in pixels. */
   x: number;
   y: number;
+  /** Collision and draw level on maps with stacked levels; 0 elsewhere. */
+  level: number;
   facing: Direction;
   /** Kind-specific fields. */
   data: EntityData;
@@ -31,7 +33,7 @@ function sameData(a: EntityData, b: EntityData): boolean {
 export function diffEntity(prev: Entity, next: Entity): EntityDelta | undefined {
   const delta: EntityDelta = { id: next.id };
   let changed = false;
-  for (const key of ["kind", "area", "x", "y", "facing"] as const) {
+  for (const key of ["kind", "area", "x", "y", "level", "facing"] as const) {
     if (prev[key] !== next[key]) {
       (delta as Record<string, unknown>)[key] = next[key];
       changed = true;

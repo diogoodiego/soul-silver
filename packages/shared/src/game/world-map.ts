@@ -1,0 +1,95 @@
+import { mapCells, mapNeighbors } from "../maps/areas.ts";
+import type { CollisionCell } from "../maps/collision.ts";
+import { MAP_TILE_PX, PIECE_TILES } from "../maps/constants.ts";
+import type { MapArea } from "../maps/schemas.ts";
+import type { CollisionMap } from "./movement.ts";
+
+// A map as the simulation sees it (spec 011, data-model.md): collision per level, warps in map
+// tiles and where each neighbor sits. Each map keeps its own pixel space, origin at its top-left.
+
+export interface WorldWarp {
+  tx: number;
+  ty: number;
+  destMap: string;
+  /** Index into the destination map's warps. */
+  destAnchor: number;
+}
+
+export interface WorldNeighbor {
+  map: string;
+  /** Neighbor origin minus this map's origin, in pixels. */
+  dx: number;
+  dy: number;
+}
+
+export interface WorldMap {
+  id: string;
+  /** Indexed by level. */
+  levels: CollisionMap[];
+  warps: WorldWarp[];
+  neighbors: WorldNeighbor[];
+  widthPx: number;
+  heightPx: number;
+}
+
+export type WorldLookup = (mapId: string) => WorldMap | undefined;
+
+const CELL_PX = PIECE_TILES * MAP_TILE_PX;
+/** Header 0 fills matrix cells that belong to no real map (sea and borders around Johto). */
+const PLACEHOLDER_MAP = 0;
+const BLOCKED: CollisionCell = { category: "blocked", raw: 0x8000 };
+
+function origin(area: MapArea, map: number): [number, number] {
+  const cells = mapCells(area, map);
+  if (cells.length === 0) return [0, 0];
+  return [Math.min(...cells.map((c) => c.x)), Math.min(...cells.map((c) => c.z))];
+}
+
+/** Warp x/z come from the event file: matrix tiles, which are map tiles on a single-map matrix. */
+export function buildWorldMap(
+  area: MapArea,
+  mapId: number,
+  levels: CollisionMap[],
+  warps: { x: number; z: number; destMap: number; destAnchor: number }[],
+): WorldMap {
+  const [ox, oz] = origin(area, mapId);
+  const base = levels[0]!;
+  return {
+    id: String(mapId),
+    levels,
+    warps: warps.map((w) => ({ tx: w.x - ox * PIECE_TILES, ty: w.z - oz * PIECE_TILES, destMap: String(w.destMap), destAnchor: w.destAnchor })),
+    neighbors: [...new Set(mapNeighbors(area, mapId).map((n) => n.map))]
+      .filter((n) => n !== PLACEHOLDER_MAP)
+      .map((n) => {
+        const [nx, nz] = origin(area, n);
+        return { map: String(n), dx: (nx - ox) * CELL_PX, dy: (nz - oz) * CELL_PX };
+      }),
+    widthPx: base.width * MAP_TILE_PX,
+    heightPx: base.height * MAP_TILE_PX,
+  };
+}
+
+export const insideMap = (map: WorldMap, x: number, y: number) => x >= 0 && y >= 0 && x < map.widthPx && y < map.heightPx;
+
+function ownTile(map: WorldMap, level: number, x: number, y: number): CollisionCell {
+  const grid = map.levels[level] ?? map.levels[0]!;
+  return grid.tiles[Math.floor(y / MAP_TILE_PX) * grid.width + Math.floor(x / MAP_TILE_PX)] ?? BLOCKED;
+}
+
+/** The neighbor holding a point of `map`'s pixel space, with the point in its own space. */
+export function neighborAt(world: WorldLookup, map: WorldMap, x: number, y: number): { map: WorldMap; x: number; y: number } | undefined {
+  for (const n of map.neighbors) {
+    const other = world(n.map);
+    if (other && insideMap(other, x - n.dx, y - n.dy)) return { map: other, x: x - n.dx, y: y - n.dy };
+  }
+  return undefined;
+}
+
+/** The cell under a pixel of `mapId`; past the edge it comes from the neighbor, or is blocked. Undefined for an unknown map. */
+export function tileAt(world: WorldLookup, mapId: string, level: number, x: number, y: number): CollisionCell | undefined {
+  const map = world(mapId);
+  if (!map) return undefined;
+  if (insideMap(map, x, y)) return ownTile(map, level, x, y);
+  const hit = neighborAt(world, map, x, y);
+  return hit ? ownTile(hit.map, level, hit.x, hit.y) : BLOCKED;
+}

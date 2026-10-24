@@ -1,33 +1,38 @@
 <script lang="ts">
-  // Text-only view of the local game session until the renderer lands (spec 011).
+  // The local game session: renderer, input and the debug overlay (specs 010 and 011).
   import { PROTOCOL_VERSION } from "@soulsilver/shared";
-  import type { Direction } from "@soulsilver/shared/maps";
-  import type { Entity, TickMetrics } from "@soulsilver/shared/game";
+  import type { TickMetrics } from "@soulsilver/shared/game";
   import { onMount } from "svelte";
+  import { createInput } from "./input/input";
   import { createGameConnection, type GameStatus } from "./net/game-connection";
-
-  const TICK_MS = 50;
-  const KEYS: Record<string, Direction> = { ArrowUp: "north", ArrowDown: "south", ArrowLeft: "west", ArrowRight: "east" };
+  import { TICK_MS } from "./net/prediction";
+  import { createGameRenderer } from "./render/game-renderer";
+  import { createClientWorld } from "./render/map-assets";
 
   let status = $state<GameStatus>("connecting");
   let rejectMessage = $state<string | undefined>();
   let closeReason = $state<string | undefined>();
-  let self = $state<Entity | undefined>();
-  let others = $state(0);
   let tick = $state(0);
   let metrics = $state<TickMetrics | undefined>();
+  let fps = $state(0);
+  let position = $state("—");
   let showDebug = $state(false);
+  let host: HTMLDivElement;
 
   onMount(() => {
     const api = window.soulSilver;
+    const log = (message: string) => console.warn(`[game] ${message}`);
+    const world = createClientWorld(log);
     const game = createGameConnection({
       name: "Jogador",
       protocolVersion: PROTOCOL_VERSION,
       send: (msg) => api.sendGame(msg),
-      collision: () => undefined,
-      log: (message) => console.warn(`[game] ${message}`),
+      world: world.lookup,
+      log,
     });
-    const held: Direction[] = [];
+    const input = createInput(window);
+    let running = false;
+    const renderer = createGameRenderer(host, world, log);
 
     const unsubscribeMessage = api.onGameMessage((msg) => game.receive(msg, performance.now()));
     const unsubscribeClosed = api.onGameClosed(() => game.disconnected());
@@ -37,30 +42,38 @@
       if (event.key === "F3") {
         showDebug = !showDebug;
         event.preventDefault();
-        return;
+      } else if (event.key === "F11") {
+        if (document.fullscreenElement) void document.exitFullscreen();
+        else void document.documentElement.requestFullscreen();
+        event.preventDefault();
       }
-      const dir = KEYS[event.key];
-      if (dir && !held.includes(dir)) held.push(dir);
-    };
-    const onKeyUp = (event: KeyboardEvent) => {
-      const at = held.indexOf(KEYS[event.key]!);
-      if (at !== -1) held.splice(at, 1);
     };
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
 
-    // The most recently pressed direction wins.
-    const inputTimer = setInterval(() => game.sendInput(held.at(-1) ?? null), TICK_MS);
+    const inputTimer = setInterval(() => {
+      const { move, run } = input.read();
+      running = run;
+      game.sendInput(move, run, performance.now());
+    }, TICK_MS);
 
+    let frames = 0;
+    let fpsSince = performance.now();
     let frame = requestAnimationFrame(function draw(now) {
       const view = game.view(now);
+      renderer.draw(view, running, now);
+      const self = view.self;
+      position = self ? `mapa ${self.area} · ${Math.round(self.x)}, ${Math.round(self.y)} · nível ${self.level}` : "—";
       status = game.status;
       rejectMessage = game.rejectMessage;
       closeReason = game.closeReason;
-      self = view.self;
-      others = view.others.length;
       tick = game.tick;
       metrics = game.metrics;
+      frames++;
+      if (now - fpsSince >= 1000) {
+        fps = Math.round((frames * 1000) / (now - fpsSince));
+        frames = 0;
+        fpsSince = now;
+      }
       frame = requestAnimationFrame(draw);
     });
 
@@ -68,27 +81,31 @@
       cancelAnimationFrame(frame);
       clearInterval(inputTimer);
       window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
+      input.dispose();
+      renderer.destroy();
       unsubscribeMessage();
       unsubscribeClosed();
     };
   });
 </script>
 
-<section aria-label="Sessão de jogo">
+<section class="game" aria-label="Sessão de jogo">
+  <div class="screen" bind:this={host}></div>
+
   {#if status === "rejected"}
-    <p class="error" role="alert">{rejectMessage}</p>
+    <p class="message error" role="alert">{rejectMessage}</p>
   {:else if status === "closed"}
-    <p role="status">Sessão encerrada ({closeReason}).</p>
+    <p class="message" role="status">Sessão encerrada ({closeReason}).</p>
   {:else if status === "connecting"}
-    <p role="status">Entrando na sessão…</p>
-  {:else if self}
-    <p>Posição: {Math.round(self.x)}, {Math.round(self.y)} ({self.facing}) · outros jogadores: {others}</p>
-    <p class="hint">Setas para andar · F3 para depuração</p>
+    <p class="message" role="status">Entrando na sessão…</p>
   {/if}
 
   {#if showDebug}
     <dl class="debug" aria-label="Depuração">
+      <dt>Posição</dt>
+      <dd>{position}</dd>
+      <dt>Quadros por segundo</dt>
+      <dd>{fps}</dd>
       <dt>Tick</dt>
       <dd>{tick}</dd>
       <dt>Tick (último / média / pior)</dt>
@@ -101,11 +118,31 @@
       </dd>
       <dt>Ticks descartados</dt>
       <dd>{metrics?.overruns ?? 0}</dd>
+      <dt>Controles</dt>
+      <dd>Setas/WASD ou analógico · Shift/B corre · F11 tela cheia</dd>
     </dl>
   {/if}
 </section>
 
 <style>
+  .game {
+    position: fixed;
+    inset: 0;
+    background: #000;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  .message {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    color: #fff;
+  }
   .debug {
     position: fixed;
     top: 8px;
@@ -117,10 +154,7 @@
     font: 12px monospace;
   }
   .error {
-    color: #b00020;
+    color: #ff6b81;
     font-weight: bold;
-  }
-  .hint {
-    opacity: 0.7;
   }
 </style>

@@ -37,7 +37,7 @@ describe("replication", () => {
     const { session, connect } = setup();
     const a = connect();
     session.step();
-    const wild = session.world.add({ kind: "wild", area: "a", x: 0, y: 0, facing: "south", data: { species: 16 } });
+    const wild = session.world.add({ kind: "wild", area: "a", x: 0, y: 0, level: 0, facing: "south", data: { species: 16 } });
     session.step();
     expect(a.lastState()?.spawned).toEqual([wild]);
   });

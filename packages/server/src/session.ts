@@ -5,12 +5,12 @@ import {
   protocolMismatchMessage,
   stepMovement,
   type CloseReason,
-  type CollisionMap,
   type PlayerInput,
   type RecordingEvent,
   type RejectCode,
   type Rng,
   type ServerMessage,
+  type WorldLookup,
 } from "@soulsilver/shared/game";
 import type { Connection } from "./connection";
 import { createReplica, replicate, type Replica } from "./replication";
@@ -27,7 +27,8 @@ export interface SessionOptions {
   seed: number;
   /** Where a new player appears. */
   spawn(playerId: number): { area: string; x: number; y: number };
-  collision(area: string): CollisionMap | undefined;
+  /** Maps by id; an unknown map is open ground. */
+  world: WorldLookup;
   log(message: string): void;
   /** Ticks without any message before a player is dropped. */
   timeoutTicks?: number;
@@ -76,7 +77,7 @@ export function createSession(options: SessionOptions): Session {
   function join(name: string, conn: Connection | undefined): Player {
     const id = nextPlayerId++;
     const spawn = options.spawn(id);
-    const entity = world.add({ kind: "player", area: spawn.area, x: spawn.x, y: spawn.y, facing: "south", data: { name } });
+    const entity = world.add({ kind: "player", area: spawn.area, x: spawn.x, y: spawn.y, level: 0, facing: "south", data: { name } });
     const player: Player = { id, entityId: entity.id, conn, lastInputSeq: -1, queue: [], lastSeenTick: tick, replica: createReplica() };
     players.set(id, player);
     hostId ??= id;
@@ -166,7 +167,7 @@ export function createSession(options: SessionOptions): Session {
           leave(player);
           return;
         case "input":
-          enqueue(player, { seq: msg.seq, dir: msg.dir, buttons: msg.buttons });
+          enqueue(player, { seq: msg.seq, move: msg.move, run: msg.run, buttons: msg.buttons });
           return;
       }
     });
@@ -190,11 +191,12 @@ export function createSession(options: SessionOptions): Session {
     tick++;
     for (const p of players.values()) {
       const input = p.queue.shift();
-      if (!input) continue;
-      p.lastInputSeq = input.seq;
-      options.onRecord?.({ tick, kind: "input", playerId: p.id, input });
-      const entity = world.get(p.entityId)!;
-      world.update(stepMovement(entity, input.dir, options.collision(entity.area)));
+      if (input) {
+        p.lastInputSeq = input.seq;
+        options.onRecord?.({ tick, kind: "input", playerId: p.id, input });
+      }
+      // Every tick, so ledge hops and warp transitions run out without input.
+      world.update(stepMovement(world.get(p.entityId)!, input ?? null, options.world));
     }
     const entities = world.all();
     for (const p of players.values()) {
