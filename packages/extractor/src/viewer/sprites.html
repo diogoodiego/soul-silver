@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprites</title>
+<style>
+  :root { --bg: #14161a; --panel: #1d2026; --line: #2d323b; --text: #e6e8ec; --dim: #99a0ac; --accent: #6cb6ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px system-ui, sans-serif; display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+  aside { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  aside header { padding: 12px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+  select, input[type=search], button { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
+  ul { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; }
+  li { padding: 5px 12px; cursor: pointer; font-family: ui-monospace, monospace; font-size: 12px; }
+  li:hover { background: var(--line); }
+  li.on { background: var(--accent); color: #000; }
+  main { display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+  .bar { padding: 12px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; border-bottom: 1px solid var(--line); }
+  .stage { display: grid; place-items: center; overflow: auto; padding: 16px; background: repeating-conic-gradient(#20242b 0% 25%, #1a1d22 0% 50%) 0 0 / 16px 16px; }
+  canvas { image-rendering: pixelated; }
+  #msg { padding: 24px; color: var(--dim); }
+  .dim { color: var(--dim); }
+  @media (max-width: 700px) { body { grid-template-columns: 1fr; grid-template-rows: 40vh 1fr; } }
+</style>
+</head>
+<body>
+<aside>
+  <header>
+    <select id="category" aria-label="Categoria"></select>
+    <input id="filter" type="search" placeholder="Filtrar por nome" aria-label="Filtrar por nome">
+  </header>
+  <ul id="list"></ul>
+</aside>
+<main>
+  <div class="bar">
+    <label><input id="shiny" type="checkbox"> shiny</label>
+    <label><input id="anchor" type="checkbox"> âncora</label>
+    <label>animação <select id="anim"></select></label>
+    <label>zoom <select id="zoom"><option>2</option><option selected>4</option><option>8</option></select></label>
+    <span id="info" class="dim"></span>
+  </div>
+  <div class="stage"><canvas id="cv" width="1" height="1"></canvas><div id="msg" hidden></div></div>
+</main>
+<script>
+"use strict";
+const CATEGORIES = ["overworld-player", "overworld-npc", "overworld-pokemon", "battle", "icon-pokemon", "icon-item", "trainer"];
+const $ = (id) => document.getElementById(id);
+const sets = {};
+const images = {};
+let current = null;
+let timer = 0;
+
+const loadImage = (file) => images[file] ?? (images[file] = new Promise((ok, fail) => {
+  const img = new Image();
+  img.onload = () => ok(img);
+  img.onerror = () => fail(new Error(file));
+  img.src = "/data/" + encodeURIComponent(file);
+}));
+
+async function init() {
+  for (const c of CATEGORIES) {
+    try {
+      const r = await fetch("/data/" + c + ".json");
+      if (r.ok) sets[c] = await r.json();
+    } catch { /* category not extracted */ }
+  }
+  const found = Object.keys(sets);
+  if (found.length === 0) {
+    $("msg").hidden = false;
+    $("cv").hidden = true;
+    $("msg").textContent = "Nenhum sprite extraído. Rode a extração (npm run extract) antes de abrir esta página.";
+    return;
+  }
+  $("category").innerHTML = found.map((c) => `<option>${c}</option>`).join("");
+  const wanted = decodeURIComponent(location.hash.slice(1));
+  const owner = found.find((c) => sets[c].sprites.some((s) => s.name === wanted));
+  if (owner) $("category").value = owner;
+  fillList(wanted);
+}
+
+function fillList(select) {
+  const set = sets[$("category").value];
+  const q = $("filter").value.toLowerCase();
+  const items = set.sprites.filter((s) => s.name.toLowerCase().includes(q));
+  $("list").innerHTML = "";
+  for (const s of items.slice(0, 2000)) {
+    const li = document.createElement("li");
+    li.textContent = s.name;
+    li.onclick = () => show(s, li);
+    $("list").append(li);
+    if (s.name === select) li.click();
+  }
+}
+
+function show(sprite, li) {
+  document.querySelectorAll("li.on").forEach((e) => e.classList.remove("on"));
+  li.classList.add("on");
+  current = sprite;
+  location.hash = encodeURIComponent(sprite.name);
+  // Animated sprites list their animations; still sprites expose each frame as a one-step animation.
+  const options = sprite.animations.length
+    ? sprite.animations.map((a) => a.name)
+    : sprite.frames.map((f) => f);
+  $("anim").innerHTML = options.map((o) => `<option>${o}</option>`).join("");
+  play();
+}
+
+function stepsOf(sprite, name) {
+  const a = sprite.animations.find((x) => x.name === name);
+  if (a) return { loop: a.loop, steps: a.steps };
+  return { loop: false, steps: [{ frame: name, ms: 1000, flipX: false }] };
+}
+
+async function play() {
+  clearTimeout(timer);
+  if (!current) return;
+  const set = sets[$("category").value];
+  const { loop, steps } = stepsOf(current, $("anim").value);
+  const zoom = Number($("zoom").value);
+  const shiny = $("shiny").checked;
+  const sprite = current;
+  let i = 0;
+  const tick = async () => {
+    if (current !== sprite) return;
+    const step = steps[i];
+    const f = set.frames.find((x) => x.name === step.frame);
+    if (!f) return;
+    const page = set.pages[f.page];
+    const img = await loadImage(shiny && page.shinyFile ? page.shinyFile : page.file);
+    const cv = $("cv");
+    cv.width = f.w * zoom;
+    cv.height = f.h * zoom;
+    const g = cv.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    g.save();
+    if (step.flipX) { g.translate(cv.width, 0); g.scale(-1, 1); }
+    g.drawImage(img, f.x, f.y, f.w, f.h, 0, 0, cv.width, cv.height);
+    g.restore();
+    if ($("anchor").checked) {
+      const ax = (step.flipX ? f.w - f.anchor.x : f.anchor.x) * zoom;
+      g.fillStyle = "#ff3b6b";
+      g.fillRect(ax - 3, f.anchor.y * zoom - 3, 6, 6);
+    }
+    $("info").textContent = `${f.name} · ${f.w}×${f.h} · âncora ${f.anchor.x},${f.anchor.y} · ${step.ms} ms${step.flipX ? " · espelhado" : ""}`;
+    i++;
+    if (i >= steps.length) { if (!loop) return; i = 0; }
+    if (steps.length > 1) timer = setTimeout(tick, step.ms);
+  };
+  tick();
+}
+
+$("category").onchange = () => fillList();
+$("filter").oninput = () => fillList();
+for (const id of ["shiny", "anchor", "anim", "zoom"]) $(id).onchange = play;
+init();
+</script>
+</body>
+</html>
