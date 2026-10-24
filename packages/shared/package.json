@@ -11,7 +11,9 @@
     "./sprites": "./src/sprites/index.ts",
     "./events": "./src/events/index.ts",
     "./audio": "./src/audio/index.ts",
-    "./game": "./src/game/index.ts"
+    "./game": "./src/game/index.ts",
+    "./save": "./src/save/index.ts",
+    "./lan": "./src/lan/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -10,6 +10,7 @@ export {
   type SanityReport,
 } from "./data/report.ts";
 export { createDataStages } from "./data/stages.ts";
+export { randomSuffix, renameWithRetry, writeFileAtomic } from "./fs-atomic.ts";
 export { createConsoleLogger, createFileLogger, type Logger } from "./log.ts";
 export { type NdsFile, type NdsFileSystem, type NdsOverlay, readNdsFileSystem } from "./nds/filesystem.ts";
 export { NdsFormatError, type NdsHeader, parseNdsHeader } from "./nds/header.ts";

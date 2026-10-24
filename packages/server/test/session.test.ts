@@ -58,6 +58,10 @@ describe("session lifecycle", () => {
     const host = connect();
     const guest = connect();
     host.conn.send({ type: "leave" });
+    expect(session.state).toBe("closing");
+    expect(guest.saves()).toHaveLength(1);
+    guest.conn.send({ type: "save-ack", rev: guest.saves()[0]!.save.rev });
+    host.conn.send({ type: "save-ack", rev: host.saves()[0]!.save.rev });
     expect(session.state).toBe("closed");
     expect(guest.got.at(-1)).toEqual({ type: "session-closed", reason: "host-left" });
     expect(guest.closed).toBe(true);
@@ -67,6 +71,7 @@ describe("session lifecycle", () => {
     const { session, connect } = setup();
     const host = connect();
     session.close("closed-by-host");
+    host.conn.send({ type: "save-ack", rev: host.saves()[0]!.save.rev });
     expect(host.got.at(-1)).toEqual({ type: "session-closed", reason: "closed-by-host" });
     const late = connect();
     expect(late.got).toEqual([expect.objectContaining({ type: "reject", code: "session-closed" })]);

@@ -7,6 +7,8 @@ const info = {
   serverStatus: { state: "running", tick: 3 },
   tickRateHz: 20,
   uptimeMs: 150,
+  players: 1,
+  maxPlayers: 4,
 };
 
 describe("isHostToServerMessage", () => {
@@ -15,6 +17,8 @@ describe("isHostToServerMessage", () => {
     { type: "get-info", requestId: 1 },
     { type: "client-message", connId: 1, msg: { anything: true } },
     { type: "client-close", connId: 1 },
+    { type: "listen" },
+    { type: "unlisten" },
   ])("accepts %o", (msg) => {
     expect(isHostToServerMessage(msg)).toBe(true);
   });
@@ -43,6 +47,8 @@ describe("isServerToHostMessage", () => {
     { type: "status", status: { state: "running", tick: 0 } },
     { type: "info", requestId: 7, info },
     { type: "error", code: "protocol-mismatch", message: "expected 1, got 2" },
+    { type: "listening", port: 47800 },
+    { type: "listen-failed", message: "porta ocupada" },
     { type: "client-send", connId: 1, msg: { type: "state" } },
     { type: "client-close", connId: 1 },
   ])("accepts %o", (msg) => {
@@ -59,6 +65,8 @@ describe("isServerToHostMessage", () => {
     { type: "info", requestId: 7, info: { ...info, tickRateHz: 30 } },
     { type: "info", requestId: 7, info: { ...info, appVersion: "" } },
     { type: "error", code: "other", message: "x" },
+    { type: "listening", port: -1 },
+    { type: "info", requestId: 7, info: { ...info, maxPlayers: -1 } },
     { type: "get-info", requestId: 1 },
   ])("rejects %o", (msg) => {
     expect(isServerToHostMessage(msg)).toBe(false);

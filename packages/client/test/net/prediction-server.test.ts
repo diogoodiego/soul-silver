@@ -20,12 +20,16 @@ const tiles = Array.from({ length: 64 }, (_, i) => {
 const map: WorldMap = { id: "a", levels: [{ width: 8, height: 8, tiles }], warps: [], neighbors: [], widthPx: 128, heightPx: 128 };
 const world: WorldLookup = (id) => (id === "a" ? map : undefined);
 
+/** A save standing where the old fixtures spawned players. */
+const saveOf = (name: string) => ({ schemaVersion: 1, name, character: "male", area: "a", x: 24, y: 24, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0 });
+const sessionOptions = { seed: 1, log: () => {}, clock: () => "2026-10-24T12:00:00.000Z", newToken: () => "token" };
+
 describe("prediction against the real server", () => {
   it("agrees within 1 px walking into a wall and hopping a ledge", () => {
-    const session = createSession({ seed: 1, spawn: () => ({ area: "a", x: 24, y: 24 }), world, log: () => {} });
+    const session = createSession({ ...sessionOptions, world });
     const [server, client] = createMemoryConnectionPair();
     let now = 0;
-    const game = createGameConnection({ name: "P", protocolVersion: PROTOCOL_VERSION, send: (m) => client.send(m), world });
+    const game = createGameConnection({ save: saveOf("P"), protocolVersion: PROTOCOL_VERSION, send: (m) => client.send(m), world });
     client.onMessage((m) => game.receive(m, now));
     session.connect(server);
     game.start();

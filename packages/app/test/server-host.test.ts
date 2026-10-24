@@ -24,6 +24,8 @@ function infoReply(requestId: number): { type: "info"; requestId: number; info: 
       serverStatus: { state: "running", tick: 5 },
       tickRateHz: 20,
       uptimeMs: 250,
+      players: 0,
+      maxPlayers: 4,
     },
   };
 }
@@ -140,5 +142,39 @@ describe("createServerHost", () => {
     const { child, host } = setup();
     host.sendGame({ type: "hello" });
     expect(child.posted).toHaveLength(1);
+  });
+
+  it("asks the server to listen and resolves with the bound port", async () => {
+    const { child, host } = setup();
+    const port = host.listen();
+    expect(child.posted.at(-1)).toEqual({ type: "listen" });
+    child.emit("message", { type: "listening", port: 47801 });
+    await expect(port).resolves.toBe(47801);
+  });
+
+  it("rejects listen with the server reason", async () => {
+    const { child, host } = setup();
+    const port = host.listen();
+    child.emit("message", { type: "listen-failed", message: "porta ocupada" });
+    await expect(port).rejects.toThrow("porta ocupada");
+  });
+
+  it("times out a listen the server never answers", async () => {
+    vi.useFakeTimers();
+    try {
+      const { host } = setup();
+      const port = host.listen();
+      const assertion = expect(port).rejects.toThrow();
+      await vi.advanceTimersByTimeAsync(5000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("tells the server to stop listening", () => {
+    const { child, host } = setup();
+    host.unlisten();
+    expect(child.posted.at(-1)).toEqual({ type: "unlisten" });
   });
 });

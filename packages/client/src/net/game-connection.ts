@@ -5,7 +5,8 @@ import { createPredictor } from "./prediction";
 // The renderer's side of the game protocol (spec 010): handshake, inputs, state, prediction and interpolation.
 
 export interface GameConnectionOptions {
-  name: string;
+  /** The player save; the server validates it and spawns the player where it says. */
+  save: unknown;
   protocolVersion: number;
   send(msg: unknown): void;
   /** The same maps the server simulates; unknown maps are open ground. */
@@ -46,6 +47,9 @@ export function createGameConnection(options: GameConnectionOptions) {
         status = "closed";
         closeReason = msg.reason;
         return;
+      case "save":
+        // The main process writes it and acknowledges.
+        return;
       case "debug":
         metrics = msg.metrics;
         return;
@@ -71,7 +75,7 @@ export function createGameConnection(options: GameConnectionOptions) {
 
   return {
     start(): void {
-      options.send({ type: "hello", protocolVersion: options.protocolVersion, name: options.name });
+      options.send({ type: "hello", protocolVersion: options.protocolVersion, save: options.save });
     },
     receive,
     /** One per local tick while playing; a zero vector means standing still. */

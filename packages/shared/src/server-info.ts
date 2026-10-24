@@ -12,4 +12,7 @@ export interface ServerInfo {
   serverStatus: ServerStatus;
   tickRateHz: 20;
   uptimeMs: number;
+  /** Players in the current session (connected or reserved); 0 without one. */
+  players: number;
+  maxPlayers: number;
 }

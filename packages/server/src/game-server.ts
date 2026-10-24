@@ -5,9 +5,9 @@ import {
   type ServerToHostMessage,
 } from "@soulsilver/shared";
 import type { WorldLookup } from "@soulsilver/shared/game";
-import { MAP_TILE_PX } from "@soulsilver/shared/maps";
 import type { Connection } from "./connection";
-import { createSession, type Session } from "./session";
+import { checkCoherence } from "@soulsilver/shared/save";
+import { createSession, MAX_PLAYERS, type Session } from "./session";
 import { createTickLoop, type Scheduler, type TickLoop } from "./tick-loop";
 import { createTickMetrics } from "./tick-metrics";
 
@@ -19,8 +19,6 @@ interface HostedConnection {
 }
 
 const TICK_RATE_HZ = 20;
-/** New Bark Town; players start one tile below the door of its first warp. */
-const START_MAP = "60";
 
 export interface GameServerOptions extends Scheduler {
   send(msg: ServerToHostMessage): void;
@@ -29,6 +27,8 @@ export interface GameServerOptions extends Scheduler {
   log(message: string): void;
   /** The extracted world; open ground everywhere when omitted. */
   world?: WorldLookup | undefined;
+  /** Opens/closes the LAN socket for other PCs (hosted sessions only); results go back as `listening`/`listen-failed`. */
+  listen?(on: boolean): void;
 }
 
 export interface GameServer {
@@ -42,18 +42,30 @@ export function createGameServer(options: GameServerOptions): GameServer {
   let tick = 0;
   let loop: TickLoop | undefined;
   let session: Session | undefined;
+  /** Sessions waiting for the final save acks; they keep stepping until they close. */
+  const closing = new Set<Session>();
   const conns = new Map<number, HostedConnection>();
   const metrics = createTickMetrics();
 
   function newSession(): Session {
     const world = options.world ?? (() => undefined);
-    const door = world(START_MAP)?.warps[0];
-    const start = door ? { x: (door.tx + 0.5) * MAP_TILE_PX, y: (door.ty + 1.5) * MAP_TILE_PX } : { x: 0, y: 0 };
     return createSession({
       seed: (Math.random() * 0x100000000) >>> 0,
-      spawn: () => ({ area: START_MAP, ...start }),
       world,
-      log: options.log,
+      log: (message) => {
+        options.log(message);
+      },
+      clock: () => new Date().toISOString(),
+      newToken: () => crypto.randomUUID(),
+      // Without an extracted world there is nothing to check a save against.
+      ...(options.world
+        ? {
+            validateSave: (save) => {
+              const result = checkCoherence(save, world);
+              return result.ok ? undefined : result.message;
+            },
+          }
+        : {}),
     });
   }
 
@@ -106,6 +118,10 @@ export function createGameServer(options: GameServerOptions): GameServer {
         tick = n;
         const startedTick = options.now();
         session?.step();
+        for (const s of closing) {
+          s.step();
+          if (s.state === "closed") closing.delete(s);
+        }
         metrics.record(options.now() - startedTick);
         if (n % TICK_RATE_HZ === 0) session?.broadcast({ type: "debug", metrics: metrics.snapshot() });
         options.send({ type: "status", status: { state: "running", tick } });
@@ -136,12 +152,19 @@ export function createGameServer(options: GameServerOptions): GameServer {
       if (msg.type === "client-message") {
         let hosted = conns.get(msg.connId);
         if (!hosted) {
-          if (!session || session.state === "closed") session = newSession();
+          if (!session || session.state !== "open") {
+            if (session?.state === "closing") closing.add(session);
+            session = newSession();
+          }
           hosted = hostConnection(msg.connId);
           conns.set(msg.connId, hosted);
           session.connect(hosted.conn);
         }
         hosted.receive(msg.msg);
+        return;
+      }
+      if (msg.type === "listen" || msg.type === "unlisten") {
+        options.listen?.(msg.type === "listen");
         return;
       }
       if (msg.type === "client-close") {
@@ -157,6 +180,8 @@ export function createGameServer(options: GameServerOptions): GameServer {
           serverStatus: { state: "running", tick },
           tickRateHz: TICK_RATE_HZ,
           uptimeMs: Math.round(options.now() - startedAt),
+          players: session?.state === "open" ? session.occupied : 0,
+          maxPlayers: MAX_PLAYERS,
         },
       });
     },

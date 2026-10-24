@@ -49,6 +49,8 @@ describe("createGameServer", () => {
           serverStatus: { state: "running", tick: 3 },
           tickRateHz: 20,
           uptimeMs: 150,
+          players: 0,
+          maxPlayers: 4,
         },
       },
     ]);
@@ -76,7 +78,11 @@ describe("createGameServer", () => {
 });
 
 describe("game channel", () => {
-  const hello = { type: "hello", protocolVersion: PROTOCOL_VERSION, name: "Ana" };
+  const hello = {
+    type: "hello",
+    protocolVersion: PROTOCOL_VERSION,
+    save: { schemaVersion: 1, name: "Ana", character: "female", area: "60", x: 10, y: 10, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0 },
+  };
   const toClient = (sent: ServerToHostMessage[], connId: number) =>
     sent.flatMap((m) => (m.type === "client-send" && m.connId === connId ? [m.msg as { type: string }] : []));
 

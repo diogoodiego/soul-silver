@@ -1,12 +1,11 @@
 import { z } from "zod";
+import { saveSchema } from "../save/schema.ts";
 import { ENTITY_KINDS } from "./entity.ts";
 
 // Client <-> game server messages (spec 010, contracts/game-protocol.md). Validated on arrival on both sides.
 
 const count = () => z.number().int().nonnegative();
 const direction = z.enum(["north", "south", "east", "west"]);
-
-export const PLAYER_NAME_MAX = 16;
 
 export const playerInput = z.strictObject({
   seq: count(),
@@ -18,7 +17,9 @@ export const playerInput = z.strictObject({
 export type PlayerInput = z.infer<typeof playerInput>;
 
 export const clientMessage = z.discriminatedUnion("type", [
-  z.strictObject({ type: z.literal("hello"), protocolVersion: count(), name: z.string().min(1).max(PLAYER_NAME_MAX) }),
+  /** `save` is checked by the session (migrate, schema, coherence) so a bad one is rejected with a reason. */
+  z.strictObject({ type: z.literal("hello"), protocolVersion: count(), save: z.unknown(), resumeToken: z.string().min(1).max(64).optional() }),
+  z.strictObject({ type: z.literal("save-ack"), rev: count() }),
   playerInput.extend({ type: z.literal("input") }),
   z.strictObject({ type: z.literal("leave") }),
 ]);
@@ -45,7 +46,7 @@ export const tickMetrics = z.strictObject({
 });
 export type TickMetrics = z.infer<typeof tickMetrics>;
 
-export const REJECT_CODES = ["protocol-mismatch", "session-full", "session-closed"] as const;
+export const REJECT_CODES = ["protocol-mismatch", "session-full", "session-closed", "invalid-save", "save-too-new", "name-taken"] as const;
 export type RejectCode = (typeof REJECT_CODES)[number];
 
 export const CLOSE_REASONS = ["host-left", "closed-by-host"] as const;
@@ -59,7 +60,11 @@ export const serverMessage = z.discriminatedUnion("type", [
     entityId: count(),
     tick: count(),
     tickRateHz: z.literal(20),
+    resumeToken: z.string(),
+    /** True when this connection took over a reserved player (reconnect). */
+    resumed: z.boolean(),
   }),
+  z.strictObject({ type: z.literal("save"), save: saveSchema }),
   z.strictObject({ type: z.literal("reject"), code: z.enum(REJECT_CODES), message: z.string(), serverProtocolVersion: count() }),
   z.strictObject({
     type: z.literal("state"),

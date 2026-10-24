@@ -5,3 +5,4 @@ export * from "./tick-loop";
 export * from "./recorder";
 export * from "./world";
 export * from "./world-loader";
+export * from "./start";

@@ -292,7 +292,8 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   function frameFor(e: Entity, moving: boolean, running: boolean, now: number) {
     const gait = running ? "run" : "walk";
     const step = moving ? Math.floor(now / (running ? RUN_FRAME_MS : WALK_FRAME_MS)) % 4 : 0;
-    return frames.get(`overworld-player/0/${gait}/${FACING[e.facing]}/${step}`);
+    const variant = e.data["character"] === "female" ? 1 : 0;
+    return frames.get(`overworld-player/${variant}/${gait}/${FACING[e.facing]}/${step}`);
   }
 
   function drawEntity(e: Entity, running: boolean, now: number): void {

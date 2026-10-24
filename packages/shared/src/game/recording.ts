@@ -4,9 +4,10 @@ import { playerInput } from "./protocol.ts";
 // A recorded session: everything needed to replay it to the same final state (spec 010, research R9).
 
 const count = () => z.number().int().nonnegative();
+const spawn = z.strictObject({ area: z.string(), x: z.number(), y: z.number(), level: count(), facing: z.enum(["north", "south", "east", "west"]) });
 
 export const recordingEvent = z.discriminatedUnion("kind", [
-  z.strictObject({ tick: count(), kind: z.literal("join"), playerId: count(), name: z.string() }),
+  z.strictObject({ tick: count(), kind: z.literal("join"), playerId: count(), name: z.string(), spawn }),
   z.strictObject({ tick: count(), kind: z.literal("leave"), playerId: count() }),
   z.strictObject({ tick: count(), kind: z.literal("input"), playerId: count(), input: playerInput }),
 ]);

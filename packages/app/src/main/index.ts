@@ -1,13 +1,21 @@
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkAssets, createConsoleLogger, createRegistry, defaultStages } from "@soulsilver/extractor";
-import { IpcChannel } from "@soulsilver/shared";
+import { loadWorld, startPosition } from "@soulsilver/server";
+import { IpcChannel, PROTOCOL_VERSION } from "@soulsilver/shared";
+import { CANCELLED, SAVE_SLOTS } from "@soulsilver/shared/save";
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell, utilityProcess, type IpcMainInvokeEvent } from "electron";
 import electronUpdater from "electron-updater";
 import { createAssetsController } from "./assets-controller";
 import { ASSETS_SCHEME, resolveAssetPath } from "./assets-protocol";
 import { isAllowedNavigation, permissionRequestHandler, windowOpenHandler } from "./navigation-guard";
+import { createDiscovery } from "./discovery";
+import { createRemoteClient } from "./remote-connection";
+import { createSaveStore } from "./save-store";
 import { createServerHost } from "./server-host";
+import { createSessionController, type SessionController } from "./session-controller";
+import { createSettings } from "./settings";
 import { createUpdateController } from "./update-controller";
 import { createWindowOptions } from "./window-options";
 
@@ -52,6 +60,8 @@ if (!app.requestSingleInstanceLock()) {
       window.focus();
     });
 
+    // The session logic needs the server host, which reports back to it.
+    const sessionRef: { current: SessionController | undefined } = { current: undefined };
     const serverHost = createServerHost({
       fork: () =>
         utilityProcess.fork(join(import.meta.dirname, "server-host.js"), [join(app.getPath("userData"), "extraction", "stages")], {
@@ -62,10 +72,10 @@ if (!app.requestSingleInstanceLock()) {
         send(IpcChannel.ServerStatus, status);
       },
       onGameMessage: (msg) => {
-        send(IpcChannel.GameMessage, msg);
+        sessionRef.current?.onServerMessage(msg);
       },
       onGameClosed: () => {
-        send(IpcChannel.GameClosed, undefined);
+        sessionRef.current?.onServerClosed();
       },
       log: (message) => {
         console.warn(`[server-host] ${message}`);
@@ -171,13 +181,82 @@ if (!app.requestSingleInstanceLock()) {
       assets.openLog();
     });
 
-    handle(IpcChannel.ServerGetInfo, () => serverHost.getInfo());
-    handle(IpcChannel.GameConnect, () => {
-      serverHost.connectGame();
+    const stagesDir = join(userData, "extraction", "stages");
+    const saves = createSaveStore({
+      dir: join(userData, "saves"),
+      start: () => startPosition(loadWorld(stagesDir, (message) => console.warn(`[saves] ${message}`))),
     });
+    const settings = createSettings(join(userData, "settings.json"));
+    const lanLog = (message: string) => {
+      console.warn(`[lan] ${message}`);
+    };
+    const remote = createRemoteClient({
+      onMessage: (msg) => sessionRef.current?.onRemoteMessage(msg),
+      onClose: () => sessionRef.current?.onRemoteClosed(),
+      log: lanLog,
+    });
+    const play = createSessionController({
+      saves,
+      server: serverHost,
+      remote,
+      discovery: createDiscovery({ localProtocolVersion: PROTOCOL_VERSION, appVersion: app.getVersion(), log: lanLog }),
+      protocolVersion: PROTOCOL_VERSION,
+      newSessionId: randomUUID,
+      emit: {
+        gameMessage: (msg) => {
+          send(IpcChannel.GameMessage, msg);
+        },
+        gameClosed: () => {
+          send(IpcChannel.GameClosed, undefined);
+        },
+        saved: (result) => {
+          send(IpcChannel.GameSaved, result);
+        },
+        sessions: (list) => {
+          send(IpcChannel.SessionsList, list);
+        },
+      },
+      log: lanLog,
+    });
+    sessionRef.current = play;
+    const isSlot = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 1 && (value as number) <= SAVE_SLOTS;
+    const fields = (arg: unknown): Record<string, unknown> => (typeof arg === "object" && arg !== null ? (arg as Record<string, unknown>) : {});
+    const invalid = { ok: false, reason: "Pedido inválido." } as const;
+
+    handle(IpcChannel.ServerGetInfo, () => serverHost.getInfo());
+    handle(IpcChannel.SavesList, () => saves.list());
+    handle(IpcChannel.SavesCreate, (arg) => {
+      const { slot, name, character, overwrite } = fields(arg);
+      if (!isSlot(slot) || typeof name !== "string" || (character !== "male" && character !== "female")) return invalid;
+      return saves.create(slot, name, character, overwrite === true);
+    });
+    handle(IpcChannel.SavesRestore, (slot) => (isSlot(slot) ? saves.restoreBackup(slot) : invalid));
+    handle(IpcChannel.SavesExport, async (slot) => {
+      if (!isSlot(slot)) return invalid;
+      const result = await dialog.showSaveDialog(window, { defaultPath: `slot-${slot}.sssave`, filters: [{ name: "Save do SoulSilver", extensions: ["sssave"] }] });
+      return result.canceled ? { ok: false, reason: CANCELLED } : saves.exportTo(slot, result.filePath);
+    });
+    handle(IpcChannel.SavesImport, async (arg) => {
+      const { slot, overwrite } = fields(arg);
+      if (!isSlot(slot)) return invalid;
+      const result = await dialog.showOpenDialog(window, { properties: ["openFile"], filters: [{ name: "Save do SoulSilver", extensions: ["sssave", "json"] }] });
+      const path = result.filePaths[0];
+      return result.canceled || !path ? { ok: false, reason: CANCELLED } : saves.importFrom(slot, path, overwrite === true);
+    });
+    handle(IpcChannel.SessionSolo, (slot) => (isSlot(slot) ? play.startSolo(slot) : invalid));
+    handle(IpcChannel.SessionHost, (slot) => (isSlot(slot) ? play.startHost(slot) : invalid));
+    handle(IpcChannel.SessionJoin, (arg) => {
+      const { slot, address } = fields(arg);
+      return isSlot(slot) && typeof address === "string" ? play.joinSession(slot, address) : invalid;
+    });
+    handle(IpcChannel.SessionsWatch, (on) => {
+      play.watchSessions(on === true);
+    });
+    handle(IpcChannel.SettingsGet, () => settings.get());
+    handle(IpcChannel.SettingsFirewallSeen, () => settings.markFirewallNoticeSeen());
     // Fire-and-forget: inputs go out every tick, so no invoke round trip.
     ipcMain.on(IpcChannel.GameSend, (event, msg: unknown) => {
-      if (event.sender === window.webContents) serverHost.sendGame(msg);
+      if (event.sender === window.webContents) play.sendGame(msg);
     });
     handle(IpcChannel.AppGetVersion, () => app.getVersion());
     handle(IpcChannel.UpdateGetState, () => updates.getState());
@@ -186,9 +265,17 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     serverHost.start();
-    app.on("before-quit", () => {
-      serverHost.stop();
-      void assets.shutdown();
+    // Leaving a session sends the final saves; give them a moment before the server goes.
+    let quitting = false;
+    app.on("before-quit", (event) => {
+      if (quitting) return;
+      quitting = true;
+      event.preventDefault();
+      void play.shutdown().finally(() => {
+        serverHost.stop();
+        void assets.shutdown();
+        app.quit();
+      });
     });
 
     // Never block startup on the network.

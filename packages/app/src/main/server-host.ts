@@ -34,7 +34,16 @@ export interface ServerHost {
   /** Opens a fresh game connection for the renderer, closing the previous one. */
   connectGame(): void;
   sendGame(msg: unknown): void;
+  /** Opens the LAN socket (hosted session); resolves with the port, rejects with the reason. */
+  listen(): Promise<number>;
+  unlisten(): void;
   stop(): void;
+}
+
+interface PendingListen {
+  resolve(port: number): void;
+  reject(error: Error): void;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 interface PendingRequest {
@@ -50,6 +59,14 @@ export function createServerHost(options: ServerHostOptions): ServerHost {
   let child: ServerProcess | undefined;
   let nextRequestId = 1;
   let gameConnId = 0;
+  let pendingListen: PendingListen | undefined;
+
+  function settleListen(): PendingListen | undefined {
+    const request = pendingListen;
+    if (request) clearTimeout(request.timer);
+    pendingListen = undefined;
+    return request;
+  }
 
   function settle(requestId: number): PendingRequest | undefined {
     const request = pending.get(requestId);
@@ -82,6 +99,12 @@ export function createServerHost(options: ServerHostOptions): ServerHost {
         return;
       case "client-close":
         if (msg.connId === gameConnId) options.onGameClosed();
+        return;
+      case "listening":
+        settleListen()?.resolve(msg.port);
+        return;
+      case "listen-failed":
+        settleListen()?.reject(new Error(msg.message));
         return;
       case "ready":
         return;
@@ -128,6 +151,21 @@ export function createServerHost(options: ServerHostOptions): ServerHost {
     },
     sendGame(msg) {
       if (gameConnId > 0) child?.postMessage({ type: "client-message", connId: gameConnId, msg });
+    },
+    listen() {
+      if (!child || status.state === "stopped") return Promise.reject(new Error(SERVER_UNAVAILABLE));
+      settleListen()?.reject(new Error("substituído por outro pedido"));
+      const result = new Promise<number>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          settleListen()?.reject(new Error("O servidor não respondeu ao abrir a porta de rede."));
+        }, timeoutMs * 2);
+        pendingListen = { resolve, reject, timer };
+      });
+      child.postMessage({ type: "listen" });
+      return result;
+    },
+    unlisten() {
+      child?.postMessage({ type: "unlisten" });
     },
     stop() {
       child?.kill();

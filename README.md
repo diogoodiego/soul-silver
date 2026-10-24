@@ -66,6 +66,28 @@ selecionado. Envie esse arquivo para quem mantém o jogo. Ele não contém nenhu
 - [Git for Windows](https://git-scm.com/download/win).
 - [Node.js](https://nodejs.org/) 24 LTS (a versão exigida está em [.nvmrc](.nvmrc)).
 
+## Jogar (saves, LAN e partidas)
+
+Depois de preparar o jogo, o menu inicial oferece **Novo jogo**, **Continuar**, **Hospedar**,
+**Entrar** e **Jogar sozinho**. Hospedar, Entrar e Jogar sozinho usam o save escolhido em
+Continuar (ou criado em Novo jogo).
+
+- **Saves**: até 3 slots, na pasta `saves` dos dados do app (`%APPDATA%\SoulSilver Desktop\saves`),
+  como `slot-N.json` mais o backup `slot-N.json.bak`. A gravação é atômica e o save anterior vira
+  backup. Se um save estiver corrompido, Continuar oferece restaurar o backup; arquivos corrompidos
+  nunca são apagados sozinhos. Também dá para exportar e importar um slot (arquivo `.sssave`).
+- **Hospedar**: abre a partida com um clique. Na primeira vez, o app explica o aviso do Firewall
+  do Windows; marque **Redes privadas** e **Permitir acesso**. Os outros PCs da rede veem a partida
+  em Entrar em poucos segundos (de 2 a 4 jogadores).
+- **Entrar**: escolha uma partida da lista (partidas de versão diferente ou cheias aparecem
+  desabilitadas, com o motivo) ou digite o IP do anfitrião. O anfitrião valida o seu save antes
+  de aceitar e recusa saves inválidos e nomes já usados na partida.
+- **Jogar sozinho**: sessão local, que ninguém vê na rede.
+- **Portas**: TCP `47800` (jogo; usa de `47800` a `47809` se estiver ocupada) e UDP `47801` (descoberta).
+- **Cair da rede**: o convidado tem 2 minutos para voltar (botão **Reconectar**) com o progresso
+  que o anfitrião tinha dele. Quando o anfitrião fecha a partida, todos recebem e gravam o último estado.
+- **VPN de LAN virtual**: a descoberta pode não funcionar; use o IP do anfitrião em Entrar.
+
 ## Preparar o ambiente
 
 ```powershell

@@ -3,6 +3,8 @@
   import { onMount } from "svelte";
   import FirstRun from "./FirstRun.svelte";
   import GameSession from "./GameSession.svelte";
+  import MainMenu from "./MainMenu.svelte";
+  import type { PlayRequest } from "./play-request";
   import UpdateNotice from "./UpdateNotice.svelte";
 
   /** How long "Assets prontos" stays up after an extraction before the main screen. */
@@ -15,6 +17,18 @@
   let update = $state<UpdateState>({ status: "disabled" });
   let assets = $state<AssetsState>({ status: "checking" });
   let showMain = $state(false);
+  let play = $state<PlayRequest | undefined>();
+  /** Bumped on reconnect so the game screen starts over. */
+  let attempt = $state(0);
+
+  async function reconnect(): Promise<string | undefined> {
+    if (!play?.address) return "Não há endereço para reconectar.";
+    const result = await window.soulSilver.joinSession(play.slot, play.address);
+    if (!result.ok) return result.reason;
+    play = { ...play, save: result.save };
+    attempt++;
+    return undefined;
+  }
 
   function onAssets(next: AssetsState): void {
     const wasExtracting = assets.status === "extracting";
@@ -86,8 +100,13 @@
       <dd class="tick">{status.tick}</dd>
     </dl>
 
-    {#if info}
-      <GameSession />
+    {#if info && !play}
+      <MainMenu onPlay={(request: PlayRequest) => (play = request)} />
+    {/if}
+    {#if play}
+      {#key attempt}
+        <GameSession {play} onExit={() => (play = undefined)} onReconnect={play.address ? reconnect : undefined} />
+      {/key}
     {/if}
   {/if}
 
