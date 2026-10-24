@@ -84,3 +84,7 @@ export const ITEM_ICON_ARCHIVE = "a/0/1/8";
 export const TRAINER_ARCHIVE = "a/0/5/8";
 export const TRAINER_GROUP = 5;
 export const TRAINER_COUNT = 129;
+
+/** Field effects (3D textures and models); member 25 is the tall grass rustle (kusaeff.1 to .4). */
+export const FIELD_EFFECT_ARCHIVE = "a/1/0/3";
+export const GRASS_EFFECT_MEMBER = 25;

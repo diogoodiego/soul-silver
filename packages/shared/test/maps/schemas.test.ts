@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { mapAnimation } from "../../src/maps/animations.ts";
 import { parseMapJson, serializeMapFile } from "../../src/maps/schemas.ts";
 
 const header = (extra: Record<string, unknown> = {}) => ({
@@ -137,7 +138,7 @@ describe("serializeMapFile", () => {
   });
 });
 
-describe("map-animations schema", () => {
+describe("map animation schema", () => {
   const scroll = {
     type: "scroll",
     material: "en_sp1_3",
@@ -149,26 +150,38 @@ describe("map-animations schema", () => {
     translateT: { values: [0, -0.5] },
   };
   const pattern = { type: "pattern", material: "pc_moni", duration: 8, textures: ["a"], palettes: ["a_pl"], keys: [{ frame: 0, texture: 0, palette: 0 }, { frame: 4, texture: 0, palette: 0 }] };
-  const region = { level: 0, layer: "lower", x: 16, y: 0, width: 32, height: 16 };
-  const file = (animations: unknown[], regions: unknown[] = []) => ({ kind: "map-animations", formatVersion: 1, map: 60, frames: 8, regions, animations });
+  const issuePath = (value: unknown) => mapAnimation.safeParse(value).error?.issues[0]?.path.join(".");
 
   it("accepts scroll and pattern animations", () => {
-    expect(parseMapJson("map-animations", JSON.stringify(file([scroll, pattern])), "animations.json").ok).toBe(true);
-  });
-
-  it("accepts the regions of the played frames and refuses a layer or size that makes no sense", () => {
-    expect(parseMapJson("map-animations", JSON.stringify(file([scroll], [region])), "a.json").ok).toBe(true);
-    expect(parseMapJson("map-animations", JSON.stringify(file([scroll], [{ ...region, layer: "middle" }])), "a.json")).toMatchObject({ ok: false, error: { path: "regions.0.layer" } });
-    expect(parseMapJson("map-animations", JSON.stringify(file([scroll], [{ ...region, width: 0 }])), "a.json")).toMatchObject({ ok: false, error: { path: "regions.0.width" } });
+    expect(mapAnimation.safeParse(scroll).success).toBe(true);
+    expect(mapAnimation.safeParse(pattern).success).toBe(true);
   });
 
   it("refuses a key that points at a texture or palette the animation does not list", () => {
-    const bad = { ...pattern, keys: [{ frame: 0, texture: 1, palette: 0 }] };
-    expect(parseMapJson("map-animations", JSON.stringify(file([bad])), "a.json")).toMatchObject({ ok: false, error: { path: "animations.0.keys.0.texture" } });
+    expect(issuePath({ ...pattern, keys: [{ frame: 0, texture: 1, palette: 0 }] })).toBe("keys.0.texture");
   });
 
   it("refuses keys whose frames do not increase", () => {
-    const bad = { ...pattern, keys: [{ frame: 4, texture: 0, palette: 0 }, { frame: 4, texture: 0, palette: 0 }] };
-    expect(parseMapJson("map-animations", JSON.stringify(file([bad])), "a.json")).toMatchObject({ ok: false, error: { path: "animations.0.keys.1.frame" } });
+    expect(issuePath({ ...pattern, keys: [{ frame: 4, texture: 0, palette: 0 }, { frame: 4, texture: 0, palette: 0 }] })).toBe("keys.1.frame");
+  });
+});
+
+describe("map-mesh schema", () => {
+  const frame = { texture: 0, scale: [1, 1], translate: [0, 0] };
+  const group = { frames: [frame], repeat: [true, true], flip: [false, false], alpha: 1, translucent: false, first: 0, count: 3 };
+  const file = (extra: Record<string, unknown> = {}) =>
+    JSON.stringify({ kind: "map-mesh", formatVersion: 1, map: 60, width: 2, height: 1, ground: [[0, 8]], textures: 1, groups: [group], ...extra });
+
+  it("accepts a mesh with its ground and groups", () => {
+    expect(parseMapJson("map-mesh", file(), "mesh.json").ok).toBe(true);
+  });
+
+  it("refuses ground that does not cover every tile", () => {
+    expect(parseMapJson("map-mesh", file({ ground: [[0]] }), "mesh.json")).toMatchObject({ ok: false, error: { path: "ground.0" } });
+  });
+
+  it("refuses a frame texture outside the list and a count that is not whole triangles", () => {
+    expect(parseMapJson("map-mesh", file({ textures: 0 }), "mesh.json")).toMatchObject({ ok: false, error: { path: "groups.0.frames.0.texture" } });
+    expect(parseMapJson("map-mesh", file({ groups: [{ ...group, count: 4 }] }), "mesh.json")).toMatchObject({ ok: false, error: { path: "groups.0.count" } });
   });
 });

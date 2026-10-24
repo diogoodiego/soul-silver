@@ -7,7 +7,8 @@ import { buildReportFile, buildSpriteReport } from "../../src/sprites/report.ts"
 import { spritesStage } from "../../src/sprites/stage.ts";
 import type { StageContext } from "../../src/pipeline/stage.ts";
 import { btx0 } from "../fixtures/sprites/btx0.ts";
-import { ICON_PALETTE_TABLE, OVERWORLD_POKEMON_FIRST, OVERWORLD_POKEMON_TABLE } from "../../src/sprites/layout.ts";
+import { buildNitroFile, buildTex0 } from "../fixtures/maps/build-nitro.ts";
+import { GRASS_EFFECT_MEMBER, ICON_PALETTE_TABLE, OVERWORLD_POKEMON_FIRST, OVERWORLD_POKEMON_TABLE } from "../../src/sprites/layout.ts";
 import { SOULSILVER_US_LAYOUT } from "../../src/data/layout.ts";
 import { bgr555, buildNclr, buildNcgr, encryptPokemonPixels, encryptTrainerPixels } from "../fixtures/sprites/builders.ts";
 
@@ -57,6 +58,16 @@ async function fakeArchive(species: number): Promise<StageContext> {
   const sheet = buildNcgr({ tilesWide: 20, tilesHigh: 10, scanned: true, data: encryptTrainerPixels(sheetPlain) });
   const trainerMembers = Array.from({ length: 129 * 5 }, (_, i) => (i % 5 === 1 ? buildNclr([0, bgr555(1, 0, 0)]) : i % 5 === 4 ? sheet : new Uint8Array(0)));
   await Promise.all(trainerMembers.map((m, i) => writeFile(join(trainerDir, `${String(i).padStart(4, "0")}.bin`), Buffer.from(m))));
+  // Field effects: the grass rustle texture file, other members empty.
+  const effectDir = join(root, "rom-unpack", "narc", "a", "1", "0", "3");
+  await mkdir(effectDir, { recursive: true });
+  const grass = buildNitroFile("BTX0", [
+    buildTex0(
+      [1, 2, 3, 4].map((k) => ({ name: `kusaeff.${k}`, format: 3, width: 8, height: 8, texels: new Uint8Array(32).fill(k) })),
+      [{ name: "kusaeff", colors: [0, bgr555(0, 31, 0), bgr555(0, 20, 0), bgr555(0, 10, 0), bgr555(0, 5, 0)] }],
+    ),
+  ]);
+  await writeFile(join(effectDir, `${String(GRASS_EFFECT_MEMBER).padStart(4, "0")}.bin`), Buffer.from(grass));
   const itemMap = SOULSILVER_US_LAYOUT.arm9.itemMap;
   const arm9 = new Uint8Array(Math.max(OVERWORLD_POKEMON_TABLE + 2 * 493, ICON_PALETTE_TABLE + 544, itemMap + 8 * 537));
   for (let id = 1; id <= 536; id++) new DataView(arm9.buffer).setUint16(itemMap + id * 8 + 4, 1, true);
@@ -94,6 +105,7 @@ describe("sprites stage", { timeout: 30_000 }, () => {
       "icon-pokemon": 493 + 30,
       "icon-item": 536,
       trainer: 129,
+      "field-effect": 1,
     });
   });
 

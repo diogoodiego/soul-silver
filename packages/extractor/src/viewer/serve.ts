@@ -1,9 +1,10 @@
 // Development map viewer (research.md R9): a read-only HTTP server on the loopback address
-// that serves the viewer page and, under /data/, the files of the maps stage output.
+// that serves the viewer page, three.js under /three/ and, under /data/, the files of the maps stage output.
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { extname, resolve, sep } from "node:path";
+import { dirname, extname, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const VIEWER_HOST = "127.0.0.1";
 
@@ -11,7 +12,11 @@ const TYPES: Record<string, string> = {
   ".png": "image/png",
   ".json": "application/json; charset=utf-8",
   ".wav": "audio/wav",
+  ".bin": "application/octet-stream",
 };
+
+/** three.js build folder (three.module.js and the files it imports), for the 3D map view. */
+const THREE_DIR = dirname(fileURLToPath(import.meta.resolve("three")));
 
 export interface ViewerOptions {
   /** The maps stage output folder (stages/maps/maps). */
@@ -59,6 +64,15 @@ export async function startViewer(options: ViewerOptions): Promise<Viewer> {
     const url = (req.url ?? "/").split("?")[0]!;
     if (url === "/") return send(200, "text/html; charset=utf-8", html);
     if (url === "/names.json") return send(200, TYPES[".json"]!, JSON.stringify(options.names ?? {}));
+    if (url.startsWith("/three/")) {
+      const file = dataPath(THREE_DIR, url.slice("/three/".length));
+      if (!file || extname(file) !== ".js") return send(403, "text/plain; charset=utf-8", "Caminho recusado");
+      readFile(file).then(
+        (body) => send(200, "text/javascript; charset=utf-8", body),
+        () => send(404, "text/plain; charset=utf-8", "Não encontrado"),
+      );
+      return;
+    }
     if (!url.startsWith("/data/")) return send(404, "text/plain; charset=utf-8", "Não encontrado");
     const file = dataPath(root, url.slice("/data/".length));
     const type = file && TYPES[extname(file)];

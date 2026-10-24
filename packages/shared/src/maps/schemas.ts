@@ -1,9 +1,9 @@
-// Map files: map-headers, map-areas, map-collision and map-report.
+// Map files: map-headers, map-areas, map-collision, map-report and map-mesh.
 // See specs/006-map-prerender/data-model.md. Same envelope and codec as the game data (feature 004).
 import { z } from "zod";
 import { fileSchema, GAME_DATA_FORMAT_VERSION, id, int } from "../game-data/common.ts";
 import { createGameDataCodec } from "../game-data/parse.ts";
-import { mapAnimationsFile } from "./animations.ts";
+import { mapMeshFile } from "./mesh.ts";
 
 /** Version of the map file format; bumped when a map schema changes. */
 export const MAP_FORMAT_VERSION = GAME_DATA_FORMAT_VERSION;
@@ -126,10 +126,10 @@ const codec = createGameDataCodec({
   "map-areas": mapAreasFile,
   "map-collision": mapCollisionFile,
   "map-report": mapReportFile,
-  "map-animations": mapAnimationsFile,
+  "map-mesh": mapMeshFile,
 });
 
-export type MapFileKind = "map-headers" | "map-areas" | "map-collision" | "map-report" | "map-animations";
+export type MapFileKind = "map-headers" | "map-areas" | "map-collision" | "map-report" | "map-mesh";
 export const parseMapFile = codec.parseGameDataFile;
 export const parseMapJson = codec.parseGameDataJson;
 export const serializeMapFile = codec.serializeGameDataFile;

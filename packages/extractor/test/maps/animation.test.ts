@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { AnimationFormatError, readAnimations } from "../../src/maps/animation.ts";
+import { AnimationFormatError, readAnimations, readFieldTextureAnimations } from "../../src/maps/animation.ts";
+import type { Texture, TextureSet } from "../../src/maps/texture.ts";
 import { ByteWriter } from "../fixtures/byte-writer.ts";
-import { patternAnimation, patternFile, rotation, scrollAnimation, scrollFile, type TrackSpec } from "../fixtures/maps/build-animation.ts";
+import { fieldTextureTable, patternAnimation, patternFile, rotation, scrollAnimation, scrollFile, type TrackSpec } from "../fixtures/maps/build-animation.ts";
 
 const one: TrackSpec = { kind: "const", value: 0x1000 };
 const zero: TrackSpec = { kind: "const", value: 0 };
@@ -79,5 +80,40 @@ describe("readAnimations (texture pattern, BTP0)", () => {
 describe("readAnimations (other files)", () => {
   it("ignores animations that do not touch textures", () => {
     expect(readAnimations(new ByteWriter().ascii("BCA0").u32(0).u32(0).u32(0).toBytes())).toEqual([]);
+  });
+});
+
+describe("readFieldTextureAnimations (data/fldtanime.narc)", () => {
+  const frames = (textures: string[], palettes: string[]): TextureSet => ({
+    textures: new Map(textures.map((t) => [t, {} as Texture])),
+    palettes: new Map(palettes.map((p) => [p, new Uint8Array()])),
+  });
+
+  it("names each swap by texture, keys starting at the summed ticks, with each frame's own palette or the shared one", () => {
+    const table = fieldTextureTable([
+      { name: "flower01", keys: [[0, 18], [1, 18], [0, 18], [2, 18]] },
+      { name: "sea_on", keys: [[0, 4], [1, 6]] },
+    ]);
+    const sets = [frames(["flower01.1", "flower01.2", "flower01.3"], ["flower01.1_pl", "flower01.2_pl", "flower01.3_pl"]), frames(["sea_on.1", "sea_on.2"], ["sea_f02_pl"])];
+    expect(readFieldTextureAnimations(table, sets)).toEqual([
+      {
+        type: "pattern",
+        material: "flower01",
+        duration: 72,
+        textures: ["flower01.1", "flower01.2", "flower01.3"],
+        palettes: ["flower01.1_pl", "flower01.2_pl", "flower01.3_pl"],
+        keys: [
+          { frame: 0, texture: 0, palette: 0 },
+          { frame: 18, texture: 1, palette: 1 },
+          { frame: 36, texture: 0, palette: 0 },
+          { frame: 54, texture: 2, palette: 2 },
+        ],
+      },
+      { type: "pattern", material: "sea_on", duration: 10, textures: ["sea_on.1", "sea_on.2"], palettes: ["sea_f02_pl"], keys: [{ frame: 0, texture: 0, palette: 0 }, { frame: 4, texture: 1, palette: 0 }] },
+    ]);
+  });
+
+  it("rejects a frame missing from its file", () => {
+    expect(() => readFieldTextureAnimations(fieldTextureTable([{ name: "sea_on", keys: [[0, 4], [5, 4]] }]), [frames(["sea_on.1"], ["p"])])).toThrow(AnimationFormatError);
   });
 });

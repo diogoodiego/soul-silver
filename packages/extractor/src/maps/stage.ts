@@ -1,30 +1,28 @@
-// The maps stage: map headers, area matrices and, per map, pre-rendered layers and collision
-// by level, plus a report of every map. See specs/006-map-prerender/data-model.md.
+// The maps stage: map headers, area matrices and, per map, the 3D mesh and collision by
+// level, plus a report of every map. See specs/006-map-prerender/data-model.md.
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
-  ANIMATION_FRAMES,
+  ANIMATION_STEP_TICKS,
   mapCells,
   MAP_FORMAT_VERSION,
   serializeMapFile,
   type MapAnimation,
-  type MapAnimationsFile,
   type MapAreasFile,
   type MapReportEntry,
   type MapReportFile,
 } from "@soulsilver/shared/maps";
 import { CODE_INPUT, countNarcMembers, listNarcIndices, NARC_INPUT, readArm9, readNarcMember } from "../data/inputs.ts";
 import type { Stage, StageContext } from "../pipeline/stage.ts";
-import { readAnimations } from "./animation.ts";
-import { changedRegions } from "./frames.ts";
+import { readAnimations, readFieldTextureAnimations } from "./animation.ts";
 import { readMatrix } from "./grid.ts";
 import { readMapHeaders } from "./header.ts";
 import { buildCollision } from "./levels.ts";
 import { readNitroBlocks } from "./nitro.ts";
+import { buildMapMesh } from "./mesh.ts";
 import { readModels } from "./nsbmd.ts";
 import { readPiece, type Piece } from "./piece.ts";
 import { encodePng } from "./png.ts";
-import { renderLayers } from "./render.ts";
 import { buildMapScene, type BuildingSource } from "./scene.ts";
 import { readTextureSet, type TextureSet } from "./texture.ts";
 
@@ -39,11 +37,21 @@ export const MAP_ARCHIVES = {
   fieldBuildings: "a/0/4/0",
   roomBuildings: "a/1/4/8",
   animations: "a/1/0/6",
+  /** Ground texture scroll (sea, river, pond), one file per kind, picked by the area's u16 at 4 (0xffff: none). */
+  groundAnimations: "a/1/4/0",
+  /** Field texture swaps (sea, flowers): a frame table, then one BTX0 of frames per entry. */
+  fieldTextureFrames: "data/fldtanime.narc",
   scripts: "a/0/1/2",
   messages: "a/0/2/7",
   events: "a/0/3/2",
   encounters: "a/0/3/7",
 } as const;
+
+/** shortcut: a map whose animations only loop together later is cut here, so those jump at the loop; none seen past it in the ROM's water. */
+const MAX_CYCLE_TICKS = 1080;
+
+const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+const lcm = (a: number, b: number) => (a / gcd(a, b)) * b;
 
 const STAGE_LABELS: Record<NonNullable<MapReportEntry["stage"]>, string> = {
   header: "Header",
@@ -114,6 +122,21 @@ async function run(ctx: StageContext): Promise<void> {
     }
   }
   const animated = new Set(animationsByMaterial.keys());
+  const groundAnimations = cached<MapAnimation[]>(async (i) => readAnimations(await member(MAP_ARCHIVES.groundAnimations, i)));
+  const fieldFrameSets = await Promise.all(
+    (await listNarcIndices(ctx, MAP_ARCHIVES.fieldTextureFrames)).slice(1).map(async (i) => {
+      const bytes = await member(MAP_ARCHIVES.fieldTextureFrames, i);
+      return readTextureSet(bytes, readNitroBlocks(bytes, "BTX0").get("TEX0")!);
+    }),
+  );
+  const textureAnimations = new Map(
+    readFieldTextureAnimations(await member(MAP_ARCHIVES.fieldTextureFrames, 0), fieldFrameSets).map((a) => [a.material, [a]]),
+  );
+  // Every frame in one set, joined to the area textures when the cycle is drawn.
+  const fieldFrames = {
+    textures: new Map(fieldFrameSets.flatMap((s) => [...s.textures])),
+    palettes: new Map(fieldFrameSets.flatMap((s) => [...s.palettes])),
+  };
 
   const piece = cached<Piece>(async (i) => readPiece(await member(MAP_ARCHIVES.pieces, i)));
   const textureSet = cached<TextureSet>(async (i) => {
@@ -151,7 +174,7 @@ async function run(ctx: StageContext): Promise<void> {
       const mapCellsWithPieces = await step("pieces", async () =>
         Promise.all(cells.map(async (c) => ({ x: c.x, z: c.z, piece: await piece(c.piece) }))),
       );
-      const { layers, sceneWarnings, used, changed } = await step("render", async () => {
+      const { mesh, sceneWarnings } = await step("render", async () => {
         const areaData = areaBytes[header.area]!;
         const archive = header.areaType === "indoor" ? MAP_ARCHIVES.roomBuildings : MAP_ARCHIVES.fieldBuildings;
         const source = await buildings(archive, mapCellsWithPieces.flatMap((c) => c.piece.buildings.map((b) => b.model)));
@@ -162,44 +185,34 @@ async function run(ctx: StageContext): Promise<void> {
           animated,
         };
         const scene = buildMapScene(sceneInput);
-        const used = [...scene.materials].sort().flatMap((name) => animationsByMaterial.get(name) ?? []);
-        // The cycle resampled in ANIMATION_FRAMES frames; only what changes is kept (frames.ts).
-        const changed =
-          used.length === 0
-            ? []
-            : changedRegions(
-                Array.from({ length: ANIMATION_FRAMES }, (_, k) =>
-                  renderLayers(buildMapScene({ ...sceneInput, animations: animationsByMaterial, time: k / ANIMATION_FRAMES }).input),
-                ),
-              );
-        return { layers: renderLayers(scene.input), sceneWarnings: scene.warnings, used, changed };
+        const ground = areaData[4]! | (areaData[5]! << 8);
+        const animations = new Map(animationsByMaterial);
+        if (ground !== 0xffff) {
+          for (const a of await groundAnimations(ground)) animations.set(a.material, [...(animations.get(a.material) ?? []), a]);
+        }
+        const playing = [
+          ...[...scene.materials].flatMap((name) => animations.get(name) ?? []),
+          ...[...scene.textures].flatMap((name) => textureAnimations.get(name) ?? []),
+        ];
+        const areaTextures = {
+          textures: new Map([...sceneInput.areaTextures.textures, ...fieldFrames.textures]),
+          palettes: new Map([...sceneInput.areaTextures.palettes, ...fieldFrames.palettes]),
+        };
+        // Every animation at its own speed on one clock: the map loops once all of them have.
+        const cycle = Math.min(MAX_CYCLE_TICKS, playing.reduce((l, a) => lcm(l, a.duration), 1));
+        const ticks = Array.from({ length: Math.ceil(cycle / ANIMATION_STEP_TICKS) }, (_, k) => k * ANIMATION_STEP_TICKS);
+        const drawn = playing.length > 0 ? buildMapScene({ ...sceneInput, areaTextures, animations, textureAnimations, ticks }) : scene;
+        return { mesh: buildMapMesh(header.id, drawn.input), sceneWarnings: scene.warnings };
       });
       const collision = await step("collision", () => buildCollision(header.id, mapCellsWithPieces));
 
-      await mkdir(join(folder, "layers"), { recursive: true });
+      await mkdir(join(folder, "textures"), { recursive: true });
       await mkdir(join(folder, "collision"), { recursive: true });
-      for (const layer of layers) {
-        await writeFile(join(folder, "layers", `${layer.level}-lower.png`), encodePng(layer.lower));
-        await writeFile(join(folder, "layers", `${layer.level}-upper.png`), encodePng(layer.upper));
-      }
+      await writeFile(join(folder, "mesh.json"), serializeMapFile("map-mesh", mesh.file));
+      await writeFile(join(folder, "mesh.bin"), new Uint8Array(mesh.vertices.buffer));
+      for (const [i, image] of mesh.textures.entries()) await writeFile(join(folder, "textures", `${i}.png`), encodePng(image));
       for (const level of collision.levels) {
         await writeFile(join(folder, "collision", `${level.level}.json`), serializeMapFile("map-collision", level));
-      }
-      if (used.length > 0) {
-        for (const { region, crops } of changed) {
-          for (const [k, crop] of crops.entries()) {
-            await writeFile(join(folder, "layers", `${region.level}-${region.layer}-anim-${k}.png`), encodePng(crop));
-          }
-        }
-        const file: MapAnimationsFile = {
-          kind: "map-animations",
-          formatVersion: MAP_FORMAT_VERSION,
-          map: header.id,
-          frames: ANIMATION_FRAMES,
-          regions: changed.map((c) => c.region),
-          animations: used,
-        };
-        await writeFile(join(folder, "animations.json"), serializeMapFile("map-animations", file));
       }
       const warnings = [...sceneWarnings, ...collision.warnings];
       records.push({ id: header.id, status: warnings.length > 0 ? "successWithWarnings" : "success", warnings });
@@ -218,7 +231,7 @@ async function run(ctx: StageContext): Promise<void> {
 export const mapsStage: Stage = {
   id: "maps",
   title: "Desenhando os mapas",
-  version: 3,
+  version: 6,
   weight: 20,
   inputs: [NARC_INPUT, CODE_INPUT],
   outputs: ["maps"],

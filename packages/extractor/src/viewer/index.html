@@ -27,8 +27,6 @@
     <label>Mapa <select id="map"></select></label>
     <label>Buscar <input id="filter" type="search" placeholder="nome ou id"></label>
     <label>Nível <select id="level"></select></label>
-    <label><input id="lower" type="checkbox" checked> Chão (abaixo do jogador)</label>
-    <label><input id="upper" type="checkbox" checked> Acima do jogador</label>
     <label><input id="collision" type="checkbox"> Colisão</label>
     <label id="animateLabel" hidden><input id="animate" type="checkbox"> Animar</label>
     <label>Zoom <select id="zoom"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
@@ -36,10 +34,14 @@
   <main>
     <div id="status">Carregando…</div>
     <div id="legend"></div>
-    <div id="view"><canvas id="canvas"></canvas></div>
+    <div id="view"></div>
   </main>
-  <script>
-    // Read-only viewer for the maps stage output. Data comes from /data/ and /names.json.
+  <script type="importmap">{ "imports": { "three": "/three/three.module.js" } }</script>
+  <script type="module">
+    // Read-only viewer for the maps stage output: the map's 3D mesh (mesh.json, mesh.bin, textures/)
+    // under the game's oblique camera, with the collision of a level on top. Data comes from /data/.
+    import * as THREE from "three";
+
     const COLORS = {
       blocked: [220, 40, 40, 0.55],
       free: null,
@@ -54,13 +56,23 @@
       blocked: "bloqueado", free: "livre", tallGrass: "grama alta", water: "água",
       ledge: "ressalto", ladder: "escada", levelTransition: "transição de nível", special: "especial",
     };
-    const DIRECTIONS = { north: "↑", south: "↓", east: "→", west: "←" };
+    // Same as packages/client/src/render/camera.ts and map-scene.ts.
+    const OBLIQUE = 0.75;
+    const VERTEX_FLOATS = 8;
+    // ANIMATION_FRAME_MS of shared/maps/constants.ts: a frame every 2 game frames at 30 per second.
+    const FRAMES_PER_SECOND = 15;
 
     const el = (id) => document.getElementById(id);
-    const canvas = el("canvas");
-    const ctx = canvas.getContext("2d");
-    const state = { names: {}, headers: [], image: new Map(), collision: null, anim: null, frame: null, timer: null };
-    const FRAMES_PER_SECOND = 4;
+    THREE.ColorManagement.enabled = false;
+    const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+    renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+    renderer.setPixelRatio(1);
+    renderer.setClearColor(0x777777);
+    el("view").append(renderer.domElement);
+    const scene = new THREE.Scene();
+    const camera = new THREE.Camera();
+    camera.matrixAutoUpdate = false;
+    const state = { names: {}, headers: [], mesh: null, map: null, overlay: null, collision: null, timer: null, view: null };
 
     function readStore(key) { try { return localStorage.getItem(key); } catch { return null; } }
     function writeStore(key, value) { try { localStorage.setItem(key, value); } catch { /* private window */ } }
@@ -88,16 +100,157 @@
       return res.json();
     }
 
-    function loadImage(path) {
-      if (state.image.has(path)) return state.image.get(path);
-      const promise = new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(path));
-        img.src = path;
+    async function loadBitmap(path) {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`${path}: ${res.status}`);
+      return createImageBitmap(await res.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+    }
+
+    function wrapping(repeat, flip) {
+      if (!repeat) return THREE.ClampToEdgeWrapping;
+      return flip ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping;
+    }
+
+    // The mesh as three.js objects, one per group (see map-scene.ts in the client).
+    function buildMap(file, vertices, images) {
+      const root = new THREE.Group();
+      const buffer = new THREE.InterleavedBuffer(vertices, VERTEX_FLOATS);
+      const animated = [];
+      for (const group of file.groups) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.InterleavedBufferAttribute(buffer, 3, 0));
+        geometry.setAttribute("uv", new THREE.InterleavedBufferAttribute(buffer, 2, 3));
+        geometry.setAttribute("color", new THREE.InterleavedBufferAttribute(buffer, 3, 5));
+        geometry.setDrawRange(group.first, group.count);
+        // One view per image, its scale and offset set by the frame shown (a cycle has hundreds of frames).
+        const views = new Map();
+        for (const f of group.frames) {
+          if (views.has(f.texture)) continue;
+          const t = new THREE.Texture(images[f.texture]);
+          t.flipY = false;
+          t.colorSpace = THREE.NoColorSpace;
+          t.magFilter = t.minFilter = THREE.NearestFilter;
+          t.generateMipmaps = false;
+          t.wrapS = wrapping(group.repeat[0], group.flip[0]);
+          t.wrapT = wrapping(group.repeat[1], group.flip[1]);
+          t.needsUpdate = true;
+          views.set(f.texture, t);
+        }
+        const frames = { length: group.frames.length, at: (k) => {
+          const f = group.frames[k % group.frames.length];
+          const t = views.get(f.texture);
+          t.repeat.set(f.scale[0], f.scale[1]);
+          t.offset.set(f.translate[0], f.translate[1]);
+          return t;
+        } };
+        const material = new THREE.MeshBasicMaterial({
+          map: frames.at(0), vertexColors: true, side: THREE.DoubleSide, transparent: group.translucent, opacity: group.alpha,
+          depthWrite: !group.translucent, alphaTest: group.translucent ? 1 / 255 : 0.5,
+        });
+        if (frames.length > 1) animated.push({ material, frames });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.frustumCulled = false;
+        root.add(mesh);
+      }
+      return { root, animated };
+    }
+
+    function disposeTree(object) {
+      object.traverse((o) => {
+        if (!o.isMesh) return;
+        o.geometry.dispose();
+        o.material.map?.dispose();
+        o.material.dispose();
       });
-      state.image.set(path, promise);
-      return promise;
+    }
+
+    // Whole map in view: ground grid plus room above the north edge for what rises over it.
+    function frameView(file) {
+      const highest = Math.max(0, ...file.ground.flat());
+      const margin = Math.ceil(OBLIQUE * highest) + 96;
+      const W = file.width * 16;
+      const H = file.height * 16 + margin;
+      const top = -margin;
+      const R = 4096;
+      const middle = OBLIQUE * (top + H / 2);
+      camera.projectionMatrix.set(
+        2 / W, 0, 0, -1,
+        0, (2 * OBLIQUE) / H, -2 / H, (2 * top) / H + 1,
+        0, -1 / R, -OBLIQUE / R, middle / R,
+        0, 0, 0, 1,
+      );
+      camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+      state.view = { W, H };
+    }
+
+    function buildOverlay() {
+      if (state.overlay) { scene.remove(state.overlay); disposeTree(state.overlay); state.overlay = null; }
+      if (!el("collision").checked || !state.collision || !state.mesh) return;
+      const { width: w, tiles } = state.collision;
+      const level = Math.min(Number(el("level").value), state.mesh.ground.length - 1);
+      const ground = state.mesh.ground[level];
+      const positions = [];
+      const colors = [];
+      tiles.forEach((cell, i) => {
+        const color = COLORS[cell.category];
+        if (!color) return;
+        const x = (i % w) * 16, z = Math.floor(i / w) * 16, y = ground[i] + 0.5;
+        const quad = [[x, z], [x + 16, z], [x, z + 16], [x, z + 16], [x + 16, z], [x + 16, z + 16]];
+        for (const [qx, qz] of quad) {
+          positions.push(qx, y, qz);
+          colors.push(color[0] / 255, color[1] / 255, color[2] / 255, color[3]);
+        }
+      });
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 4));
+      // Drawn over everything, so collision hidden behind a roof still shows.
+      state.overlay = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthTest: false, side: THREE.DoubleSide }));
+      state.overlay.renderOrder = 1;
+      state.overlay.frustumCulled = false;
+      scene.add(state.overlay);
+    }
+
+    function draw() {
+      if (!state.view) return;
+      const zoom = Number(el("zoom").value);
+      renderer.setSize(state.view.W, state.view.H, false);
+      renderer.domElement.style.width = `${state.view.W * zoom}px`;
+      renderer.domElement.style.height = `${state.view.H * zoom}px`;
+      renderer.render(scene, camera);
+
+      const legend = [];
+      if (el("collision").checked && state.collision) {
+        for (const [key, value] of Object.entries(COLORS)) {
+          if (!value || !state.collision.tiles.some((c) => c.category === key)) continue;
+          legend.push(`<span><span class="swatch" style="background: rgba(${value[0]}, ${value[1]}, ${value[2]}, ${value[3]})"></span>${LABELS[key]}</span>`);
+        }
+      }
+      el("legend").innerHTML = legend.join("");
+    }
+
+    function setPlaying(on) {
+      clearInterval(state.timer);
+      state.timer = null;
+      const animated = state.map?.animated ?? [];
+      for (const a of animated) a.material.map = a.frames.at(0);
+      if (on && animated.length > 0) {
+        let k = 0;
+        state.timer = setInterval(() => {
+          k++;
+          for (const a of animated) a.material.map = a.frames.at(k);
+          draw();
+        }, 1000 / FRAMES_PER_SECOND);
+      }
+      draw();
+    }
+
+    async function loadCollision() {
+      const id = el("map").value;
+      writeStore(`maps-viewer:level:${id}`, el("level").value);
+      state.collision = await loadJson(`/data/${id.padStart(4, "0")}/collision/${el("level").value}.json`);
+      buildOverlay();
+      draw();
     }
 
     async function loadMap() {
@@ -116,105 +269,32 @@
       el("level").value = String(levels.includes(current) ? current : levels[0]);
       el("status").textContent = "Carregando…";
       try {
-        state.collision = await loadJson(`${dir}/collision/${el("level").value}.json`);
-        state.anim = await loadJson(`${dir}/animations.json`).catch(() => null);
-        if (state.anim && state.anim.regions.length === 0) state.anim = null;
-        el("animateLabel").hidden = !state.anim;
-        if (!state.anim) el("animate").checked = false;
-        setPlaying(el("animate").checked);
-        el("status").textContent = `${mapLabel(state.headers.find((h) => String(h.id) === id))} · ${state.collision.width} × ${state.collision.height} tiles`;
+        const file = await loadJson(`${dir}/mesh.json`);
+        const res = await fetch(`${dir}/mesh.bin`);
+        if (!res.ok) throw new Error(`mesh.bin: ${res.status}`);
+        const vertices = new Float32Array(await res.arrayBuffer());
+        const images = await Promise.all(Array.from({ length: file.textures }, (_, i) => loadBitmap(`${dir}/textures/${i}.png`)));
+        if (el("map").value !== id) return;
+        if (state.map) { scene.remove(state.map.root); disposeTree(state.map.root); }
+        state.mesh = file;
+        state.map = buildMap(file, vertices, images);
+        scene.add(state.map.root);
+        frameView(file);
+        el("animateLabel").hidden = state.map.animated.length === 0;
+        el("status").textContent = `${mapLabel(state.headers.find((h) => String(h.id) === id))} · ${file.width} × ${file.height} tiles`;
       } catch (error) {
         el("status").textContent = `Não foi possível carregar o mapa: ${error.message}`;
         return;
       }
-      await draw();
-    }
-
-    // A layer as an image; while playing, its animated regions show the current frame.
-    async function layer(dir, level, name, zoom) {
-      const base = await loadImage(`${dir}/layers/${level}-${name}.png`);
-      const regions = state.frame === null || !state.anim ? [] : state.anim.regions.filter((r) => String(r.level) === level && r.layer === name);
-      if (regions.length === 0) return base;
-      const canvas = document.createElement("canvas");
-      canvas.width = base.width * zoom;
-      canvas.height = base.height * zoom;
-      const c = canvas.getContext("2d");
-      c.drawImage(base, 0, 0, canvas.width, canvas.height);
-      for (const r of regions) {
-        c.clearRect(r.x * zoom, r.y * zoom, r.width * zoom, r.height * zoom);
-        c.drawImage(await loadImage(`${dir}/layers/${level}-${name}-anim-${state.frame}.png`), r.x * zoom, r.y * zoom, r.width * zoom, r.height * zoom);
-      }
-      return canvas;
-    }
-
-    // Plays the resampled cycle: every frame of every region is loaded before the first tick.
-    async function setPlaying(on) {
-      clearInterval(state.timer);
-      state.timer = null;
-      state.frame = null;
-      if (!on || !state.anim) return draw();
-      const id = el("map").value.padStart(4, "0");
-      await Promise.all(state.anim.regions.flatMap((r) => Array.from({ length: state.anim.frames }, (_, k) => loadImage(`/data/${id}/layers/${r.level}-${r.layer}-anim-${k}.png`))));
-      let k = 0;
-      state.timer = setInterval(() => {
-        state.frame = k++ % state.anim.frames;
-        draw();
-      }, 1000 / FRAMES_PER_SECOND);
-    }
-
-    async function draw() {
-      const id = el("map").value;
-      const level = el("level").value;
-      if (!id || !state.collision) return;
-      writeStore(`maps-viewer:level:${id}`, level);
-      const dir = `/data/${id.padStart(4, "0")}`;
-      const zoom = Number(el("zoom").value);
-      const layers = [];
-      if (el("lower").checked) layers.push(layer(dir, level, "lower", zoom));
-      if (el("upper").checked) layers.push(layer(dir, level, "upper", zoom));
-      const images = await Promise.all(layers);
-      const width = state.collision.width * 16;
-      const height = state.collision.height * 16;
-      canvas.width = width * zoom;
-      canvas.height = height * zoom;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#777";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      for (const img of images) ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      const legend = [];
-      if (el("collision").checked) {
-        const { width: w, tiles } = state.collision;
-        tiles.forEach((cell, i) => {
-          const color = COLORS[cell.category];
-          if (!color) return;
-          ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3]})`;
-          const x = (i % w) * 16 * zoom;
-          const y = Math.floor(i / w) * 16 * zoom;
-          ctx.fillRect(x, y, 16 * zoom, 16 * zoom);
-          if (cell.category === "ledge") {
-            ctx.fillStyle = "#111";
-            ctx.font = `${8 * zoom}px sans-serif`;
-            ctx.fillText(DIRECTIONS[cell.direction], x + 3 * zoom, y + 11 * zoom);
-          }
-        });
-        for (const [key, value] of Object.entries(COLORS)) {
-          if (!value || !state.collision.tiles.some((c) => c.category === key)) continue;
-          legend.push(`<span><span class="swatch" style="background: rgba(${value[0]}, ${value[1]}, ${value[2]}, ${value[3]})"></span>${LABELS[key]}</span>`);
-        }
-      }
-      el("legend").innerHTML = legend.join("");
+      await loadCollision();
+      setPlaying(el("animate").checked);
     }
 
     el("map").addEventListener("change", loadMap);
-    el("level").addEventListener("change", async () => {
-      const id = el("map").value;
-      state.collision = await loadJson(`/data/${id.padStart(4, "0")}/collision/${el("level").value}.json`);
-      draw();
-    });
-    el("level").addEventListener("change", () => writeStore(`maps-viewer:level:${el("map").value}`, el("level").value));
+    el("level").addEventListener("change", loadCollision);
     el("filter").addEventListener("input", () => { fillMapList(); loadMap(); });
-    for (const id of ["lower", "upper", "collision", "zoom"]) el(id).addEventListener("change", draw);
+    el("collision").addEventListener("change", () => { buildOverlay(); draw(); });
+    el("zoom").addEventListener("change", draw);
     el("animate").addEventListener("change", () => setPlaying(el("animate").checked));
 
     (async () => {

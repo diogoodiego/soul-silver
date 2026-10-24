@@ -15,5 +15,6 @@ export const SPRITE_CATEGORIES = [
   "icon-pokemon",
   "icon-item",
   "trainer",
+  "field-effect",
 ] as const;
 export type SpriteCategory = (typeof SPRITE_CATEGORIES)[number];

@@ -38,6 +38,17 @@ export function buildCollision(map: number, cells: MapCell[]): { levels: MapColl
     }
   }
 
+  // The oblique camera draws buildings and trees over the tile north of their base, so the top row
+  // of a blocked area at least 2 tiles tall is walkable: the player can stand behind it, hidden by depth.
+  const blockedAt = (tx: number, tz: number) => tz < 0 || base[tz * width + tx]!.category === "blocked";
+  for (let tz = height - 2; tz >= 0; tz--) { // bottom-up, so a freed row never frees the one below
+    for (let tx = 0; tx < width; tx++) {
+      if (blockedAt(tx, tz) && !blockedAt(tx, tz - 1) && blockedAt(tx, tz + 1)) {
+        base[tz * width + tx] = { category: "free", raw: base[tz * width + tx]!.raw };
+      }
+    }
+  }
+
   const transitions = new Map<number, number>();
   for (let tz = 0; tz < height; tz++) {
     for (let tx = 0; tx < width; tx++) {

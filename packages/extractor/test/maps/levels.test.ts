@@ -29,6 +29,15 @@ describe("buildCollision", () => {
     expect(parseMapFile("map-collision", file, "0.json").ok).toBe(true);
   });
 
+  it("frees the top row of a blocked area 2+ tiles tall, so the player can walk behind it", () => {
+    const permissions: number[] = [];
+    for (const z of [5, 6, 7]) permissions[tile(4, z)] = 0x8000; // a building, 3 tall
+    permissions[tile(8, 5)] = 0x8000; // a sign, 1 tall
+    const tiles = collision([FLAT_GROUND], permissions).levels[0]!.tiles;
+    expect([5, 6, 7].map((z) => tiles[tile(4, z)]!.category)).toEqual(["free", "blocked", "blocked"]);
+    expect(tiles[tile(8, 5)]!.category).toBe("blocked");
+  });
+
   it("makes one grid per level, the upper one taking the deck tiles and sharing the rest", () => {
     const { levels } = collision([FLAT_GROUND, level(32, box(4, 0, 4, 9))]);
     expect(levels.map((l) => l.level)).toEqual([0, 1]);

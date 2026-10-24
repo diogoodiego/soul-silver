@@ -5,7 +5,7 @@ import { readPiece } from "../../src/maps/piece.ts";
 import { buildMapScene, type BuildingSource } from "../../src/maps/scene.ts";
 import { readTextureSet } from "../../src/maps/texture.ts";
 import { texcoord, displayList, vtx16 } from "../fixtures/maps/build-gx.ts";
-import { buildLand, FLAT_GROUND } from "../fixtures/maps/build-land.ts";
+import { buildLand, FLAT_GROUND, type PlateSpec } from "../fixtures/maps/build-land.ts";
 import { buildModel, buildTex0, type MaterialSpec } from "../fixtures/maps/build-nitro.ts";
 
 const GREEN = 0x03e0;
@@ -59,11 +59,12 @@ describe("buildMapScene", () => {
     expect(input.triangles[0]!.sampler.image.data.subarray(0, 4)).toEqual(new Uint8Array([0, 0, 255, 255]));
   });
 
-  it("applies material alpha and the texture matrix to the texture coordinates", () => {
+  it("carries material alpha and the texture matrix with the raw texture coordinates", () => {
     const land = buildLand({ model: model({ name: "g", texture: "ground", alpha: 15, texMatrix: { scale: [2, 1], translation: [0.5, 0] } }, [0, 0, 0], [1, 0, 0], [0, 0, 1]) });
     const { input } = buildMapScene({ cells: [{ x: 0, z: 0, piece: readPiece(land) }], areaTextures: area, buildings: noBuildings, animated: new Set() });
     expect(input.triangles[0]!.alpha).toBeCloseTo(15 / 31);
-    expect(input.triangles[0]!.vertices[0].uv).toEqual([1 * 2 + 0.5 * 8, 1]);
+    expect(input.triangles[0]!.vertices[0].uv).toEqual([1, 1]);
+    expect(input.triangles[0]!.texMatrix).toMatchObject({ scale: [2, 1], translation: [0.5, 0] });
   });
 
   it("reports animated materials: no linked texture, or animated by the ROM's animations", () => {
@@ -116,29 +117,49 @@ describe("buildMapScene", () => {
     expect([input.ground(0, 5, 0), input.ground(0, 5, 1), input.ground(1, 5, 1)]).toEqual([0, 32, 0]);
   });
 
+  it("gives a tile with no surface (under a cliff face or a building) the ground in front of it, south first", () => {
+    // Plateau at 48 over rows 0-5, beach at 8 from row 8; rows 6-7 are the cliff, with no surface.
+    const plateau: PlateSpec = { from: [-256, -256], to: [256, -160], normal: [0, 1, 0], d: -48 };
+    const beach: PlateSpec = { from: [-256, -128], to: [256, 256], normal: [0, 1, 0], d: -8 };
+    const land = buildLand({ plates: [plateau, beach] });
+    const { input } = buildMapScene({ cells: [{ x: 0, z: 0, piece: readPiece(land) }], areaTextures: area, buildings: noBuildings, animated: new Set() });
+    expect([5, 6, 7, 8].map((tz) => input.ground(3, tz, 0))).toEqual([48, 8, 8, 8]);
+
+    // With nothing to the south, the nearest surface wins.
+    const ledge = buildLand({ plates: [plateau] });
+    const top = buildMapScene({ cells: [{ x: 0, z: 0, piece: readPiece(ledge) }], areaTextures: area, buildings: noBuildings, animated: new Set() });
+    expect(top.input.ground(3, 7, 0)).toBe(48);
+  });
+
   it("uses height 0 for a tile with no surface", () => {
     const land = buildLand({ plates: [] });
     const { input } = buildMapScene({ cells: [{ x: 0, z: 0, piece: readPiece(land) }], areaTextures: area, buildings: noBuildings, animated: new Set() });
     expect([input.levels, input.ground(3, 3, 0)]).toEqual([1, 0]);
   });
 
-  describe("animated materials at a point of the cycle", () => {
+  describe("animated materials at a game frame", () => {
     const cell = (material: MaterialSpec) => [{ x: 0, z: 0, piece: readPiece(buildLand({ model: model(material, [0, 0, 0], [1, 0, 0], [0, 0, 1]) })) }];
     const still = { constant: 1 };
     const scroll = (duration: number, translateS: { values: number[] }): MapAnimation => ({
       type: "scroll", material: "m", duration, scaleS: still, scaleT: still, rotation: { constant: [0, 1] }, translateS, translateT: { constant: 0 },
     });
-    const at = (animations: MapAnimation[], time: number, material: MaterialSpec) =>
-      buildMapScene({ cells: cell(material), areaTextures: area, buildings: noBuildings, animated: new Set(["m"]), animations: new Map([["m", animations]]), time }).input.triangles[0]!;
+    const at = (animations: MapAnimation[], tick: number, material: MaterialSpec) =>
+      buildMapScene({ cells: cell(material), areaTextures: area, buildings: noBuildings, animated: new Set(["m"]), animations: new Map([["m", animations]]), ticks: [tick] }).input.triangles[0]!
+        .frames![0]!;
 
-    it("shifts a scrolling material by the track value of the frame at that time", () => {
+    it("shifts a scrolling material by the track value at that game frame", () => {
       const anim = scroll(2, { values: [0, 0.5] });
-      expect(at([anim], 0, { name: "m", texture: "ground" }).vertices[0].uv).toEqual([1, 1]);
-      expect(at([anim], 0.5, { name: "m", texture: "ground" }).vertices[0].uv).toEqual([1 + 0.5 * 8, 1]);
+      expect(at([anim], 0, { name: "m", texture: "ground" }).texMatrix.translation).toEqual([0, 0]);
+      expect(at([anim], 1, { name: "m", texture: "ground" }).texMatrix.translation).toEqual([0.5, 0]);
     });
 
-    it("keeps the last frame for a time of exactly 1", () => {
-      expect(at([scroll(2, { values: [0, 0.5] })], 1, { name: "m", texture: "ground" }).vertices[0].uv[0]).toBe(1 + 0.5 * 8);
+    it("loops each animation over its own duration", () => {
+      expect(at([scroll(2, { values: [0, 0.5] })], 3, { name: "m", texture: "ground" }).texMatrix.translation[0]).toBe(0.5);
+    });
+
+    it("leaves the still state and a static material unanimated", () => {
+      const scene = buildMapScene({ cells: cell({ name: "other", texture: "ground" }), areaTextures: area, buildings: noBuildings, animated: new Set(), animations: new Map([["m", [scroll(2, { values: [0, 0.5] })]]]), ticks: [0, 1] });
+      expect(scene.input.triangles[0]!.frames).toBeUndefined();
     });
 
     it("swaps the texture of a pattern material at its keyframe", () => {
@@ -150,11 +171,12 @@ describe("buildMapScene", () => {
         0,
       );
       const pattern: MapAnimation = { type: "pattern", material: "m", duration: 8, textures: ["a", "b"], palettes: ["a_pl", "b_pl"], keys: [{ frame: 0, texture: 0, palette: 0 }, { frame: 4, texture: 1, palette: 1 }] };
-      const color = (time: number) =>
-        buildMapScene({ cells: cell({ name: "m" }), areaTextures: two, buildings: noBuildings, animated: new Set(["m"]), animations: new Map([["m", [pattern]]]), time })
-          .input.triangles[0]!.sampler.image.data.subarray(0, 3);
-      expect([...color(0.25)]).toEqual([0, 255, 0]);
-      expect([...color(0.5)]).toEqual([0, 0, 255]);
+      const color = (tick: number) =>
+        buildMapScene({ cells: cell({ name: "m" }), areaTextures: two, buildings: noBuildings, animated: new Set(["m"]), animations: new Map([["m", [pattern]]]), ticks: [tick] })
+          .input.triangles[0]!.frames![0]!.sampler.image.data.subarray(0, 3);
+      expect([...color(2)]).toEqual([0, 255, 0]);
+      expect([...color(4)]).toEqual([0, 0, 255]);
+      expect([...color(9)]).toEqual([0, 255, 0]);
     });
   });
 });

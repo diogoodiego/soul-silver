@@ -1,6 +1,7 @@
 import type { MapAnimation } from "@soulsilver/shared/maps";
 import { readAscii, readU16, readU32 } from "../binary.ts";
 import { readDictionary, readNitroBlocks } from "./nitro.ts";
+import type { TextureSet } from "./texture.ts";
 
 // Texture animations of the ROM, from a/1/0/6: texture scroll (BTA0/SRT0) and texture pattern
 // (BTP0/PAT0). Layouts confirmed on every file of the ROM (research.md R7). Playback is not
@@ -17,6 +18,7 @@ const s16 = (b: Uint8Array, o: number) => (readU16(b, o) << 16) >> 16;
 const fixed = (value: number) => value / 4096;
 
 type Scroll = Extract<MapAnimation, { type: "scroll" }>;
+type Pattern = Extract<MapAnimation, { type: "pattern" }>;
 type Track = Scroll["scaleS"];
 
 function fail(message: string): never {
@@ -84,6 +86,44 @@ function readPattern(b: Uint8Array, block: number): MapAnimation[] {
       });
       return { type: "pattern", material: material.name, duration: readU16(b, a + 4), textures, palettes, keys };
     });
+  });
+}
+
+const FIELD_ENTRY = 52;
+const FIELD_KEYS = 18;
+
+/**
+ * The field texture swaps of data/fldtanime.narc (sea, flowers): member 0 is a table of `u32
+ * count`, then per entry a 16-byte texture name and up to 18 (frame, ticks) byte pairs ended by
+ * 0xff; entry i draws its frames `<name>.<frame + 1>` from member i + 1 (`frameSets[i]`). Named by
+ * texture, not material: the game swaps the texture whatever material links it.
+ */
+export function readFieldTextureAnimations(table: Uint8Array, frameSets: TextureSet[]): Pattern[] {
+  const count = readU32(table, 0);
+  if (4 + count * FIELD_ENTRY > table.length) fail(`fldtanime: ${count} entradas não cabem em ${table.length} bytes`);
+  if (frameSets.length < count) fail(`fldtanime: ${count} entradas, só ${frameSets.length} arquivos de quadros`);
+  return Array.from({ length: count }, (_, i): Pattern => {
+    const at = 4 + i * FIELD_ENTRY;
+    const name = readAscii(table, at, 16);
+    const set = frameSets[i]!;
+    const textures: string[] = [];
+    const palettes: string[] = [];
+    const keys: Pattern["keys"] = [];
+    let frame = 0;
+    for (let k = 0; k < FIELD_KEYS && table[at + 16 + k * 2] !== 0xff; k++) {
+      const texture = `${name}.${table[at + 16 + k * 2]! + 1}`;
+      const ticks = table[at + 17 + k * 2]!;
+      if (!set.textures.has(texture)) fail(`fldtanime: ${name} usa o quadro ${texture}, que não existe`);
+      if (ticks === 0) fail(`fldtanime: ${name} tem um quadro de duração 0`);
+      // A frame's own palette when it has one, else the one the whole file shares.
+      const palette = set.palettes.has(`${texture}_pl`) ? `${texture}_pl` : set.palettes.keys().next().value!;
+      if (!textures.includes(texture)) textures.push(texture);
+      if (!palettes.includes(palette)) palettes.push(palette);
+      keys.push({ frame, texture: textures.indexOf(texture), palette: palettes.indexOf(palette) });
+      frame += ticks;
+    }
+    if (keys.length === 0) fail(`fldtanime: ${name} não tem quadros`);
+    return { type: "pattern", material: name, duration: frame, textures, palettes, keys };
   });
 }
 

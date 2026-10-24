@@ -63,6 +63,12 @@ describe("startViewer", () => {
     },
   );
 
+  it("serves three.js under /three/, and only its scripts", async () => {
+    const res = await get("/three/three.module.js");
+    expect([res.status, res.type]).toEqual([200, "text/javascript; charset=utf-8"]);
+    expect((await get("/three/../package.json")).status).toBeGreaterThanOrEqual(400);
+  });
+
   it("serves the map names by mapsec at /names.json", async () => {
     const res = await get("/names.json");
     expect([res.status, JSON.parse(res.body.toString())]).toEqual([200, { 126: "New Bark Town" }]);

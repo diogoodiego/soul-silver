@@ -3,13 +3,49 @@ import { readModels, type Model } from "./nsbmd.ts";
 import type { Piece } from "./piece.ts";
 import { TILE_UNITS } from "./piece.ts";
 import type { RgbaImage } from "./png.ts";
-import type { RenderInput, SceneTriangle } from "./render.ts";
 import { decodeTexture, type TextureSet } from "./texture.ts";
 
 // Assembles a map's render scene from its pieces: terrain models offset by cell, buildings
 // at their positions, textures resolved by name (research.md R0, R4, R7).
 
 const PIECE_UNITS = PIECE_TILES * TILE_UNITS;
+
+export interface Sampler {
+  image: RgbaImage;
+  repeat: [boolean, boolean];
+  flip: [boolean, boolean];
+}
+
+export interface SceneVertex {
+  /** World units, y up, z south. */
+  position: [number, number, number];
+  /** Texels, before the material texture matrix. */
+  uv: [number, number];
+  color: [number, number, number];
+}
+
+export interface SceneTriangle {
+  vertices: [SceneVertex, SceneVertex, SceneVertex];
+  sampler: Sampler;
+  /** Material texture matrix: final uv = uv * scale + translation * texture size. */
+  texMatrix: { scale: [number, number]; translation: [number, number] };
+  /** 1 opaque, below 1 translucent. */
+  alpha: number;
+  /** Texture state at each of the scene's ticks, when the material animates. */
+  frames?: { sampler: Sampler; texMatrix: SceneTriangle["texMatrix"] }[];
+}
+
+export interface SceneInput {
+  /** Map size in tiles. */
+  width: number;
+  height: number;
+  /** World x, z of the north-west corner of tile (0, 0). */
+  origin: [number, number];
+  levels: number;
+  /** Walkable ground height (world units) of a tile on a level. */
+  ground: (tileX: number, tileZ: number, level: number) => number;
+  triangles: SceneTriangle[];
+}
 
 export interface MapCell {
   /** Cell position in the area matrix. */
@@ -32,10 +68,12 @@ export interface MapSceneInput {
   buildings: BuildingSource;
   /** Material names animated by the ROM's texture animations. */
   animated: ReadonlySet<string>;
-  /** Animations by material name; played when `time` is given. */
+  /** Animations by material name; played when `ticks` is given. */
   animations?: ReadonlyMap<string, MapAnimation[]>;
-  /** 0 up to and including 1: the fraction of each animation's own cycle. Absent: static. */
-  time?: number;
+  /** Animations by linked texture name (the field texture swaps); played when `ticks` is given. */
+  textureAnimations?: ReadonlyMap<string, MapAnimation[]>;
+  /** Game frames to sample the animations at, each looping over its own duration. Absent: static. */
+  ticks?: readonly number[];
 }
 
 /** Shown where a linked texture is missing from the ROM data: magenta, so it is easy to spot. */
@@ -73,30 +111,33 @@ export function mapGrid(cells: MapCell[]): MapGrid {
 type Pattern = Extract<MapAnimation, { type: "pattern" }>;
 type Scroll = Extract<MapAnimation, { type: "scroll" }>;
 
-/** The frame an animation shows at `time` of its cycle (the last one at exactly 1). */
-const frameAt = (a: MapAnimation, time: number) => Math.min(a.duration - 1, Math.floor(time * a.duration));
+/** The frame an animation shows at game frame `tick`, looping over its own duration. */
+const frameAt = (a: MapAnimation, tick: number) => tick % a.duration;
 
-function keyAt(a: Pattern, time: number) {
-  const frame = frameAt(a, time);
+function keyAt(a: Pattern, tick: number) {
+  const frame = frameAt(a, tick);
   return a.keys.findLast((k) => k.frame <= frame) ?? a.keys[0];
 }
 
 /** shortcut: rotation is not played (3 ROM materials animate it), add when the overworld needs it. */
-function scrolled(base: { scale: [number, number]; translation: [number, number] }, playing: MapAnimation[], time: number | undefined) {
+function scrolled(base: { scale: [number, number]; translation: [number, number] }, playing: MapAnimation[], tick: number) {
   const a = playing.find((p): p is Scroll => p.type === "scroll");
-  if (!a || time === undefined) return base;
-  const f = frameAt(a, time);
+  if (!a) return base;
+  const f = frameAt(a, tick);
   const at = (t: Scroll["scaleS"]) => ("constant" in t ? t.constant : t.values[f]!);
   return { scale: [at(a.scaleS), at(a.scaleT)] as [number, number], translation: [at(a.translateS), at(a.translateT)] as [number, number] };
 }
 
-export function buildMapScene({ cells, areaTextures, buildings, animated, animations, time }: MapSceneInput): {
-  input: RenderInput;
+export function buildMapScene({ cells, areaTextures, buildings, animated, animations, textureAnimations, ticks }: MapSceneInput): {
+  input: SceneInput;
   warnings: SceneWarning[];
   /** Names of the materials the map draws. */
   materials: Set<string>;
+  /** Names of the textures those materials link. */
+  textures: Set<string>;
 } {
   const materials = new Set<string>();
+  const textures = new Set<string>();
   const warnings = new Map<string, SceneWarning>();
   const warn = (code: SceneWarning["code"], detail: string) => warnings.set(`${code}:${detail}`, { code, detail });
   const images = new Map<string, RgbaImage>();
@@ -147,20 +188,29 @@ export function buildMapScene({ cells, areaTextures, buildings, animated, animat
       for (const mesh of model.meshes) {
         const material = model.materials[mesh.material]!;
         materials.add(material.name);
-        const playing = time === undefined ? [] : (animations?.get(material.name) ?? []);
+        if (material.texture !== null) textures.add(material.texture);
+        const sampler = { image: resolveTexture(sets, material, animated.has(material.name), warn), repeat: material.repeat, flip: material.flip };
+        const texMatrix = material.texMatrix;
+        const playing = [...(animations?.get(material.name) ?? []), ...((material.texture !== null && textureAnimations?.get(material.texture)) || [])];
         const pattern = playing.find((a): a is Pattern => a.type === "pattern");
-        const key = pattern && keyAt(pattern, time!);
-        const shown = key && pattern ? { ...material, texture: pattern.textures[key.texture]!, palette: pattern.palettes[key.palette]! } : material;
-        const texture = resolveTexture(sets, shown, animated.has(material.name), warn);
-        const sampler = { image: texture, repeat: material.repeat, flip: material.flip };
-        const { scale: [ss, st], translation: [ts, tt] } = scrolled(material.texMatrix, playing, time);
+        // Computed once per mesh and shared by its triangles; frame warnings repeat the still ones.
+        const frames =
+          ticks && playing.length > 0
+            ? ticks.map((tick) => {
+                const key = pattern && keyAt(pattern, tick);
+                const shown = key && pattern ? { ...material, texture: pattern.textures[key.texture]!, palette: pattern.palettes[key.palette]! } : material;
+                return { sampler: { ...sampler, image: resolveTexture(sets, shown, false, () => {}) }, texMatrix: scrolled(texMatrix, playing, tick) };
+              })
+            : undefined;
         for (const t of mesh.triangles) {
           triangles.push({
             alpha: material.alpha / 31,
             sampler,
+            texMatrix,
+            ...(frames && { frames }),
             vertices: t.map((v) => ({
               position: [0, 1, 2].map((k) => v.position[k]! * scale[k]! + offset[k]!) as [number, number, number],
-              uv: [v.uv[0] * ss + ts * texture.width, v.uv[1] * st + tt * texture.height],
+              uv: v.uv,
               color: v.color,
             })) as SceneTriangle["vertices"],
           });
@@ -190,6 +240,34 @@ export function buildMapScene({ cells, areaTextures, buildings, animated, animat
     1,
   );
 
+  const own = (tx: number, tz: number): readonly number[] => {
+    const at = tx >= 0 && tz >= 0 && tx < grid.width && tz < grid.height ? grid.tile(tx, tz) : undefined;
+    return at ? at.piece.tileHeights[at.index]! : [];
+  };
+  // A tile with no surface (under a cliff face or a building) is drawn from the ground in front
+  // of it: the nearest surface south in its column, else the nearest one around. Without this its
+  // geometry was measured from height 0 and drawn shifted, leaving gaps (spec 011 follow-up).
+  const borrowed = new Map<number, readonly number[]>();
+  const surfaces = (tx: number, tz: number): readonly number[] => {
+    const s = own(tx, tz);
+    if (s.length > 0) return s;
+    const key = tz * grid.width + tx;
+    let found = borrowed.get(key);
+    if (found === undefined) {
+      found = [];
+      for (let z = tz + 1; z < grid.height && found.length === 0; z++) found = own(tx, z);
+      for (let r = 1; found.length === 0 && r < Math.max(grid.width, grid.height); r++) {
+        for (let dz = -r; dz <= r && found.length === 0; dz++) {
+          for (let dx = -r; dx <= r && found.length === 0; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dz)) === r) found = own(tx + dx, tz + dz);
+          }
+        }
+      }
+      borrowed.set(key, found);
+    }
+    return found;
+  };
+
   return {
     input: {
       width: grid.width,
@@ -197,13 +275,13 @@ export function buildMapScene({ cells, areaTextures, buildings, animated, animat
       origin: grid.origin,
       levels,
       ground: (tx, tz, level) => {
-        const at = grid.tile(tx, tz);
-        const s = at ? at.piece.tileHeights[at.index]! : [];
+        const s = surfaces(tx, tz);
         return s.length === 0 ? 0 : s[Math.min(level, s.length - 1)]!;
       },
       triangles,
     },
     warnings: [...warnings.values()],
     materials,
+    textures,
   };
 }

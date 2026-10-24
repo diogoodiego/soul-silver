@@ -90,3 +90,16 @@ export function patternAnimation(duration: number, textures: string[], palettes:
 
 export const scrollFile = (names: string[], animations: Uint8Array[]) => animationBlock("SRT0", "BTA0", animations, names);
 export const patternFile = (names: string[], animations: Uint8Array[]) => animationBlock("PAT0", "BTP0", animations, names);
+
+/** The frame table of data/fldtanime.narc member 0: per entry a texture name and (frame, ticks) pairs. */
+export function fieldTextureTable(entries: { name: string; keys: [number, number][] }[]): Uint8Array {
+  const b = new Uint8Array(4 + entries.length * 52).fill(0xff);
+  new DataView(b.buffer).setUint32(0, entries.length, true);
+  entries.forEach(({ name, keys }, i) => {
+    const at = 4 + i * 52;
+    b.fill(0, at, at + 16);
+    b.set(new TextEncoder().encode(name), at);
+    keys.forEach(([frame, ticks], k) => b.set([frame, ticks], at + 16 + k * 2));
+  });
+  return b;
+}

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { GAME_DATA_FORMAT_VERSION, id, int } from "../game-data/common.ts";
+import { id, int } from "../game-data/common.ts";
 
 // Texture animations of a map (specs/006-map-prerender, FR-009): the data to play them,
 // not the playback. Values are 4.12 fixed point from the ROM, already as plain numbers.
@@ -44,28 +44,3 @@ const pattern = z
 
 export const mapAnimation = z.union([scroll, pattern]);
 export type MapAnimation = z.infer<typeof mapAnimation>;
-
-/** Where the frames of a layer replace the static image: pixels, aligned to tiles. */
-export const animationRegion = z.strictObject({
-  level: id(),
-  layer: z.enum(["lower", "upper"]),
-  x: id(),
-  y: id(),
-  width: int(1, 0xffff),
-  height: int(1, 0xffff),
-});
-export type AnimationRegion = z.infer<typeof animationRegion>;
-
-/**
- * The animations whose material a map uses (FR-019), and the frames played from them: each region
- * has `frames` images, layers/{level}-{layer}-anim-{k}.png, one per point of the resampled cycle.
- */
-export const mapAnimationsFile = z.strictObject({
-  kind: z.literal("map-animations"),
-  formatVersion: z.literal(GAME_DATA_FORMAT_VERSION),
-  map: id(),
-  frames: int(1, 64),
-  regions: z.array(animationRegion),
-  animations: z.array(mapAnimation),
-});
-export type MapAnimationsFile = z.infer<typeof mapAnimationsFile>;
