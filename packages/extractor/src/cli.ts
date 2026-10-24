@@ -6,6 +6,8 @@ import { parseArgs } from "node:util";
 import { romRejectionMessage } from "@soulsilver/shared/rom-validation";
 import { createConsoleLogger, createFileLogger, type Logger } from "./log.ts";
 import { buildSanityReport, type ExpectedCounts, formatSanityReport } from "./data/report.ts";
+import { buildMapReport } from "./maps/report.ts";
+import { buildSpriteReport } from "./sprites/report.ts";
 import { verifyOutputs } from "./pipeline/check.ts";
 import { loadTextCatalog, loadTranslatedCatalog } from "./text/catalog-files.ts";
 import { findTexts } from "./text/find.ts";
@@ -189,7 +191,11 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
       references: await collectNameRefs(reportDir),
     });
     io.stdout(text.lines.join("\n"));
-    return report.ok && text.ok ? EXIT.ok : EXIT.failed;
+    const maps = await buildMapReport(join(reportDir, "stages", "maps", "maps"));
+    io.stdout(maps.lines.join("\n"));
+    const sprites = await buildSpriteReport(join(reportDir, "stages", "sprites", "sprites"));
+    io.stdout(sprites.lines.join("\n"));
+    return report.ok && text.ok && maps.ok && sprites.ok ? EXIT.ok : EXIT.failed;
   }
 
   if (!values.rom) {

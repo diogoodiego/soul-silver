@@ -157,6 +157,30 @@ O `--report` ganha a seção "Textos" (contagens, ida e volta e referências de 
 **Dívida conhecida**: alguns símbolos (glifos de botão, japonês) ainda aparecem como `{raw:…}`. Veja
 [tech-debt.md](specs/005-text-catalog/tech-debt.md).
 
+## Mapas
+
+A etapa `maps` converte os mapas em camadas pré-renderizadas (chão e o que fica acima do jogador)
+e em colisão por nível, em `stages/maps/maps/`. Cada mapa tem uma pasta com `layers/` e
+`collision/`, e o `report.json` lista cada mapa como sucesso, sucesso com avisos ou falha, com o
+motivo. Mapas com textura animada ou comportamento de tile sem categoria aparecem no `--report`.
+
+```powershell
+npm run extract -- --out assets --stages maps --force maps
+npm run extract -- --out assets --report
+npm run maps:view -- 60 --out assets
+```
+
+O visualizador abre no navegador, em `127.0.0.1`, e serve só leitura. Ele alterna nível, camadas
+(chão e acima do jogador) e a colisão colorida por categoria, com legenda. O identificador do mapa
+é o índice do header (o mesmo que o relatório mostra).
+
+**Animações**: os mapas com água, moinhos e outras texturas animadas ganham um `animations.json` e quadros
+(`layers/*-anim-K.png`, só a região que muda). O visualizador tem o botão **Animar**. O ciclo é
+reamostrado em 8 quadros, então a velocidade real não é preservada.
+
+**Limitações desta versão**: a rotação de textura não é tocada. Mapas que nenhuma matriz coloca no mundo falham com o motivo indicado.
+Veja o [plano](specs/006-map-prerender/plan.md) e a [pesquisa](specs/006-map-prerender/research.md).
+
 ## Checagens
 
 Cada comando roda na raiz e cobre todos os pacotes (`app`, `client`, `server`, `shared`,

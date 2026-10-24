@@ -31,3 +31,5 @@ export { markupToWords, wordsToMarkup, type MarkupResult, type UnknownUse } from
 export { loadTextCatalog, loadTranslatedCatalog } from "./text/catalog-files.ts";
 export { findTexts, searchKey, type FoundText } from "./text/find.ts";
 export { buildTextReport, EXPECTED_TEXT_COUNTS, type NameRef, type TextReportResult } from "./text/report.ts";
+export { MAP_ARCHIVES, mapsStage } from "./maps/stage.ts";
+export { buildMapReport, MIN_MAPS_WITHOUT_FAILURE, type MapReportResult } from "./maps/report.ts";

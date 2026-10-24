@@ -160,6 +160,20 @@ describe("extractor CLI --report", () => {
     expect(text).toMatch(/Resultado: OK/);
   });
 
+  it("includes the maps section, saying when the maps stage did not run", async () => {
+    await extractSynthetic(box);
+    const captured = io({ expected: SYNTHETIC_EXPECTED_COUNTS });
+    expect(await main(["--out", box.workspaceDir, "--report"], captured)).toBe(0);
+    expect(captured.out.join("\n")).toContain("Mapas\n  não extraído (etapa maps não rodou)");
+  });
+
+  it("includes the sprites section, saying when the sprites stage did not run", async () => {
+    await extractSynthetic(box);
+    const captured = io({ expected: SYNTHETIC_EXPECTED_COUNTS });
+    expect(await main(["--out", box.workspaceDir, "--report"], captured)).toBe(0);
+    expect(captured.out.join("\n")).toContain("Sprites\n  não extraído (etapa sprites não rodou)");
+  });
+
   it("exits 1 and prints FALHA when a count does not match", async () => {
     await extractSynthetic(box);
     const captured = io({ expected: { ...SYNTHETIC_EXPECTED_COUNTS, species: 493 } });

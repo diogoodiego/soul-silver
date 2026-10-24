@@ -6,7 +6,9 @@
     ".": "./src/index.ts",
     "./rom-validation": "./src/rom-validation.ts",
     "./game-data": "./src/game-data/index.ts",
-    "./text": "./src/text/index.ts"
+    "./text": "./src/text/index.ts",
+    "./maps": "./src/maps/index.ts",
+    "./sprites": "./src/sprites/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
