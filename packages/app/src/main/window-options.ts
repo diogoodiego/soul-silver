@@ -11,6 +11,8 @@ export function createWindowOptions(preloadPath: string): BrowserWindowConstruct
       nodeIntegration: false,
       sandbox: true,
       webSecurity: true,
+      // Throttled timers starve the game's input loop and the server drops the player (10 s timeout).
+      backgroundThrottling: false,
     },
   };
 }

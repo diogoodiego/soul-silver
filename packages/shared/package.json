@@ -10,7 +10,8 @@
     "./maps": "./src/maps/index.ts",
     "./sprites": "./src/sprites/index.ts",
     "./events": "./src/events/index.ts",
-    "./audio": "./src/audio/index.ts"
+    "./audio": "./src/audio/index.ts",
+    "./game": "./src/game/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -74,3 +74,49 @@ describe("createGameServer", () => {
     expect(sent).toEqual([]);
   });
 });
+
+describe("game channel", () => {
+  const hello = { type: "hello", protocolVersion: PROTOCOL_VERSION, name: "Ana" };
+  const toClient = (sent: ServerToHostMessage[], connId: number) =>
+    sent.flatMap((m) => (m.type === "client-send" && m.connId === connId ? [m.msg as { type: string }] : []));
+
+  it("opens a session connection for a new connId and streams state each tick", () => {
+    const { clock, sent, server, init } = setup();
+    init();
+    server.handleMessage({ type: "client-message", connId: 1, msg: hello });
+    expect(toClient(sent, 1)[0]).toMatchObject({ type: "welcome", playerId: 1 });
+    clock.advance(100);
+    expect(toClient(sent, 1).filter((m) => m.type === "state")).toHaveLength(2);
+  });
+
+  it("sends tick metrics to clients once per second", () => {
+    const { clock, sent, server, init } = setup();
+    init();
+    server.handleMessage({ type: "client-message", connId: 1, msg: hello });
+    clock.advance(1000);
+    const debug = toClient(sent, 1).filter((m) => m.type === "debug");
+    expect(debug).toEqual([{ type: "debug", metrics: expect.objectContaining({ overruns: 0 }) }]);
+  });
+
+  it("tells the host to drop a connection the session closes", () => {
+    const { sent, server, init } = setup();
+    init();
+    server.handleMessage({ type: "client-message", connId: 3, msg: { ...hello, protocolVersion: 0 } });
+    expect(sent.at(-1)).toEqual({ type: "client-close", connId: 3 });
+  });
+
+  it("starts a new session after the previous one closed", () => {
+    const { sent, server, init } = setup();
+    init();
+    server.handleMessage({ type: "client-message", connId: 1, msg: hello });
+    server.handleMessage({ type: "client-close", connId: 1 });
+    server.handleMessage({ type: "client-message", connId: 2, msg: hello });
+    expect(toClient(sent, 2)[0]).toMatchObject({ type: "welcome" });
+  });
+
+  it("ignores client messages before init", () => {
+    const { sent, server } = setup();
+    server.handleMessage({ type: "client-message", connId: 1, msg: hello });
+    expect(sent).toEqual([]);
+  });
+});

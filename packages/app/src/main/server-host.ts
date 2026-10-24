@@ -20,6 +20,10 @@ export interface ServerHostOptions {
   appVersion: string;
   requestTimeoutMs?: number;
   onStatus(status: ServerStatus): void;
+  /** A game protocol message for the renderer; validated there. */
+  onGameMessage(msg: unknown): void;
+  /** The game server closed the renderer's game connection. */
+  onGameClosed(): void;
   log(message: string): void;
 }
 
@@ -27,6 +31,9 @@ export interface ServerHost {
   start(): void;
   getInfo(): Promise<ServerInfo>;
   getStatus(): ServerStatus;
+  /** Opens a fresh game connection for the renderer, closing the previous one. */
+  connectGame(): void;
+  sendGame(msg: unknown): void;
   stop(): void;
 }
 
@@ -42,6 +49,7 @@ export function createServerHost(options: ServerHostOptions): ServerHost {
   let status: ServerStatus = { state: "starting", tick: 0 };
   let child: ServerProcess | undefined;
   let nextRequestId = 1;
+  let gameConnId = 0;
 
   function settle(requestId: number): PendingRequest | undefined {
     const request = pending.get(requestId);
@@ -68,6 +76,12 @@ export function createServerHost(options: ServerHostOptions): ServerHost {
         return;
       case "error":
         options.log(`Game server error (${msg.code}): ${msg.message}`);
+        return;
+      case "client-send":
+        if (msg.connId === gameConnId) options.onGameMessage(msg.msg);
+        return;
+      case "client-close":
+        if (msg.connId === gameConnId) options.onGameClosed();
         return;
       case "ready":
         return;
@@ -107,6 +121,13 @@ export function createServerHost(options: ServerHostOptions): ServerHost {
     },
     getStatus() {
       return status;
+    },
+    connectGame() {
+      if (gameConnId > 0) child?.postMessage({ type: "client-close", connId: gameConnId });
+      gameConnId++;
+    },
+    sendGame(msg) {
+      if (gameConnId > 0) child?.postMessage({ type: "client-message", connId: gameConnId, msg });
     },
     stop() {
       child?.kill();

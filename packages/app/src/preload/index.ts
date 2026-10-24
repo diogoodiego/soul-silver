@@ -33,6 +33,14 @@ const api: SoulSilverApi = {
   startExtraction: () => ipcRenderer.invoke(IpcChannel.AssetsStart) as Promise<void>,
   cancelExtraction: () => ipcRenderer.invoke(IpcChannel.AssetsCancel) as Promise<void>,
   openExtractionLog: () => ipcRenderer.invoke(IpcChannel.AssetsOpenLog) as Promise<void>,
+  connectGame: () => ipcRenderer.invoke(IpcChannel.GameConnect) as Promise<void>,
+  sendGame: (msg) => {
+    ipcRenderer.send(IpcChannel.GameSend, msg);
+  },
+  onGameMessage: (listener) => subscribe<unknown>(IpcChannel.GameMessage, listener),
+  onGameClosed: (listener) => subscribe<undefined>(IpcChannel.GameClosed, () => {
+    listener();
+  }),
 };
 
 contextBridge.exposeInMainWorld("soulSilver", api);

@@ -2,6 +2,7 @@
   import type { AssetsState, ServerInfo, ServerStatus, UpdateState } from "@soulsilver/shared";
   import { onMount } from "svelte";
   import FirstRun from "./FirstRun.svelte";
+  import GameSession from "./GameSession.svelte";
   import UpdateNotice from "./UpdateNotice.svelte";
 
   /** How long "Assets prontos" stays up after an extraction before the main screen. */
@@ -84,6 +85,10 @@
       <dt>Ticks</dt>
       <dd class="tick">{status.tick}</dd>
     </dl>
+
+    {#if info}
+      <GameSession />
+    {/if}
   {/if}
 
   {#if !showMain}

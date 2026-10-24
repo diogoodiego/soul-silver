@@ -57,6 +57,12 @@ if (!app.requestSingleInstanceLock()) {
       onStatus: (status) => {
         send(IpcChannel.ServerStatus, status);
       },
+      onGameMessage: (msg) => {
+        send(IpcChannel.GameMessage, msg);
+      },
+      onGameClosed: () => {
+        send(IpcChannel.GameClosed, undefined);
+      },
       log: (message) => {
         console.warn(`[server-host] ${message}`);
       },
@@ -150,6 +156,13 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     handle(IpcChannel.ServerGetInfo, () => serverHost.getInfo());
+    handle(IpcChannel.GameConnect, () => {
+      serverHost.connectGame();
+    });
+    // Fire-and-forget: inputs go out every tick, so no invoke round trip.
+    ipcMain.on(IpcChannel.GameSend, (event, msg: unknown) => {
+      if (event.sender === window.webContents) serverHost.sendGame(msg);
+    });
     handle(IpcChannel.AppGetVersion, () => app.getVersion());
     handle(IpcChannel.UpdateGetState, () => updates.getState());
     handle(IpcChannel.UpdateRestart, () => {

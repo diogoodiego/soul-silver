@@ -16,6 +16,10 @@ export const IpcChannel = {
   AssetsStart: "assets:start",
   AssetsCancel: "assets:cancel",
   AssetsOpenLog: "assets:open-log",
+  GameConnect: "game:connect",
+  GameSend: "game:send",
+  GameMessage: "game:message",
+  GameClosed: "game:closed",
 } as const;
 
 /** Rejection message of getServerInfo() when the game server is stopped or does not reply. */
@@ -46,4 +50,12 @@ export interface SoulSilverApi {
   cancelExtraction(): Promise<void>;
   /** Shows extractor.log in Explorer. */
   openExtractionLog(): Promise<void>;
+  /** Opens a fresh connection to the local game server (closing any previous one). */
+  connectGame(): Promise<void>;
+  /** A game protocol message (spec 010); the server validates it. */
+  sendGame(msg: unknown): void;
+  /** Raw server messages; validate with serverMessage. Returns a function that cancels the subscription. */
+  onGameMessage(listener: (msg: unknown) => void): () => void;
+  /** Returns a function that cancels the subscription. */
+  onGameClosed(listener: () => void): () => void;
 }

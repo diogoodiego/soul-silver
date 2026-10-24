@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { HostToServerMessage, ServerInfo, ServerStatus } from "@soulsilver/shared";
+import { PROTOCOL_VERSION, type HostToServerMessage, type ServerInfo, type ServerStatus } from "@soulsilver/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createServerHost } from "../src/main/server-host";
 
@@ -31,14 +31,20 @@ function infoReply(requestId: number): { type: "info"; requestId: number; info: 
 function setup() {
   const child = new FakeChild();
   const statuses: ServerStatus[] = [];
+  const gameMessages: unknown[] = [];
+  let gameClosed = 0;
   const host = createServerHost({
+    onGameMessage: (msg) => gameMessages.push(msg),
+    onGameClosed: () => {
+      gameClosed++;
+    },
     fork: () => child,
     appVersion: "0.1.0",
     onStatus: (s) => statuses.push(s),
     log: () => {},
   });
   host.start();
-  return { child, statuses, host };
+  return { child, statuses, host, gameMessages, gameClosed: () => gameClosed };
 }
 
 function requestIdOf(msg: HostToServerMessage | undefined): number {
@@ -56,7 +62,7 @@ afterEach(() => {
 describe("createServerHost", () => {
   it("sends init on start and is starting until the first status", () => {
     const { child, host, statuses } = setup();
-    expect(child.posted).toEqual([{ type: "init", protocolVersion: 1, appVersion: "0.1.0" }]);
+    expect(child.posted).toEqual([{ type: "init", protocolVersion: PROTOCOL_VERSION, appVersion: "0.1.0" }]);
     expect(host.getStatus()).toEqual({ state: "starting", tick: 0 });
     child.emit("message", { type: "status", status: { state: "running", tick: 1 } });
     expect(host.getStatus()).toEqual({ state: "running", tick: 1 });
@@ -102,5 +108,37 @@ describe("createServerHost", () => {
     expect(host.getStatus()).toEqual({ state: "stopped", tick: 7 });
     expect(statuses.filter((s) => s.state === "stopped")).toEqual([{ state: "stopped", tick: 7 }]);
     await expect(host.getInfo()).rejects.toThrow("server-unavailable");
+  });
+
+  it("forwards game messages on the current connection and closes the previous one on reconnect", () => {
+    const { child, host } = setup();
+    host.connectGame();
+    host.sendGame({ type: "hello" });
+    host.connectGame();
+    host.sendGame({ type: "leave" });
+    expect(child.posted.slice(1)).toEqual([
+      { type: "client-message", connId: 1, msg: { type: "hello" } },
+      { type: "client-close", connId: 1 },
+      { type: "client-message", connId: 2, msg: { type: "leave" } },
+    ]);
+  });
+
+  it("delivers server messages and closes for the current connection only", () => {
+    const { child, host, gameMessages, gameClosed } = setup();
+    host.connectGame();
+    host.connectGame();
+    child.emit("message", { type: "client-send", connId: 1, msg: "stale" });
+    child.emit("message", { type: "client-send", connId: 2, msg: "fresh" });
+    child.emit("message", { type: "client-close", connId: 1 });
+    expect(gameMessages).toEqual(["fresh"]);
+    expect(gameClosed()).toBe(0);
+    child.emit("message", { type: "client-close", connId: 2 });
+    expect(gameClosed()).toBe(1);
+  });
+
+  it("drops game sends before connecting", () => {
+    const { child, host } = setup();
+    host.sendGame({ type: "hello" });
+    expect(child.posted).toHaveLength(1);
   });
 });

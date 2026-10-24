@@ -13,6 +13,8 @@ describe("isHostToServerMessage", () => {
   it.each([
     { type: "init", protocolVersion: 1, appVersion: "0.1.0" },
     { type: "get-info", requestId: 1 },
+    { type: "client-message", connId: 1, msg: { anything: true } },
+    { type: "client-close", connId: 1 },
   ])("accepts %o", (msg) => {
     expect(isHostToServerMessage(msg)).toBe(true);
   });
@@ -27,6 +29,9 @@ describe("isHostToServerMessage", () => {
     { type: "init", protocolVersion: 1 },
     { type: "get-info", requestId: "1" },
     { type: "ready", protocolVersion: 1 },
+    { type: "client-message", connId: -1, msg: {} },
+    { type: "client-message", connId: 1 },
+    { type: "client-close" },
   ])("rejects %o", (msg) => {
     expect(isHostToServerMessage(msg)).toBe(false);
   });
@@ -38,6 +43,8 @@ describe("isServerToHostMessage", () => {
     { type: "status", status: { state: "running", tick: 0 } },
     { type: "info", requestId: 7, info },
     { type: "error", code: "protocol-mismatch", message: "expected 1, got 2" },
+    { type: "client-send", connId: 1, msg: { type: "state" } },
+    { type: "client-close", connId: 1 },
   ])("accepts %o", (msg) => {
     expect(isServerToHostMessage(msg)).toBe(true);
   });

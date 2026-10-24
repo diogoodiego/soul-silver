@@ -1,7 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": []
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
   },
   "include": ["src", "test", "vitest.config.ts"]
 }

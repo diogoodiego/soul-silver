@@ -2,13 +2,18 @@ import type { ServerInfo, ServerStatus } from "./server-info";
 
 export type HostToServerMessage =
   | { type: "init"; protocolVersion: number; appVersion: string }
-  | { type: "get-info"; requestId: number };
+  | { type: "get-info"; requestId: number }
+  /** A game client message; the first one for a connId opens the connection. Validated by the game server. */
+  | { type: "client-message"; connId: number; msg: unknown }
+  | { type: "client-close"; connId: number };
 
 export type ServerToHostMessage =
   | { type: "ready"; protocolVersion: number }
   | { type: "status"; status: ServerStatus }
   | { type: "info"; requestId: number; info: ServerInfo }
-  | { type: "error"; code: "protocol-mismatch"; message: string };
+  | { type: "error"; code: "protocol-mismatch"; message: string }
+  | { type: "client-send"; connId: number; msg: unknown }
+  | { type: "client-close"; connId: number };
 
 type Fields = Record<string, unknown>;
 
@@ -50,6 +55,10 @@ export function isHostToServerMessage(value: unknown): value is HostToServerMess
       return isCount(value["protocolVersion"]) && isNonEmptyString(value["appVersion"]);
     case "get-info":
       return isCount(value["requestId"]);
+    case "client-message":
+      return isCount(value["connId"]) && "msg" in value;
+    case "client-close":
+      return isCount(value["connId"]);
     default:
       return false;
   }
@@ -66,6 +75,10 @@ export function isServerToHostMessage(value: unknown): value is ServerToHostMess
       return isCount(value["requestId"]) && isServerInfo(value["info"]);
     case "error":
       return value["code"] === "protocol-mismatch" && typeof value["message"] === "string";
+    case "client-send":
+      return isCount(value["connId"]) && "msg" in value;
+    case "client-close":
+      return isCount(value["connId"]);
     default:
       return false;
   }

@@ -18,6 +18,10 @@ describe("createWindowOptions", () => {
     expect(prefs.webviewTag).not.toBe(true);
   });
 
+  it("keeps timers running in the background so the game keeps sending inputs", () => {
+    expect(prefs.backgroundThrottling).toBe(false);
+  });
+
   it("uses the given preload and the app title", () => {
     expect(prefs.preload).toBe("C:/app/preload.cjs");
     expect(options.title).toBe("SoulSilver Desktop");
