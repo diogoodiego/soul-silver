@@ -10,7 +10,8 @@ export class HeaderFormatError extends Error {
 
 export const MAP_HEADER_OFFSET = 0xf6be0;
 export const MAP_HEADER_COUNT = 540;
-const ENTRY = 24;
+export const MAP_HEADER_SIZE = 24;
+const ENTRY = MAP_HEADER_SIZE;
 const NO_ENCOUNTERS = 0xff;
 
 /** Member counts of the archives the headers point into. */

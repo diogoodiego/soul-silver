@@ -8,7 +8,9 @@
     "./game-data": "./src/game-data/index.ts",
     "./text": "./src/text/index.ts",
     "./maps": "./src/maps/index.ts",
-    "./sprites": "./src/sprites/index.ts"
+    "./sprites": "./src/sprites/index.ts",
+    "./events": "./src/events/index.ts",
+    "./audio": "./src/audio/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

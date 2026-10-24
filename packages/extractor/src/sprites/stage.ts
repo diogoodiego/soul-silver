@@ -74,7 +74,7 @@ async function run(ctx: StageContext): Promise<void> {
 export const spritesStage: Stage = {
   id: "sprites",
   title: "Extraindo os sprites",
-  version: 1,
+  version: 2,
   weight: 10,
   inputs: [NARC_INPUT, CODE_INPUT],
   outputs: ["sprites"],

@@ -10,6 +10,7 @@ export const VIEWER_HOST = "127.0.0.1";
 const TYPES: Record<string, string> = {
   ".png": "image/png",
   ".json": "application/json; charset=utf-8",
+  ".wav": "audio/wav",
 };
 
 export interface ViewerOptions {

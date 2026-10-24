@@ -174,6 +174,20 @@ describe("extractor CLI --report", () => {
     expect(captured.out.join("\n")).toContain("Sprites\n  não extraído (etapa sprites não rodou)");
   });
 
+  it("includes the events section, saying when the events stage did not run", async () => {
+    await extractSynthetic(box);
+    const captured = io({ expected: SYNTHETIC_EXPECTED_COUNTS });
+    expect(await main(["--out", box.workspaceDir, "--report"], captured)).toBe(0);
+    expect(captured.out.join("\n")).toContain("Eventos, scripts, encontros e treinadores\n  não extraído (etapa events não rodou)");
+  });
+
+  it("includes the audio section, saying when the audio stage did not run", async () => {
+    await extractSynthetic(box);
+    const captured = io({ expected: SYNTHETIC_EXPECTED_COUNTS });
+    expect(await main(["--out", box.workspaceDir, "--report"], captured)).toBe(0);
+    expect(captured.out.join("\n")).toContain("Áudio\n  não extraído (etapa audio não rodou)");
+  });
+
   it("exits 1 and prints FALHA when a count does not match", async () => {
     await extractSynthetic(box);
     const captured = io({ expected: { ...SYNTHETIC_EXPECTED_COUNTS, species: 493 } });
