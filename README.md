@@ -159,9 +159,10 @@ O `--report` ganha a seção "Textos" (contagens, ida e volta e referências de 
 
 ## Mapas
 
-A etapa `maps` converte os mapas em camadas pré-renderizadas (chão e o que fica acima do jogador)
-e em colisão por nível, em `stages/maps/maps/`. Cada mapa tem uma pasta com `layers/` e
-`collision/`, e o `report.json` lista cada mapa como sucesso, sucesso com avisos ou falha, com o
+A etapa `maps` converte os mapas em malha 3D e em colisão por nível, em `stages/maps/maps/`. Cada
+mapa tem uma pasta com `mesh.json` (grupos de triângulos por textura e a altura do chão de cada tile),
+`mesh.bin` (os vértices), `textures/` e `collision/`. O cliente desenha a malha com three.js numa
+câmera oblíqua fixa, parecida com a do DS, e os sprites ficam em pé na altura do chão. O `report.json` lista cada mapa como sucesso, sucesso com avisos ou falha, com o
 motivo. Mapas com textura animada ou comportamento de tile sem categoria aparecem no `--report`.
 
 ```powershell
@@ -170,12 +171,12 @@ npm run extract -- --out assets --report
 npm run maps:view -- 60 --out assets
 ```
 
-O visualizador abre no navegador, em `127.0.0.1`, e serve só leitura. Ele alterna nível, camadas
-(chão e acima do jogador) e a colisão colorida por categoria, com legenda. O identificador do mapa
+O visualizador abre no navegador, em `127.0.0.1`, e serve só leitura. Ele mostra o mapa inteiro em 3D,
+na mesma câmera do jogo, e alterna o nível e a colisão colorida por categoria, com legenda. O identificador do mapa
 é o índice do header (o mesmo que o relatório mostra).
 
-**Animações**: os mapas com água, moinhos e outras texturas animadas ganham um `animations.json` e quadros
-(`layers/*-anim-K.png`, só a região que muda). O visualizador tem o botão **Animar**. O ciclo é
+**Animações**: nos mapas com água, moinhos e outras texturas animadas, os grupos animados da malha
+trazem um quadro de textura (imagem, escala e deslocamento) por ponto do ciclo. O visualizador tem o botão **Animar**. O ciclo é
 reamostrado em 8 quadros, então a velocidade real não é preservada.
 
 **Limitações desta versão**: a rotação de textura não é tocada. Mapas que nenhuma matriz coloca no mundo falham com o motivo indicado.

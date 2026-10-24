@@ -1,3 +1,13 @@
+<!--
+Sync Impact Report
+- Versão: 1.0.0 → 1.1.0 (MINOR: orientação de render expandida)
+- Mudança: os mapas deixam de ser pré-renderizados em 2D e passam a ser desenhados em 3D com
+  three.js (WebGL), a partir da malha extraída da ROM; PixiJS sai das Restrições Técnicas.
+- Motivo: o pré-render exigia casos especiais (camadas abaixo/acima do jogador por altura fixa,
+  pontes, rampas, quadros de animação recortados) e se afastava do visual do DS; no 3D a
+  profundidade decide a oclusão e as animações são troca de textura em tempo real.
+- Templates: nenhum template cita o renderer; specs 006 e 011 recebem nota de revisão.
+-->
 # SoulSilver Desktop Constitution
 
 ## Visão
@@ -12,7 +22,8 @@ Mudanças intencionais de mecânica:
 - Pokémon selvagens visíveis no mapa, sem encontros aleatórios.
 - Multiplayer LAN de 2 a 4 jogadores, com progresso individual em mundo compartilhado.
 
-Os mapas são pré-renderizados em 2D, com grade de colisão. O app de qualquer jogador pode
+Os mapas são desenhados em 3D a partir dos modelos extraídos da ROM, numa câmera fixa como a do
+DS, com grade de colisão 2D. O app de qualquer jogador pode
 hospedar uma partida, e jogar sozinho é uma partida de 1 jogador.
 
 ## Princípios Fundamentais
@@ -73,7 +84,7 @@ mantém a lógica testável sem a pilha gráfica.
 - Combate, interpretador de scripts, spawns e IA de selvagens, captura, servidor, protocolo de
   rede, descoberta na LAN, extrator e migrações de save MUST seguir red-green-refactor: o teste
   é escrito e falha antes da implementação.
-- Render (PixiJS) e UI (Svelte) ficam isentos de test-first, mas cada mudança visível MUST ser
+- Render (three.js) e UI (Svelte) ficam isentos de test-first, mas cada mudança visível MUST ser
   verificada manualmente antes de ser concluída.
 
 **Motivo**: a lógica do jogo é desenvolvida em grande parte por agentes de IA; testes escritos
@@ -149,7 +160,7 @@ qualquer ponto em que pare.
 - **Runtime**: Electron, com o servidor de jogo em Node.js rodando em processo ou thread
   separado no app do host.
 - **Linguagem**: TypeScript em modo strict em todo o código (MUST).
-- **Renderer**: PixiJS para o jogo e Svelte para a interface (menus, mochila, Pokédex,
+- **Renderer**: three.js (WebGL) para o jogo e Svelte para a interface (menus, mochila, Pokédex,
   diálogos, HUD).
 - **Rede**: WebSocket entre os apps, de 2 a 4 jogadores por partida. As partidas MUST ser
   anunciadas na LAN automaticamente (broadcast UDP ou mDNS), com conexão manual por IP como
@@ -197,4 +208,4 @@ qualquer ponto em que pare.
   MUST verificar a conformidade com esta constituição. Desvios MUST ser justificados no plano
   da feature.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-23
+**Version**: 1.1.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-24

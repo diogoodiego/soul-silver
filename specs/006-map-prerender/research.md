@@ -93,6 +93,10 @@ da grade ocupa exatamente um bloco de 16 × 16 pixels.
 **Alternativas**: 32 px (mais legível, mas o dobro de memória e de tamanho de arquivo);
 resolução variável por mapa (rejeitada: quebra o princípio do alinhamento constante).
 
+> **Revisão (2026-10-24)**: o pré-render 2D (R2 a R5, R7) foi substituído pela exportação da malha
+> 3D (`mesh.json`, `mesh.bin`, `textures/`), desenhada pelo cliente com three.js. Ver
+> specs/011-world-movement-warps/research.md, "Revisão: render 3D com three.js".
+
 ## R2. Projeção dos prédios
 
 **Decisão** (revista na implementação): projeção oblíqua fixa, sem rotação. Um ponto do mundo
