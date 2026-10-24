@@ -9,3 +9,6 @@ coverage/
 assets/
 *.nds
 *.NDS
+
+# TypeScript incremental build cache
+*.tsbuildinfo
