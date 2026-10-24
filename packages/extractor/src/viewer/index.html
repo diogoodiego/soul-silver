@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visualizador de mapas</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #f4f4f1; --fg: #1d1d1b; --muted: #6b6b66; --panel: #ffffff; --line: #d8d8d2; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #161715; --fg: #ecece6; --muted: #9a9a92; --panel: #22231f; --line: #3a3b35; } }
+    :root[data-theme="dark"] { --bg: #161715; --fg: #ecece6; --muted: #9a9a92; --panel: #22231f; --line: #3a3b35; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+    header, main { padding: 12px 16px; }
+    header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; border-bottom: 1px solid var(--line); background: var(--panel); }
+    label { display: inline-flex; gap: 6px; align-items: center; }
+    select, input[type="search"] { font: inherit; padding: 4px 6px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; }
+    input[type="search"] { width: 16em; }
+    #view { overflow: auto; border: 1px solid var(--line); background: var(--panel); }
+    canvas { display: block; image-rendering: pixelated; }
+    #legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; color: var(--muted); }
+    .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 4px; vertical-align: -2px; border: 1px solid rgba(0,0,0,.25); }
+    #status { color: var(--muted); }
+    @media (max-width: 600px) { header, main { padding: 10px; } input[type="search"] { width: 100%; } }
+  </style>
+</head>
+<body>
+  <header>
+    <label>Mapa <select id="map"></select></label>
+    <label>Buscar <input id="filter" type="search" placeholder="nome ou id"></label>
+    <label>Nível <select id="level"></select></label>
+    <label><input id="lower" type="checkbox" checked> Chão (abaixo do jogador)</label>
+    <label><input id="upper" type="checkbox" checked> Acima do jogador</label>
+    <label><input id="collision" type="checkbox"> Colisão</label>
+    <label id="animateLabel" hidden><input id="animate" type="checkbox"> Animar</label>
+    <label>Zoom <select id="zoom"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+  </header>
+  <main>
+    <div id="status">Carregando…</div>
+    <div id="legend"></div>
+    <div id="view"><canvas id="canvas"></canvas></div>
+  </main>
+  <script>
+    // Read-only viewer for the maps stage output. Data comes from /data/ and /names.json.
+    const COLORS = {
+      blocked: [220, 40, 40, 0.55],
+      free: null,
+      tallGrass: [40, 170, 60, 0.5],
+      water: [40, 110, 230, 0.5],
+      ledge: [240, 140, 20, 0.6],
+      ladder: [150, 70, 210, 0.6],
+      levelTransition: [250, 230, 40, 0.7],
+      special: [230, 60, 200, 0.6],
+    };
+    const LABELS = {
+      blocked: "bloqueado", free: "livre", tallGrass: "grama alta", water: "água",
+      ledge: "ressalto", ladder: "escada", levelTransition: "transição de nível", special: "especial",
+    };
+    const DIRECTIONS = { north: "↑", south: "↓", east: "→", west: "←" };
+
+    const el = (id) => document.getElementById(id);
+    const canvas = el("canvas");
+    const ctx = canvas.getContext("2d");
+    const state = { names: {}, headers: [], image: new Map(), collision: null, anim: null, frame: null, timer: null };
+    const FRAMES_PER_SECOND = 4;
+
+    function readStore(key) { try { return localStorage.getItem(key); } catch { return null; } }
+    function writeStore(key, value) { try { localStorage.setItem(key, value); } catch { /* private window */ } }
+
+    function mapLabel(header) {
+      const name = state.names[header.mapsec];
+      return `${String(header.id).padStart(4, "0")}${name ? " · " + name : ""} (${header.areaType})`;
+    }
+
+    function fillMapList() {
+      const filter = el("filter").value.trim().toLowerCase();
+      const select = el("map");
+      const previous = select.value;
+      select.replaceChildren(...state.headers
+        .filter((h) => !filter || mapLabel(h).toLowerCase().includes(filter))
+        .map((h) => new Option(mapLabel(h), String(h.id))));
+      const saved = readStore("maps-viewer:map");
+      const pick = [previous, saved].find((v) => v && [...select.options].some((o) => o.value === v));
+      if (pick) select.value = pick;
+    }
+
+    async function loadJson(path) {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`${path}: ${res.status}`);
+      return res.json();
+    }
+
+    function loadImage(path) {
+      if (state.image.has(path)) return state.image.get(path);
+      const promise = new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(path));
+        img.src = path;
+      });
+      state.image.set(path, promise);
+      return promise;
+    }
+
+    async function loadMap() {
+      const id = el("map").value;
+      if (!id) return;
+      writeStore("maps-viewer:map", id);
+      const dir = `/data/${id.padStart(4, "0")}`;
+      const levels = [];
+      for (let level = 0; level < 8; level++) {
+        const res = await fetch(`${dir}/collision/${level}.json`, { method: "GET" });
+        if (!res.ok) break;
+        levels.push(level);
+      }
+      const current = Number(readStore(`maps-viewer:level:${id}`) ?? 0);
+      el("level").replaceChildren(...levels.map((l) => new Option(`nível ${l}`, String(l))));
+      el("level").value = String(levels.includes(current) ? current : levels[0]);
+      el("status").textContent = "Carregando…";
+      try {
+        state.collision = await loadJson(`${dir}/collision/${el("level").value}.json`);
+        state.anim = await loadJson(`${dir}/animations.json`).catch(() => null);
+        if (state.anim && state.anim.regions.length === 0) state.anim = null;
+        el("animateLabel").hidden = !state.anim;
+        if (!state.anim) el("animate").checked = false;
+        setPlaying(el("animate").checked);
+        el("status").textContent = `${mapLabel(state.headers.find((h) => String(h.id) === id))} · ${state.collision.width} × ${state.collision.height} tiles`;
+      } catch (error) {
+        el("status").textContent = `Não foi possível carregar o mapa: ${error.message}`;
+        return;
+      }
+      await draw();
+    }
+
+    // A layer as an image; while playing, its animated regions show the current frame.
+    async function layer(dir, level, name, zoom) {
+      const base = await loadImage(`${dir}/layers/${level}-${name}.png`);
+      const regions = state.frame === null || !state.anim ? [] : state.anim.regions.filter((r) => String(r.level) === level && r.layer === name);
+      if (regions.length === 0) return base;
+      const canvas = document.createElement("canvas");
+      canvas.width = base.width * zoom;
+      canvas.height = base.height * zoom;
+      const c = canvas.getContext("2d");
+      c.drawImage(base, 0, 0, canvas.width, canvas.height);
+      for (const r of regions) {
+        c.clearRect(r.x * zoom, r.y * zoom, r.width * zoom, r.height * zoom);
+        c.drawImage(await loadImage(`${dir}/layers/${level}-${name}-anim-${state.frame}.png`), r.x * zoom, r.y * zoom, r.width * zoom, r.height * zoom);
+      }
+      return canvas;
+    }
+
+    // Plays the resampled cycle: every frame of every region is loaded before the first tick.
+    async function setPlaying(on) {
+      clearInterval(state.timer);
+      state.timer = null;
+      state.frame = null;
+      if (!on || !state.anim) return draw();
+      const id = el("map").value.padStart(4, "0");
+      await Promise.all(state.anim.regions.flatMap((r) => Array.from({ length: state.anim.frames }, (_, k) => loadImage(`/data/${id}/layers/${r.level}-${r.layer}-anim-${k}.png`))));
+      let k = 0;
+      state.timer = setInterval(() => {
+        state.frame = k++ % state.anim.frames;
+        draw();
+      }, 1000 / FRAMES_PER_SECOND);
+    }
+
+    async function draw() {
+      const id = el("map").value;
+      const level = el("level").value;
+      if (!id || !state.collision) return;
+      writeStore(`maps-viewer:level:${id}`, level);
+      const dir = `/data/${id.padStart(4, "0")}`;
+      const zoom = Number(el("zoom").value);
+      const layers = [];
+      if (el("lower").checked) layers.push(layer(dir, level, "lower", zoom));
+      if (el("upper").checked) layers.push(layer(dir, level, "upper", zoom));
+      const images = await Promise.all(layers);
+      const width = state.collision.width * 16;
+      const height = state.collision.height * 16;
+      canvas.width = width * zoom;
+      canvas.height = height * zoom;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#777";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (const img of images) ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      const legend = [];
+      if (el("collision").checked) {
+        const { width: w, tiles } = state.collision;
+        tiles.forEach((cell, i) => {
+          const color = COLORS[cell.category];
+          if (!color) return;
+          ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3]})`;
+          const x = (i % w) * 16 * zoom;
+          const y = Math.floor(i / w) * 16 * zoom;
+          ctx.fillRect(x, y, 16 * zoom, 16 * zoom);
+          if (cell.category === "ledge") {
+            ctx.fillStyle = "#111";
+            ctx.font = `${8 * zoom}px sans-serif`;
+            ctx.fillText(DIRECTIONS[cell.direction], x + 3 * zoom, y + 11 * zoom);
+          }
+        });
+        for (const [key, value] of Object.entries(COLORS)) {
+          if (!value || !state.collision.tiles.some((c) => c.category === key)) continue;
+          legend.push(`<span><span class="swatch" style="background: rgba(${value[0]}, ${value[1]}, ${value[2]}, ${value[3]})"></span>${LABELS[key]}</span>`);
+        }
+      }
+      el("legend").innerHTML = legend.join("");
+    }
+
+    el("map").addEventListener("change", loadMap);
+    el("level").addEventListener("change", async () => {
+      const id = el("map").value;
+      state.collision = await loadJson(`/data/${id.padStart(4, "0")}/collision/${el("level").value}.json`);
+      draw();
+    });
+    el("level").addEventListener("change", () => writeStore(`maps-viewer:level:${el("map").value}`, el("level").value));
+    el("filter").addEventListener("input", () => { fillMapList(); loadMap(); });
+    for (const id of ["lower", "upper", "collision", "zoom"]) el(id).addEventListener("change", draw);
+    el("animate").addEventListener("change", () => setPlaying(el("animate").checked));
+
+    (async () => {
+      try {
+        const [headers, names] = await Promise.all([loadJson("/data/map-headers.json"), loadJson("/names.json")]);
+        state.headers = headers.records;
+        state.names = names;
+        fillMapList();
+        const fromHash = String(Number(location.hash.slice(1)));
+        const first = state.headers.some((h) => String(h.id) === fromHash) ? fromHash : (el("map").value || String(state.headers[0]?.id ?? ""));
+        el("map").value = first;
+        await loadMap();
+      } catch (error) {
+        el("status").textContent = `Sem dados de mapas. Rode a etapa maps (npm run extract -- --stages maps). ${error.message}`;
+      }
+    })();
+  </script>
+</body>
+</html>
