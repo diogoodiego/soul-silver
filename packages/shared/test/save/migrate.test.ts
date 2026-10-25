@@ -15,7 +15,7 @@ const v1 = {
   rev: 0,
 };
 
-// A fictional v2 that renames `area` to `map`, to exercise the chain without a real migration.
+// A fictional v2 (on top of the real fields) that renames `area` to `map`, to exercise the chain without a real migration.
 const v2Schema = saveSchema.omit({ area: true }).extend({ map: saveSchema.shape.area });
 const fake = {
   current: 2,
@@ -28,17 +28,38 @@ const fake = {
   },
 };
 
+const all = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });
+/** What 3 → 4 adds to a party member: IV 31, no EVs, Hardy and the medium-fast minimum for its level. */
+const v4Member = <M extends { level: number }>(m: M) => ({ ...m, experience: m.level === 1 ? 0 : m.level ** 3, ivs: all(31), evs: all(0), nature: 0 });
+
 describe("migrate", () => {
+  const v2 = { ...v1, schemaVersion: 2, party: [{ species: 25, level: 5, moves: [84], hp: 20, friendship: 70 }], money: 120, badges: 1, respawn: { area: "69", x: 8, y: 8 } };
+
+  const v3 = { ...v2, schemaVersion: 3, bag: [{ item: 4, count: 5 }], pokedex: { seen: [16, 25], caught: [25] }, storage: [{ species: 16, level: 3, moves: [33], hp: 15, friendship: 70 }] };
+
   it("passes a current save through", () => {
-    expect(migrate(v1)).toEqual({ ok: true, save: v1 });
+    const v4 = { ...v3, schemaVersion: 4, party: v3.party.map(v4Member), storage: v3.storage.map(v4Member), pending: [{ kind: "evolve", member: 0, into: 26 }] };
+    expect(migrate(v4)).toEqual({ ok: true, save: v4 });
+  });
+
+  it("gives a v3 save's Pokémon IVs, EVs, a nature and experience, and an empty queue", () => {
+    expect(migrate(v3)).toEqual({ ok: true, save: { ...v3, schemaVersion: 4, party: v3.party.map(v4Member), storage: v3.storage.map(v4Member), pending: [] } });
+  });
+
+  it("gives a v1 save an empty party, 3000 money, no badges and no respawn point", () => {
+    expect(migrate(v1)).toEqual({ ok: true, save: { ...v1, schemaVersion: 4, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, storage: [], pending: [] } });
+  });
+
+  it("gives a v2 save an empty bag and storage, and a Pokédex with its party species", () => {
+    expect(migrate(v2)).toEqual({ ok: true, save: { ...v2, schemaVersion: 4, party: v2.party.map(v4Member), bag: [], pokedex: { seen: [25], caught: [25] }, storage: [], pending: [] } });
   });
 
   it("applies the chain up to the current version", () => {
-    expect(migrate(v1, fake)).toMatchObject({ ok: true, save: { schemaVersion: 2, map: "60" } });
+    expect(migrate({ ...v1, party: [], money: 0, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, storage: [], pending: [] }, fake)).toMatchObject({ ok: true, save: { schemaVersion: 2, map: "60" } });
   });
 
   it("refuses a save newer than the app", () => {
-    expect(migrate({ ...v1, schemaVersion: 2 })).toMatchObject({ ok: false, code: "save-too-new" });
+    expect(migrate({ ...v1, schemaVersion: 5 })).toMatchObject({ ok: false, code: "save-too-new" });
   });
 
   it("fails when a step is missing", () => {

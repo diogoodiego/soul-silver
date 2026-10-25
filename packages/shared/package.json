@@ -14,7 +14,10 @@
     "./game": "./src/game/index.ts",
     "./save": "./src/save/index.ts",
     "./lan": "./src/lan/index.ts",
-    "./combat": "./src/combat/index.ts"
+    "./combat": "./src/combat/index.ts",
+    "./companion": "./src/companion/index.ts",
+    "./wild": "./src/wild/index.ts",
+    "./progression": "./src/progression/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

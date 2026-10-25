@@ -4,7 +4,7 @@ import { checkCoherence, COHERENCE_RULES, type CoherenceRule } from "../../src/s
 import type { Save } from "../../src/save/schema.ts";
 
 const save: Save = {
-  schemaVersion: 1,
+  schemaVersion: 4,
   name: "Gold",
   character: "male",
   area: "60",
@@ -14,6 +14,14 @@ const save: Save = {
   playTimeMs: 0,
   savedAt: "2026-10-24T12:00:00.000Z",
   rev: 0,
+  party: [],
+  money: 0,
+  badges: 0,
+  respawn: null,
+  bag: [],
+  pokedex: { seen: [16], caught: [16] },
+  storage: [],
+  pending: [],
 };
 const map: WorldMap = { id: "60", levels: [], warps: [], neighbors: [], widthPx: 320, heightPx: 240 };
 const world = (id: string) => (id === "60" ? map : undefined);
@@ -21,6 +29,23 @@ const world = (id: string) => (id === "60" ? map : undefined);
 describe("checkCoherence", () => {
   it("accepts a position inside a known map", () => {
     expect(checkCoherence(save, world)).toEqual({ ok: true });
+  });
+
+  it("refuses a respawn point on an unknown map", () => {
+    expect(checkCoherence({ ...save, respawn: { area: "9999", x: 0, y: 0 } }, world)).toMatchObject({ ok: false });
+    expect(checkCoherence({ ...save, respawn: { area: "60", x: 0, y: 0 } }, world)).toEqual({ ok: true });
+  });
+
+  it("refuses a caught species that was never seen", () => {
+    const result = checkCoherence({ ...save, pokedex: { seen: [16], caught: [16, 19] } }, world);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.message).toContain("pokedex.caught");
+  });
+
+  it("refuses a queued item for a party member that does not exist", () => {
+    const result = checkCoherence({ ...save, pending: [{ kind: "evolve", member: 0, into: 156 }] }, world);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.message).toContain("pending");
   });
 
   it("refuses an unknown area", () => {

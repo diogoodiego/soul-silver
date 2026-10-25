@@ -1,10 +1,13 @@
 import { z } from "zod";
-import { saveSchema } from "../save/schema.ts";
+import { EMOTIONS } from "../companion/schemas.ts";
+import { stats } from "../game-data/common.ts";
+import { progressionItem, saveSchema } from "../save/schema.ts";
 import { ENTITY_KINDS } from "./entity.ts";
 
 // Client <-> game server messages (spec 010, contracts/game-protocol.md). Validated on arrival on both sides.
 
 const count = () => z.number().int().nonnegative();
+const battleStats = stats(0, 0xffff);
 const direction = z.enum(["north", "south", "east", "west"]);
 
 export const playerInput = z.strictObject({
@@ -12,12 +15,15 @@ export const playerInput = z.strictObject({
   /** Stick or keyboard vector; each axis in [-1, 1]. A length above 1 is normalized by the step, not rejected. */
   move: z.strictObject({ x: z.number().min(-1).max(1), y: z.number().min(-1).max(1) }),
   run: z.boolean(),
-  /** Move slots 1–4 are bits 0–3 (spec 013); a move starts on the press, not while held. */
+  /** Move slots 1–4 are bits 0–3 (spec 013), then BUTTON bits; actions start on the press, not while held. */
   buttons: count(),
   /** Aim in the world plane, each axis in [-1, 1]; absent or zero means the way the entity faces. */
   aim: z.strictObject({ x: z.number().min(-1).max(1), y: z.number().min(-1).max(1) }).optional(),
 });
 export type PlayerInput = z.infer<typeof playerInput>;
+
+/** Input buttons past the move slots (specs 013, 014 and 015, contracts/game-protocol-v7.md). */
+export const BUTTON = { dash: 1 << 4, combat: 1 << 5, recall: 1 << 6, interact: 1 << 7, throw: 1 << 8 } as const;
 
 /** A combatant of the dev arena (spec 013, contracts/game-protocol-v5.md). */
 export const arenaCombatant = z.strictObject({
@@ -44,6 +50,16 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("save-ack"), rev: count() }),
   playerInput.extend({ type: z.literal("input") }),
   z.strictObject({ type: z.literal("leave") }),
+  /** Quick swap in combat (spec 014); ignored on cooldown, fainted, already out or outside combat. */
+  z.strictObject({ type: z.literal("swap"), partyIndex: z.number().int().min(0).max(5) }),
+  /** The ball the next throw uses (spec 015); ignored when it is not in the bag. */
+  z.strictObject({ type: z.literal("select-ball"), item: count() }),
+  /** Replies to the head of the progression queue (spec 016); ignored in combat or when the head is of another kind. */
+  z.strictObject({ type: z.literal("progression-ack") }),
+  /** `forget` is the slot the new move replaces; null keeps the four moves. */
+  z.strictObject({ type: z.literal("learn-answer"), forget: z.number().int().min(0).max(3).nullable() }),
+  /** false is the cancel button. */
+  z.strictObject({ type: z.literal("evolve-answer"), accept: z.boolean() }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessage>;
 
@@ -70,6 +86,9 @@ export type TickMetrics = z.infer<typeof tickMetrics>;
 
 export const REJECT_CODES = ["protocol-mismatch", "session-full", "session-closed", "invalid-save", "save-too-new", "name-taken", "invalid-message"] as const;
 export type RejectCode = (typeof REJECT_CODES)[number];
+
+export const NOTICE_CODES = ["no-balls", "storage-full", "ball-returned"] as const;
+export type NoticeCode = (typeof NOTICE_CODES)[number];
 
 export const CLOSE_REASONS = ["host-left", "closed-by-host"] as const;
 export type CloseReason = (typeof CLOSE_REASONS)[number];
@@ -124,6 +143,33 @@ export const serverMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("debug"), metrics: tickMetrics }),
   z.strictObject({ type: z.literal("combat-event"), tick: count(), events: z.array(hitEvent) }),
   z.strictObject({ type: z.literal("session-closed"), reason: z.enum(CLOSE_REASONS) }),
+  /** The entity this client now moves and the camera follows: the trainer, or the Pokémon in combat (spec 014). */
+  z.strictObject({ type: z.literal("control"), entityId: count() }),
+  /** The party as the swap picker shows it; `active` is the member out in combat. */
+  z.strictObject({
+    type: z.literal("party"),
+    members: z.array(z.strictObject({ species: count(), level: count(), hp: count(), hpMax: count() })).max(6),
+    active: count().optional(),
+  }),
+  z.strictObject({ type: z.literal("reaction"), companionId: count(), species: count(), emotion: z.enum(EMOTIONS), bank: count(), text: count() }),
+  /** The Pokémon out fainted; `canContinue` is false when nobody is left (a blackout follows). */
+  z.strictObject({ type: z.literal("fainted"), partyIndex: count(), canContinue: z.boolean() }),
+  z.strictObject({ type: z.literal("blackout"), moneyLost: count(), area: z.string() }),
+  /** A ball hit a wild Pokémon (spec 015): clients play `shakes`, then the result. Sent to the whole area. */
+  z.strictObject({ type: z.literal("capture"), wildId: count(), player: count(), ball: count(), shakes: z.number().int().min(0).max(3), caught: z.boolean() }),
+  /** To the catcher only, once the shakes are over. */
+  z.strictObject({ type: z.literal("captured"), species: count(), to: z.enum(["party", "storage"]) }),
+  /** The balls in the bag and the one the next throw uses; on join and on change. */
+  z.strictObject({ type: z.literal("bag"), items: z.array(z.strictObject({ item: count(), count: z.number().int().min(1).max(999) })), selected: count().optional() }),
+  z.strictObject({ type: z.literal("pokedex"), seen: z.array(count()), caught: z.array(count()) }),
+  z.strictObject({ type: z.literal("notice"), code: z.enum(NOTICE_CODES) }),
+  /** A participant's share when a foe fell (spec 016); shown in combat, nothing to decide. */
+  z.strictObject({ type: z.literal("exp-gain"), partyIndex: z.number().int().min(0).max(5), amount: count() }),
+  /**
+   * The head of the progression queue, only out of combat. A level-up carries the new stats and the gains;
+   * a learn carries the moves known now (four means the player picks one to forget).
+   */
+  z.strictObject({ type: z.literal("progression"), item: progressionItem, stats: battleStats.optional(), gains: battleStats.optional(), moves: z.array(count()).max(4).optional() }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessage>;
 export type StateMessage = Extract<ServerMessage, { type: "state" }>;

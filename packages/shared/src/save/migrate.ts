@@ -1,13 +1,28 @@
 import type { z } from "zod";
-import { SAVE_SCHEMA_VERSION, saveSchema, type Save } from "./schema.ts";
+import { newCollection, newProgress, SAVE_SCHEMA_VERSION, saveSchema, type Save } from "./schema.ts";
 
 export type SaveFailureCode = "invalid" | "save-too-new";
 export type MigrateResult<T = Save> = { ok: true; save: T } | { ok: false; code: SaveFailureCode; message: string };
 
 type Step = (save: Record<string, unknown>) => Record<string, unknown>;
 
-/** Steps from version n to n + 1. Empty until the first format change; every new entry needs a test. */
-export const SAVE_MIGRATIONS: Record<number, Step> = {};
+/** Steps from version n to n + 1; every new entry needs a test. */
+export const SAVE_MIGRATIONS: Record<number, Step> = {
+  // Spec 014: party, money, badges and the blackout respawn point.
+  1: (save) => ({ ...save, ...newProgress(), schemaVersion: 2 }),
+  // Spec 015: bag, Pokédex (the party counts as seen and caught) and temporary storage.
+  2: (save) => {
+    const species = [...new Set((save["party"] as { species: number }[]).map((m) => m.species))];
+    return { ...save, ...newCollection(), pokedex: { seen: species, caught: [...species] }, schemaVersion: 3 };
+  },
+  // Spec 016: IV 31, no EVs and Hardy keep today's stats; medium-fast experience, raised to the real curve on join.
+  3: (save) => {
+    const upgrade = (m: { level: number }) => ({ ...m, experience: m.level === 1 ? 0 : m.level ** 3, ivs: stats(31), evs: stats(0), nature: 0 });
+    return { ...save, party: (save["party"] as { level: number }[]).map(upgrade), storage: (save["storage"] as { level: number }[]).map(upgrade), pending: [], schemaVersion: 4 };
+  },
+};
+
+const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });
 
 export interface MigrateOptions {
   current: number;

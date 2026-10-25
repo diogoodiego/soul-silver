@@ -6,7 +6,7 @@ export interface StatOptions {
   ivs?: Stats;
   evs?: Stats;
   /** Raises one stat by 10% and lowers another; omitted is a neutral nature. */
-  nature?: { up: StatKey; down: StatKey };
+  nature?: { up: StatKey; down: StatKey } | undefined;
 }
 
 const fill = (value: number): Stats => Object.fromEntries(STAT_KEYS.map((k) => [k, value])) as Stats;

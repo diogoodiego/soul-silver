@@ -30,6 +30,11 @@ export interface WorldMap {
   neighbors: WorldNeighbor[];
   widthPx: number;
   heightPx: number;
+  /** From the map header (feature 006), when the world was loaded from an extraction. */
+  areaType?: "outdoor" | "indoor" | "cave" | undefined;
+  mapsec?: number | undefined;
+  /** Encounter table id (feature 008); undefined when the map has no wild Pokémon. */
+  encounters?: number | undefined;
 }
 
 export type WorldLookup = (mapId: string) => WorldMap | undefined;

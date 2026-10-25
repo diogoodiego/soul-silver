@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { saveSchema } from "../../src/save/schema.ts";
 
+const all = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });
+const stats = { experience: 125, ivs: all(31), evs: all(0), nature: 0 };
+
 const valid = {
-  schemaVersion: 1,
+  schemaVersion: 4,
   name: "Gold",
   character: "male",
   area: "60",
@@ -12,11 +15,27 @@ const valid = {
   playTimeMs: 0,
   savedAt: "2026-10-24T12:00:00.000Z",
   rev: 0,
+  party: [{ species: 25, level: 5, moves: [84, 45], hp: 19, friendship: 70, ...stats }],
+  money: 3000,
+  badges: 0,
+  respawn: null,
+  bag: [{ item: 4, count: 10 }],
+  pokedex: { seen: [16, 25], caught: [25] },
+  storage: [{ species: 16, level: 3, moves: [33], hp: 15, friendship: 70, shiny: true, ...stats, experience: 27 }],
+  pending: [
+    { kind: "level-up", member: 0, level: 6 },
+    { kind: "learn", member: 0, move: 86 },
+    { kind: "evolve", member: 0, into: 26 },
+  ],
 };
 
 describe("saveSchema", () => {
   it("accepts the documented example", () => {
     expect(saveSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("accepts exactly 510 EVs", () => {
+    expect(saveSchema.safeParse({ ...valid, party: [{ ...valid.party[0], evs: all(85) }] }).success).toBe(true);
   });
 
   it.each([
@@ -33,6 +52,24 @@ describe("saveSchema", () => {
     { savedAt: "yesterday" },
     { schemaVersion: 0 },
     { extra: true },
+    { money: -1 },
+    { badges: 17 },
+    { party: Array.from({ length: 7 }, () => valid.party[0]) },
+    { party: [{ species: 0, level: 5, moves: [1], hp: 1, friendship: 0 }] },
+    { party: [{ species: 1, level: 5, moves: [], hp: 1, friendship: 0 }] },
+    { bag: [{ item: 4, count: 0 }] },
+    { bag: [{ item: 4, count: 1000 }] },
+    { bag: [{ item: 4, count: 1 }, { item: 4, count: 2 }] },
+    { pokedex: { seen: [0], caught: [] } },
+    { pokedex: { seen: [16, 16], caught: [] } },
+    { storage: Array.from({ length: 31 }, () => valid.party[0]) },
+    { party: [{ ...valid.party[0], ivs: { ...all(31), hp: 32 } }] },
+    { party: [{ ...valid.party[0], evs: { ...all(0), attack: 256 } }] },
+    { party: [{ ...valid.party[0], evs: { ...all(85), hp: 86 } }] },
+    { party: [{ ...valid.party[0], nature: 25 }] },
+    { party: [{ ...valid.party[0], experience: -1 }] },
+    { pending: [{ kind: "level-up", member: 6, level: 6 }] },
+    { pending: [{ kind: "teach", member: 0, move: 1 }] },
   ])("rejects %o", (patch) => {
     expect(saveSchema.safeParse({ ...valid, ...patch }).success).toBe(false);
   });

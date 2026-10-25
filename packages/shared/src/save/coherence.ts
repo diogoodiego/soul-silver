@@ -13,6 +13,15 @@ export const COHERENCE_RULES: CoherenceRule[] = [
     if (save.y < 0 || save.y > map.heightPx) return `y: ${save.y} fora do mapa (0..${map.heightPx})`;
     return undefined;
   },
+  (save, world) => (save.respawn && !world(save.respawn.area) ? `respawn.area: o mapa "${save.respawn.area}" não existe` : undefined),
+  (save) => {
+    const missing = save.pokedex.caught.find((s) => !save.pokedex.seen.includes(s));
+    return missing === undefined ? undefined : `pokedex.caught: espécie ${missing} capturada sem ter sido vista`;
+  },
+  (save) => {
+    const item = save.pending.find((i) => i.member >= save.party.length);
+    return item ? `pending: membro ${item.member} não existe na equipe` : undefined;
+  },
 ];
 
 export function checkCoherence<S extends Save = Save>(
