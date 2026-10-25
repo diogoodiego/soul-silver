@@ -26,7 +26,7 @@ describe("create and list", () => {
   it("creates a save at the start position", async () => {
     const s = store();
     expect(await s.create(1, " Gold ", "male", false)).toEqual({ ok: true });
-    expect(await read(slotFile(1))).toMatchObject({ schemaVersion: 1, name: "Gold", rev: 0, playTimeMs: 0, area: "60", x: 10, y: 20 });
+    expect(await read(slotFile(1))).toMatchObject({ schemaVersion: 4, name: "Gold", rev: 0, playTimeMs: 0, area: "60", x: 10, y: 20, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, storage: [], pending: [] });
     expect((await s.list())[0]).toMatchObject({ index: 1, status: "ok", name: "Gold", character: "male", backupAvailable: false });
   });
 

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createSessionController } from "../src/main/session-controller";
 import type { HostAnnouncement } from "../src/main/discovery";
 
-const save: Save = { schemaVersion: 1, name: "Gold", character: "male", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0 };
+const save: Save = { schemaVersion: 4, pending: [], name: "Gold", character: "male", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, storage: [] };
 
 function setup(options: { load?: () => Promise<{ ok: true; save: Save } | { ok: false; reason: string }>; listen?: () => Promise<number>; connect?: () => Promise<void>; shutdownWaitMs?: number } = {}) {
   const events: string[] = [];

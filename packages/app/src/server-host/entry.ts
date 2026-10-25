@@ -3,9 +3,12 @@
 import type {} from "electron";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BUNDLED_COMBAT_CONTENT, buildCombatData, createGameServer, loadWorld, type CombatData } from "@soulsilver/server";
+import { BUNDLED_COMBAT_CONTENT, BUNDLED_COMPANION_CONTENT, BUNDLED_WILD_CONTENT, buildCombatData, buildCompanionData, buildProgressionData, buildWildData, createGameServer, loadWorld, type CombatData, type CompanionData, type ProgressionData, type WildData } from "@soulsilver/server";
 import { GAME_DATA_FILES, parseGameDataJson, type GameDataFileOf } from "@soulsilver/shared/game-data";
 import { LAN_PORT_GAME } from "@soulsilver/shared/lan";
+import { parseEventsJson } from "@soulsilver/shared/events";
+import { parseSpriteJson } from "@soulsilver/shared/sprites";
+import { parseTextJson } from "@soulsilver/shared/text";
 import type { ServerToHostMessage } from "@soulsilver/shared";
 import { createWsListener, REMOTE_CONN_BASE } from "./ws-listener";
 
@@ -18,7 +21,7 @@ const stagesDir = process.argv.at(-1);
 /** Set by the main process in unpackaged (development) runs. */
 const devArena = process.argv.includes("--dev-arena");
 
-function readExtracted<K extends "moves" | "species" | "type-chart">(dir: string, kind: K): GameDataFileOf<K>["records"] {
+function readExtracted<K extends "moves" | "species" | "type-chart" | "learnsets" | "evolutions">(dir: string, kind: K): GameDataFileOf<K>["records"] {
   const { stage, file } = GAME_DATA_FILES[kind];
   const path = join(dir, stage, "json", file);
   const parsed = parseGameDataJson(kind, readFileSync(path, "utf8"), path);
@@ -32,6 +35,51 @@ function combatOrNothing(dir: string): CombatData | undefined {
     return buildCombatData(BUNDLED_COMBAT_CONTENT, { moves: readExtracted(dir, "moves"), species: readExtracted(dir, "species"), typeChart: readExtracted(dir, "type-chart") });
   } catch (error) {
     log(`Combate desativado: ${(error as Error).message}`);
+    return undefined;
+  }
+}
+
+function readJson<T>(parse: (text: string, path: string) => { ok: true; data: T } | { ok: false; error: { file: string; path: string; problem: string } }, path: string): T {
+  const parsed = parse(readFileSync(path, "utf8"), path);
+  if (!parsed.ok) throw new Error(`${parsed.error.file}: ${parsed.error.path}: ${parsed.error.problem}`);
+  return parsed.data;
+}
+
+/** Companion rules (spec 014): the bundled data, with Pokémon sizes and reaction texts from the extraction when there is one. */
+function companionOrNothing(dir: string | undefined): CompanionData | undefined {
+  try {
+    if (!dir) return buildCompanionData(BUNDLED_COMPANION_CONTENT);
+    return buildCompanionData(BUNDLED_COMPANION_CONTENT, {
+      overworld: readJson((t, p) => parseSpriteJson("sprite-set", t, p), join(dir, "sprites", "sprites", "overworld-pokemon.json")),
+      textIds: (bank) => readJson((t, p) => parseTextJson("text-bank", t, p), join(dir, "text-catalog", "catalog", "en", `${String(bank).padStart(4, "0")}.json`)).records.map((r) => r.id),
+    });
+  } catch (error) {
+    log(`Companheiro desativado: ${(error as Error).message}`);
+    return undefined;
+  }
+}
+
+
+/** Wild Pokémon (spec 015): the bundled data plus encounter tables, learnsets, catch rates and evolutions from the extraction. */
+function wildOrNothing(dir: string): WildData | undefined {
+  try {
+    return buildWildData(BUNDLED_WILD_CONTENT, {
+      encounters: readJson((t, p) => parseEventsJson("encounters", t, p), join(dir, "events", "events", "encounters.json")).records,
+      learnsets: readExtracted(dir, "learnsets"),
+      species: readExtracted(dir, "species"),
+      evolutions: readExtracted(dir, "evolutions"),
+    });
+  } catch (error) {
+    log(`Selvagens desativados: ${(error as Error).message}`);
+    return undefined;
+  }
+}
+/** Progression (spec 016): base experience, EV yields, curves, learnsets and evolutions from the extraction. */
+function progressionOrNothing(dir: string): ProgressionData | undefined {
+  try {
+    return buildProgressionData({ species: readExtracted(dir, "species"), learnsets: readExtracted(dir, "learnsets"), evolutions: readExtracted(dir, "evolutions") });
+  } catch (error) {
+    log(`Progressão desativada: ${(error as Error).message}`);
     return undefined;
   }
 }
@@ -84,6 +132,9 @@ const server = createGameServer({
   log,
   world: stagesDir ? loadWorld(stagesDir, log) : undefined,
   combat: stagesDir ? combatOrNothing(stagesDir) : undefined,
+  companion: companionOrNothing(stagesDir),
+  wild: stagesDir ? wildOrNothing(stagesDir) : undefined,
+  progression: stagesDir ? progressionOrNothing(stagesDir) : undefined,
   devArena,
 });
 
