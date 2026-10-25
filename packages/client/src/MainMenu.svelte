@@ -1,6 +1,8 @@
 <script lang="ts">
   // The start menu (spec 012): New game, Continue, Host, Join and Play alone.
   import type { SessionResult } from "@soulsilver/shared";
+  import type { ArenaSpec } from "@soulsilver/shared/game";
+  import ArenaSetup from "./ArenaSetup.svelte";
   import type { SlotSummary } from "@soulsilver/shared/save";
   import { onMount } from "svelte";
   import FirewallNotice from "./FirewallNotice.svelte";
@@ -11,7 +13,7 @@
 
   let { onPlay, notice }: { onPlay: (play: PlayRequest) => void; notice?: string | undefined } = $props();
 
-  type Screen = "menu" | "new" | "continue" | "join" | "firewall";
+  type Screen = "menu" | "new" | "continue" | "join" | "firewall" | "arena";
   let screen = $state<Screen>("menu");
   let slots = $state<SlotSummary[]>([]);
   let selected = $state<number | undefined>();
@@ -30,14 +32,14 @@
     void refresh();
   });
 
-  async function begin(start: () => Promise<SessionResult>, address?: string): Promise<void> {
+  async function begin(start: () => Promise<SessionResult>, address?: string, arena?: ArenaSpec): Promise<void> {
     if (selected === undefined) return;
     busy = true;
     error = undefined;
     const slot = selected;
     const result = await start();
     busy = false;
-    if (result.ok) onPlay({ save: result.save, slot, ...(address ? { address } : {}) });
+    if (result.ok) onPlay({ save: result.save, slot, ...(address ? { address } : {}), ...(arena ? { arena } : {}) });
     else error = result.reason;
   }
 
@@ -77,6 +79,9 @@
       <button type="button" disabled={!chosen || busy} onclick={() => void host()}>Hospedar</button>
       <button type="button" disabled={!chosen || busy} onclick={() => ((error = undefined), (screen = "join"))}>Entrar</button>
       <button type="button" disabled={!chosen || busy} onclick={() => void begin(() => api.startSolo(selected!))}>Jogar sozinho</button>
+      {#if import.meta.env.MODE === "development"}
+        <button type="button" disabled={!chosen || busy} onclick={() => ((error = undefined), (screen = "arena"))}>Arena de teste (dev)</button>
+      {/if}
     </div>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
   </section>
@@ -94,6 +99,9 @@
   <SaveSlots {slots} {selected} onSelect={(slot: number) => ((selected = slot), (screen = "menu"))} onChanged={() => void refresh()} onBack={() => (screen = "menu")} />
 {:else if screen === "join"}
   <JoinGame onJoin={(address: string) => void join(address)} onBack={() => (screen = "menu")} {error} />
+{:else if screen === "arena"}
+  <ArenaSetup {busy} onStart={(spec: ArenaSpec) => void begin(() => api.startSolo(selected!), undefined, spec)} onBack={() => (screen = "menu")} />
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
 {:else}
   <FirewallNotice onContinue={() => void firewallAccepted()} onBack={() => (screen = "menu")} />
 {/if}

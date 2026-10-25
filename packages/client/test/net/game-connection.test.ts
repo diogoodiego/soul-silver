@@ -3,6 +3,7 @@ import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import { MOVE_SPEED_PX } from "@soulsilver/shared/game";
 import { describe, expect, it } from "vitest";
 import { createGameConnection } from "../../src/net/game-connection";
+import { combatData, MOVES, SPECIES } from "../../../server/test/combat-fixture";
 
 /** A save standing where the old fixtures spawned players. */
 const saveOf = (name: string) => ({ schemaVersion: 1, name, character: "male", area: "a", x: 24, y: 24, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0 });
@@ -79,5 +80,36 @@ describe("createGameConnection", () => {
     const dropped = setup(0).game;
     dropped.disconnected();
     expect(dropped.closeReason).toBe("disconnected");
+  });
+
+  it("enters the dev arena, sends aim and move buttons, and hands out combat events", () => {
+    const session = createSession({ ...sessionOptions, world: () => undefined, combat: combatData(), devArena: true });
+    const [server, client] = createMemoryConnectionPair();
+    session.connect(server);
+    const arena = { a: { species: SPECIES.cyndaquil.id, level: 10, moves: [MOVES.ember.id] }, b: { species: SPECIES.chikorita.id, level: 10, moves: [MOVES.tackle.id] } };
+    const game = createGameConnection({ save: saveOf("Ana"), send: (m) => client.send(m), world: () => undefined, protocolVersion: PROTOCOL_VERSION, arena });
+    let now = 0;
+    client.onMessage((msg) => game.receive(msg, now));
+    game.start();
+    const tick = () => {
+      now += 50;
+      session.step();
+    };
+    tick();
+    expect(game.view(now).self).toMatchObject({ kind: "pokemon" });
+    game.sendInput({ x: 0, y: 0 }, false, now, 1, { x: 1, y: 0 });
+    for (let i = 0; i < 30; i++) {
+      game.sendInput({ x: 0, y: 0 }, false, now);
+      tick();
+    }
+    expect(game.takeCombatEvents().some((e) => e.kind === "hit" && e.effectiveness === 2)).toBe(true);
+    expect(game.takeCombatEvents()).toEqual([]);
+    // The Pokémon moves as the server says (no tile-walk prediction).
+    for (let i = 0; i < 10; i++) {
+      game.sendInput({ x: 0, y: 1 }, false, now);
+      tick();
+    }
+    const self = session.world.get(game.entityId!)!;
+    expect(game.view(now + 1000).self!.y).toBeCloseTo(self.y);
   });
 });

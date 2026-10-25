@@ -1,11 +1,12 @@
-import { tileAt, WARP_TICKS, type Entity, type WorldMap } from "@soulsilver/shared/game";
+import { tileAt, WARP_TICKS, type Entity, type HitEvent, type WorldMap } from "@soulsilver/shared/game";
 import { ANIMATION_FRAME_MS, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
-import { parseSpriteFile, type SpriteFrame, type SpriteSetFile } from "@soulsilver/shared/sprites";
+import { parseSpriteFile, type SpriteEmitter, type SpriteFrame, type SpriteSetFile } from "@soulsilver/shared/sprites";
 import {
   BufferAttribute,
   BufferGeometry,
   Camera,
   ColorManagement,
+  CircleGeometry,
   DoubleSide,
   LinearSRGBColorSpace,
   Mesh,
@@ -19,13 +20,20 @@ import {
 import { clampCamera, integerScale, OBLIQUE, obliqueProjection, VIEW_H, VIEW_W, type Bounds } from "./camera";
 import { loadBitmap, loadMapMesh, spriteUrl, type ClientWorld, type MapMesh } from "./map-assets";
 import { buildMapObject, groundAt, type MapObject } from "./map-scene";
+import { createParticles, effectsOf } from "./particles";
 
 // Draws the world (spec 011) in 3D: each map's mesh, extracted from the ROM, under the fixed oblique
 // camera, and entities as standing sprites at their ground height, so the depth buffer decides what
 // covers them. The current map, its neighbors and theirs are kept loaded so borders never show a gap.
 
 const PLAYER_SET = "overworld-player.json";
+const POKEMON_SET = "overworld-pokemon.json";
+/** Kinds drawn in the world; projectiles and fields (spec 013) are markers. */
+const DRAWN = new Set(["player", "pokemon", "projectile"]);
+/** A hit target blinks at this period while its flash lasts. */
+const FLASH_MS = 60;
 const EFFECT_SET = "field-effect.json";
+const BATTLE_FX_SET = "battle-fx.json";
 /** Pixels of the sprite bottom hidden in tall grass. */
 const GRASS_COVER_PX = 8;
 const WALK_FRAME_MS = 150;
@@ -91,8 +99,8 @@ function setQuad(geometry: BufferGeometry, { frame, page }: Frame, rows: number)
   geometry.setAttribute("uv", new BufferAttribute(new Float32Array(corners.flatMap(([c, r]) => [(frame.x + c) / image.width, (frame.y + r) / image.height])), 2));
 }
 
-function markerQuad(geometry: BufferGeometry): void {
-  geometry.setAttribute("position", new BufferAttribute(new Float32Array([-6, 16 / OBLIQUE, 0, 6, 16 / OBLIQUE, 0, -6, 0, 0, 6, 0, 0]), 3));
+function markerQuad(geometry: BufferGeometry, half = 6, height = 16): void {
+  geometry.setAttribute("position", new BufferAttribute(new Float32Array([-half, height / OBLIQUE, 0, half, height / OBLIQUE, 0, -half, 0, 0, half, 0, 0]), 3));
 }
 
 export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (message: string) => void) {
@@ -118,8 +126,11 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   camera.matrixAutoUpdate = false;
 
   // Window size -> whole-number scale with bars (FR-012).
+  let screen = { scale: 1, left: 0, top: 0 };
+  let viewTopLeft = { x: 0, y: 0 };
   const fit = () => {
     const { scale, left, top } = integerScale(host.clientWidth, host.clientHeight);
+    screen = { scale, left, top };
     for (const element of [canvas, fade]) {
       element.style.width = `${VIEW_W * scale}px`;
       element.style.height = `${VIEW_H * scale}px`;
@@ -151,11 +162,116 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   void loadSet(PLAYER_SET).then((set) => {
     if (!set) log("Player sprites missing; drawing markers");
   });
+  void loadSet(POKEMON_SET).then((set) => {
+    if (!set) log("Pokémon sprites missing; drawing markers");
+  });
   let rustle: { frame: string; ms: number }[] = [];
   void loadSet(EFFECT_SET).then((set) => {
     rustle = set?.sprites.find((s) => s.name === "field-effect/grass")?.animations[0]?.steps ?? [];
     if (rustle.length === 0) log("Field effect sprites missing; no grass rustle");
   });
+  let battleFx = new Map<string, SpriteEmitter[]>();
+  void loadSet(BATTLE_FX_SET).then((set) => {
+    if (set) battleFx = effectsOf(set);
+    else log("Battle effect sprites missing; moves and statuses draw no particles");
+  });
+  const particles = createParticles(scene, (name) => frames.get(name));
+  /** Entities drawn last frame, so effects can follow them. */
+  let latest = new Map<number, Entity>();
+  const anchorOf = (id: number) => () => {
+    const e = latest.get(id);
+    return e && { x: e.x, y: e.y, ground: groundOf(e) };
+  };
+
+  /** A move's emitters placed `at` (the script's placement); old extractions without one count as the user's. */
+  const emittersAt = (move: number, at: NonNullable<SpriteEmitter["at"]>) => battleFx.get(`move/${move}`)?.filter((d) => (d.at ?? "attacker") === at);
+  /** Last `used` counter seen per Pokémon: a change means it just used a move. */
+  const usedSeen = new Map<number, number>();
+  /** Moves with no particles in the ROM blink their user instead, until this time. */
+  const blinkUntil = new Map<number, number>();
+  /** Where a travelling effect of `user` aimed along (dx, dy) ends: the nearest Pokémon ahead, else a short way off. */
+  const SHORT_TRAVEL_PX = 96;
+  function travelEnd(user: Entity, dx: number, dy: number): () => { x: number; y: number; ground: number } | undefined {
+    let best: Entity | undefined;
+    for (const t of latest.values()) {
+      const [tx, ty] = [t.x - user.x, t.y - user.y];
+      if (t.kind !== "pokemon" || t.id === user.id || tx * dx + ty * dy <= 0) continue;
+      if (!best || Math.hypot(tx, ty) < Math.hypot(best.x - user.x, best.y - user.y)) best = t;
+    }
+    if (best) return anchorOf(best.id);
+    const end = { x: user.x + dx * SHORT_TRAVEL_PX, y: user.y + dy * SHORT_TRAVEL_PX, ground: groundOf(user) };
+    return () => end;
+  }
+
+  /** Melee reach: the hit's arc, flat on the ground in front of the user, fading out. */
+  const REACH_MS = 400;
+  const REACH_OPACITY = 0.5;
+  const reaches: Array<{ mesh: Mesh<CircleGeometry, MeshBasicMaterial>; start: number }> = [];
+  function showReach(e: Entity, now: number): void {
+    const radius = Number(e.data["usedReach"]);
+    const angle = (Number(e.data["usedArc"]) * Math.PI) / 180;
+    if (!(radius > 0 && angle > 0)) return;
+    // Laid flat (local +y becomes world -z), so a world direction (dx, dy) is the local angle atan2(-dy, dx).
+    const facing = Math.atan2(-Number(e.data["usedDy"]), Number(e.data["usedDx"]));
+    const mesh = new Mesh(new CircleGeometry(radius, 24, facing - angle / 2, angle), new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: REACH_OPACITY, depthWrite: false, side: DoubleSide }));
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(e.x, groundOf(e) + 0.5, e.y);
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    reaches.push({ mesh, start: now });
+  }
+  function drawReaches(now: number): void {
+    for (let i = reaches.length - 1; i >= 0; i--) {
+      const r = reaches[i]!;
+      const k = (now - r.start) / REACH_MS;
+      if (k < 1) {
+        r.mesh.material.opacity = REACH_OPACITY * (1 - k);
+        continue;
+      }
+      r.mesh.removeFromParent();
+      r.mesh.geometry.dispose();
+      r.mesh.material.dispose();
+      reaches.splice(i, 1);
+    }
+  }
+
+  function onMoveUsed(e: Entity, now: number): void {
+    showReach(e, now);
+    const move = Number(e.data["usedMove"]);
+    if (!battleFx.has(`move/${move}`)) {
+      blinkUntil.set(e.id, now + 400);
+      return;
+    }
+    particles.play(emittersAt(move, "attacker"), anchorOf(e.id), now);
+    // A projectile entity carries the travelling emitters itself (drawParticles).
+    const flying = [...latest.values()].some((p) => p.kind === "projectile" && p.data["caster"] === e.id && p.data["move"] === move);
+    const len = Math.hypot(Number(e.data["usedDx"]), Number(e.data["usedDy"])) || 1;
+    if (!flying) particles.play(emittersAt(move, "travel"), anchorOf(e.id), now, undefined, false, travelEnd(e, Number(e.data["usedDx"]) / len, Number(e.data["usedDy"]) / len));
+  }
+
+  /** Starts, follows and stops the particles of move uses, projectiles and statuses. */
+  function drawParticles(now: number): void {
+    const wanted = new Set<string>();
+    for (const e of latest.values()) {
+      if (e.kind === "pokemon" && typeof e.data["used"] === "number") {
+        const seen = usedSeen.get(e.id);
+        usedSeen.set(e.id, e.data["used"]);
+        if (seen !== undefined && seen !== e.data["used"]) onMoveUsed(e, now);
+      }
+      const effects: Array<[string, SpriteEmitter[] | undefined]> = [];
+      if (e.kind === "projectile" && typeof e.data["move"] === "number") effects.push([`move/${e.data["move"]}`, emittersAt(e.data["move"], "travel")]);
+      if (e.kind === "pokemon" && typeof e.data["status"] === "string" && e.data["status"] !== "") effects.push([`status/${e.data["status"]}`, battleFx.get(`status/${e.data["status"]}`)]);
+      if (e.kind === "pokemon" && e.data["confused"] === true) effects.push(["status/confusion", battleFx.get("status/confusion")]);
+      for (const [effect, defs] of effects) {
+        const key = `${e.id}/${effect}`;
+        wanted.add(key);
+        particles.play(defs, anchorOf(e.id), now, key, true);
+      }
+    }
+    for (const key of [...particles.keys()]) if (!key.startsWith("once/") && !wanted.has(key)) particles.stop(key);
+    particles.update(now);
+  }
+
   const spriteMaterials = new Map<Texture, MeshBasicMaterial>();
   const spriteMaterial = (page: Texture) => {
     let material = spriteMaterials.get(page);
@@ -290,6 +406,13 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   }
 
   function frameFor(e: Entity, moving: boolean, running: boolean, now: number) {
+    if (e.kind === "projectile") return undefined;
+    if (e.kind === "pokemon") {
+      const step = moving ? Math.floor(now / WALK_FRAME_MS) % 2 : 0;
+      const base = `overworld-pokemon/${String(e.data["species"])}/0`;
+      const dir = FACING[e.facing];
+      return frames.get(`${base}/unisex/walk/${dir}/${step}`) ?? frames.get(`${base}/male/walk/${dir}/${step}`);
+    }
     const gait = running ? "run" : "walk";
     const step = moving ? Math.floor(now / (running ? RUN_FRAME_MS : WALK_FRAME_MS)) % 4 : 0;
     const variant = e.data["character"] === "female" ? 1 : 0;
@@ -319,11 +442,17 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       setQuad(actor.sprite.geometry, frame, inGrass ? Math.max(1, frame.frame.h - GRASS_COVER_PX) : frame.frame.h);
       actor.sprite.material = spriteMaterial(frame.page);
     } else {
-      markerQuad(actor.sprite.geometry);
+      if (e.kind === "projectile") markerQuad(actor.sprite.geometry, e.data["field"] === true ? 12 : 3, e.data["field"] === true ? 2 : 6);
+      else markerQuad(actor.sprite.geometry);
       actor.sprite.material = markerMaterial;
     }
+    const particlesOnly = e.kind === "projectile" && battleFx.has(`move/${String(e.data["move"])}`);
+    const blinking = e.data["flash"] === true || (blinkUntil.get(e.id) ?? 0) > now;
+    actor.sprite.visible = !particlesOnly && (!blinking || Math.floor(now / FLASH_MS) % 2 === 0);
     const y = groundOf(e) + SPRITE_DEPTH_BIAS;
-    actor.sprite.position.set(Math.round(e.x), y, Math.round(e.y) + SPRITE_DEPTH_BIAS * OBLIQUE);
+    // A hit target shakes sideways while its flash lasts.
+    const shake = e.data["flash"] === true ? Math.round(Math.sin(now / 15) * 2) : 0;
+    actor.sprite.position.set(Math.round(e.x) + shake, y, Math.round(e.y) + SPRITE_DEPTH_BIAS * OBLIQUE);
   }
 
   return {
@@ -343,9 +472,11 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         void enterArea(self.area);
       }
       const seen = new Set<number>();
+      latest = new Map();
       for (const e of [self, ...view.others]) {
-        if (e.kind !== "player" || e.area !== self.area) continue;
+        if (!DRAWN.has(e.kind) || e.area !== self.area) continue;
         seen.add(e.id);
+        latest.set(e.id, e);
         drawEntity(e, e.id === self.id && running, now);
       }
       for (const [id, actor] of actors) {
@@ -355,10 +486,13 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         actors.delete(id);
       }
       drawEffects(now);
+      drawParticles(now);
+      drawReaches(now);
       const mapFrame = Math.floor(now / ANIMATION_FRAME_MS);
       for (const visual of visuals.values()) if (visual !== "loading") visual.object.animate(mapFrame);
       // The view follows the player's feet as drawn: raised ground draws higher.
       const view2d = clampCamera(self.x, self.y - OBLIQUE * groundOf(self), bounds);
+      viewTopLeft = view2d;
       camera.projectionMatrix.set(...(obliqueProjection(view2d.x, view2d.y) as Parameters<typeof camera.projectionMatrix.set>));
       camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
       renderer.render(scene, camera);
@@ -366,11 +500,25 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       const warping = typeof self.data["warping"] === "number" ? self.data["warping"] : 0;
       fade.style.opacity = String(warping > 0 ? 1 - Math.abs(warping - WARP_TICKS / 2) / (WARP_TICKS / 2) : 0);
     },
+    /** Plays the move's ROM particles on each hit target. */
+    combatEvents(events: readonly HitEvent[], now: number): void {
+      // Damage, statuses and stat changes on a foe: the emitters the script places on the target.
+      for (const e of events) if (e.move > 0 && e.target !== e.attacker && e.kind !== "failed") particles.play(emittersAt(e.move, "target"), anchorOf(e.target), now);
+    },
+    /** Where a ground point of the current map is on the page, in CSS pixels relative to the host. */
+    project(x: number, y: number): { x: number; y: number } {
+      return { x: screen.left + (x - viewTopLeft.x) * screen.scale, y: screen.top + (y - viewTopLeft.y) * screen.scale };
+    },
     destroy(): void {
       observer.disconnect();
       for (const id of [...visuals.keys()]) drop(id);
       for (const actor of actors.values()) actor.sprite.geometry.dispose();
       for (const effect of effects) effect.sprite.geometry.dispose();
+      particles.dispose();
+      for (const r of reaches) {
+        r.mesh.geometry.dispose();
+        r.mesh.material.dispose();
+      }
       for (const m of spriteMaterials.values()) m.dispose();
       for (const p of pages) p?.dispose();
       markerMaterial.dispose();

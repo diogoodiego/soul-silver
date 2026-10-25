@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keyboardVector, stickVector, STICK_DEADZONE } from "../../src/input/input";
+import { keyboardVector, moveButtons, stickVector, STICK_DEADZONE } from "../../src/input/input";
 
 describe("keyboardVector", () => {
   it("is zero with nothing held", () => {
@@ -36,5 +36,26 @@ describe("stickVector", () => {
   it("never exceeds length 1", () => {
     const v = stickVector(1, 1);
     expect(Math.hypot(v.x, v.y)).toBeCloseTo(1, 10);
+  });
+});
+
+describe("moveButtons", () => {
+  it("maps keys 1–4 to move bits 0–3", () => {
+    expect(moveButtons(new Set(["Digit1"]), () => false)).toBe(0b0001);
+    expect(moveButtons(new Set(["Digit2", "Digit4"]), () => false)).toBe(0b1010);
+    expect(moveButtons(new Set(["KeyW"]), () => false)).toBe(0);
+  });
+
+  it("maps pad A, X, Y and RB to moves 1–4", () => {
+    const pad = (down: number[]) => (i: number) => down.includes(i);
+    expect(moveButtons(new Set(), pad([0]))).toBe(0b0001);
+    expect(moveButtons(new Set(), pad([2, 3]))).toBe(0b0110);
+    expect(moveButtons(new Set(), pad([5]))).toBe(0b1000);
+    expect(moveButtons(new Set(), pad([1]))).toBe(0); // B runs
+  });
+
+  it("maps Space and pad LB to dash, bit 4", () => {
+    expect(moveButtons(new Set(["Space"]), () => false)).toBe(0b10000);
+    expect(moveButtons(new Set(), (i) => i === 4)).toBe(0b10000);
   });
 });

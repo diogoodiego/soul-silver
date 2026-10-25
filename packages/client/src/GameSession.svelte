@@ -1,12 +1,14 @@
 <script lang="ts">
   // The game screen: renderer, input, pause menu and the debug overlay (specs 010, 011 and 012).
   import { PROTOCOL_VERSION } from "@soulsilver/shared";
-  import type { TickMetrics } from "@soulsilver/shared/game";
+  import type { Entity, TickMetrics } from "@soulsilver/shared/game";
+  import ArenaHud from "./ArenaHud.svelte";
   import { onMount } from "svelte";
   import { createInput } from "./input/input";
   import type { PlayRequest } from "./play-request";
   import { createGameConnection, type GameStatus } from "./net/game-connection";
   import { TICK_MS } from "./net/prediction";
+  import { createCombatFx } from "./render/combat-fx";
   import { createGameRenderer } from "./render/game-renderer";
   import { createClientWorld } from "./render/map-assets";
 
@@ -35,6 +37,7 @@
   let fps = $state(0);
   let position = $state("—");
   let showDebug = $state(false);
+  let combatants = $state<Entity[]>([]);
   let host: HTMLDivElement;
 
   onMount(() => {
@@ -47,10 +50,28 @@
       send: (msg) => api.sendGame(msg),
       world: world.lookup,
       log,
+      arena: play.arena ? $state.snapshot(play.arena) : undefined,
     });
     const input = createInput(window);
     let running = false;
     const renderer = createGameRenderer(host, world, log);
+    const fx = createCombatFx(host, (x, y) => renderer.project(x, y), log);
+    let shown: Entity[] = [];
+
+    /** Unit aim from the right stick, or from the own entity towards the mouse pointer. */
+    function aim(): { x: number; y: number } | undefined {
+      const stick = input.stickAim();
+      if (stick) return stick;
+      const pointer = input.pointer();
+      const self = shown.find((e) => e.id === game.entityId);
+      if (!pointer || !self) return undefined;
+      const rect = host.getBoundingClientRect();
+      const at = renderer.project(self.x, self.y);
+      const dx = pointer.x - rect.left - at.x;
+      const dy = pointer.y - rect.top - at.y;
+      const len = Math.hypot(dx, dy);
+      return len < 1 ? undefined : { x: dx / len, y: dy / len };
+    }
 
     const unsubscribeMessage = api.onGameMessage((msg) => game.receive(msg, performance.now()));
     const unsubscribeClosed = api.onGameClosed(() => {
@@ -84,7 +105,7 @@
     const inputTimer = setInterval(() => {
       const { move, run } = input.read();
       running = run;
-      game.sendInput(move, run, performance.now());
+      game.sendInput(move, run, performance.now(), input.buttons(), aim());
     }, TICK_MS);
 
     let frames = 0;
@@ -92,6 +113,12 @@
     let frame = requestAnimationFrame(function draw(now) {
       const view = game.view(now);
       renderer.draw(view, running, now);
+      shown = view.self ? [view.self, ...view.others] : view.others;
+      const events = game.takeCombatEvents();
+      renderer.combatEvents(events, now);
+      fx.show(events, (id) => shown.find((e) => e.id === id), now);
+      fx.update(now);
+      if (play.arena) combatants = shown.filter((e) => e.kind === "pokemon");
       const self = view.self;
       position = self ? `mapa ${self.area} · ${Math.round(self.x)}, ${Math.round(self.y)} · nível ${self.level}` : "—";
       status = game.status;
@@ -113,6 +140,7 @@
       clearInterval(inputTimer);
       window.removeEventListener("keydown", onKeyDown);
       input.dispose();
+      fx.destroy();
       renderer.destroy();
       unsubscribeMessage();
       unsubscribeClosed();
@@ -162,6 +190,7 @@
   {/if}
 
   {#if saveNote}<p class="note" role="status">{saveNote}</p>{/if}
+  {#if play.arena && status === "playing"}<ArenaHud {combatants} />{/if}
 
   {#if showDebug}
     <dl class="debug" aria-label="Depuração">

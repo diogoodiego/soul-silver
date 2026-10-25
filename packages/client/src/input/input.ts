@@ -1,7 +1,8 @@
 import type { MoveInput } from "@soulsilver/shared/game";
 
 // Keyboard (8 directions) and gamepad (analog) to a movement vector (spec 011, research R12).
-// The device used most recently wins.
+// The device used most recently wins. Moves 1–4 (spec 013): keys 1–4, or pad A, X, Y and RB;
+// aim with the mouse pointer or the right stick.
 
 export const STICK_DEADZONE = 0.2;
 
@@ -19,6 +20,20 @@ const RUN_KEYS = new Set(["ShiftLeft", "ShiftRight"]);
 /** Standard mapping: 1 is the right face button (B on Xbox, Circle on PlayStation). */
 const RUN_BUTTON = 1;
 const DPAD = { up: 12, down: 13, left: 14, right: 15 };
+const MOVE_KEYS = ["Digit1", "Digit2", "Digit3", "Digit4"];
+const MOVE_BUTTONS = [0, 2, 3, 5];
+/** Dash: Space, or pad LB. */
+const DASH_KEY = "Space";
+const DASH_BUTTON = 4;
+export const DASH_BIT = 1 << 4;
+
+/** Move slots held as bits 0–3, dash as bit 4. */
+export function moveButtons(held: ReadonlySet<string>, padPressed: (button: number) => boolean): number {
+  let bits = 0;
+  for (let slot = 0; slot < 4; slot++) if (held.has(MOVE_KEYS[slot]!) || padPressed(MOVE_BUTTONS[slot]!)) bits |= 1 << slot;
+  if (held.has(DASH_KEY) || padPressed(DASH_BUTTON)) bits |= DASH_BIT;
+  return bits;
+}
 
 /** Held key codes to a vector of length 0 or 1. */
 export function keyboardVector(held: ReadonlySet<string>): MoveInput["move"] {
@@ -50,7 +65,7 @@ export function createInput(target: Window) {
   let lastDevice: "keyboard" | "gamepad" = "keyboard";
 
   const onKeyDown = (event: KeyboardEvent) => {
-    if (KEY_VECTORS[event.code] || RUN_KEYS.has(event.code)) {
+    if (KEY_VECTORS[event.code] || RUN_KEYS.has(event.code) || MOVE_KEYS.includes(event.code) || event.code === DASH_KEY) {
       held.add(event.code);
       lastDevice = "keyboard";
       event.preventDefault();
@@ -64,6 +79,18 @@ export function createInput(target: Window) {
   target.addEventListener("keydown", onKeyDown);
   target.addEventListener("keyup", onKeyUp);
   target.addEventListener("blur", onBlur);
+  /** Last pointer position in client pixels; aiming with it is up to the game screen. */
+  let pointer: { x: number; y: number } | undefined;
+  const onPointer = (event: PointerEvent) => {
+    pointer = { x: event.clientX, y: event.clientY };
+    lastDevice = "keyboard";
+  };
+  target.addEventListener("pointermove", onPointer);
+
+  function pad() {
+    for (const p of target.navigator.getGamepads()) if (p?.connected) return p;
+    return undefined;
+  }
 
   function gamepad(): MoveInput | undefined {
     // Reconnected pads show up here again with no setup.
@@ -94,10 +121,26 @@ export function createInput(target: Window) {
       if (pad && !keysActive) lastDevice = "gamepad";
       return pad && lastDevice === "gamepad" ? pad : keys;
     },
+    /** Moves held, as bits 0–3. */
+    buttons(): number {
+      const p = pad();
+      return moveButtons(held, (i) => p?.buttons[i]?.pressed ?? false);
+    },
+    /** Right-stick aim when it is pushed, else undefined. */
+    stickAim(): MoveInput["move"] | undefined {
+      const p = pad();
+      const v = stickVector(p?.axes[2] ?? 0, p?.axes[3] ?? 0);
+      if (v.x === 0 && v.y === 0) return undefined;
+      lastDevice = "gamepad";
+      return v;
+    },
+    /** The mouse pointer while the keyboard and mouse are in use. */
+    pointer: () => (lastDevice === "keyboard" ? pointer : undefined),
     dispose(): void {
       target.removeEventListener("keydown", onKeyDown);
       target.removeEventListener("keyup", onKeyUp);
       target.removeEventListener("blur", onBlur);
+      target.removeEventListener("pointermove", onPointer);
     },
   };
 }

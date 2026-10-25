@@ -1,4 +1,4 @@
-import { applyDelta, serverMessage, type CloseReason, type Entity, type MoveInput, type TickMetrics, type WorldLookup } from "@soulsilver/shared/game";
+import { applyDelta, serverMessage, type ArenaSpec, type CloseReason, type Entity, type HitEvent, type MoveInput, type TickMetrics, type WorldLookup } from "@soulsilver/shared/game";
 import { createInterpolator } from "./interpolation";
 import { createPredictor } from "./prediction";
 
@@ -12,6 +12,8 @@ export interface GameConnectionOptions {
   /** The same maps the server simulates; unknown maps are open ground. */
   world: WorldLookup;
   log?(message: string): void;
+  /** Asks for the dev arena (spec 013); only development servers accept it. */
+  arena?: ArenaSpec | undefined;
 }
 
 export type GameStatus = "connecting" | "playing" | "rejected" | "closed";
@@ -27,6 +29,9 @@ export function createGameConnection(options: GameConnectionOptions) {
   let metrics: TickMetrics | undefined;
   let tick = 0;
   let seq = 0;
+  let combatEvents: HitEvent[] = [];
+  /** Only the trainer walks the tile-based step; a Pokémon in combat is shown as the server has it. */
+  const predicting = () => entityId === undefined || entities.get(entityId)?.kind === "player";
 
   function receive(raw: unknown, now: number): void {
     const parsed = serverMessage.safeParse(raw);
@@ -53,6 +58,9 @@ export function createGameConnection(options: GameConnectionOptions) {
       case "debug":
         metrics = msg.metrics;
         return;
+      case "combat-event":
+        combatEvents.push(...msg.events);
+        return;
       case "state": {
         if (msg.full) entities.clear();
         for (const e of msg.spawned) entities.set(e.id, e);
@@ -64,10 +72,10 @@ export function createGameConnection(options: GameConnectionOptions) {
         tick = msg.tick;
         const self = entityId === undefined ? undefined : entities.get(entityId);
         if (self) {
-          predictor.reconcile(self, msg.lastInput, now);
+          if (predicting()) predictor.reconcile(self, msg.lastInput, now);
           status = "playing";
         }
-        interpolator.push(msg.tick, now, [...entities.values()].filter((e) => e.id !== entityId));
+        interpolator.push(msg.tick, now, [...entities.values()].filter((e) => e.id !== entityId || !predicting()));
         return;
       }
     }
@@ -75,18 +83,26 @@ export function createGameConnection(options: GameConnectionOptions) {
 
   return {
     start(): void {
-      options.send({ type: "hello", protocolVersion: options.protocolVersion, save: options.save });
+      options.send({ type: "hello", protocolVersion: options.protocolVersion, save: options.save, ...(options.arena ? { arena: options.arena } : {}) });
     },
     receive,
     /** One per local tick while playing; a zero vector means standing still. */
-    sendInput(move: MoveInput["move"], run: boolean, now: number, buttons = 0): void {
+    sendInput(move: MoveInput["move"], run: boolean, now: number, buttons = 0, aim?: MoveInput["move"]): void {
       if (status !== "playing") return;
-      const input = { seq: seq++, move, run, buttons };
-      predictor.apply(input, now);
+      const input = { seq: seq++, move, run, buttons, ...(aim ? { aim } : {}) };
+      if (predicting()) predictor.apply(input, now);
       options.send({ type: "input", ...input });
     },
     view(now: number): { self: Entity | undefined; others: Entity[] } {
-      return { self: predictor.view(now), others: interpolator.sample(now) };
+      const sampled = interpolator.sample(now);
+      if (predicting()) return { self: predictor.view(now), others: sampled };
+      return { self: sampled.find((e) => e.id === entityId), others: sampled.filter((e) => e.id !== entityId) };
+    },
+    /** Combat events received since the last call. */
+    takeCombatEvents(): HitEvent[] {
+      const out = combatEvents;
+      combatEvents = [];
+      return out;
     },
     /** The server closed the connection without a session-closed (e.g. it was dropped). */
     disconnected(): void {
