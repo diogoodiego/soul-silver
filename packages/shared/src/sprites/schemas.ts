@@ -22,6 +22,31 @@ const step = z.strictObject({ frame: z.string().min(1), ms: int(1, 0xffffff), fl
 
 const animation = z.strictObject({ name: z.string().min(1), loop: z.boolean(), steps: z.array(step).min(1) });
 
+const color = z.string().regex(/^[0-9a-f]{6}$/);
+const real = () => z.number().finite();
+
+/** A particle emitter of a battle effect (SPA resource), approximated by the client; times in 30 fps frames. */
+const emitter = z.strictObject({
+  frame: z.string().min(1),
+  color,
+  colorEnd: color.optional(),
+  alpha: z.number().min(0).max(1),
+  scale: real(),
+  scaleFrom: real(),
+  scaleTo: real(),
+  count: real(),
+  interval: int(0, 255),
+  delay: int(0, 0xffff),
+  emitterLife: int(0, 0xffff),
+  particleLife: int(0, 0xffff),
+  radius: real(),
+  speed: real(),
+  gravityY: real(),
+  /** Moves only: where the original script places it; absent for statuses (on the Pokémon). */
+  at: z.enum(["attacker", "target", "travel"]).optional(),
+});
+export type SpriteEmitter = z.infer<typeof emitter>;
+
 const sprite = z.strictObject({
   name: z.string().min(1),
   species: id().optional(),
@@ -30,6 +55,10 @@ const sprite = z.strictObject({
   item: id().optional(),
   trainer: id().optional(),
   character: z.string().min(1).optional(),
+  /** Battle effects: the move, or the status, the particles belong to. */
+  move: id().optional(),
+  status: z.string().min(1).optional(),
+  emitters: z.array(emitter).optional(),
   /** Frame names of a still sprite; animated sprites list them through `animations`. */
   frames: z.array(z.string().min(1)),
   animations: z.array(animation),
@@ -67,6 +96,9 @@ export const spriteSetFile = z
     set.sprites.forEach((s, i) => {
       if (spriteNames.has(s.name)) ctx.addIssue({ code: "custom", path: ["sprites", i, "name"], message: `nome de sprite repetido: ${s.name}` });
       spriteNames.add(s.name);
+      s.emitters?.forEach((e, j) => {
+        if (!names.has(e.frame)) ctx.addIssue({ code: "custom", path: ["sprites", i, "emitters", j, "frame"], message: `quadro inexistente: ${e.frame}` });
+      });
       s.frames.forEach((name, j) => {
         if (!names.has(name)) ctx.addIssue({ code: "custom", path: ["sprites", i, "frames", j], message: `quadro inexistente: ${name}` });
       });

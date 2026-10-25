@@ -259,6 +259,11 @@ describe("stepMovement: warps", () => {
     expect(e.data["warping"]).toBeGreaterThan(0);
   });
 
+  it("does not enter a door brushed by the footprint's corner", () => {
+    const e = repeat(at(36, 40, { area: "street" }), go(0, -1), 3, houses);
+    expect(e.data["warping"]).toBeUndefined();
+  });
+
   it("arrives below a solid door, facing away from it", () => {
     let e = repeat(at(24, 40, { area: "street" }), go(0, -1), 3, houses);
     e = repeat(e, null, WARP_TICKS, houses);

@@ -16,5 +16,6 @@ export const SPRITE_CATEGORIES = [
   "icon-item",
   "trainer",
   "field-effect",
+  "battle-fx",
 ] as const;
 export type SpriteCategory = (typeof SPRITE_CATEGORIES)[number];

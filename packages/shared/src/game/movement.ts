@@ -134,7 +134,9 @@ function afterMove(world: WorldLookup, e: Entity, px: number, py: number, hits: 
   const warpTicks = withCounter(next.data, "warping", WARP_TICKS);
   if ((!sameTile || hits.length > 0) && destinationOf(world, next.area, tileOf(next.x), tileOf(next.y))) return { ...next, data: warpTicks };
   if (next.area !== e.area) return next;
-  const door = hits.find((b) => destinationOf(world, next.area, b.tx, b.ty));
+  // Only the tile straight ahead of the feet: a footprint corner brushing a door does not enter it.
+  const [sx, sy] = STEP[next.facing];
+  const door = hits.find((b) => b.tx === tileOf(next.x) + sx && b.ty === tileOf(next.y) + sy && destinationOf(world, next.area, b.tx, b.ty));
   if (door) return { ...next, x: center(door.tx), y: center(door.ty), data: warpTicks };
   return next;
 }

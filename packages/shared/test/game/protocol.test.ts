@@ -13,6 +13,8 @@ describe("clientMessage", () => {
     { type: "input", seq: 0, move: { x: 1, y: 0 }, run: false, buttons: 0 },
     { type: "input", seq: 5, move: { x: -0.71, y: 0.71 }, run: true, buttons: 3 },
     { type: "input", seq: 6, move: { x: 1, y: 1 }, run: false, buttons: 0 },
+    { type: "input", seq: 7, move: still, run: false, buttons: 1, aim: { x: 0.6, y: -0.8 } },
+    { type: "hello", protocolVersion: 5, save, arena: { a: { species: 155, level: 10, moves: [52] }, b: { species: 152, level: 10, moves: [33, 45] } } },
     { type: "leave" },
   ])("accepts %o", (msg) => {
     expect(clientMessage.safeParse(msg).success).toBe(true);
@@ -36,6 +38,10 @@ describe("clientMessage", () => {
     { type: "input", seq: 1, move: { x: Infinity, y: 0 }, run: false, buttons: 0 },
     { type: "input", seq: 1, move: still, buttons: 0 },
     { type: "input", seq: 1, move: still, run: false, buttons: 0, extra: true },
+    { type: "input", seq: 1, move: still, run: false, buttons: 1, aim: { x: 2, y: 0 } },
+    { type: "hello", protocolVersion: 5, save, arena: { a: { species: 155, level: 101, moves: [52] }, b: { species: 152, level: 10, moves: [33] } } },
+    { type: "hello", protocolVersion: 5, save, arena: { a: { species: 155, level: 10, moves: [] }, b: { species: 152, level: 10, moves: [33] } } },
+    { type: "hello", protocolVersion: 5, save, arena: { a: { species: 155, level: 10, moves: [1, 2, 3, 4, 5] }, b: { species: 152, level: 10, moves: [33] } } },
   ])("rejects %o", (msg) => {
     expect(clientMessage.safeParse(msg).success).toBe(false);
   });
@@ -52,6 +58,8 @@ describe("serverMessage", () => {
     { type: "state", tick: 3, lastInput: -1, full: true, spawned: [entity], changed: [{ id: 1, x: 3, level: 1 }], removed: [2] },
     { type: "debug", metrics: { lastMs: 1, avgMs: 1, maxMs: 2, overruns: 0 } },
     { type: "session-closed", reason: "host-left" },
+    { type: "combat-event", tick: 4, events: [{ kind: "hit", attacker: 1, target: 2, move: 52, amount: 12, effectiveness: 2, crit: false, push: { x: 3, y: 0 } }, { kind: "tick", attacker: 2, target: 2, move: 0, amount: 1, effectiveness: 1, crit: false, push: { x: 0, y: 0 }, status: "burn" }] },
+    { type: "reject", code: "invalid-message", message: "x", serverProtocolVersion: 5 },
   ])("accepts %o", (msg) => {
     expect(serverMessage.safeParse(msg).success).toBe(true);
   });
@@ -66,6 +74,8 @@ describe("serverMessage", () => {
     { type: "state", tick: 3, lastInput: 0, full: true, spawned: [{ ...entity, level: -1 }], changed: [], removed: [] },
     { type: "state", tick: 3, lastInput: 0, full: true, spawned: [{ ...entity, level: 0.5 }], changed: [], removed: [] },
     { type: "session-closed", reason: "bored" },
+    { type: "combat-event", tick: 4, events: [{ kind: "boom", attacker: 1, target: 2, move: 52, amount: 12, effectiveness: 2, crit: false, push: { x: 3, y: 0 } }] },
+    { type: "combat-event", tick: 4, events: [{ kind: "hit", attacker: 1, target: 2, move: 52, amount: -1, effectiveness: 2, crit: false, push: { x: 3, y: 0 } }] },
   ])("rejects %o", (msg) => {
     expect(serverMessage.safeParse(msg).success).toBe(false);
   });
