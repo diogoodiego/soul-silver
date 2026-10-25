@@ -1,0 +1,15 @@
+{
+  "kind": "companion-battle-rules",
+  "formatVersion": 1,
+  "value": {
+    "combatRadiusTiles": 6,
+    "stepForwardTiles": 1,
+    "swapAnimSeconds": 0.5,
+    "swapCooldownSeconds": 3,
+    "chaseLimitTiles": 10,
+    "disengageTiles": 8,
+    "disengageSeconds": 5,
+    "moneyLossBase": [8, 16, 24, 36, 48, 64, 80, 100, 120],
+    "pokemonCenters": [69, 81, 158, 166, 185, 226, 236, 246, 293, 358, 393, 407, 428, 434, 475, 482, 501, 508]
+  }
+}

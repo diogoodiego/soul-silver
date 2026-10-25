@@ -1,0 +1,11 @@
+{
+  "kind": "companion-follow",
+  "formatVersion": 1,
+  "value": {
+    "distanceTiles": 1,
+    "respawnTiles": 3,
+    "largeFramePx": 32,
+    "largeSpecies": [95],
+    "restrictedMaps": []
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "kind": "wild-spawn",
+  "formatVersion": 1,
+  "value": {
+    "defaultCap": 6,
+    "capByMap": {},
+    "spawnIntervalSeconds": 4,
+    "viewHalfTiles": { "x": 8, "y": 6 },
+    "viewMarginTiles": 2,
+    "maxTries": 16,
+    "despawnRadiusTiles": 24,
+    "despawnSeconds": 30,
+    "leashTiles": 10,
+    "shinyOdds": 8192,
+    "timeBands": { "morning": 4, "day": 10, "night": 20 },
+    "turnSeconds": 5,
+    "angryOnEscapeChance": 0.5,
+    "storageMax": 30,
+    "throwRangeTiles": 6,
+    "ballSpeedTilesPerSecond": 12,
+    "shakeSeconds": 0.8
+  }
+}

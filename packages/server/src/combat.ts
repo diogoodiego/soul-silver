@@ -20,6 +20,7 @@ import {
   type StageKey,
   type StatusId,
   type StatusState,
+  type StatOptions,
   type Stats,
   type Weather,
 } from "@soulsilver/shared/combat";
@@ -38,6 +39,8 @@ export interface CombatantSpec {
   species: number;
   level: number;
   moves: number[];
+  /** IVs, EVs and nature of a party member (spec 016); the dev arena defaults otherwise. */
+  stats?: StatOptions | undefined;
 }
 
 export interface CombatInput {
@@ -418,6 +421,8 @@ export function createCombat(options: CombatOptions) {
       // Melee arcs: the client draws the reach the hit used.
       ...(c.used.arc ? { usedReach: c.used.arc.radiusPx, usedArc: c.used.arc.angleDeg } : {}),
       flash: tick < c.flashUntil,
+      // Shiny wild Pokémon (spec 015) keep their palette.
+      ...(e.data["shiny"] === true ? { shiny: true } : {}),
     };
     c.moves.forEach((m, i) => {
       data[`move${i + 1}`] = m.id;
@@ -443,7 +448,7 @@ export function createCombat(options: CombatOptions) {
         if (!m) throw new Error(`Golpe ${id} não existe na extração`);
         return m;
       });
-      const stats = computeStats(species.baseStats, spec.level);
+      const stats = computeStats(species.baseStats, spec.level, spec.stats);
       const c: Combatant = {
         entityId,
         owner,

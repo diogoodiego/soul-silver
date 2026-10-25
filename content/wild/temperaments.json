@@ -1,0 +1,22 @@
+{
+  "kind": "wild-temperaments",
+  "formatVersion": 1,
+  "value": {
+    "default": "passive",
+    "radii": { "sightTiles": 5, "detectTiles": 6, "territoryTiles": 3 },
+    "species": {
+      "16": "skittish",
+      "19": "aggressive",
+      "21": "aggressive",
+      "41": "aggressive",
+      "63": "skittish",
+      "74": "territorial",
+      "95": "territorial",
+      "161": "skittish",
+      "163": "passive",
+      "187": "skittish",
+      "194": "passive",
+      "206": "skittish"
+    }
+  }
+}

@@ -3,7 +3,7 @@ import type { Direction } from "@soulsilver/shared/maps";
 import type { CollisionMap, ServerMessage, StateMessage, WorldLookup } from "@soulsilver/shared/game";
 import { createMemoryConnectionPair } from "../src/connection";
 import { createSession, type SessionOptions } from "../src/session";
-import type { Save } from "@soulsilver/shared/save";
+import { newCollection, newProgress, type Save } from "@soulsilver/shared/save";
 
 const VECTORS: Record<Direction, { x: number; y: number }> = { north: { x: 0, y: -1 }, south: { x: 0, y: 1 }, east: { x: 1, y: 0 }, west: { x: -1, y: 0 } };
 
@@ -38,7 +38,7 @@ export function setup(options: Partial<SessionOptions> & { spawn?: (playerId: nu
     });
     session.connect(server);
     const at = spawn(session.occupied + 1);
-    const save: Save = { schemaVersion: 1, name, character: "male", ...at, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, ...extra.save };
+    const save: Save = { schemaVersion: 4, pending: [], name, character: "male", ...at, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), ...extra.save };
     client.send({ type: "hello", protocolVersion, save, ...(extra.resumeToken ? { resumeToken: extra.resumeToken } : {}) });
     const welcome = got.find((m) => m.type === "welcome");
     return {

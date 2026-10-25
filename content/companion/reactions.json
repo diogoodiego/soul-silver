@@ -1,0 +1,28 @@
+{
+  "kind": "companion-reactions",
+  "formatVersion": 1,
+  "value": {
+    "bank": 265,
+    "towns": [126, 127, 128, 129, 130, 131, 132, 133, 134, 136, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148],
+    "rules": [
+      { "when": { "place": "town" }, "emotion": "note", "text": 148 },
+      { "when": { "place": "town" }, "emotion": "question", "text": 153 },
+      { "when": { "place": "route" }, "emotion": "note", "text": 157 },
+      { "when": { "place": "route" }, "emotion": "note", "text": 159 },
+      { "when": { "place": "cave" }, "emotion": "sweat", "text": 17 },
+      { "when": { "place": "indoor" }, "emotion": "question", "text": 228 },
+      { "when": { "place": "indoor" }, "emotion": "question", "text": 368 },
+      { "when": { "place": "town", "time": "morning" }, "emotion": "note", "text": 81 },
+      { "when": { "place": "route", "time": "morning" }, "emotion": "note", "text": 446 },
+      { "when": { "place": "town", "time": "night" }, "emotion": "note", "text": 348 },
+      { "when": { "place": "route", "time": "night" }, "emotion": "note", "text": 607 },
+      { "when": { "place": "cave", "time": "night" }, "emotion": "sleep", "text": 404 },
+      { "when": { "place": "indoor", "time": "night" }, "emotion": "sleep", "text": 126 },
+      { "when": { "friendshipMin": 200 }, "emotion": "heart", "text": 53 },
+      { "when": { "friendshipMin": 200, "place": "route" }, "emotion": "heart", "text": 55 },
+      { "when": { "friendshipMax": 69 }, "emotion": "sweat", "text": 624 },
+      { "when": { "friendshipMax": 69, "place": "town" }, "emotion": "question", "text": 586 }
+    ],
+    "fallback": { "emotion": "note", "text": 150 }
+  }
+}

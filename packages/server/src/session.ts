@@ -14,12 +14,19 @@ import {
   type WorldLookup,
 } from "@soulsilver/shared/game";
 import type { Direction } from "@soulsilver/shared/maps";
-import { migrate, type Save } from "@soulsilver/shared/save";
+import { migrate, newCollection, newProgress, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { spawnArena } from "./arena";
-import { createCombat } from "./combat";
+import { createCombat, type Combat } from "./combat";
 import type { CombatData } from "./combat-loader";
+import { createCaptures, type Catcher } from "./capture";
+import { createCompanions, type Trainer } from "./companion";
+import type { CompanionData } from "./companion-loader";
 import type { Connection } from "./connection";
+import { createProgression, type Learner, type Progression, type ProgressionData } from "./progression";
 import { createReplica, replicate, type Replica } from "./replication";
+import { startPosition } from "./start";
+import { createWilds } from "./wild";
+import type { WildData } from "./wild-loader";
 import { createWorld, type World } from "./world";
 
 // One match of 1 to 4 players (spec 010, 012). Pure: time only advances through step().
@@ -63,6 +70,18 @@ export interface SessionOptions {
   combat?: CombatData | undefined;
   /** Accept hellos that ask for the dev arena (development builds only). */
   devArena?: boolean | undefined;
+  /** Companion rules (spec 014); without them nobody follows and the combat button does nothing. */
+  companion?: CompanionData | undefined;
+  /** Hour of the host clock (0–23) for companion reactions; noon when omitted. */
+  hour?: (() => number) | undefined;
+  /** Development builds: the party a save with none starts with, so the companion can be tried before the starter event exists. */
+  devParty?: PartyMember[] | undefined;
+  /** Wild Pokémon and capture (spec 015); they need combat too. */
+  wild?: WildData | undefined;
+  /** Development builds: the bag a save with none starts with, so capture can be tried. */
+  devBag?: Save["bag"] | undefined;
+  /** Experience, levels, moves and evolution (spec 016); without it nobody grows. */
+  progression?: ProgressionData | undefined;
 }
 
 interface Player {
@@ -87,6 +106,8 @@ interface Player {
   gone: boolean;
   /** In the dev arena: the wild target's entity. Arena players never get saves. */
   arenaTarget: number | undefined;
+  /** Party, money, badges and respawn point, changed in place by the companion rules; bag, Pokédex and storage by capture. */
+  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"];
 }
 
 interface Reserved {
@@ -103,6 +124,7 @@ export interface Session {
   readonly occupied: number;
   readonly world: World;
   readonly rng: Rng;
+  readonly combat: Combat | undefined;
   connect(conn: Connection): void;
   /** Advances one tick: timeouts, inputs, simulation, then state to every client. */
   step(): void;
@@ -124,6 +146,42 @@ export function createSession(options: SessionOptions): Session {
   const timeoutTicks = options.timeoutTicks ?? DEFAULT_TIMEOUT_TICKS;
   const { clock } = options;
   const combat = options.combat ? createCombat({ data: options.combat, rng, lookup: options.world }) : undefined;
+  const companions = options.companion
+    ? createCompanions({
+        data: options.companion,
+        combat,
+        combatData: options.combat,
+        lookup: options.world,
+        world,
+        rng,
+        hour: options.hour ?? (() => 12),
+        home: () => startPosition(options.world),
+        busy: (id): boolean => progression?.busy(id) ?? false,
+        log: (message) => options.log(message),
+      })
+    : undefined;
+  const progression: Progression | undefined =
+    options.progression && companions
+      ? createProgression({ data: options.progression, inCombat: (id) => companions.inCombat(id), active: (id) => companions.active(id), refresh: (id) => companions.refresh(id) })
+      : undefined;
+  const wilds =
+    options.wild && combat
+      ? createWilds({
+          data: options.wild,
+          combat,
+          lookup: options.world,
+          world,
+          rng,
+          hour: options.hour ?? (() => 12),
+          chaseLimitTiles: options.companion?.battle.chaseLimitTiles ?? 10,
+          onRemove: (id, fainted) => (fainted ? progression?.faint(id, fainted.species, fainted.level) : progression?.forget(id)),
+          log: (message) => options.log(message),
+        })
+      : undefined;
+  const captures =
+    wilds && options.wild && combat && options.combat
+      ? createCaptures({ data: options.wild, wilds, combat, combatData: options.combat, world, lookup: options.world, rng, hour: options.hour ?? (() => 12), controlled: (id) => companions?.controlled(id) })
+      : undefined;
   const players = new Map<number, Player>();
   const reserved = new Map<string, Reserved>();
   let state: "open" | "closing" | "closed" = "open";
@@ -153,8 +211,24 @@ export function createSession(options: SessionOptions): Session {
       pendingAck: undefined,
       gone: false,
       arenaTarget: arena?.b,
+      progress: {
+        party: base.party.map((m) => ({ ...m })),
+        money: base.money,
+        badges: base.badges,
+        respawn: base.respawn,
+        bag: base.bag.map((b) => ({ ...b })),
+        pokedex: { seen: [...base.pokedex.seen], caught: [...base.pokedex.caught] },
+        storage: base.storage.map((m) => ({ ...m })),
+        pending: base.pending.map((i) => ({ ...i })),
+      },
     };
     players.set(id, player);
+    if (!arena) {
+      const send = (msg: ServerMessage) => player.conn?.send(msg);
+      companions?.join({ playerId: id, entityId, progress: player.progress, send });
+      captures?.join({ playerId: id, entityId, progress: player.progress, send });
+      progression?.join({ playerId: id, progress: player.progress, send });
+    }
     hostId ??= id;
     options.onRecord?.({ tick, kind: "join", playerId: id, name: base.name, spawn });
     return player;
@@ -165,6 +239,12 @@ export function createSession(options: SessionOptions): Session {
     const e = world.get(p.entityId)!;
     return {
       ...p.base,
+      ...p.progress,
+      party: p.progress.party.map((m) => ({ ...m })),
+      bag: p.progress.bag.map((b) => ({ ...b })),
+      pokedex: { seen: [...p.progress.pokedex.seen], caught: [...p.progress.pokedex.caught] },
+      storage: p.progress.storage.map((m) => ({ ...m })),
+      pending: p.progress.pending.map((i) => ({ ...i })),
       area: e.area,
       x: e.x,
       y: e.y,
@@ -185,6 +265,9 @@ export function createSession(options: SessionOptions): Session {
   function remove(p: Player): void {
     p.gone = true;
     players.delete(p.id);
+    companions?.leave(p.id);
+    captures?.leave(p.id);
+    progression?.leave(p.id);
     for (const id of p.arenaTarget === undefined ? [p.entityId] : [p.entityId, p.arenaTarget]) {
       combat?.remove(world, id);
       world.remove(id);
@@ -208,6 +291,8 @@ export function createSession(options: SessionOptions): Session {
   /** A guest dropped: the seat and the progress are kept for a while. */
   function reserve(p: Player): void {
     if (p.gone) return;
+    // Ends any fight first, so the reserved progress keeps the HP it ended with.
+    companions?.leave(p.id);
     const e = world.get(p.entityId)!;
     reserved.set(nameKey(p.base.name), {
       token: p.token,
@@ -271,7 +356,8 @@ export function createSession(options: SessionOptions): Session {
       reject(conn, migrated.code === "save-too-new" ? "save-too-new" : "invalid-save", migrated.message);
       return undefined;
     }
-    const save = migrated.save;
+    let save = options.devParty && migrated.save.party.length === 0 ? { ...migrated.save, party: options.devParty.map((m) => ({ ...m })) } : migrated.save;
+    if (options.devBag && save.bag.length === 0) save = { ...save, bag: options.devBag.map((b) => ({ ...b })) };
     const problem = options.validateSave?.(save);
     if (problem) {
       reject(conn, "invalid-save", problem);
@@ -352,6 +438,17 @@ export function createSession(options: SessionOptions): Session {
         case "input":
           enqueue(player, { seq: msg.seq, move: msg.move, run: msg.run, buttons: msg.buttons, ...(msg.aim ? { aim: msg.aim } : {}) });
           return;
+        case "swap":
+          companions?.swap(player.id, msg.partyIndex, tick);
+          return;
+        case "select-ball":
+          captures?.select(player.id, msg.item);
+          return;
+        case "progression-ack":
+        case "learn-answer":
+        case "evolve-answer":
+          progression?.answer(player.id, msg);
+          return;
         case "save-ack":
           if (player.pendingAck !== undefined && msg.rev >= player.pendingAck) {
             player.pendingAck = undefined;
@@ -401,10 +498,24 @@ export function createSession(options: SessionOptions): Session {
         if (input) combat!.input(p.entityId, { move: input.move, buttons: input.buttons, aim: input.aim });
         continue;
       }
+      // A ball can be thrown walking or in combat.
+      captures?.input(p.id, input);
+      // In combat the input moves the Pokémon and the trainer stands still.
+      if (companions?.input(p.id, input, tick)) continue;
       // Every tick, so ledge hops and warp transitions run out without input.
       world.update(stepMovement(world.get(p.entityId)!, input ?? null, options.world));
     }
     const hits = combat?.step(tick, world) ?? [];
+    for (const h of hits) {
+      const a = combat!.get(h.attacker)?.owner;
+      const b = combat!.get(h.target)?.owner;
+      if (a === "wild" && typeof b === "number") progression?.engage(b, h.attacker);
+      if (b === "wild" && typeof a === "number") progression?.engage(a, h.target);
+    }
+    companions?.step(tick);
+    wilds?.step(tick);
+    captures?.step(tick);
+    progression?.step();
     const entities = world.all();
     for (const p of players.values()) {
       const entity = world.get(p.entityId)!;
@@ -429,6 +540,7 @@ export function createSession(options: SessionOptions): Session {
     },
     world,
     rng,
+    combat,
     connect,
     step,
     close,
@@ -436,7 +548,7 @@ export function createSession(options: SessionOptions): Session {
       for (const p of players.values()) p.conn?.send(msg);
     },
     join: (name, spawn) => {
-      const base: Save = { schemaVersion: 1, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0 };
+      const base: Save = { schemaVersion: 4, pending: [], name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
       return add(base, undefined, spawn, "").id;
     },
     leave(playerId) {

@@ -1,0 +1,33 @@
+{
+  "kind": "wild-balls",
+  "formatVersion": 1,
+  "value": {
+    "balls": {
+      "1": { "always": true },
+      "2": { "mult": 2 },
+      "3": { "mult": 1.5 },
+      "4": { "mult": 1 },
+      "5": { "mult": 1.5 },
+      "6": { "mult": 3, "when": "types", "types": [11, 6] },
+      "7": { "mult": 1 },
+      "8": { "mult": 1, "when": "nest" },
+      "9": { "mult": 3, "when": "repeat" },
+      "10": { "mult": 1, "when": "timer" },
+      "11": { "mult": 1 },
+      "12": { "mult": 1 },
+      "13": { "mult": 3.5, "when": "night-or-cave" },
+      "14": { "mult": 1 },
+      "15": { "mult": 4, "when": "first-turn" },
+      "16": { "mult": 1 },
+      "492": { "mult": 4, "when": "fast" },
+      "493": { "mult": 1, "when": "level" },
+      "494": { "mult": 1 },
+      "495": { "mult": 1 },
+      "496": { "mult": 1 },
+      "497": { "mult": 1 },
+      "498": { "mult": 4, "when": "moon" },
+      "499": { "mult": 1.5 },
+      "500": { "always": true }
+    }
+  }
+}

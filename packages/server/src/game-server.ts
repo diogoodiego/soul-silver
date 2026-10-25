@@ -6,6 +6,9 @@ import {
 } from "@soulsilver/shared";
 import type { WorldLookup } from "@soulsilver/shared/game";
 import type { CombatData } from "./combat-loader";
+import type { CompanionData } from "./companion-loader";
+import type { WildData } from "./wild-loader";
+import type { ProgressionData } from "./progression";
 import type { Connection } from "./connection";
 import { checkCoherence } from "@soulsilver/shared/save";
 import { createSession, MAX_PLAYERS, type Session } from "./session";
@@ -20,6 +23,17 @@ interface HostedConnection {
 }
 
 const TICK_RATE_HZ = 20;
+/** IV 31, no EVs, Hardy; experience 0 is raised to the level's minimum on join. */
+const devStats = { experience: 0, ivs: { hp: 31, attack: 31, defense: 31, speed: 31, specialAttack: 31, specialDefense: 31 }, evs: { hp: 0, attack: 0, defense: 0, speed: 0, specialAttack: 0, specialDefense: 0 }, nature: 0 };
+/** Cyndaquil, Onix and Pidgey with moves from their level-up sets; HP is capped at the maximum on join. */
+const DEV_PARTY = [
+  { species: 155, level: 12, moves: [33, 43, 52, 108], hp: 999, friendship: 120, ...devStats },
+  { species: 95, level: 12, moves: [33, 103, 20, 88], hp: 999, friendship: 70, ...devStats },
+  { species: 16, level: 8, moves: [33, 28, 16], hp: 999, friendship: 70, ...devStats },
+];
+
+/** Development builds: 20 Poké Balls for a save with an empty bag (spec 015). */
+const DEV_BAG = [{ item: 4, count: 20 }];
 
 export interface GameServerOptions extends Scheduler {
   send(msg: ServerToHostMessage): void;
@@ -30,8 +44,14 @@ export interface GameServerOptions extends Scheduler {
   world?: WorldLookup | undefined;
   /** Combat data (spec 013); no combat when omitted. */
   combat?: CombatData | undefined;
-  /** Development builds: accept the dev arena. */
+  /** Development builds: accept the dev arena, and give saves with no party a test party (spec 014) and an empty bag 20 Poké Balls (spec 015). */
   devArena?: boolean | undefined;
+  /** Wild Pokémon and capture (spec 015); none when omitted. */
+  wild?: WildData | undefined;
+  /** Companion rules (spec 014); nobody follows when omitted. */
+  companion?: CompanionData | undefined;
+  /** Experience, levels and evolution (spec 016); nobody grows when omitted. */
+  progression?: ProgressionData | undefined;
   /** Opens/closes the LAN socket for other PCs (hosted sessions only); results go back as `listening`/`listen-failed`. */
   listen?(on: boolean): void;
 }
@@ -64,6 +84,11 @@ export function createGameServer(options: GameServerOptions): GameServer {
       newToken: () => crypto.randomUUID(),
       combat: options.combat,
       devArena: options.devArena,
+      companion: options.companion,
+      wild: options.wild,
+      progression: options.progression,
+      hour: () => new Date().getHours(),
+      ...(options.devArena ? { devParty: DEV_PARTY, devBag: DEV_BAG } : {}),
       // Without an extracted world there is nothing to check a save against.
       ...(options.world
         ? {
