@@ -27,6 +27,8 @@ import { createParticles, effectsOf } from "./particles";
 // covers them. The current map, its neighbors and theirs are kept loaded so borders never show a gap.
 
 const PLAYER_SET = "overworld-player.json";
+/** Server spawn.json shakeSeconds (spec 015). shortcut: fixed here; send it in the capture message if it is ever tuned. */
+export const SHAKE_MS = 800;
 const POKEMON_SET = "overworld-pokemon.json";
 /** Kinds drawn in the world; projectiles and fields (spec 013) are markers. */
 const DRAWN = new Set(["player", "pokemon", "projectile"]);
@@ -38,6 +40,11 @@ const BATTLE_FX_SET = "battle-fx.json";
 const GRASS_COVER_PX = 8;
 const WALK_FRAME_MS = 150;
 const RUN_FRAME_MS = 90;
+/** Overworld Pokémon have 2 walk frames per step: a faster swap keeps pace with the trainer's 4. */
+const POKEMON_FRAME_MS = 100;
+/** Standing Pokémon bounce in place: up IDLE_BOUNCE_PX for half of each IDLE_BOUNCE_MS. */
+const IDLE_BOUNCE_MS = 500;
+const IDLE_BOUNCE_PX = 2;
 /**
  * Sprites are moved this far toward the camera (up and south, which keeps them on the same pixels)
  * so their feet win over the ground they stand on.
@@ -145,6 +152,11 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   // Sprite frames: the player's and the field effects'.
   const frames = new Map<string, Frame>();
   const pages: Texture[] = [];
+  const shinyOf = new Map<Texture, Texture>();
+  /** Wild Pokémon inside a ball (spec 015): drawn as the ball, wobbling once per shake. */
+  const inBall = new Map<number, { start: number; shakes: number }>();
+  /** Shiny wild Pokémon already greeted with the sparkle. */
+  const sparkled = new Set<number>();
   async function loadSet(file: string): Promise<SpriteSetFile | undefined> {
     const raw = await fetch(spriteUrl(file)).then((r): Promise<unknown> | undefined => (r.ok ? r.json() : undefined), () => undefined);
     const parsed = raw === undefined ? undefined : parseSpriteFile("sprite-set", raw, file);
@@ -153,6 +165,16 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     const bitmaps = await Promise.all(set.pages.map((p) => loadBitmap(spriteUrl(p.file))));
     const own = bitmaps.map((b) => b && pixelTexture(b));
     for (const t of own) if (t) pages.push(t);
+    // Shiny palette pages (spec 015): same layout, other colours.
+    await Promise.all(
+      set.pages.map(async (p, i) => {
+        const bitmap = p.shinyFile && own[i] ? await loadBitmap(spriteUrl(p.shinyFile)) : undefined;
+        if (!bitmap) return;
+        const texture = pixelTexture(bitmap);
+        pages.push(texture);
+        shinyOf.set(own[i]!, texture);
+      }),
+    );
     for (const f of set.frames) {
       const page = own[f.page];
       if (page) frames.set(f.name, { frame: f, page });
@@ -408,7 +430,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   function frameFor(e: Entity, moving: boolean, running: boolean, now: number) {
     if (e.kind === "projectile") return undefined;
     if (e.kind === "pokemon") {
-      const step = moving ? Math.floor(now / WALK_FRAME_MS) % 2 : 0;
+      const step = moving ? Math.floor(now / POKEMON_FRAME_MS) % 2 : 0;
       const base = `overworld-pokemon/${String(e.data["species"])}/0`;
       const dir = FACING[e.facing];
       return frames.get(`${base}/unisex/walk/${dir}/${step}`) ?? frames.get(`${base}/male/walk/${dir}/${step}`);
@@ -431,7 +453,9 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     }
     actor.moving = Math.hypot(e.x - actor.last.x, e.y - actor.last.y) > 0.01 || e.data["hop"] !== undefined;
     actor.last = { x: e.x, y: e.y };
-    const frame = frameFor(e, actor.moving, running, now);
+    const ball = inBall.get(e.id);
+    if (ball && now >= ball.start + (ball.shakes + 1) * SHAKE_MS) inBall.delete(e.id);
+    const frame = inBall.has(e.id) ? undefined : frameFor(e, actor.moving, running, now);
     const inGrass = tileAt(world.lookup, e.area, e.level, e.x, e.y)?.category === "tallGrass";
     const [tx, ty] = [Math.floor(e.x / MAP_TILE_PX), Math.floor(e.y / MAP_TILE_PX)];
     if (actor.tile !== `${tx},${ty}`) {
@@ -440,18 +464,29 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     }
     if (frame) {
       setQuad(actor.sprite.geometry, frame, inGrass ? Math.max(1, frame.frame.h - GRASS_COVER_PX) : frame.frame.h);
-      actor.sprite.material = spriteMaterial(frame.page);
+      const shiny = e.data["shiny"] === true;
+      actor.sprite.material = spriteMaterial((shiny && shinyOf.get(frame.page)) || frame.page);
+      // A shiny glints when it first comes into view.
+      // shortcut: a blink stands in for the sparkle; use the ROM's shiny sparkle animation once it is extracted.
+      if (shiny && !sparkled.has(e.id)) {
+        sparkled.add(e.id);
+        blinkUntil.set(e.id, now + 1200);
+      }
     } else {
-      if (e.kind === "projectile") markerQuad(actor.sprite.geometry, e.data["field"] === true ? 12 : 3, e.data["field"] === true ? 2 : 6);
+      if (inBall.has(e.id)) markerQuad(actor.sprite.geometry, 3, 6);
+      else if (e.kind === "projectile") markerQuad(actor.sprite.geometry, e.data["field"] === true ? 12 : 3, e.data["field"] === true ? 2 : 6);
       else markerQuad(actor.sprite.geometry);
       actor.sprite.material = markerMaterial;
     }
     const particlesOnly = e.kind === "projectile" && battleFx.has(`move/${String(e.data["move"])}`);
     const blinking = e.data["flash"] === true || (blinkUntil.get(e.id) ?? 0) > now;
     actor.sprite.visible = !particlesOnly && (!blinking || Math.floor(now / FLASH_MS) % 2 === 0);
-    const y = groundOf(e) + SPRITE_DEPTH_BIAS;
+    const bounce = e.kind === "pokemon" && !actor.moving && Math.floor(now / (IDLE_BOUNCE_MS / 2)) % 2 === 0 ? IDLE_BOUNCE_PX : 0;
+    const y = groundOf(e) + SPRITE_DEPTH_BIAS + bounce;
     // A hit target shakes sideways while its flash lasts.
-    const shake = e.data["flash"] === true ? Math.round(Math.sin(now / 15) * 2) : 0;
+    // A ball rocks during the first half of each shake window, then rests.
+    const rocking = ball && inBall.has(e.id) && now - ball.start < ball.shakes * SHAKE_MS && (now - ball.start) % SHAKE_MS < SHAKE_MS / 2;
+    const shake = e.data["flash"] === true ? Math.round(Math.sin(now / 15) * 2) : rocking ? Math.round(Math.sin(now / 40) * 3) : 0;
     actor.sprite.position.set(Math.round(e.x) + shake, y, Math.round(e.y) + SPRITE_DEPTH_BIAS * OBLIQUE);
   }
 
@@ -473,8 +508,11 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       }
       const seen = new Set<number>();
       latest = new Map();
-      for (const e of [self, ...view.others]) {
-        if (!DRAWN.has(e.kind) || e.area !== self.area) continue;
+      for (const seenAs of [self, ...view.others]) {
+        // Entities on a neighbor map are drawn shifted into this map's space, so a companion a few frames behind across a border does not blink.
+        const at = seenAs.area === self.area ? { dx: 0, dy: 0 } : placement.get(seenAs.area);
+        if (!DRAWN.has(seenAs.kind) || !at) continue;
+        const e = at.dx === 0 && at.dy === 0 ? seenAs : { ...seenAs, area: self.area, x: seenAs.x + at.dx, y: seenAs.y + at.dy };
         seen.add(e.id);
         latest.set(e.id, e);
         drawEntity(e, e.id === self.id && running, now);
@@ -501,6 +539,10 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       fade.style.opacity = String(warping > 0 ? 1 - Math.abs(warping - WARP_TICKS / 2) / (WARP_TICKS / 2) : 0);
     },
     /** Plays the move's ROM particles on each hit target. */
+    /** A ball caught this wild Pokémon: show the ball and its shakes in its place. */
+    capture(wildId: number, shakes: number, now: number): void {
+      inBall.set(wildId, { start: now, shakes });
+    },
     combatEvents(events: readonly HitEvent[], now: number): void {
       // Damage, statuses and stat changes on a foe: the emitters the script places on the target.
       for (const e of events) if (e.move > 0 && e.target !== e.attacker && e.kind !== "failed") particles.play(emittersAt(e.move, "target"), anchorOf(e.target), now);

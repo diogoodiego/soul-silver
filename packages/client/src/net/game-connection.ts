@@ -1,4 +1,4 @@
-import { applyDelta, serverMessage, type ArenaSpec, type CloseReason, type Entity, type HitEvent, type MoveInput, type TickMetrics, type WorldLookup } from "@soulsilver/shared/game";
+import { applyDelta, serverMessage, type ArenaSpec, type CloseReason, type Entity, type HitEvent, type MoveInput, type ServerMessage, type TickMetrics, type WorldLookup } from "@soulsilver/shared/game";
 import { createInterpolator } from "./interpolation";
 import { createPredictor } from "./prediction";
 
@@ -18,6 +18,9 @@ export interface GameConnectionOptions {
 
 export type GameStatus = "connecting" | "playing" | "rejected" | "closed";
 
+/** Companion and fight messages (spec 014), and bag, Pokédex and capture ones (spec 015), for the screen. */
+export type CompanionEvent = Extract<ServerMessage, { type: "party" | "reaction" | "fainted" | "blackout" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" }>;
+
 export function createGameConnection(options: GameConnectionOptions) {
   const entities = new Map<number, Entity>();
   const predictor = createPredictor(options.world);
@@ -30,6 +33,7 @@ export function createGameConnection(options: GameConnectionOptions) {
   let tick = 0;
   let seq = 0;
   let combatEvents: HitEvent[] = [];
+  let companionEvents: CompanionEvent[] = [];
   /** Only the trainer walks the tile-based step; a Pokémon in combat is shown as the server has it. */
   const predicting = () => entityId === undefined || entities.get(entityId)?.kind === "player";
 
@@ -60,6 +64,23 @@ export function createGameConnection(options: GameConnectionOptions) {
         return;
       case "combat-event":
         combatEvents.push(...msg.events);
+        return;
+      case "control":
+        // The trainer, or the Pokémon out in combat: input, camera and aim follow it.
+        entityId = msg.entityId;
+        return;
+      case "party":
+      case "reaction":
+      case "fainted":
+      case "blackout":
+      case "capture":
+      case "captured":
+      case "bag":
+      case "pokedex":
+      case "notice":
+      case "exp-gain":
+      case "progression":
+        companionEvents.push(msg);
         return;
       case "state": {
         if (msg.full) entities.clear();
@@ -102,6 +123,12 @@ export function createGameConnection(options: GameConnectionOptions) {
     takeCombatEvents(): HitEvent[] {
       const out = combatEvents;
       combatEvents = [];
+      return out;
+    },
+    /** Companion and fight messages received since the last call. */
+    takeCompanionEvents(): CompanionEvent[] {
+      const out = companionEvents;
+      companionEvents = [];
       return out;
     },
     /** The server closed the connection without a session-closed (e.g. it was dropped). */

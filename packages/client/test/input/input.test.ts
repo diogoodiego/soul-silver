@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BUTTON } from "@soulsilver/shared/game";
 import { keyboardVector, moveButtons, stickVector, STICK_DEADZONE } from "../../src/input/input";
 
 describe("keyboardVector", () => {
@@ -52,6 +53,20 @@ describe("moveButtons", () => {
     expect(moveButtons(new Set(), pad([2, 3]))).toBe(0b0110);
     expect(moveButtons(new Set(), pad([5]))).toBe(0b1000);
     expect(moveButtons(new Set(), pad([1]))).toBe(0); // B runs
+  });
+
+  it("maps the companion actions to their bits: F/LT combat, R/RT recall, E/View interact", () => {
+    expect(moveButtons(new Set(["KeyF"]), () => false)).toBe(BUTTON.combat);
+    expect(moveButtons(new Set(), (i) => i === 7)).toBe(BUTTON.recall);
+    expect(moveButtons(new Set(["KeyE"]), (i) => i === 6)).toBe(BUTTON.interact | BUTTON.combat);
+    // The picker is the client's own: no bit.
+    expect(moveButtons(new Set(["KeyQ"]), () => false)).toBe(0);
+  });
+
+  it("maps G and pad LS to the throw, bit 8; the ball cycle (B, RS) is the client's own", () => {
+    expect(moveButtons(new Set(["KeyG"]), () => false)).toBe(BUTTON.throw);
+    expect(moveButtons(new Set(), (i) => i === 10)).toBe(BUTTON.throw);
+    expect(moveButtons(new Set(["KeyB"]), (i) => i === 11)).toBe(0);
   });
 
   it("maps Space and pad LB to dash, bit 4", () => {

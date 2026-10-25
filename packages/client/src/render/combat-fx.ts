@@ -5,7 +5,7 @@ import { formatText, parseTextFile, screenText, type TextBankFile } from "@souls
 // texts are the game's own battle messages, read from the extracted text catalog.
 
 const BATTLE_BANK = 197;
-const SPECIES_BANK = 237;
+export const SPECIES_BANK = 237;
 const TEXT = { superEffective: 780, notVeryEffective: 779, critical: 774, noEffect: 27 } as const;
 const LIFE_MS = 900;
 const RISE_PX = 24;
@@ -51,7 +51,7 @@ export function feedbackLines(e: HitEvent, texts: FeedbackTexts, targetSpecies: 
   return lines.map((l) => ({ ...l, text: l.tone === "damage" || l.tone === "heal" ? l.text : screenText(l.text) }));
 }
 
-async function loadBank(bank: number): Promise<TextBankFile | undefined> {
+export async function loadBank(bank: number): Promise<TextBankFile | undefined> {
   const file = `${String(bank).padStart(4, "0")}.json`;
   try {
     const response = await fetch(`assets://stages/text-catalog/catalog/en/${file}`);

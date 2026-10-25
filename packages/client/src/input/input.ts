@@ -1,8 +1,8 @@
-import type { MoveInput } from "@soulsilver/shared/game";
+import { BUTTON, type MoveInput } from "@soulsilver/shared/game";
 
 // Keyboard (8 directions) and gamepad (analog) to a movement vector (spec 011, research R12).
 // The device used most recently wins. Moves 1–4 (spec 013): keys 1–4, or pad A, X, Y and RB;
-// aim with the mouse pointer or the right stick.
+// aim with the mouse pointer or the right stick. Companion actions (spec 014) come from ACTIONS.
 
 export const STICK_DEADZONE = 0.2;
 
@@ -25,13 +25,30 @@ const MOVE_BUTTONS = [0, 2, 3, 5];
 /** Dash: Space, or pad LB. */
 const DASH_KEY = "Space";
 const DASH_BUTTON = 4;
-export const DASH_BIT = 1 << 4;
+export const DASH_BIT = BUTTON.dash;
 
-/** Move slots held as bits 0–3, dash as bit 4. */
+/**
+ * Companion and fight actions (spec 014): key code and standard-mapping pad button. The picker is
+ * the client's own (it opens the quick swap); the others go to the server as input bits.
+ * shortcut: fixed table, no remapping screen yet; add one that writes these to the settings when players ask.
+ */
+export const ACTIONS = {
+  combat: { key: "KeyF", button: 6, bit: BUTTON.combat },
+  recall: { key: "KeyR", button: 7, bit: BUTTON.recall },
+  interact: { key: "KeyE", button: 8, bit: BUTTON.interact },
+  picker: { key: "KeyQ", button: 9, bit: 0 },
+  /** Spec 015: throw the selected ball toward the aim; cycle to the next ball in the bag (client only). */
+  throw: { key: "KeyG", button: 10, bit: BUTTON.throw },
+  nextBall: { key: "KeyB", button: 11, bit: 0 },
+} as const;
+const ACTION_KEYS: readonly string[] = Object.values(ACTIONS).map((a) => a.key);
+
+/** Move slots held as bits 0–3, dash as bit 4, then the companion action bits. */
 export function moveButtons(held: ReadonlySet<string>, padPressed: (button: number) => boolean): number {
   let bits = 0;
   for (let slot = 0; slot < 4; slot++) if (held.has(MOVE_KEYS[slot]!) || padPressed(MOVE_BUTTONS[slot]!)) bits |= 1 << slot;
   if (held.has(DASH_KEY) || padPressed(DASH_BUTTON)) bits |= DASH_BIT;
+  for (const a of Object.values(ACTIONS)) if (held.has(a.key) || padPressed(a.button)) bits |= a.bit;
   return bits;
 }
 
@@ -65,7 +82,7 @@ export function createInput(target: Window) {
   let lastDevice: "keyboard" | "gamepad" = "keyboard";
 
   const onKeyDown = (event: KeyboardEvent) => {
-    if (KEY_VECTORS[event.code] || RUN_KEYS.has(event.code) || MOVE_KEYS.includes(event.code) || event.code === DASH_KEY) {
+    if (KEY_VECTORS[event.code] || RUN_KEYS.has(event.code) || MOVE_KEYS.includes(event.code) || event.code === DASH_KEY || ACTION_KEYS.includes(event.code)) {
       held.add(event.code);
       lastDevice = "keyboard";
       event.preventDefault();
@@ -125,6 +142,10 @@ export function createInput(target: Window) {
     buttons(): number {
       const p = pad();
       return moveButtons(held, (i) => p?.buttons[i]?.pressed ?? false);
+    },
+    /** Whether an action's key or pad button is held. */
+    held(action: keyof typeof ACTIONS): boolean {
+      return held.has(ACTIONS[action].key) || (pad()?.buttons[ACTIONS[action].button]?.pressed ?? false);
     },
     /** Right-stick aim when it is pushed, else undefined. */
     stickAim(): MoveInput["move"] | undefined {
