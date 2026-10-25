@@ -64,7 +64,7 @@ if (!app.requestSingleInstanceLock()) {
     const sessionRef: { current: SessionController | undefined } = { current: undefined };
     const serverHost = createServerHost({
       fork: () =>
-        utilityProcess.fork(join(import.meta.dirname, "server-host.js"), [join(app.getPath("userData"), "extraction", "stages")], {
+        utilityProcess.fork(join(import.meta.dirname, "server-host.js"), [...(app.isPackaged ? [] : ["--dev-arena"]), join(app.getPath("userData"), "extraction", "stages")], {
           serviceName: "SoulSilver Game Server",
         }),
       appVersion: app.getVersion(),
