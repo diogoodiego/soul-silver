@@ -10,10 +10,14 @@ import {
   type RejectCode,
   type Rng,
   type ServerMessage,
+  type ArenaSpec,
   type WorldLookup,
 } from "@soulsilver/shared/game";
 import type { Direction } from "@soulsilver/shared/maps";
 import { migrate, type Save } from "@soulsilver/shared/save";
+import { spawnArena } from "./arena";
+import { createCombat } from "./combat";
+import type { CombatData } from "./combat-loader";
 import type { Connection } from "./connection";
 import { createReplica, replicate, type Replica } from "./replication";
 import { createWorld, type World } from "./world";
@@ -55,6 +59,10 @@ export interface SessionOptions {
   clock: () => string;
   /** A fresh unguessable reconnect token. */
   newToken: () => string;
+  /** Combat rules and data (spec 013); without them there is no combat. */
+  combat?: CombatData | undefined;
+  /** Accept hellos that ask for the dev arena (development builds only). */
+  devArena?: boolean | undefined;
 }
 
 interface Player {
@@ -77,6 +85,8 @@ interface Player {
   /** Rev of a save sent while closing that has not been acknowledged yet. */
   pendingAck: number | undefined;
   gone: boolean;
+  /** In the dev arena: the wild target's entity. Arena players never get saves. */
+  arenaTarget: number | undefined;
 }
 
 interface Reserved {
@@ -113,6 +123,7 @@ export function createSession(options: SessionOptions): Session {
   const rng = createRng(options.seed);
   const timeoutTicks = options.timeoutTicks ?? DEFAULT_TIMEOUT_TICKS;
   const { clock } = options;
+  const combat = options.combat ? createCombat({ data: options.combat, rng, lookup: options.world }) : undefined;
   const players = new Map<number, Player>();
   const reserved = new Map<string, Reserved>();
   let state: "open" | "closing" | "closed" = "open";
@@ -122,12 +133,12 @@ export function createSession(options: SessionOptions): Session {
   let nextPlayerId = 1;
   let hostId: number | undefined;
 
-  function add(base: Save, conn: Connection | undefined, spawn: Spawn, token: string): Player {
+  function add(base: Save, conn: Connection | undefined, spawn: Spawn, token: string, arena?: { a: number; b: number }): Player {
     const id = nextPlayerId++;
-    const entity = world.add({ kind: "player", area: spawn.area, x: spawn.x, y: spawn.y, level: spawn.level, facing: spawn.facing, data: { name: base.name, character: base.character } });
+    const entityId = arena?.a ?? world.add({ kind: "player", area: spawn.area, x: spawn.x, y: spawn.y, level: spawn.level, facing: spawn.facing, data: { name: base.name, character: base.character } }).id;
     const player: Player = {
       id,
-      entityId: entity.id,
+      entityId,
       conn,
       lastInputSeq: -1,
       queue: [],
@@ -141,6 +152,7 @@ export function createSession(options: SessionOptions): Session {
       lastArea: spawn.area,
       pendingAck: undefined,
       gone: false,
+      arenaTarget: arena?.b,
     };
     players.set(id, player);
     hostId ??= id;
@@ -164,7 +176,7 @@ export function createSession(options: SessionOptions): Session {
   }
 
   function sendSave(p: Player): void {
-    if (!p.conn) return;
+    if (!p.conn || p.arenaTarget !== undefined) return;
     const save = snapshot(p);
     if (state === "closing") p.pendingAck = save.rev;
     p.conn.send({ type: "save", save } satisfies ServerMessage);
@@ -173,7 +185,10 @@ export function createSession(options: SessionOptions): Session {
   function remove(p: Player): void {
     p.gone = true;
     players.delete(p.id);
-    world.remove(p.entityId);
+    for (const id of p.arenaTarget === undefined ? [p.entityId] : [p.entityId, p.arenaTarget]) {
+      combat?.remove(world, id);
+      world.remove(id);
+    }
     options.onRecord?.({ tick, kind: "leave", playerId: p.id });
   }
 
@@ -242,7 +257,7 @@ export function createSession(options: SessionOptions): Session {
   }
 
   /** Handles a hello; returns the new player or undefined when it was refused. */
-  function admit(conn: Connection, msg: { protocolVersion: number; save: unknown; resumeToken?: string | undefined }): { player: Player; resumed: boolean } | undefined {
+  function admit(conn: Connection, msg: { protocolVersion: number; save: unknown; resumeToken?: string | undefined; arena?: ArenaSpec | undefined }): { player: Player; resumed: boolean } | undefined {
     if (msg.protocolVersion !== PROTOCOL_VERSION) {
       reject(conn, "protocol-mismatch", protocolMismatchMessage(PROTOCOL_VERSION, msg.protocolVersion));
       return undefined;
@@ -275,6 +290,22 @@ export function createSession(options: SessionOptions): Session {
     if (players.size + reserved.size >= MAX_PLAYERS) {
       reject(conn, "session-full", `A sessão está cheia (${MAX_PLAYERS} jogadores).`);
       return undefined;
+    }
+    if (msg.arena) {
+      if (!combat || !options.devArena) {
+        reject(conn, "invalid-message", "A arena de teste só existe em builds de desenvolvimento.");
+        return undefined;
+      }
+      let arena: { a: number; b: number };
+      try {
+        // Owned by the id add() is about to take.
+        arena = spawnArena(world, combat, msg.arena, nextPlayerId);
+      } catch (error) {
+        reject(conn, "invalid-message", `Arena inválida: ${(error as Error).message}`);
+        return undefined;
+      }
+      // shortcut: arena joins are not recorded, so a replay of an arena session does not rebuild it; record them if arena replays matter.
+      return { player: add(save, conn, { area: "", x: 0, y: 0, level: 0, facing: "south" }, options.newToken(), arena), resumed: false };
     }
     return { player: add(save, conn, { area: save.area, x: save.x, y: save.y, level: 0, facing: save.facing }, options.newToken()), resumed: false };
   }
@@ -319,7 +350,7 @@ export function createSession(options: SessionOptions): Session {
           leave(player);
           return;
         case "input":
-          enqueue(player, { seq: msg.seq, move: msg.move, run: msg.run, buttons: msg.buttons });
+          enqueue(player, { seq: msg.seq, move: msg.move, run: msg.run, buttons: msg.buttons, ...(msg.aim ? { aim: msg.aim } : {}) });
           return;
         case "save-ack":
           if (player.pendingAck !== undefined && msg.rev >= player.pendingAck) {
@@ -366,13 +397,20 @@ export function createSession(options: SessionOptions): Session {
         p.lastInputSeq = input.seq;
         options.onRecord?.({ tick, kind: "input", playerId: p.id, input });
       }
+      if (p.arenaTarget !== undefined) {
+        if (input) combat!.input(p.entityId, { move: input.move, buttons: input.buttons, aim: input.aim });
+        continue;
+      }
       // Every tick, so ledge hops and warp transitions run out without input.
       world.update(stepMovement(world.get(p.entityId)!, input ?? null, options.world));
     }
+    const hits = combat?.step(tick, world) ?? [];
     const entities = world.all();
     for (const p of players.values()) {
       const entity = world.get(p.entityId)!;
       p.conn?.send(replicate(p.replica, entity, entities, tick, p.lastInputSeq));
+      const seen = hits.filter((h) => world.get(h.target)?.area === entity.area);
+      if (seen.length > 0) p.conn?.send({ type: "combat-event", tick, events: seen } satisfies ServerMessage);
       // Periodically and on every map change (FR-006).
       if (entity.area !== p.lastArea || (tick - p.joinTick) % SAVE_INTERVAL_TICKS === 0) sendSave(p);
       p.lastArea = entity.area;

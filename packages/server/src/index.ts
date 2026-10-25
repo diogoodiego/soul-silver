@@ -6,3 +6,6 @@ export * from "./recorder";
 export * from "./world";
 export * from "./world-loader";
 export * from "./start";
+export * from "./combat";
+export * from "./combat-loader";
+export * from "./arena";

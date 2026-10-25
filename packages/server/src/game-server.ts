@@ -5,6 +5,7 @@ import {
   type ServerToHostMessage,
 } from "@soulsilver/shared";
 import type { WorldLookup } from "@soulsilver/shared/game";
+import type { CombatData } from "./combat-loader";
 import type { Connection } from "./connection";
 import { checkCoherence } from "@soulsilver/shared/save";
 import { createSession, MAX_PLAYERS, type Session } from "./session";
@@ -27,6 +28,10 @@ export interface GameServerOptions extends Scheduler {
   log(message: string): void;
   /** The extracted world; open ground everywhere when omitted. */
   world?: WorldLookup | undefined;
+  /** Combat data (spec 013); no combat when omitted. */
+  combat?: CombatData | undefined;
+  /** Development builds: accept the dev arena. */
+  devArena?: boolean | undefined;
   /** Opens/closes the LAN socket for other PCs (hosted sessions only); results go back as `listening`/`listen-failed`. */
   listen?(on: boolean): void;
 }
@@ -57,6 +62,8 @@ export function createGameServer(options: GameServerOptions): GameServer {
       },
       clock: () => new Date().toISOString(),
       newToken: () => crypto.randomUUID(),
+      combat: options.combat,
+      devArena: options.devArena,
       // Without an extracted world there is nothing to check a save against.
       ...(options.world
         ? {
