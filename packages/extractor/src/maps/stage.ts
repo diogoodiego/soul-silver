@@ -186,7 +186,10 @@ async function run(ctx: StageContext): Promise<void> {
         };
         const scene = buildMapScene(sceneInput);
         const ground = areaData[4]! | (areaData[5]! << 8);
-        const animations = new Map(animationsByMaterial);
+        // Matched by material name across all buildings, so room models' generic names ("lambert10")
+        // caught other buildings' scrolls and swaps. shortcut: rooms stay static (PC, TV screens too),
+        // map animations to their building through the ROM's list when rooms need them.
+        const animations = new Map(header.areaType === "indoor" ? [] : animationsByMaterial);
         if (ground !== 0xffff) {
           for (const a of await groundAnimations(ground)) animations.set(a.material, [...(animations.get(a.material) ?? []), a]);
         }

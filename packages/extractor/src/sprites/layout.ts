@@ -88,3 +88,9 @@ export const TRAINER_COUNT = 129;
 /** Field effects (3D textures and models); member 25 is the tall grass rustle (kusaeff.1 to .4). */
 export const FIELD_EFFECT_ARCHIVE = "a/1/0/3";
 export const GRASS_EFFECT_MEMBER = 25;
+
+/** Move animation scripts, one per move id (research: battle effects, spec 013 refinement). */
+export const MOVE_SCRIPT_ARCHIVE = "a/0/1/0";
+
+/** Particle files (SPA), referenced by the scripts. */
+export const PARTICLE_ARCHIVE = "a/0/2/9";

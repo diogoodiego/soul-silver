@@ -7,9 +7,10 @@ import { CODE_INPUT, countNarcMembers, NARC_INPUT, readArm9, readNarcMember } fr
 import { SOULSILVER_US_LAYOUT } from "../data/layout.ts";
 import type { Stage, StageContext } from "../pipeline/stage.ts";
 import { extractBattle } from "./battle.ts";
+import { extractBattleFx } from "./battle-fx.ts";
 import { extractFieldEffects } from "./field-effects.ts";
 import { extractForms } from "./forms.ts";
-import { BATTLE_MEMBERS_PER_SPECIES, FIELD_EFFECT_ARCHIVE, FORMS_ARCHIVE, ICON_ARCHIVE, ITEM_ICON_ARCHIVE, OVERWORLD_ARCHIVE, OVERWORLD_NPC_END, OVERWORLD_PLAYERS, SPRITE_ARCHIVES, TRAINER_ARCHIVE, TRAINER_COUNT } from "./layout.ts";
+import { BATTLE_MEMBERS_PER_SPECIES, FIELD_EFFECT_ARCHIVE, FORMS_ARCHIVE, ICON_ARCHIVE, ITEM_ICON_ARCHIVE, MOVE_SCRIPT_ARCHIVE, OVERWORLD_ARCHIVE, PARTICLE_ARCHIVE, OVERWORLD_NPC_END, OVERWORLD_PLAYERS, SPRITE_ARCHIVES, TRAINER_ARCHIVE, TRAINER_COUNT } from "./layout.ts";
 import { extractItemIcons, extractPokemonIcons, itemIconMembers } from "./icons.ts";
 import { extractTrainers } from "./trainers.ts";
 import { extractNpcs, extractPlayers, extractPokemon, pokemonEntries } from "./overworld.ts";
@@ -66,6 +67,11 @@ async function run(ctx: StageContext): Promise<void> {
   await add("icon-item", await extractItemIcons((i) => readNarcMember(ctx, ITEM_ICON_ARCHIVE, i), items), false);
   await add("trainer", await extractTrainers((i) => readNarcMember(ctx, TRAINER_ARCHIVE, i), TRAINER_COUNT), false);
   await add("field-effect", await extractFieldEffects((i) => readNarcMember(ctx, FIELD_EFFECT_ARCHIVE, i)), true);
+  await add(
+    "battle-fx",
+    await extractBattleFx((m) => readNarcMember(ctx, MOVE_SCRIPT_ARCHIVE, m), (s) => readNarcMember(ctx, PARTICLE_ARCHIVE, s), SOULSILVER_US_LAYOUT.counts.moves),
+    false,
+  );
   ctx.progress(0.9);
 
   const report = buildReportFile(results);
@@ -76,7 +82,7 @@ async function run(ctx: StageContext): Promise<void> {
 export const spritesStage: Stage = {
   id: "sprites",
   title: "Extraindo os sprites",
-  version: 3,
+  version: 4,
   weight: 10,
   inputs: [NARC_INPUT, CODE_INPUT],
   outputs: ["sprites"],

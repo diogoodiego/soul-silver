@@ -10,6 +10,7 @@ import { btx0 } from "../fixtures/sprites/btx0.ts";
 import { buildNitroFile, buildTex0 } from "../fixtures/maps/build-nitro.ts";
 import { GRASS_EFFECT_MEMBER, ICON_PALETTE_TABLE, OVERWORLD_POKEMON_FIRST, OVERWORLD_POKEMON_TABLE } from "../../src/sprites/layout.ts";
 import { SOULSILVER_US_LAYOUT } from "../../src/data/layout.ts";
+import { buildMoveScript, buildSpa } from "../fixtures/sprites/spa.ts";
 import { bgr555, buildNclr, buildNcgr, encryptPokemonPixels, encryptTrainerPixels } from "../fixtures/sprites/builders.ts";
 
 const plain = new Uint8Array(64).fill(0x11);
@@ -68,6 +69,14 @@ async function fakeArchive(species: number): Promise<StageContext> {
     ),
   ]);
   await writeFile(join(effectDir, `${String(GRASS_EFFECT_MEMBER).padStart(4, "0")}.bin`), Buffer.from(grass));
+  // Battle effects: every move script creates emitter 0 of SPA 32; statuses use SPA 27 and 115.
+  const scripts = join(root, "rom-unpack", "narc", "a", "0", "1", "0");
+  const spaDir = join(root, "rom-unpack", "narc", "a", "0", "2", "9");
+  await mkdir(scripts, { recursive: true });
+  await mkdir(spaDir, { recursive: true });
+  await Promise.all(Array.from({ length: 468 }, (_, m) => writeFile(join(scripts, `${String(m).padStart(4, "0")}.bin`), Buffer.from(buildMoveScript(32)))));
+  const spa = buildSpa(Array.from({ length: 10 }, () => ({})), [{ colors: [0, 0x7fff] }]);
+  await Promise.all([27, 32, 115].map((id) => writeFile(join(spaDir, `${String(id).padStart(4, "0")}.bin`), Buffer.from(spa))));
   const itemMap = SOULSILVER_US_LAYOUT.arm9.itemMap;
   const arm9 = new Uint8Array(Math.max(OVERWORLD_POKEMON_TABLE + 2 * 493, ICON_PALETTE_TABLE + 544, itemMap + 8 * 537));
   for (let id = 1; id <= 536; id++) new DataView(arm9.buffer).setUint16(itemMap + id * 8 + 4, 1, true);
@@ -106,6 +115,7 @@ describe("sprites stage", { timeout: 30_000 }, () => {
       "icon-item": 536,
       trainer: 129,
       "field-effect": 1,
+      "battle-fx": 467 + 7,
     });
   });
 
