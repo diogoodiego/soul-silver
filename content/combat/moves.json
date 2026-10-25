@@ -1,0 +1,2903 @@
+{
+  "kind": "combat-moves",
+  "formatVersion": 1,
+  "records": [
+    {
+      "id": 1,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "archetype": "melee",
+      "hits": 3,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "burn"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "freeze"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "paralysis"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "archetype": "self-area",
+      "castS": 1,
+      "critStage": 1,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": 2
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "knockback",
+          "px": 64
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "archetype": "dash",
+      "castS": 0.8,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "archetype": "melee",
+      "hits": 2,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "accuracy",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "paralysis"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "speed",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "archetype": "dash",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "recoil",
+          "fraction": 0.25
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "archetype": "dash",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "recoil",
+          "fraction": 0.33
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "defense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "poison"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "archetype": "projectile",
+      "hits": 3,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "defense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "attack",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "knockback",
+          "px": 64
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "sleep"
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "confusion"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage",
+          "fixed": 20
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 51,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "specialDefense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "burn"
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "archetype": "beam",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "burn"
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 55,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "archetype": "beam",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "archetype": "beam",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "freeze"
+        }
+      ]
+    },
+    {
+      "id": 59,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "freeze"
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "archetype": "beam",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "confusion"
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "archetype": "beam",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "speed",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "archetype": "beam",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 67,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 60
+        }
+      ]
+    },
+    {
+      "id": 68,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 60
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 73,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "damage",
+          "targetHpFraction": 0.125
+        },
+        {
+          "kind": "drain",
+          "fraction": 1
+        }
+      ]
+    },
+    {
+      "id": 74,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialAttack",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 75,
+      "archetype": "projectile",
+      "critStage": 1,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 76,
+      "archetype": "beam",
+      "castS": 1.2,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 77,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "poison"
+        }
+      ]
+    },
+    {
+      "id": 78,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "paralysis"
+        }
+      ]
+    },
+    {
+      "id": 79,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "sleep"
+        }
+      ]
+    },
+    {
+      "id": 80,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 81,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "speed",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 85,
+      "archetype": "beam",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "paralysis"
+        }
+      ]
+    },
+    {
+      "id": 86,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "paralysis"
+        }
+      ]
+    },
+    {
+      "id": 87,
+      "archetype": "target-area",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "paralysis"
+        }
+      ]
+    },
+    {
+      "id": 89,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 91,
+      "archetype": "dash",
+      "castS": 0.8,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 92,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "toxic"
+        }
+      ]
+    },
+    {
+      "id": 93,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "confusion"
+        }
+      ]
+    },
+    {
+      "id": 94,
+      "archetype": "target-area",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "specialDefense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 95,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "sleep"
+        }
+      ]
+    },
+    {
+      "id": 97,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "speed",
+          "delta": 2
+        }
+      ]
+    },
+    {
+      "id": 98,
+      "archetype": "dash",
+      "castS": 0,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 99,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage",
+          "level": true
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "defense",
+          "delta": -2
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "evasion",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "accuracy",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 111,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialDefense",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 114,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "reset-stages"
+        }
+      ]
+    },
+    {
+      "id": 115,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 116,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "crit",
+          "delta": 2
+        }
+      ]
+    },
+    {
+      "id": 119,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 126,
+      "archetype": "target-area",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "burn"
+        }
+      ]
+    },
+    {
+      "id": 127,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 129,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 132,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "speed",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 133,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialDefense",
+          "delta": 2
+        }
+      ]
+    },
+    {
+      "id": 138,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "drain",
+          "fraction": 0.5
+        }
+      ]
+    },
+    {
+      "id": 141,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "drain",
+          "fraction": 0.5
+        }
+      ]
+    },
+    {
+      "id": 143,
+      "archetype": "projectile",
+      "castS": 1.2,
+      "critStage": 1,
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 145,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "speed",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 148,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "accuracy",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 150,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 154,
+      "archetype": "melee",
+      "hits": 3,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 156,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "heal",
+          "fraction": 1
+        }
+      ]
+    },
+    {
+      "id": 157,
+      "archetype": "target-area",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 158,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 162,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage",
+          "targetHpFraction": 0.5
+        }
+      ]
+    },
+    {
+      "id": 163,
+      "archetype": "melee",
+      "critStage": 1,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 164,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 168,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 169,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "speed",
+          "delta": -2
+        }
+      ]
+    },
+    {
+      "id": 170,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 172,
+      "archetype": "dash",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "burn"
+        }
+      ]
+    },
+    {
+      "id": 173,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 174,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "speed",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 175,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 80
+        }
+      ]
+    },
+    {
+      "id": 179,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 80
+        }
+      ]
+    },
+    {
+      "id": 180,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 182,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 184,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "speed",
+          "delta": -2
+        }
+      ]
+    },
+    {
+      "id": 185,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 186,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "confusion"
+        }
+      ]
+    },
+    {
+      "id": 187,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": 6
+        }
+      ]
+    },
+    {
+      "id": 188,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "poison"
+        }
+      ]
+    },
+    {
+      "id": 189,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "accuracy",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 193,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 196,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "speed",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 200,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 202,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "drain",
+          "fraction": 0.5
+        }
+      ]
+    },
+    {
+      "id": 203,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 204,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "attack",
+          "delta": -2
+        }
+      ]
+    },
+    {
+      "id": 205,
+      "archetype": "dash",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 207,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "confusion"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "attack",
+          "delta": 2
+        }
+      ]
+    },
+    {
+      "id": 209,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "paralysis"
+        }
+      ]
+    },
+    {
+      "id": 210,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 211,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 213,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 214,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 216,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 70
+        }
+      ]
+    },
+    {
+      "id": 218,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 70
+        }
+      ]
+    },
+    {
+      "id": 219,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 226,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 227,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 228,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 230,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "evasion",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 231,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "defense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 232,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 235,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "heal",
+          "fraction": 0.5
+        }
+      ]
+    },
+    {
+      "id": 237,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 60
+        }
+      ]
+    },
+    {
+      "id": 239,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 240,
+      "archetype": "self-buff",
+      "durationS": 20,
+      "effects": [
+        {
+          "kind": "weather",
+          "weather": "rain"
+        }
+      ]
+    },
+    {
+      "id": 241,
+      "archetype": "self-buff",
+      "durationS": 20,
+      "effects": [
+        {
+          "kind": "weather",
+          "weather": "sun"
+        }
+      ]
+    },
+    {
+      "id": 242,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "defense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 244,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 246,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "speed",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialAttack",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialDefense",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 247,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "specialDefense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 249,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "defense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 250,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 253,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 257,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "burn"
+        }
+      ]
+    },
+    {
+      "id": 258,
+      "archetype": "self-buff",
+      "durationS": 20,
+      "effects": [
+        {
+          "kind": "weather",
+          "weather": "hail"
+        }
+      ]
+    },
+    {
+      "id": 261,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "burn"
+        }
+      ]
+    },
+    {
+      "id": 263,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 264,
+      "archetype": "melee",
+      "castS": 1,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 265,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 266,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 267,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 268,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialDefense",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 269,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 270,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 271,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 273,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "heal",
+          "fraction": 0.5
+        }
+      ]
+    },
+    {
+      "id": 274,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 275,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 276,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": -1,
+          "chance": 100
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": -1,
+          "chance": 100
+        }
+      ]
+    },
+    {
+      "id": 277,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 278,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 280,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 281,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "sleep"
+        }
+      ]
+    },
+    {
+      "id": 282,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 283,
+      "archetype": "dash",
+      "effects": [
+        {
+          "kind": "damage",
+          "targetHpFraction": 0.5
+        }
+      ]
+    },
+    {
+      "id": 284,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 287,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 290,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "paralysis"
+        }
+      ]
+    },
+    {
+      "id": 291,
+      "archetype": "dash",
+      "castS": 0.8,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 297,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "attack",
+          "delta": -2
+        }
+      ]
+    },
+    {
+      "id": 300,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 301,
+      "archetype": "dash",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 304,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 306,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "defense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 310,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 311,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 312,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 313,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "specialDefense",
+          "delta": -2
+        }
+      ]
+    },
+    {
+      "id": 314,
+      "archetype": "projectile",
+      "critStage": 1,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 315,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialAttack",
+          "delta": -2
+        }
+      ]
+    },
+    {
+      "id": 316,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 317,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "speed",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 318,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "speed",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialAttack",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialDefense",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 320,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "sleep"
+        }
+      ]
+    },
+    {
+      "id": 321,
+      "archetype": "target-debuff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "attack",
+          "delta": -1
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "defense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 324,
+      "archetype": "beam",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "confusion"
+        }
+      ]
+    },
+    {
+      "id": 326,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 331,
+      "archetype": "projectile",
+      "hits": 3,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 332,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 334,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": 2
+        }
+      ]
+    },
+    {
+      "id": 336,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 337,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 339,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 340,
+      "archetype": "dash",
+      "castS": 0.8,
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "paralysis"
+        }
+      ]
+    },
+    {
+      "id": 341,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "speed",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 343,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 345,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 346,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 349,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "speed",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 351,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 352,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "confusion"
+        }
+      ]
+    },
+    {
+      "id": 355,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "heal",
+          "fraction": 0.5
+        }
+      ]
+    },
+    {
+      "id": 358,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 359,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "speed",
+          "delta": -1,
+          "chance": 100
+        }
+      ]
+    },
+    {
+      "id": 360,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 80
+        }
+      ]
+    },
+    {
+      "id": 362,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 363,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 60
+        }
+      ]
+    },
+    {
+      "id": 365,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 366,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "speed",
+          "delta": 2
+        }
+      ]
+    },
+    {
+      "id": 369,
+      "archetype": "dash",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 372,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 374,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 50
+        }
+      ]
+    },
+    {
+      "id": 375,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 376,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 60
+        }
+      ]
+    },
+    {
+      "id": 378,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 80
+        }
+      ]
+    },
+    {
+      "id": 380,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 382,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 383,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 387,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 388,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 389,
+      "archetype": "melee",
+      "castS": 0,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 390,
+      "archetype": "field",
+      "effects": [
+        {
+          "kind": "status",
+          "status": "poison"
+        }
+      ]
+    },
+    {
+      "id": 393,
+      "archetype": "self-buff",
+      "effects": []
+    },
+    {
+      "id": 394,
+      "archetype": "dash",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "recoil",
+          "fraction": 0.33
+        },
+        {
+          "kind": "status",
+          "status": "burn"
+        }
+      ]
+    },
+    {
+      "id": 398,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "poison"
+        }
+      ]
+    },
+    {
+      "id": 400,
+      "archetype": "melee",
+      "critStage": 1,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 401,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 402,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 403,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 406,
+      "archetype": "beam",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 411,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "specialDefense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 412,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "specialDefense",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 413,
+      "archetype": "dash",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "recoil",
+          "fraction": 0.33
+        }
+      ]
+    },
+    {
+      "id": 415,
+      "archetype": "target-debuff",
+      "effects": []
+    },
+    {
+      "id": 416,
+      "archetype": "dash",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 417,
+      "archetype": "self-buff",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialAttack",
+          "delta": 2
+        }
+      ]
+    },
+    {
+      "id": 419,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 421,
+      "archetype": "melee",
+      "critStage": 1,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 422,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "paralysis"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 423,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "freeze"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 424,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "burn"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 425,
+      "archetype": "dash",
+      "castS": 0,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 426,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "accuracy",
+          "delta": -1
+        }
+      ]
+    },
+    {
+      "id": 428,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "flinch"
+        }
+      ]
+    },
+    {
+      "id": 431,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "confusion"
+        }
+      ]
+    },
+    {
+      "id": 435,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "paralysis"
+        }
+      ]
+    },
+    {
+      "id": 436,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "burn"
+        }
+      ]
+    },
+    {
+      "id": 437,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialAttack",
+          "delta": -2
+        }
+      ]
+    },
+    {
+      "id": 441,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "poison"
+        }
+      ]
+    },
+    {
+      "id": 445,
+      "archetype": "self-area",
+      "effects": [
+        {
+          "kind": "stages",
+          "target": "target",
+          "stat": "specialAttack",
+          "delta": -2
+        }
+      ]
+    },
+    {
+      "id": 446,
+      "archetype": "field",
+      "effects": [
+        {
+          "kind": "damage",
+          "targetHpFraction": 0.125
+        }
+      ]
+    },
+    {
+      "id": 447,
+      "archetype": "target-area",
+      "effects": [
+        {
+          "kind": "damage",
+          "power": 60
+        }
+      ]
+    },
+    {
+      "id": 450,
+      "archetype": "melee",
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 451,
+      "archetype": "beam",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialAttack",
+          "delta": 1
+        }
+      ]
+    },
+    {
+      "id": 453,
+      "archetype": "dash",
+      "castS": 0,
+      "effects": [
+        {
+          "kind": "damage"
+        }
+      ]
+    },
+    {
+      "id": 466,
+      "archetype": "projectile",
+      "effects": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "attack",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "defense",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "speed",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialAttack",
+          "delta": 1
+        },
+        {
+          "kind": "stages",
+          "target": "self",
+          "stat": "specialDefense",
+          "delta": 1
+        }
+      ]
+    }
+  ]
+}

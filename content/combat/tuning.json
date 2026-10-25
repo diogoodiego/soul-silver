@@ -1,0 +1,13 @@
+{
+  "kind": "combat-tuning",
+  "formatVersion": 1,
+  "value": {
+    "cooldown": { "a": 0.6, "b": 1.2, "c": 0.4, "min": 0.4, "max": 8, "statusPower": 40 },
+    "speed": { "low": 15, "high": 150, "moveMinPx": 60, "moveMaxPx": 110, "cooldownMaxCut": 0.3 },
+    "critChances": [16, 8, 4, 3, 2],
+    "knockbackPx": 6,
+    "flashS": 0.2,
+    "bodyRadiusPx": 8,
+    "accuracyDeviationDeg": 6
+  }
+}

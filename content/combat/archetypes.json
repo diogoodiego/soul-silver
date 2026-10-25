@@ -1,0 +1,18 @@
+{
+  "kind": "archetypes",
+  "formatVersion": 1,
+  "records": [
+    { "id": "melee", "behavior": "melee", "defaults": { "rangePx": 0, "hitbox": { "shape": "arc", "radiusPx": 28, "angleDeg": 100 }, "castS": 0.1, "hits": 1, "rooted": true } },
+    { "id": "projectile", "behavior": "projectile", "defaults": { "rangePx": 160, "hitbox": { "shape": "circle", "radiusPx": 6 }, "speedPx": 240, "castS": 0.15, "hits": 1 } },
+    { "id": "beam", "behavior": "beam", "defaults": { "rangePx": 0, "hitbox": { "shape": "capsule", "lengthPx": 128, "widthPx": 12 }, "castS": 0.35, "hits": 1, "rooted": true } },
+    { "id": "self-area", "behavior": "self-area", "defaults": { "rangePx": 0, "hitbox": { "shape": "circle", "radiusPx": 40 }, "castS": 0.25, "hits": 1, "rooted": true } },
+    { "id": "target-area", "behavior": "target-area", "defaults": { "rangePx": 96, "hitbox": { "shape": "circle", "radiusPx": 24 }, "castS": 0.4, "hits": 1 } },
+    { "id": "dash", "behavior": "dash", "defaults": { "rangePx": 64, "hitbox": { "shape": "circle", "radiusPx": 10 }, "speedPx": 320, "castS": 0.05, "hits": 1 } },
+    { "id": "self-buff", "behavior": "self-buff", "defaults": { "castS": 0.3, "hits": 1 } },
+    { "id": "target-debuff", "behavior": "target-debuff", "defaults": { "rangePx": 0, "hitbox": { "shape": "capsule", "lengthPx": 96, "widthPx": 24 }, "castS": 0.25, "hits": 1 } },
+    { "id": "field", "behavior": "field", "defaults": { "rangePx": 64, "hitbox": { "shape": "circle", "radiusPx": 40 }, "castS": 0.3, "hits": 1, "durationS": 5 } },
+    { "id": "generic-physical", "behavior": "melee", "defaults": { "rangePx": 0, "hitbox": { "shape": "arc", "radiusPx": 28, "angleDeg": 100 }, "castS": 0.1, "hits": 1, "rooted": true } },
+    { "id": "generic-special", "behavior": "projectile", "defaults": { "rangePx": 160, "hitbox": { "shape": "circle", "radiusPx": 6 }, "speedPx": 240, "castS": 0.15, "hits": 1 } },
+    { "id": "generic-status", "behavior": "target-debuff", "defaults": { "rangePx": 0, "hitbox": { "shape": "capsule", "lengthPx": 96, "widthPx": 24 }, "castS": 0.25, "hits": 1 } }
+  ]
+}
