@@ -1,70 +1,40 @@
 import { BUTTON, type MoveInput } from "@soulsilver/shared/game";
+import { type Action, ACTIONS, type Bindings, DEFAULT_KEYS, PAD_BUTTONS } from "@soulsilver/shared/input";
+import { writable } from "svelte/store";
 
 // Keyboard (8 directions) and gamepad (analog) to a movement vector (spec 011, research R12).
-// The device used most recently wins. Moves 1–4 (spec 013): keys 1–4, or pad A, X, Y and RB;
-// aim with the mouse pointer or the right stick. Companion actions (spec 014) come from ACTIONS.
+// The device used most recently wins. Keys come from the player's bindings (spec 017); pad buttons
+// are the fixed Xbox layout in PAD_BUTTONS. Moves 1–4 (spec 013); aim with the mouse pointer or
+// the right stick. Menus get discrete actions through onAction, with hold-to-repeat on the pad.
 
 export const STICK_DEADZONE = 0.2;
-
-const KEY_VECTORS: Record<string, [number, number]> = {
-  ArrowUp: [0, -1],
-  KeyW: [0, -1],
-  ArrowDown: [0, 1],
-  KeyS: [0, 1],
-  ArrowLeft: [-1, 0],
-  KeyA: [-1, 0],
-  ArrowRight: [1, 0],
-  KeyD: [1, 0],
-};
-const RUN_KEYS = new Set(["ShiftLeft", "ShiftRight"]);
-/** Standard mapping: 1 is the right face button (B on Xbox, Circle on PlayStation). */
-const RUN_BUTTON = 1;
-const DPAD = { up: 12, down: 13, left: 14, right: 15 };
-const MOVE_KEYS = ["Digit1", "Digit2", "Digit3", "Digit4"];
-const MOVE_BUTTONS = [0, 2, 3, 5];
-/** Dash: Space, or pad LB. */
-const DASH_KEY = "Space";
-const DASH_BUTTON = 4;
+const MOVE_ACTIONS = ["move1", "move2", "move3", "move4"] as const;
+const ACTION_BITS = { dash: BUTTON.dash, combat: BUTTON.combat, recall: BUTTON.recall, interact: BUTTON.interact, throw: BUTTON.throw } as const;
 export const DASH_BIT = BUTTON.dash;
+/** Pad hold-to-repeat for menu actions: first repeat after REPEAT_DELAY_MS, then every REPEAT_EVERY_MS. */
+export const REPEAT_DELAY_MS = 400;
+export const REPEAT_EVERY_MS = 120;
 
-/**
- * Companion and fight actions (spec 014): key code and standard-mapping pad button. The picker is
- * the client's own (it opens the quick swap); the others go to the server as input bits.
- * shortcut: fixed table, no remapping screen yet; add one that writes these to the settings when players ask.
- */
-export const ACTIONS = {
-  combat: { key: "KeyF", button: 6, bit: BUTTON.combat },
-  recall: { key: "KeyR", button: 7, bit: BUTTON.recall },
-  interact: { key: "KeyE", button: 8, bit: BUTTON.interact },
-  picker: { key: "KeyQ", button: 9, bit: 0 },
-  /** Spec 015: throw the selected ball toward the aim; cycle to the next ball in the bag (client only). */
-  throw: { key: "KeyG", button: 10, bit: BUTTON.throw },
-  nextBall: { key: "KeyB", button: 11, bit: 0 },
-} as const;
-const ACTION_KEYS: readonly string[] = Object.values(ACTIONS).map((a) => a.key);
+export type Device = "keyboard" | "gamepad";
+/** The device used last; button glyphs follow it. */
+export const activeDevice = writable<Device>("keyboard");
+
+const has = (held: ReadonlySet<string>, keys: readonly string[]) => keys.some((k) => held.has(k));
 
 /** Move slots held as bits 0–3, dash as bit 4, then the companion action bits. */
-export function moveButtons(held: ReadonlySet<string>, padPressed: (button: number) => boolean): number {
+export function moveButtons(held: ReadonlySet<string>, padPressed: (button: number) => boolean, bindings: Readonly<Bindings> = DEFAULT_KEYS): number {
   let bits = 0;
-  for (let slot = 0; slot < 4; slot++) if (held.has(MOVE_KEYS[slot]!) || padPressed(MOVE_BUTTONS[slot]!)) bits |= 1 << slot;
-  if (held.has(DASH_KEY) || padPressed(DASH_BUTTON)) bits |= DASH_BIT;
-  for (const a of Object.values(ACTIONS)) if (held.has(a.key) || padPressed(a.button)) bits |= a.bit;
+  MOVE_ACTIONS.forEach((a, slot) => {
+    if (has(held, bindings[a]) || padPressed(PAD_BUTTONS[a])) bits |= 1 << slot;
+  });
+  for (const [a, bit] of Object.entries(ACTION_BITS) as [keyof typeof ACTION_BITS, number][]) if (has(held, bindings[a]) || padPressed(PAD_BUTTONS[a])) bits |= bit;
   return bits;
 }
 
 /** Held key codes to a vector of length 0 or 1. */
-export function keyboardVector(held: ReadonlySet<string>): MoveInput["move"] {
-  let x = 0;
-  let y = 0;
-  for (const code of held) {
-    const v = KEY_VECTORS[code];
-    if (v) {
-      x += v[0];
-      y += v[1];
-    }
-  }
-  x = Math.sign(x);
-  y = Math.sign(y);
+export function keyboardVector(held: ReadonlySet<string>, bindings: Readonly<Bindings> = DEFAULT_KEYS): MoveInput["move"] {
+  const x = Math.sign((has(held, bindings.right) ? 1 : 0) - (has(held, bindings.left) ? 1 : 0));
+  const y = Math.sign((has(held, bindings.down) ? 1 : 0) - (has(held, bindings.up) ? 1 : 0));
   const length = Math.hypot(x, y);
   return length === 0 ? { x: 0, y: 0 } : { x: x / length, y: y / length };
 }
@@ -77,16 +47,60 @@ export function stickVector(ax: number, ay: number): MoveInput["move"] {
   return { x: (ax / length) * intensity, y: (ay / length) * intensity };
 }
 
-export function createInput(target: Window) {
+/** Per-action press edges with hold-to-repeat: true when the action should fire now. */
+export function createRepeater() {
+  const since = new Map<Action, { down: number; next: number }>();
+  return (action: Action, pressed: boolean, now: number): boolean => {
+    const s = since.get(action);
+    if (!pressed) {
+      since.delete(action);
+      return false;
+    }
+    if (!s) {
+      since.set(action, { down: now, next: now + REPEAT_DELAY_MS });
+      return true;
+    }
+    if (now < s.next) return false;
+    s.next += REPEAT_EVERY_MS;
+    if (s.next <= now) s.next = now + REPEAT_EVERY_MS;
+    return true;
+  };
+}
+
+/** Left stick as a menu direction, past half tilt. */
+function stickDirection(ax: number, ay: number): Action | undefined {
+  if (Math.hypot(ax, ay) < 0.5) return undefined;
+  return Math.abs(ax) > Math.abs(ay) ? (ax > 0 ? "right" : "left") : ay > 0 ? "down" : "up";
+}
+
+export function createInput(target: Window, initial: Readonly<Bindings> = DEFAULT_KEYS) {
+  let bindings = initial;
   const held = new Set<string>();
-  let lastDevice: "keyboard" | "gamepad" = "keyboard";
+  let lastDevice: Device = "keyboard";
+  const use = (device: Device) => {
+    if (device === lastDevice) return;
+    lastDevice = device;
+    activeDevice.set(device);
+  };
+  activeDevice.set(lastDevice);
+  const listeners = new Set<(action: Action) => void>();
+  const emit = (action: Action) => {
+    for (const l of listeners) l(action);
+  };
+  const bound = (code: string) => ACTIONS.filter((a) => bindings[a].includes(code));
 
   const onKeyDown = (event: KeyboardEvent) => {
-    if (KEY_VECTORS[event.code] || RUN_KEYS.has(event.code) || MOVE_KEYS.includes(event.code) || event.code === DASH_KEY || ACTION_KEYS.includes(event.code)) {
-      held.add(event.code);
-      lastDevice = "keyboard";
-      event.preventDefault();
+    const actions = bound(event.code);
+    if (actions.length === 0) return;
+    held.add(event.code);
+    use("keyboard");
+    // Text fields keep their own keys (Backspace deletes, Enter submits); only Escape leaves them.
+    if (event.target instanceof HTMLInputElement) {
+      if (event.code === "Escape") emit("cancel");
+      return;
     }
+    event.preventDefault();
+    for (const a of actions) emit(a);
   };
   const onKeyUp = (event: KeyboardEvent) => {
     held.delete(event.code);
@@ -100,68 +114,86 @@ export function createInput(target: Window) {
   let pointer: { x: number; y: number } | undefined;
   const onPointer = (event: PointerEvent) => {
     pointer = { x: event.clientX, y: event.clientY };
-    lastDevice = "keyboard";
+    use("keyboard");
   };
   target.addEventListener("pointermove", onPointer);
+  target.addEventListener("pointerdown", onPointer);
 
+  // Reconnected pads show up here again with no setup.
   function pad() {
     for (const p of target.navigator.getGamepads()) if (p?.connected) return p;
     return undefined;
   }
+  const pressed = (button: number) => pad()?.buttons[button]?.pressed ?? false;
+
+  const repeat = createRepeater();
+  let poll = target.requestAnimationFrame(function frame(now) {
+    const p = pad();
+    const dir = p ? stickDirection(p.axes[0] ?? 0, p.axes[1] ?? 0) : undefined;
+    for (const a of ACTIONS) {
+      const down = p !== undefined && ((p.buttons[PAD_BUTTONS[a]]?.pressed ?? false) || a === dir);
+      if (repeat(a, down, now)) {
+        use("gamepad");
+        emit(a);
+      }
+    }
+    poll = target.requestAnimationFrame(frame);
+  });
 
   function gamepad(): MoveInput | undefined {
-    // Reconnected pads show up here again with no setup.
-    for (const pad of target.navigator.getGamepads()) {
-      if (!pad || !pad.connected) continue;
-      const pressed = (i: number) => pad.buttons[i]?.pressed ?? false;
-      let move = stickVector(pad.axes[0] ?? 0, pad.axes[1] ?? 0);
-      if (move.x === 0 && move.y === 0) {
-        const dpad = new Set<string>();
-        if (pressed(DPAD.up)) dpad.add("ArrowUp");
-        if (pressed(DPAD.down)) dpad.add("ArrowDown");
-        if (pressed(DPAD.left)) dpad.add("ArrowLeft");
-        if (pressed(DPAD.right)) dpad.add("ArrowRight");
-        move = keyboardVector(dpad);
-      }
-      const run = pressed(RUN_BUTTON);
-      if (move.x !== 0 || move.y !== 0 || run) return { move, run };
-    }
-    return undefined;
+    const p = pad();
+    if (!p) return undefined;
+    // On the map only the left stick moves; the D-pad is for interact and the ball cycle.
+    const move = stickVector(p.axes[0] ?? 0, p.axes[1] ?? 0);
+    const run = pressed(PAD_BUTTONS.run);
+    return move.x !== 0 || move.y !== 0 || run ? { move, run } : undefined;
   }
 
   return {
     /** Sampled once per tick. */
     read(): MoveInput {
-      const pad = gamepad();
-      const keys = { move: keyboardVector(held), run: [...RUN_KEYS].some((k) => held.has(k)) };
+      const p = gamepad();
+      const keys = { move: keyboardVector(held, bindings), run: has(held, bindings.run) };
       const keysActive = keys.move.x !== 0 || keys.move.y !== 0;
-      if (pad && !keysActive) lastDevice = "gamepad";
-      return pad && lastDevice === "gamepad" ? pad : keys;
+      if (p && !keysActive) use("gamepad");
+      return p && lastDevice === "gamepad" ? p : keys;
     },
-    /** Moves held, as bits 0–3. */
+    /** Moves held, as bits 0–3, and the action bits. */
     buttons(): number {
-      const p = pad();
-      return moveButtons(held, (i) => p?.buttons[i]?.pressed ?? false);
+      return moveButtons(held, pressed, bindings);
     },
     /** Whether an action's key or pad button is held. */
-    held(action: keyof typeof ACTIONS): boolean {
-      return held.has(ACTIONS[action].key) || (pad()?.buttons[ACTIONS[action].button]?.pressed ?? false);
+    held(action: Action): boolean {
+      return has(held, bindings[action]) || pressed(PAD_BUTTONS[action]);
     },
     /** Right-stick aim when it is pushed, else undefined. */
     stickAim(): MoveInput["move"] | undefined {
       const p = pad();
       const v = stickVector(p?.axes[2] ?? 0, p?.axes[3] ?? 0);
       if (v.x === 0 && v.y === 0) return undefined;
-      lastDevice = "gamepad";
+      use("gamepad");
       return v;
     },
     /** The mouse pointer while the keyboard and mouse are in use. */
     pointer: () => (lastDevice === "keyboard" ? pointer : undefined),
+    /** Discrete actions for menus; returns a function that cancels the subscription. */
+    onAction(listener: (action: Action) => void): () => void {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    setBindings(next: Readonly<Bindings>): void {
+      bindings = next;
+      held.clear();
+    },
     dispose(): void {
+      target.cancelAnimationFrame(poll);
       target.removeEventListener("keydown", onKeyDown);
       target.removeEventListener("keyup", onKeyUp);
       target.removeEventListener("blur", onBlur);
       target.removeEventListener("pointermove", onPointer);
+      target.removeEventListener("pointerdown", onPointer);
     },
   };
 }
+
+export type Input = ReturnType<typeof createInput>;

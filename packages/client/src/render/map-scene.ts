@@ -1,7 +1,9 @@
+import type { CollisionMap } from "@soulsilver/shared/game";
 import { MAP_TILE_PX, MESH_VERTEX_FLOATS, type MeshGroup } from "@soulsilver/shared/maps";
 import {
   BufferGeometry,
   ClampToEdgeWrapping,
+  DataTexture,
   DoubleSide,
   Group,
   InterleavedBuffer,
@@ -10,12 +12,17 @@ import {
   MeshBasicMaterial,
   MirroredRepeatWrapping,
   NearestFilter,
+  FloatType,
   NoColorSpace,
   RepeatWrapping,
+  RGFormat,
   Texture,
+  Vector2,
+  Vector3,
   type Wrapping,
 } from "three";
 import type { MapMesh } from "./map-assets";
+import { CLEARING_RADIUS_PX, MAX_CLEARINGS } from "./grass-clearing";
 
 // A map's mesh (shared/maps/mesh.ts) as three.js objects: one mesh per group, one texture view per
 // image of the group (wrap differs per group), its scale and offset set by the frame shown.
@@ -47,6 +54,68 @@ function show(texture: Texture, frame: MeshGroup["frames"][number]): Texture {
   return texture;
 }
 
+/** Where tall grass is hidden this frame, shared by every map: world x, z and radius per circle. */
+export const grassClearings = {
+  uClearings: { value: Array.from({ length: MAX_CLEARINGS }, () => new Vector3()) },
+  uClearingCount: { value: 0 },
+};
+
+export function setGrassClearings(points: readonly { x: number; y: number }[]): void {
+  points.forEach((p, i) => grassClearings.uClearings.value[i]!.set(p.x, p.y, CLEARING_RADIUS_PX));
+  grassClearings.uClearingCount.value = points.length;
+}
+
+/** Per tile: R 1 for tall grass, G the ground height. The grass is the layer drawn above that ground. */
+function grassTexture(file: MapMesh["file"], grid: CollisionMap): DataTexture {
+  const data = new Float32Array(file.width * file.height * 2);
+  for (let i = 0; i < file.width * file.height; i++) {
+    data[i * 2] = grid.tiles[i]?.category === "tallGrass" ? 1 : 0;
+    data[i * 2 + 1] = file.ground[0]![i]!;
+  }
+  const texture = new DataTexture(data, file.width, file.height, RGFormat, FloatType);
+  texture.magFilter = NearestFilter;
+  texture.minFilter = NearestFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/** Drops the fragments of the grass layer (above the ground of a tall grass tile) inside a clearing. */
+function clearGrass(material: MeshBasicMaterial, grass: DataTexture, file: MapMesh["file"]): void {
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, grassClearings, { uGrass: { value: grass }, uGrassSize: { value: new Vector2(file.width, file.height) } });
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>
+varying vec3 vMapPos;
+varying vec3 vWorldPos;`)
+      .replace("#include <begin_vertex>", `#include <begin_vertex>
+vMapPos = position;
+vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+varying vec3 vMapPos;
+varying vec3 vWorldPos;
+uniform vec3 uClearings[${MAX_CLEARINGS}];
+uniform int uClearingCount;
+uniform sampler2D uGrass;
+uniform vec2 uGrassSize;`,
+      )
+      .replace(
+        "#include <clipping_planes_fragment>",
+        `#include <clipping_planes_fragment>
+for (int i = 0; i < ${MAX_CLEARINGS}; i++) {
+  if (i >= uClearingCount) break;
+  if (distance(vWorldPos.xz, uClearings[i].xy) > uClearings[i].z) continue;
+  vec2 tile = floor(vMapPos.xz / ${MAP_TILE_PX.toFixed(1)});
+  vec2 cell = texture2D(uGrass, (tile + 0.5) / uGrassSize).rg;
+  if (cell.r > 0.5 && vMapPos.y > cell.g + 1.0) discard;
+}`,
+      );
+  };
+  material.customProgramCacheKey = () => "grass-clearing";
+}
+
 export interface MapObject {
   root: Group;
   /** Shows frame `k` (tick k * ANIMATION_STEP_TICKS) of the looped cycle on every animated group. */
@@ -54,8 +123,11 @@ export interface MapObject {
   dispose(): void;
 }
 
-export function buildMapObject({ file, vertices, textures }: MapMesh): MapObject {
+/** `grid` is the map's level-0 collision, for where tall grass is. */
+export function buildMapObject({ file, vertices, textures }: MapMesh, grid?: CollisionMap): MapObject {
   const root = new Group();
+  // shortcut: level 0 only; upper levels never hide their grass, extend if a fight on one shows it.
+  const grass = grid ? grassTexture(file, grid) : undefined;
   const buffer = new InterleavedBuffer(vertices, MESH_VERTEX_FLOATS);
   const geometries: BufferGeometry[] = [];
   const owned: Texture[] = [];
@@ -91,6 +163,7 @@ export function buildMapObject({ file, vertices, textures }: MapMesh): MapObject
       // DS alpha test: fully transparent texels are never drawn.
       alphaTest: group.translucent ? 1 / 255 : 0.5,
     });
+    if (grass) clearGrass(material, grass, file);
     if (group.frames.length > 1) animated.push({ material, group, views });
     root.add(new Mesh(geometry, material));
   }
@@ -109,6 +182,7 @@ export function buildMapObject({ file, vertices, textures }: MapMesh): MapObject
     dispose() {
       for (const g of geometries) g.dispose();
       for (const t of owned) t.dispose();
+      grass?.dispose();
       root.traverse((o) => {
         if (o instanceof Mesh && o.material !== MISSING) (o.material as MeshBasicMaterial).dispose();
       });

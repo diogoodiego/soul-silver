@@ -1,7 +1,8 @@
 <script lang="ts">
   // Quick swap (spec 014, US3): the only menu in combat. Opens with the picker action or when the
   // Pokémon out faints; lists the party in its own order (swapping never reorders it).
-  import { onMount } from "svelte";
+  import { t } from "./i18n";
+  import { menu } from "./input/menu";
 
   interface Member {
     species: number;
@@ -29,40 +30,15 @@
     onClose: () => void;
   } = $props();
 
-  let list: HTMLDivElement;
-  onMount(() => list.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus());
 </script>
 
-<div class="picker" role="dialog" aria-label="Trocar Pokémon" bind:this={list}>
-  <p>{fainted ? "Seu Pokémon desmaiou. Escolha o próximo ou recolha para fugir." : "Trocar Pokémon"}</p>
+<div class="absolute left-1/2 bottom-4 -translate-x-1/2 grid gap-1 p-3 bg-black/85 text-white [font:13px_system-ui,sans-serif]" role="dialog" aria-label={t("swap.title")} use:menu={{ onBack: () => !fainted && onClose() }}>
+  <p class="mt-0 mb-1">{fainted ? t("swap.fainted") : t("swap.title")}</p>
   {#each members as m, i (i)}
-    <button type="button" disabled={m.hp === 0 || i === active} onclick={() => onPick(i)}>
-      {speciesName(m.species)} · nv {m.level} · HP {m.hp}/{m.hpMax}{i === active ? " · em campo" : ""}{m.hp === 0 ? " · desmaiado" : ""}
+    <button type="button" class="text-left" disabled={m.hp === 0 || i === active} onclick={() => onPick(i)}>
+      {t("swap.member", { name: speciesName(m.species), level: m.level, hp: m.hp, hpMax: m.hpMax })}{i === active ? t("swap.out") : ""}{m.hp === 0 ? t("swap.faintedTag") : ""}
     </button>
   {/each}
-  <button type="button" onclick={onRecall}>Recolher e fugir</button>
-  {#if !fainted}<button type="button" onclick={onClose}>Voltar à luta</button>{/if}
+  <button type="button" class="text-left" onclick={onRecall}>{t("swap.recall")}</button>
+  {#if !fainted}<button type="button" class="text-left" onclick={onClose}>{t("swap.back")}</button>{/if}
 </div>
-
-<style>
-  .picker {
-    position: absolute;
-    left: 50%;
-    bottom: 1rem;
-    transform: translateX(-50%);
-    display: grid;
-    gap: 0.25rem;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.85);
-    color: #fff;
-    font:
-      13px system-ui,
-      sans-serif;
-  }
-  p {
-    margin: 0 0 0.25rem;
-  }
-  button {
-    text-align: left;
-  }
-</style>

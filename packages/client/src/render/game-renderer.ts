@@ -1,4 +1,4 @@
-import { tileAt, WARP_TICKS, type Entity, type HitEvent, type WorldMap } from "@soulsilver/shared/game";
+import { HOP_TICKS, tileAt, WARP_TICKS, type Entity, type HitEvent, type WorldMap } from "@soulsilver/shared/game";
 import { ANIMATION_FRAME_MS, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { parseSpriteFile, type SpriteEmitter, type SpriteFrame, type SpriteSetFile } from "@soulsilver/shared/sprites";
 import {
@@ -19,7 +19,8 @@ import {
 } from "three";
 import { clampCamera, integerScale, OBLIQUE, obliqueProjection, VIEW_H, VIEW_W, type Bounds } from "./camera";
 import { loadBitmap, loadMapMesh, spriteUrl, type ClientWorld, type MapMesh } from "./map-assets";
-import { buildMapObject, groundAt, type MapObject } from "./map-scene";
+import { CLEARING_RADIUS_PX, clearings } from "./grass-clearing";
+import { buildMapObject, groundAt, setGrassClearings, type MapObject } from "./map-scene";
 import { createParticles, effectsOf } from "./particles";
 
 // Draws the world (spec 011) in 3D: each map's mesh, extracted from the ROM, under the fixed oblique
@@ -45,6 +46,8 @@ const POKEMON_FRAME_MS = 100;
 /** Standing Pokémon bounce in place: up IDLE_BOUNCE_PX for half of each IDLE_BOUNCE_MS. */
 const IDLE_BOUNCE_MS = 500;
 const IDLE_BOUNCE_PX = 2;
+/** Peak height of a ledge hop arc. */
+const HOP_ARC_PX = 12;
 /**
  * Sprites are moved this far toward the camera (up and south, which keeps them on the same pixels)
  * so their feet win over the ground they stand on.
@@ -200,6 +203,8 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   const particles = createParticles(scene, (name) => frames.get(name));
   /** Entities drawn last frame, so effects can follow them. */
   let latest = new Map<number, Entity>();
+  /** Grass clearings this frame (fights), where sprites show their feet. */
+  let cleared: { x: number; y: number }[] = [];
   const anchorOf = (id: number) => () => {
     const e = latest.get(id);
     return e && { x: e.x, y: e.y, ground: groundOf(e) };
@@ -317,7 +322,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       log(`Map ${map.id} mesh: ${(error as Error).message}`);
       return undefined;
     });
-    return mesh && { mesh, object: buildMapObject(mesh) };
+    return mesh && { mesh, object: buildMapObject(mesh, map.levels[0]) };
   }
 
   function destroyVisual(visual: MapVisual): void {
@@ -456,7 +461,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     const ball = inBall.get(e.id);
     if (ball && now >= ball.start + (ball.shakes + 1) * SHAKE_MS) inBall.delete(e.id);
     const frame = inBall.has(e.id) ? undefined : frameFor(e, actor.moving, running, now);
-    const inGrass = tileAt(world.lookup, e.area, e.level, e.x, e.y)?.category === "tallGrass";
+    const inGrass = tileAt(world.lookup, e.area, e.level, e.x, e.y)?.category === "tallGrass" && !cleared.some((c) => Math.hypot(c.x - e.x, c.y - e.y) <= CLEARING_RADIUS_PX);
     const [tx, ty] = [Math.floor(e.x / MAP_TILE_PX), Math.floor(e.y / MAP_TILE_PX)];
     if (actor.tile !== `${tx},${ty}`) {
       if (actor.tile !== "" && inGrass) rustleAt(tx, ty, groundOf(e), now);
@@ -482,7 +487,10 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     const blinking = e.data["flash"] === true || (blinkUntil.get(e.id) ?? 0) > now;
     actor.sprite.visible = !particlesOnly && (!blinking || Math.floor(now / FLASH_MS) % 2 === 0);
     const bounce = e.kind === "pokemon" && !actor.moving && Math.floor(now / (IDLE_BOUNCE_MS / 2)) % 2 === 0 ? IDLE_BOUNCE_PX : 0;
-    const y = groundOf(e) + SPRITE_DEPTH_BIAS + bounce;
+    const hop = e.data["hop"];
+    // shortcut: the arc steps once per server tick (the counter is not interpolated); smooth it if it reads choppy.
+    const lift = typeof hop === "number" ? Math.round(Math.sin((Math.PI * (HOP_TICKS - hop + 0.5)) / HOP_TICKS) * HOP_ARC_PX) : 0;
+    const y = groundOf(e) + SPRITE_DEPTH_BIAS + bounce + lift;
     // A hit target shakes sideways while its flash lasts.
     // A ball rocks during the first half of each shake window, then rests.
     const rocking = ball && inBall.has(e.id) && now - ball.start < ball.shakes * SHAKE_MS && (now - ball.start) % SHAKE_MS < SHAKE_MS / 2;
@@ -515,8 +523,10 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         const e = at.dx === 0 && at.dy === 0 ? seenAs : { ...seenAs, area: self.area, x: seenAs.x + at.dx, y: seenAs.y + at.dy };
         seen.add(e.id);
         latest.set(e.id, e);
-        drawEntity(e, e.id === self.id && running, now);
       }
+      cleared = clearings([...latest.values()]);
+      setGrassClearings(cleared);
+      for (const e of latest.values()) drawEntity(e, e.id === self.id && running, now);
       for (const [id, actor] of actors) {
         if (seen.has(id)) continue;
         actor.sprite.removeFromParent();

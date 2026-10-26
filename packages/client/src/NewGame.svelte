@@ -1,88 +1,82 @@
 <script lang="ts">
-  // New game: slot, name and character (spec 012, US1).
+  // New game in the chosen slot: name, character and starter (spec 012 US1, spec 017 US2).
   import { PLAYER_NAME_MAX } from "@soulsilver/shared/game";
-  import type { SlotSummary } from "@soulsilver/shared/save";
-  import { untrack } from "svelte";
+  import { STARTERS } from "@soulsilver/shared/progression";
+  import { onMount } from "svelte";
+  import { BANK, bankTexts } from "./game/game-data";
+  import PokemonIcon from "./game/PokemonIcon.svelte";
+  import { t } from "./i18n";
+  import { activeDevice } from "./input/input";
+  import { menu } from "./input/menu";
+  import NameKeyboard from "./NameKeyboard.svelte";
 
-  let { slots, onCreated, onBack }: { slots: SlotSummary[]; onCreated: (slot: number) => void; onBack: () => void } = $props();
+  let { slot, overwrite, onCreated, onBack }: { slot: number; overwrite: boolean; onCreated: (slot: number) => void; onBack: () => void } = $props();
 
-  let slot = $state(untrack(() => slots.find((s) => s.status === "empty")?.index ?? 1));
   let name = $state("");
   let character = $state<"male" | "female">("male");
+  let starter = $state<number | undefined>();
+  let speciesNames = $state<Map<number, string>>(new Map());
+  onMount(() => {
+    void bankTexts(BANK.species).then((m) => (speciesNames = m));
+  });
   let error = $state<string | undefined>();
   let busy = $state(false);
 
-  const label = (s: SlotSummary) => (s.status === "ok" ? `Slot ${s.index} — ${s.name} (será substituído)` : s.status === "empty" ? `Slot ${s.index} — vazio` : `Slot ${s.index} — com problema (será substituído)`);
-
-  async function create(event: SubmitEvent): Promise<void> {
-    event.preventDefault();
+  async function create(): Promise<void> {
     error = undefined;
     if (name.trim().length === 0) {
-      error = "Digite um nome.";
+      error = t("newGame.nameRequired");
       return;
     }
-    const occupied = slots.find((s) => s.index === slot)?.status !== "empty";
-    if (occupied && !window.confirm(`O slot ${slot} já tem um save. Apagar e começar um novo jogo?`)) return;
+    if (starter === undefined) {
+      error = t("newGame.starterRequired");
+      return;
+    }
     busy = true;
-    const result = await window.soulSilver.createSave(slot, name, character, occupied);
+    const result = await window.soulSilver.createSave(slot, name, character, overwrite, starter);
     busy = false;
     if (result.ok) onCreated(slot);
     else error = result.reason;
   }
 </script>
 
-<form onsubmit={create}>
-  <h2>Novo jogo</h2>
+<form class="grid gap-3 max-w-[24rem]"
+  use:menu={{ onBack }}
+  onsubmit={(event) => {
+    event.preventDefault();
+    void create();
+  }}
+>
+  <h2>{t("newGame.title", { slot })}</h2>
 
-  <label>
-    Slot
-    <select bind:value={slot}>
-      {#each slots as s (s.index)}
-        <option value={s.index}>{label(s)}</option>
-      {/each}
-    </select>
+  <label class="grid gap-1">
+    {t("newGame.name")}
+    <input bind:value={name} maxlength={PLAYER_NAME_MAX} autocomplete="off" required tabindex={$activeDevice === "gamepad" ? -1 : 0} />
   </label>
+  {#if $activeDevice === "gamepad"}
+    <NameKeyboard value={name} max={PLAYER_NAME_MAX} onChange={(next: string) => (name = next)} />
+  {/if}
 
-  <label>
-    Nome
-    <input bind:value={name} maxlength={PLAYER_NAME_MAX} autocomplete="off" required />
-  </label>
-
-  <fieldset>
-    <legend>Personagem</legend>
-    <label><input type="radio" bind:group={character} value="male" /> Menino</label>
-    <label><input type="radio" bind:group={character} value="female" /> Menina</label>
+  <fieldset class="flex gap-2 border-none p-0">
+    <legend>{t("newGame.character")}</legend>
+    <button type="button" class="aria-pressed:outline-2 aria-pressed:outline-solid aria-pressed:outline-accent" aria-pressed={character === "male"} onclick={() => (character = "male")}>{t("newGame.male")}</button>
+    <button type="button" class="aria-pressed:outline-2 aria-pressed:outline-solid aria-pressed:outline-accent" aria-pressed={character === "female"} onclick={() => (character = "female")}>{t("newGame.female")}</button>
   </fieldset>
 
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  <fieldset class="flex gap-2 border-none p-0">
+    <legend>{t("newGame.starter")}</legend>
+    {#each STARTERS as id (id)}
+      <button type="button" class="inline-flex gap-[0.4rem] items-center aria-pressed:outline-2 aria-pressed:outline-solid aria-pressed:outline-accent" aria-pressed={starter === id} onclick={() => (starter = id)}>
+        <PokemonIcon species={id} />
+        {speciesNames.get(id) ?? `#${id}`}
+      </button>
+    {/each}
+  </fieldset>
 
-  <div class="actions">
-    <button type="submit" disabled={busy}>Começar</button>
-    <button type="button" onclick={onBack}>Voltar</button>
+  {#if error}<p class="text-danger m-0" role="alert">{error}</p>{/if}
+
+  <div class="flex gap-2">
+    <button type="submit" disabled={busy}>{t("newGame.start")}</button>
+    <button type="button" onclick={onBack}>{t("common.back")}</button>
   </div>
 </form>
-
-<style>
-  form {
-    display: grid;
-    gap: 0.75rem;
-    max-width: 24rem;
-  }
-  label {
-    display: grid;
-    gap: 0.25rem;
-  }
-  fieldset label {
-    display: inline-flex;
-    gap: 0.4rem;
-    margin-right: 1rem;
-  }
-  .actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-  .error {
-    color: #b00020;
-    margin: 0;
-  }
-</style>

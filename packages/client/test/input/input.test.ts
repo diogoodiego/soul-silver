@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BUTTON } from "@soulsilver/shared/game";
-import { keyboardVector, moveButtons, stickVector, STICK_DEADZONE } from "../../src/input/input";
+import { DEFAULT_KEYS, rebind } from "@soulsilver/shared/input";
+import { createRepeater, keyboardVector, moveButtons, REPEAT_DELAY_MS, REPEAT_EVERY_MS, stickVector, STICK_DEADZONE } from "../../src/input/input";
 
 describe("keyboardVector", () => {
   it("is zero with nothing held", () => {
@@ -55,7 +56,7 @@ describe("moveButtons", () => {
     expect(moveButtons(new Set(), pad([1]))).toBe(0); // B runs
   });
 
-  it("maps the companion actions to their bits: F/LT combat, R/RT recall, E/View interact", () => {
+  it("maps the companion actions to their bits: F/LT combat, R/RT recall, E/D-pad up interact", () => {
     expect(moveButtons(new Set(["KeyF"]), () => false)).toBe(BUTTON.combat);
     expect(moveButtons(new Set(), (i) => i === 7)).toBe(BUTTON.recall);
     expect(moveButtons(new Set(["KeyE"]), (i) => i === 6)).toBe(BUTTON.interact | BUTTON.combat);
@@ -63,14 +64,54 @@ describe("moveButtons", () => {
     expect(moveButtons(new Set(["KeyQ"]), () => false)).toBe(0);
   });
 
-  it("maps G and pad LS to the throw, bit 8; the ball cycle (B, RS) is the client's own", () => {
+  it("maps G and pad LS to the throw, bit 8; the ball cycle (B, D-pad right) is the client's own", () => {
     expect(moveButtons(new Set(["KeyG"]), () => false)).toBe(BUTTON.throw);
     expect(moveButtons(new Set(), (i) => i === 10)).toBe(BUTTON.throw);
-    expect(moveButtons(new Set(["KeyB"]), (i) => i === 11)).toBe(0);
+    expect(moveButtons(new Set(["KeyB"]), (i) => i === 15)).toBe(0);
   });
 
   it("maps Space and pad LB to dash, bit 4", () => {
     expect(moveButtons(new Set(["Space"]), () => false)).toBe(0b10000);
     expect(moveButtons(new Set(), (i) => i === 4)).toBe(0b10000);
+  });
+});
+
+describe("bindings (spec 017)", () => {
+  it("follows a remapped key and drops the old one", () => {
+    const { bindings } = rebind(DEFAULT_KEYS, "combat", "KeyZ");
+    expect(moveButtons(new Set(["KeyZ"]), () => false, bindings)).toBe(BUTTON.combat);
+    expect(moveButtons(new Set(["KeyF"]), () => false, bindings)).toBe(0);
+  });
+
+  it("moves with remapped direction keys", () => {
+    const { bindings } = rebind(DEFAULT_KEYS, "up", "KeyI");
+    expect(keyboardVector(new Set(["KeyI"]), bindings)).toEqual({ x: 0, y: -1 });
+    expect(keyboardVector(new Set(["KeyW"]), bindings)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("puts interact on D-pad up", () => {
+    expect(moveButtons(new Set(), (i) => i === 12)).toBe(BUTTON.interact);
+  });
+});
+
+describe("createRepeater", () => {
+  it("fires on press, after 400 ms, then every 120 ms, and again after a release", () => {
+    const fire = createRepeater();
+    const at = (t: number, down = true) => fire("down", down, t);
+    expect(at(0)).toBe(true);
+    expect(at(100)).toBe(false);
+    expect(at(REPEAT_DELAY_MS - 1)).toBe(false);
+    expect(at(REPEAT_DELAY_MS)).toBe(true);
+    expect(at(REPEAT_DELAY_MS + REPEAT_EVERY_MS - 1)).toBe(false);
+    expect(at(REPEAT_DELAY_MS + REPEAT_EVERY_MS)).toBe(true);
+    expect(at(600, false)).toBe(false);
+    expect(at(610)).toBe(true);
+  });
+
+  it("keeps actions apart", () => {
+    const fire = createRepeater();
+    expect(fire("up", true, 0)).toBe(true);
+    expect(fire("confirm", true, 10)).toBe(true);
+    expect(fire("up", true, 20)).toBe(false);
   });
 });

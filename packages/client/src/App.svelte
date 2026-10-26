@@ -1,18 +1,26 @@
 <script lang="ts">
-  import type { AssetsState, ServerInfo, ServerStatus, UpdateState } from "@soulsilver/shared";
+  // The screen flow (spec 017): first run → title → main menu → play (save → mode → match) → game.
+  import type { AssetsState, ServerInfo, UpdateState } from "@soulsilver/shared";
   import { onMount } from "svelte";
   import FirstRun from "./FirstRun.svelte";
   import GameSession from "./GameSession.svelte";
-  import MainMenu from "./MainMenu.svelte";
+  import { t } from "./i18n";
   import type { PlayRequest } from "./play-request";
-  import UpdateNotice from "./UpdateNotice.svelte";
+  import About from "./screens/About.svelte";
+  import Controls from "./screens/Controls.svelte";
+  import Home from "./screens/Home.svelte";
+  import Play from "./screens/Play.svelte";
+  import Settings from "./screens/Settings.svelte";
+  import Title from "./screens/Title.svelte";
+  import { loadSettings } from "./settings";
 
-  /** How long "Assets prontos" stays up after an extraction before the main screen. */
+  /** How long "Assets prontos" stays up after an extraction before the title. */
   const READY_NOTICE_MS = 1000;
 
+  type Screen = "title" | "home" | "about" | "settings" | "controls" | "play";
+  let screen = $state<Screen>("title");
   let appVersion = $state<string | undefined>();
   let info = $state<ServerInfo | undefined>();
-  let status = $state<ServerStatus>({ state: "starting", tick: 0 });
   let failed = $state(false);
   let update = $state<UpdateState>({ status: "disabled" });
   let assets = $state<AssetsState>({ status: "checking" });
@@ -22,7 +30,7 @@
   let attempt = $state(0);
 
   async function reconnect(): Promise<string | undefined> {
-    if (!play?.address) return "Não há endereço para reconectar.";
+    if (!play?.address) return t("game.noAddress");
     const result = await window.soulSilver.joinSession(play.slot, play.address);
     if (!result.ok) return result.reason;
     play = { ...play, save: result.save };
@@ -44,8 +52,8 @@
 
   onMount(() => {
     const api = window.soulSilver;
+    void loadSettings();
     const unsubscribeStatus = api.onServerStatus((next) => {
-      status = next;
       if (next.state === "stopped") failed = true;
     });
     const unsubscribeUpdate = api.onUpdateState((next) => {
@@ -75,69 +83,26 @@
   });
 </script>
 
-<main>
-  <h1>SoulSilver Desktop</h1>
-
-  <UpdateNotice {update} onRestart={() => void window.soulSilver.restartToUpdate()} />
-
+<main class="p-8">
   {#if !showMain}
+    <h1>SoulSilver Desktop</h1>
     <FirstRun {assets} />
+    <p class="text-quiet text-[0.85rem]">{t("app.version", { version: appVersion ?? "—" })}</p>
+  {:else if play}
+    {#key attempt}
+      <GameSession {play} onExit={() => ((play = undefined), (screen = "home"))} onReconnect={play.address ? reconnect : undefined} />
+    {/key}
+  {:else if screen === "title"}
+    <Title version={appVersion} onStart={() => (screen = "home")} />
+  {:else if screen === "home"}
+    <Home {update} serverReady={info !== undefined} serverFailed={failed} onPlay={() => (screen = "play")} onSettings={() => (screen = "settings")} onAbout={() => (screen = "about")} />
+  {:else if screen === "about"}
+    <About version={appVersion} onBack={() => (screen = "home")} />
+  {:else if screen === "settings"}
+    <Settings onControls={() => (screen = "controls")} onBack={() => (screen = "home")} />
+  {:else if screen === "controls"}
+    <Controls onBack={() => (screen = "settings")} />
   {:else}
-    {#if failed}
-      <p class="error" role="alert">Servidor de jogo indisponível.</p>
-    {:else if !info}
-      <p>Conectando ao servidor de jogo…</p>
-    {/if}
-
-    <dl>
-      <dt>Versão do app</dt>
-      <dd>{appVersion ?? "—"}</dd>
-      <dt>Versão do protocolo</dt>
-      <dd>{info?.protocolVersion ?? "—"}</dd>
-      <dt>Estado do servidor</dt>
-      <dd>{status.state}</dd>
-      <dt>Ticks</dt>
-      <dd class="tick">{status.tick}</dd>
-    </dl>
-
-    {#if info && !play}
-      <MainMenu onPlay={(request: PlayRequest) => (play = request)} />
-    {/if}
-    {#if play}
-      {#key attempt}
-        <GameSession {play} onExit={() => (play = undefined)} onReconnect={play.address ? reconnect : undefined} />
-      {/key}
-    {/if}
-  {/if}
-
-  {#if !showMain}
-    <p class="version">Versão {appVersion ?? "—"}</p>
+    <Play onPlay={(request: PlayRequest) => (play = request)} onBack={() => (screen = "home")} />
   {/if}
 </main>
-
-<style>
-  main {
-    font-family: system-ui, sans-serif;
-    padding: 2rem;
-  }
-  dl {
-    display: grid;
-    grid-template-columns: max-content auto;
-    gap: 0.5rem 1.5rem;
-  }
-  dd {
-    margin: 0;
-    font-variant-numeric: tabular-nums;
-  }
-  .tick {
-    font-size: 1.5rem;
-  }
-  .error {
-    color: #b00020;
-    font-weight: bold;
-  }
-  .version {
-    color: #555;
-    font-size: 0.85rem;
-  }
-</style>

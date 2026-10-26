@@ -1,0 +1,62 @@
+/* Tailwind without preflight: the UI is built on the browser's default element styles. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+/* electron-vite runs from packages/app, so the client sources are named explicitly. */
+@source "./";
+
+@theme {
+  --color-accent: #c0c8d8;
+  --color-panel: rgb(16 20 32 / 88%);
+  --color-ink: #222;
+  --color-muted: #aab;
+  --color-quiet: #99a;
+  --color-danger: #ff6b81;
+  --color-alarm: #b00020;
+  --color-focus: #ffd34d;
+  --color-frame: #4a6;
+
+  --animate-title-pulse: title-pulse 1.6s ease-in-out infinite;
+  --animate-bob: bob 0.8s steps(2) infinite;
+  --animate-blink: blink 0.5s steps(1) infinite;
+
+  @keyframes title-pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @keyframes bob {
+    50% {
+      transform: translateY(2px);
+    }
+  }
+  @keyframes blink {
+    50% {
+      visibility: hidden;
+    }
+  }
+}
+
+@layer base {
+  :root {
+    --ui-scale: 1;
+    font-size: calc(clamp(14px, 1.5vh, 20px) * var(--ui-scale));
+  }
+  body {
+    margin: 0;
+    background: #0d1018;
+    color: #eef;
+    font-family: system-ui, sans-serif;
+  }
+  button {
+    font: inherit;
+    padding: 0.45rem 1rem;
+    cursor: pointer;
+  }
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}

@@ -105,6 +105,10 @@ export function createClientWorld(log: (message: string) => void) {
   return {
     /** Only maps already loaded; prediction treats the rest as open ground until they arrive. */
     lookup: ((mapId) => maps.get(mapId)) as WorldLookup,
+    /** The map header (music, area type), once the index is loaded. */
+    async header(mapId: string): Promise<MapHeader | undefined> {
+      return (await index).headers.get(Number(mapId));
+    },
     ensure(mapId: string): Promise<WorldMap | undefined> {
       if (!loading.has(mapId)) {
         loading.set(

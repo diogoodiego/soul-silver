@@ -42,32 +42,16 @@
   <h2>Arena de teste (dev)</h2>
   <p>A é seu (teclas 1–4 ou A/X/Y/RB; mira com o mouse ou o analógico direito). B fica parado como alvo selvagem. Nada é salvo.</p>
   {#each [{ label: "A", side: a }, { label: "B", side: b }] as { label, side } (label)}
-    <fieldset>
+    <fieldset class="grid gap-1 max-w-[24rem] mb-2">
       <legend>Pokémon {label}</legend>
-      <label>Espécie <input type="number" min="1" bind:value={side.species} /> {names.species[side.species] ?? ""}</label>
-      <label>Nível <input type="number" min="1" max="100" bind:value={side.level} /></label>
+      <label>Espécie <input class="w-20" type="number" min="1" bind:value={side.species} /> {names.species[side.species] ?? ""}</label>
+      <label>Nível <input class="w-20" type="number" min="1" max="100" bind:value={side.level} /></label>
       <label>Golpes (ids) <input type="text" bind:value={side.moves} /></label>
       <small>{moveIds(side.moves).map((m) => names.moves[m] ?? m).join(" · ")}</small>
     </fieldset>
   {/each}
-  <div class="buttons">
+  <div class="flex gap-2">
     <button type="button" disabled={busy || !valid(a) || !valid(b)} onclick={() => onStart({ a: combatant(a), b: combatant(b) })}>Lutar</button>
     <button type="button" onclick={onBack}>Voltar</button>
   </div>
 </section>
-
-<style>
-  fieldset {
-    display: grid;
-    gap: 0.25rem;
-    max-width: 24rem;
-    margin-bottom: 0.5rem;
-  }
-  input[type="number"] {
-    width: 5rem;
-  }
-  .buttons {
-    display: flex;
-    gap: 0.5rem;
-  }
-</style>

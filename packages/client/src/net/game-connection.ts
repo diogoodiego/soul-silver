@@ -1,4 +1,4 @@
-import { applyDelta, serverMessage, type ArenaSpec, type CloseReason, type Entity, type HitEvent, type MoveInput, type ServerMessage, type TickMetrics, type WorldLookup } from "@soulsilver/shared/game";
+import { applyDelta, serverMessage, type AiDebugRow, type ArenaSpec, type CloseReason, type Entity, type HitEvent, type MoveInput, type ServerMessage, type TickMetrics, type WorldLookup } from "@soulsilver/shared/game";
 import { createInterpolator } from "./interpolation";
 import { createPredictor } from "./prediction";
 
@@ -29,7 +29,10 @@ export function createGameConnection(options: GameConnectionOptions) {
   let rejectMessage: string | undefined;
   let closeReason: CloseReason | "disconnected" | undefined;
   let entityId: number | undefined;
+  let playerId: number | undefined;
   let metrics: TickMetrics | undefined;
+  /** The last AI debug rows (spec 019); only sent while the overlay is on. */
+  let aiDebug: AiDebugRow[] = [];
   let tick = 0;
   let seq = 0;
   let combatEvents: HitEvent[] = [];
@@ -47,6 +50,7 @@ export function createGameConnection(options: GameConnectionOptions) {
     switch (msg.type) {
       case "welcome":
         entityId = msg.entityId;
+        playerId = msg.playerId;
         return;
       case "reject":
         status = "rejected";
@@ -58,6 +62,9 @@ export function createGameConnection(options: GameConnectionOptions) {
         return;
       case "save":
         // The main process writes it and acknowledges.
+        return;
+      case "aiDebug":
+        aiDebug = msg.ais;
         return;
       case "debug":
         metrics = msg.metrics;
@@ -148,6 +155,13 @@ export function createGameConnection(options: GameConnectionOptions) {
     },
     get entityId() {
       return entityId;
+    },
+    /** Owner of this player's Pokémon and balls (`data.owner`). */
+    get playerId() {
+      return playerId;
+    },
+    get aiDebug() {
+      return aiDebug;
     },
     get metrics() {
       return metrics;

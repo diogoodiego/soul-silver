@@ -1,32 +1,37 @@
 <script lang="ts">
   // The game screen: renderer, input, pause menu and the debug overlay (specs 010, 011 and 012);
-  // the companion's reactions, the quick swap and the fight notices (spec 014); progression after a fight (spec 016).
+  // the companion's reactions, the quick swap and the fight notices (spec 014); progression after a fight (spec 016);
+  // the combat HUD, the dialog box, the full menu that never pauses the world and the busy mark (spec 017).
   import { PROTOCOL_VERSION } from "@soulsilver/shared";
   import { BUTTON, type Entity, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
-  import { formatText, screenText, type TextBankFile } from "@soulsilver/shared/text";
-  import ArenaHud from "./ArenaHud.svelte";
-  import ProgressionPrompt from "./ProgressionPrompt.svelte";
-  import SwapPicker from "./SwapPicker.svelte";
-  import { onMount } from "svelte";
-  import { createInput } from "./input/input";
+  import type { ItemRecord } from "@soulsilver/shared/game-data";
+  import { formatText, screenText } from "@soulsilver/shared/text";
+  import { onMount, untrack } from "svelte";
+  import { audio, createAudioReactions } from "./audio";
+  import CombatHud from "./game/CombatHud.svelte";
+  import { createDialogQueue } from "./game/dialog-queue";
+  import DialogBox from "./game/DialogBox.svelte";
+  import { BANK, bankTexts, itemRecords, moveTypes } from "./game/game-data";
+  import PauseMenu from "./game/PauseMenu.svelte";
+  import { t, type MessageKey } from "./i18n";
+  import { input } from "./input/app-input";
   import type { PlayRequest } from "./play-request";
+  import ProgressionPrompt from "./ProgressionPrompt.svelte";
   import { createGameConnection, type GameStatus } from "./net/game-connection";
   import { TICK_MS } from "./net/prediction";
-  import { createCombatFx, loadBank, SPECIES_BANK } from "./render/combat-fx";
+  import { overlayShapes, type OverlayShape } from "./render/ai-overlay";
+  import { VIEW_W } from "./render/camera";
+  import { createCombatFx } from "./render/combat-fx";
   import { createGameRenderer, SHAKE_MS } from "./render/game-renderer";
   import { createClientWorld } from "./render/map-assets";
+  import { currentSettings, saveSettings } from "./settings";
+  import SwapPicker from "./SwapPicker.svelte";
 
   let {
     play,
     onExit,
     onReconnect,
   }: { play: PlayRequest; onExit: () => void; onReconnect?: (() => Promise<string | undefined>) | undefined } = $props();
-
-  const REASONS: Record<string, string> = {
-    "host-left": "O anfitrião saiu da partida.",
-    "closed-by-host": "O anfitrião encerrou a partida.",
-    disconnected: "A conexão com a partida foi perdida.",
-  };
 
   let menuOpen = $state(false);
   let leaving = $state(false);
@@ -41,49 +46,87 @@
   let fps = $state(0);
   let position = $state("—");
   let showDebug = $state(false);
-  let combatants = $state<Entity[]>([]);
+  /** The AI debug overlay (spec 019), shown with the debug panel. */
+  let aiShapes = $state<OverlayShape[]>([]);
+  let audioStats = $state("—");
   let host: HTMLDivElement;
 
   const EMOTIONS: Record<string, string> = { exclaim: "!", question: "?", note: "♪", heart: "♥", sweat: "💧", angry: "💢", sleep: "💤" };
-  let party = $state<{ species: number; level: number; hp: number; hpMax: number }[]>([]);
+  type Member = Extract<ServerMessage, { type: "party" }>["members"][number];
+  let party = $state<Member[]>([]);
   let activeMember = $state<number | undefined>();
   let picker = $state<"closed" | "open" | "fainted">("closed");
   let reaction = $state<string | undefined>();
   let notice = $state<string | undefined>();
-  /** Marks over entities: who is in a fight, and the companion's emotion bubble. */
+  /** Marks over entities: who is in a fight or busy in a menu, and the companion's emotion bubble. */
   let marks = $state<{ key: string; x: number; y: number; text: string }[]>([]);
+  /** HP bars over the foes while fighting: wild ones and other players' Pokémon (spec 017, PvP). */
+  let bars = $state<{ key: string; x: number; y: number; fraction: number }[]>([]);
+  /** The Pokémon under the player's control, for the HUD. */
+  let hudSelf = $state<Entity | undefined>();
   /** The player controls a Pokémon: a fight is on. */
   let inCombat = $state(false);
-  let speciesBank = $state<TextBankFile | undefined>();
-  const speciesName = (id: number) => speciesBank?.records.find((r) => r.id === id)?.text ?? `#${id}`;
-  /** Set by the picker's recall button: the next input carries the recall bit. */
+  /** Recall from the picker: the next input carries the recall bit. */
   let recallOnce = false;
 
-  // Spec 015: the balls in the bag, the one the next throw uses, and the capture lines.
-  /** Item names (feature 005). */
-  const ITEM_BANK = 222;
-  const NOTICES: Record<string, string> = { "no-balls": "Você não tem Poké Balls.", "storage-full": "A equipe e o armazenamento estão cheios.", "ball-returned": "Outro treinador já está capturando esse Pokémon. A bola voltou." };
-  let balls = $state<{ item: number; count: number }[]>([]);
+  // Text banks and game data from the extraction (spec 017); names fall back to the id.
+  let texts = $state<Record<string, Map<number, string>>>({});
+  const name = (bank: keyof typeof BANK) => (id: number) => texts[bank]?.get(id) ?? `#${id}`;
+  const speciesName = $derived(name("species"));
+  const moveName = $derived(name("moves"));
+  const itemName = $derived(name("items"));
+  const names = $derived({ species: speciesName, move: moveName, item: itemName, nature: name("natures"), ability: name("abilities") });
+  let items = $state<Map<number, ItemRecord>>(new Map());
+  let types = $state<Map<number, string>>(new Map());
+
+  // Spec 015: the bag, the ball the next throw uses, and the capture lines. The bag message carries the whole bag (spec 017).
+  // The save the session started from; the server's messages take over from there.
+  let bag = $state<{ item: number; count: number }[]>(untrack(() => play.save.bag.map((b) => ({ ...b }))));
   let selectedBall = $state<number | undefined>();
-  let itemBank = $state<TextBankFile | undefined>();
-  let dex = $state({ seen: 0, caught: 0 });
+  let dex = $state(untrack(() => ({ seen: [...play.save.pokedex.seen], caught: [...play.save.pokedex.caught] })));
   let captureLine = $state<string | undefined>();
-  const itemName = (id: number) => itemBank?.records.find((r) => r.id === id)?.text ?? `#${id}`;
+  const balls = $derived(bag.filter((b) => items.get(b.item)?.pocket === "balls"));
   // Spec 016: the head of the progression queue, sent only out of combat.
-  /** Move names (feature 005). */
-  const MOVE_BANK = 750;
-  let moveBank = $state<TextBankFile | undefined>();
-  const moveName = (id: number) => moveBank?.records.find((r) => r.id === id)?.text ?? `#${id}`;
   let progression = $state<Extract<ServerMessage, { type: "progression" }> | undefined>();
   function answer(msg: { type: "progression-ack" } | { type: "learn-answer"; forget: number | null } | { type: "evolve-answer"; accept: boolean }): void {
     progression = undefined;
     window.soulSilver.sendGame(msg);
   }
 
+  const dialog = createDialogQueue();
+  let dialogOpen = $state(false);
+
   const ballLabel = $derived.by(() => {
-    const b = balls.find((x) => x.item === selectedBall);
+    const b = balls.find((x) => x.item === selectedBall) ?? balls[0];
     return b ? `${itemName(b.item)} ×${b.count}` : undefined;
   });
+
+  function showNotice(text: string, ms = 3500): void {
+    notice = text;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => (notice = undefined), ms);
+  }
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Opening and closing the full menu tells the server, so the others see the player as busy. */
+  function setMenu(open: boolean): void {
+    if (open === menuOpen) return;
+    if (open && inCombat) {
+      showNotice(t("notice.menu-blocked"));
+      return;
+    }
+    menuOpen = open;
+    window.soulSilver.sendGame({ type: "menu", open });
+  }
+
+  /** Development builds: the dialog of SC-004, with the player's name and a yes/no question. */
+  async function dialogTest(): Promise<void> {
+    const raw = (await bankTexts(BANK.dialogTest)).get(21);
+    if (!raw) return;
+    const pages = formatText(raw, { "trainer-name:0": play.save.name }).split("{page}").map(screenText);
+    const yes = await dialog.ask(pages);
+    await dialog.say([t(yes ? "dialogTest.yes" : "dialogTest.no")]);
+  }
 
   onMount(() => {
     const api = window.soulSilver;
@@ -97,25 +140,23 @@
       log,
       arena: play.arena ? $state.snapshot(play.arena) : undefined,
     });
-    const input = createInput(window);
     let running = false;
     const renderer = createGameRenderer(host, world, log);
     const fx = createCombatFx(host, (x, y) => renderer.project(x, y), log);
+    const sounds = createAudioReactions({ playerId: () => game.playerId, header: (area) => world.header(area), world: world.lookup });
     let shown: Entity[] = [];
-    void loadBank(SPECIES_BANK).then((b) => (speciesBank = b));
-    void loadBank(ITEM_BANK).then((b) => (itemBank = b));
-    void loadBank(MOVE_BANK).then((b) => (moveBank = b));
+    for (const bank of ["species", "items", "moves", "natures", "abilities"] as const) void bankTexts(BANK[bank]).then((m) => (texts = { ...texts, [bank]: m }));
+    void itemRecords().then((m) => (items = m));
+    void moveTypes().then((m) => (types = m));
     let captureTimers: ReturnType<typeof setTimeout>[] = [];
     /** Shows the lines one after the other, SHAKE_MS apart; a new capture replaces them. */
     function captureLines(lines: string[]): void {
-      for (const t of captureTimers) clearTimeout(t);
+      for (const timer of captureTimers) clearTimeout(timer);
       captureTimers = lines.map((line, i) => setTimeout(() => (captureLine = line), i * SHAKE_MS));
       captureTimers.push(setTimeout(() => (captureLine = undefined), lines.length * SHAKE_MS + 2000));
     }
-    const banks: Record<number, Promise<TextBankFile | undefined>> = {};
     let emotion: { id: number; text: string; until: number } | undefined;
     let reactionTimer: ReturnType<typeof setTimeout> | undefined;
-    let noticeTimer: ReturnType<typeof setTimeout> | undefined;
     let pickerHeld = false;
     let nextBallHeld = false;
     /** Screen point above a standing sprite: 40 px north of its feet on the ground. */
@@ -123,14 +164,14 @@
 
     function companionEvents(now: number): void {
       for (const ev of game.takeCompanionEvents()) {
+        sounds.companion(ev);
         if (ev.type === "party") {
           party = ev.members;
           activeMember = ev.active;
         } else if (ev.type === "reaction") {
           emotion = { id: ev.companionId, text: EMOTIONS[ev.emotion] ?? "", until: now + 2000 };
-          banks[ev.bank] ??= loadBank(ev.bank);
-          void banks[ev.bank]!.then((bank) => {
-            const raw = bank?.records.find((r) => r.id === ev.text)?.text;
+          void bankTexts(ev.bank).then((bank) => {
+            const raw = bank.get(ev.text);
             if (!raw) return;
             try {
               reaction = screenText(formatText(raw, { "pokemon-name:0": speciesName(ev.species) }));
@@ -144,28 +185,26 @@
         } else if (ev.type === "fainted") {
           if (ev.canContinue) picker = "fainted";
         } else if (ev.type === "bag") {
-          balls = ev.items;
+          bag = ev.items;
           selectedBall = ev.selected;
         } else if (ev.type === "pokedex") {
-          dex = { seen: ev.seen.length, caught: ev.caught.length };
+          dex = { seen: ev.seen, caught: ev.caught };
         } else if (ev.type === "capture") {
           renderer.capture(ev.wildId, ev.shakes, now);
-          const shakes = Array.from({ length: ev.shakes }, (_, i) => `A bola balançou… ${"●".repeat(i + 1)}`);
-          captureLines(["A bola acertou!", ...shakes, ev.caught ? "Capturado!" : "O Pokémon escapou!"]);
+          const shakes = Array.from({ length: ev.shakes }, (_, i) => t("capture.shake", { dots: "●".repeat(i + 1) }));
+          captureLines([t("capture.hit"), ...shakes, ev.caught ? t("capture.caught") : t("capture.escaped")]);
         } else if (ev.type === "captured") {
-          captureLines([`${speciesName(ev.species)} ${ev.to === "party" ? "entrou na equipe" : "foi para o armazenamento temporário"}.`]);
+          captureLines([t(ev.to === "party" ? "capture.toParty" : "capture.toStorage", { name: speciesName(ev.species) })]);
         } else if (ev.type === "notice") {
-          captureLines([NOTICES[ev.code] ?? ev.code]);
+          captureLines([t(`notice.${ev.code}` as MessageKey)]);
         } else if (ev.type === "exp-gain") {
           const m = party[ev.partyIndex];
-          captureLines([`${m ? speciesName(m.species) : "Seu Pokémon"} ganhou ${ev.amount} de experiência.`]);
+          captureLines([t("capture.exp", { name: m ? speciesName(m.species) : t("capture.yourPokemon"), amount: ev.amount })]);
         } else if (ev.type === "progression") {
           progression = ev;
         } else {
           picker = "closed";
-          notice = `Todos os seus Pokémon desmaiaram. Você perdeu ¥${ev.moneyLost} e voltou para se recuperar.`;
-          clearTimeout(noticeTimer);
-          noticeTimer = setTimeout(() => (notice = undefined), 5000);
+          showNotice(t("game.blackout", { money: ev.moneyLost }), 5000);
         }
       }
     }
@@ -192,50 +231,57 @@
     });
     let noteTimer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribeSaved = api.onGameSaved((result) => {
-      saveNote = result.ok ? "Progresso salvo" : `Não foi possível salvar: ${result.reason}`;
+      saveNote = result.ok ? t("game.saved") : t("game.saveFailed", { reason: result.reason });
       clearTimeout(noteTimer);
       noteTimer = setTimeout(() => (saveNote = undefined), 2500);
     });
     // The main process opened the connection before this screen.
     game.start();
 
+    // The menu action opens the full menu; once open, the menu screens take the input.
+    const offAction = input.onAction((action) => {
+      if (action === "menu" && !menuOpen && !dialogOpen && picker === "closed" && !progression && status === "playing") setMenu(true);
+    });
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        // No full menu during a fight (spec 014, FR-024); Escape only closes the quick swap.
-        if (picker === "open") picker = "closed";
-        else if (!inCombat) menuOpen = !menuOpen;
-        event.preventDefault();
-      } else if (event.key === "F3") {
+      if (event.key === "F3") {
         showDebug = !showDebug;
+        api.sendGame({ type: "debugAi", on: showDebug });
+        if (!showDebug) aiShapes = [];
         event.preventDefault();
       } else if (event.key === "F11") {
-        if (document.fullscreenElement) void document.exitFullscreen();
-        else void document.documentElement.requestFullscreen();
+        void saveSettings({ fullscreen: !currentSettings().fullscreen });
+        event.preventDefault();
+      } else if (event.key === "F4" && import.meta.env.MODE === "development") {
+        void dialogTest();
         event.preventDefault();
       }
     };
     window.addEventListener("keydown", onKeyDown);
 
     const inputTimer = setInterval(() => {
-      const { move, run } = input.read();
+      // Menus and the text box take the input; the world keeps going without it (FR-012).
+      const blocked = menuOpen || dialogOpen;
+      const read = input.read();
+      const move = blocked ? { x: 0, y: 0 } : read.move;
+      const run = !blocked && read.run;
       running = run;
-      let buttons = input.buttons();
+      let buttons = blocked ? 0 : input.buttons();
       // Interacting needs no menu, swap picker or dialog open (FR-011); cutscenes do not exist yet.
-      if (menuOpen || picker !== "closed" || reaction || progression) buttons &= ~BUTTON.interact;
+      if (picker !== "closed" || reaction || progression) buttons &= ~BUTTON.interact;
       if (recallOnce) {
         buttons |= BUTTON.recall;
         recallOnce = false;
       }
-      const pickerNow = input.held("picker");
+      const pickerNow = !blocked && input.held("picker");
       if (pickerNow && !pickerHeld && inCombat && picker === "closed") picker = "open";
       pickerHeld = pickerNow;
-      const nextBallNow = input.held("nextBall");
+      const nextBallNow = !blocked && input.held("nextBall");
       if (nextBallNow && !nextBallHeld && balls.length > 1) {
         const at = balls.findIndex((b) => b.item === selectedBall);
         api.sendGame({ type: "select-ball", item: balls[(at + 1) % balls.length]!.item });
       }
       nextBallHeld = nextBallNow;
-      if (menuOpen || picker !== "closed" || progression) buttons &= ~(BUTTON.throw | BUTTON.combat);
+      if (picker !== "closed" || progression) buttons &= ~(BUTTON.throw | BUTTON.combat);
       game.sendInput(move, run, performance.now(), buttons, aim());
     }, TICK_MS);
 
@@ -249,20 +295,39 @@
       renderer.combatEvents(events, now);
       fx.show(events, (id) => shown.find((e) => e.id === id), now);
       fx.update(now);
-      if (play.arena) combatants = shown.filter((e) => e.kind === "pokemon");
       companionEvents(now);
+      dialogOpen = dialog.view() !== undefined;
       inCombat = !play.arena && view.self?.kind === "pokemon";
+      sounds.frame(view, events, inCombat, { x: view.self?.x ?? 0, y: view.self?.y ?? 0, halfWidthPx: VIEW_W / 2 });
+      // A fight closes the menu (FR-013); the server already cleared the busy mark.
+      if (inCombat && menuOpen) menuOpen = false;
       if (!inCombat && picker !== "closed") picker = "closed";
+      hudSelf = view.self?.kind === "pokemon" ? view.self : undefined;
+      const fighting = hudSelf !== undefined;
+      const nextBars = fighting
+        ? shown.filter((e) => e.kind === "pokemon" && e.data["owner"] !== hudSelf!.data["owner"] && Number(e.data["hpMax"] ?? 0) > 0).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]) }))
+        : [];
+      if (nextBars.length > 0 || bars.length > 0) bars = nextBars;
       const nextMarks = shown.filter((e) => e.data["inCombat"] === true).map((e) => ({ key: `fight-${e.id}`, ...over(e), text: "⚔" }));
+      for (const e of shown) if (e.data["busy"] === true && e.id !== game.entityId) nextMarks.push({ key: `busy-${e.id}`, ...over(e), text: t("game.busy") });
+      // A wild Pokémon that just noticed someone (spec 019, Alert state).
+      for (const e of shown) if (e.data["alert"] === true) nextMarks.push({ key: `alert-${e.id}`, ...over(e), text: "!" });
+      // Knocked out, waiting for a Poké Ball.
+      for (const e of shown) if (e.data["owner"] === "wild" && e.data["hp"] === 0) nextMarks.push({ key: `ko-${e.id}`, ...over(e), text: t("game.knockedOut") });
       const bubbleOver = emotion && now < emotion.until ? shown.find((e) => e.id === emotion!.id) : undefined;
       if (bubbleOver && emotion) nextMarks.push({ key: "emotion", ...over(bubbleOver), text: emotion.text });
       if (nextMarks.length > 0 || marks.length > 0) marks = nextMarks;
       const self = view.self;
-      position = self ? `mapa ${self.area} · ${Math.round(self.x)}, ${Math.round(self.y)} · nível ${self.level}` : "—";
+      position = self ? t("debug.position", { area: self.area, x: Math.round(self.x), y: Math.round(self.y), level: self.level }) : "—";
       status = game.status;
       rejectMessage = game.rejectMessage;
       closeReason = game.closeReason;
       tick = game.tick;
+      if (showDebug) {
+        const a = audio.stats();
+        audioStats = t("debug.audio", { music: a.music ?? "—", voices: a.voices, state: a.state });
+        aiShapes = overlayShapes(game.aiDebug, (id) => shown.find((e) => e.id === id), (x, y) => renderer.project(x, y));
+      }
       metrics = game.metrics;
       frames++;
       if (now - fpsSince >= 1000) {
@@ -277,7 +342,7 @@
       cancelAnimationFrame(frame);
       clearInterval(inputTimer);
       window.removeEventListener("keydown", onKeyDown);
-      input.dispose();
+      offAction();
       fx.destroy();
       renderer.destroy();
       unsubscribeMessage();
@@ -286,7 +351,7 @@
       clearTimeout(noteTimer);
       clearTimeout(reactionTimer);
       clearTimeout(noticeTimer);
-      for (const t of captureTimers) clearTimeout(t);
+      for (const timer of captureTimers) clearTimeout(timer);
     };
   });
 
@@ -302,41 +367,58 @@
     reconnectError = await onReconnect?.();
     reconnecting = false;
   }
+
+  const DIALOG = "absolute left-1/2 top-4 -translate-x-1/2 w-[min(90%,32rem)] m-0 px-4 py-3 bg-white/95 text-ink border-3 border-frame rounded-[6px] whitespace-pre-line z-3";
+  const MESSAGE = "absolute left-1/2 top-1/2 -translate-1/2 m-0 text-white z-5";
+
+  const REASONS: Record<string, MessageKey> = { "host-left": "game.hostLeft", "closed-by-host": "game.closedByHost", disconnected: "game.disconnected" };
 </script>
 
-<section class="game" aria-label="Sessão de jogo">
-  <div class="screen" bind:this={host}></div>
+<section class="fixed inset-0 bg-black" aria-label={t("game.label")}>
+  <div class="absolute inset-0 overflow-hidden" bind:this={host}></div>
 
   {#if status === "rejected"}
-    <div class="message">
-      <p class="error" role="alert">{rejectMessage}</p>
-      <button type="button" onclick={onExit}>Voltar ao menu</button>
+    <div class="{MESSAGE} grid gap-2 justify-items-center">
+      <p class="text-danger font-bold" role="alert">{rejectMessage}</p>
+      <button type="button" onclick={onExit}>{t("game.backToMenu")}</button>
     </div>
   {:else if status === "closed"}
-    <div class="message">
-      <p role="status">{REASONS[closeReason ?? ""] ?? "A sessão foi encerrada."}</p>
-      {#if reconnectError}<p class="error" role="alert">{reconnectError}</p>{/if}
+    <div class="{MESSAGE} grid gap-2 justify-items-center">
+      <p role="status">{t(REASONS[closeReason ?? ""] ?? "game.closed")}</p>
+      {#if reconnectError}<p class="text-danger font-bold" role="alert">{reconnectError}</p>{/if}
       {#if onReconnect && closeReason === "disconnected"}
-        <button type="button" disabled={reconnecting} onclick={() => void reconnect()}>Reconectar</button>
+        <button type="button" disabled={reconnecting} onclick={() => void reconnect()}>{t("game.reconnect")}</button>
       {/if}
-      <button type="button" onclick={onExit}>Voltar ao menu</button>
+      <button type="button" onclick={onExit}>{t("game.backToMenu")}</button>
     </div>
   {:else if status === "connecting"}
-    <p class="message" role="status">Entrando na sessão…</p>
-  {:else if menuOpen}
-    <div class="message">
-      <button type="button" disabled={leaving} onclick={leave}>{leaving ? "Salvando…" : "Sair para o menu"}</button>
-      <button type="button" onclick={() => (menuOpen = false)}>Continuar jogando</button>
-    </div>
+    <p class={MESSAGE} role="status">{t("game.connecting")}</p>
   {/if}
 
   {#each marks as m (m.key)}
-    <span class="mark" style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">{m.text}</span>
+    <span class="absolute -translate-x-1/2 -translate-y-full text-white font-bold text-[1.1rem] [text-shadow:0_1px_2px_#000] pointer-events-none z-1" style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">{m.text}</span>
   {/each}
-  {#if reaction}<p class="dialog" role="status">{reaction}</p>{/if}
-  {#if notice}<p class="dialog" role="alert">{notice}</p>{/if}
-  {#if captureLine}<p class="dialog" role="status">{captureLine}</p>{/if}
-  {#if ballLabel && status === "playing"}<p class="ball" aria-label="Bola selecionada (G arremessa, B troca)">◓ {ballLabel}</p>{/if}
+  {#if showDebug && aiShapes.length > 0}
+    <svg class="absolute inset-0 w-full h-full pointer-events-none z-1 [font:10px_monospace]" aria-label={t("debug.ai")}>
+      {#each aiShapes as s (s.key)}
+        <polygon class="fill-[rgb(255_220_0/15%)] stroke-[rgb(255_220_0/60%)]" points={s.cone} />
+        <circle class="fill-none stroke-[rgb(0_200_255/60%)] [stroke-dasharray:4_3]" cx={s.zone.cx} cy={s.zone.cy} r={s.zone.r} />
+        {#if s.lastSeen}<circle class="fill-[#f44]" cx={s.lastSeen.x} cy={s.lastSeen.y} r="4" />{/if}
+        <text class="fill-white [paint-order:stroke] stroke-black stroke-2 whitespace-pre" x={s.label.x} y={s.label.y}>
+          {#each s.label.lines as line, i (i)}<tspan x={s.label.x} dy={i === 0 ? 0 : 12}>{line}</tspan>{/each}
+        </text>
+      {/each}
+    </svg>
+  {/if}
+  {#if reaction}<p class={DIALOG} role="status">{reaction}</p>{/if}
+  {#if notice}<p class={DIALOG} role="alert">{notice}</p>{/if}
+  {#if captureLine}<p class={DIALOG} role="status">{captureLine}</p>{/if}
+  {#if ballLabel && status === "playing" && !hudSelf}<p class="absolute right-2 bottom-2 m-0 text-white text-[0.85rem] [text-shadow:0_1px_2px_#000] z-1" aria-label={t("game.ballLabel")}>◓ {ballLabel}</p>{/if}
+
+  {#if status === "playing" && (hudSelf || play.arena)}
+    <CombatHud self={hudSelf} {bars} {party} active={activeMember} {speciesName} {moveName} moveType={(id: number) => types.get(id)} />
+  {/if}
+
   {#if picker !== "closed"}
     <SwapPicker
       members={party}
@@ -369,20 +451,25 @@
     {/key}
   {/if}
 
-  {#if saveNote}<p class="note" role="status">{saveNote}</p>{/if}
-  {#if play.arena && status === "playing"}<ArenaHud {combatants} />{/if}
+  <DialogBox queue={dialog} />
+
+  {#if menuOpen && status === "playing"}
+    <PauseMenu {party} {bag} {items} {dex} {names} {leaving} onClose={() => setMenu(false)} onLeave={leave} />
+  {/if}
+
+  {#if saveNote}<p class="absolute left-2 top-2 m-0 text-white text-[0.85rem] opacity-80 z-1" role="status">{saveNote}</p>{/if}
 
   {#if showDebug}
-    <dl class="debug" aria-label="Depuração">
-      <dt>Posição</dt>
+    <dl class="debug fixed top-2 right-2 m-0 px-3 py-2 bg-black/75 text-white [font:12px_monospace] z-6" aria-label={t("debug.label")}>
+      <dt>{t("debug.positionLabel")}</dt>
       <dd>{position}</dd>
-      <dt>Pokédex</dt>
-      <dd>{dex.seen} vistos · {dex.caught} capturados</dd>
-      <dt>Quadros por segundo</dt>
+      <dt>{t("debug.dex")}</dt>
+      <dd>{t("dex.counts", { seen: dex.seen.length, caught: dex.caught.length })}</dd>
+      <dt>{t("debug.fps")}</dt>
       <dd>{fps}</dd>
-      <dt>Tick</dt>
+      <dt>{t("debug.tick")}</dt>
       <dd>{tick}</dd>
-      <dt>Tick (último / média / pior)</dt>
+      <dt>{t("debug.tickTimes")}</dt>
       <dd>
         {#if metrics}
           {metrics.lastMs.toFixed(2)} / {metrics.avgMs.toFixed(2)} / {metrics.maxMs.toFixed(2)} ms
@@ -390,98 +477,10 @@
           —
         {/if}
       </dd>
-      <dt>Ticks descartados</dt>
+      <dt>{t("debug.overruns")}</dt>
       <dd>{metrics?.overruns ?? 0}</dd>
-      <dt>Controles</dt>
-      <dd>Setas/WASD ou analógico · Shift/B corre · F11 tela cheia</dd>
-      <dd>F/LT combate · R/RT recolhe · Q/Start troca · E/View interage</dd>
+      <dt>{t("debug.audioLabel")}</dt>
+      <dd>{audioStats}</dd>
     </dl>
   {/if}
 </section>
-
-<style>
-  .game {
-    position: fixed;
-    inset: 0;
-    background: #000;
-  }
-  .screen {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-  }
-  .message {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    margin: 0;
-    color: #fff;
-  }
-  .ball {
-    position: absolute;
-    right: 8px;
-    bottom: 8px;
-    margin: 0;
-    color: #fff;
-    font: 12px monospace;
-    text-shadow: 0 1px 2px #000;
-  }
-  .note {
-    position: absolute;
-    left: 8px;
-    bottom: 8px;
-    margin: 0;
-    color: #fff;
-    font: 12px monospace;
-    opacity: 0.8;
-  }
-  div.message {
-    display: grid;
-    gap: 0.5rem;
-    justify-items: center;
-  }
-  .debug {
-    position: fixed;
-    top: 8px;
-    right: 8px;
-    margin: 0;
-    padding: 8px 12px;
-    background: rgb(0 0 0 / 75%);
-    color: #fff;
-    font: 12px monospace;
-  }
-  .mark {
-    position: absolute;
-    transform: translate(-50%, -100%);
-    color: #fff;
-    font:
-      bold 18px system-ui,
-      sans-serif;
-    text-shadow: 0 1px 2px #000;
-    pointer-events: none;
-    /* The renderer's canvas stacks above plain siblings. */
-    z-index: 1;
-  }
-  .dialog {
-    position: absolute;
-    left: 50%;
-    bottom: 1rem;
-    transform: translateX(-50%);
-    width: min(90%, 32rem);
-    margin: 0;
-    padding: 0.75rem 1rem;
-    background: rgb(255 255 255 / 95%);
-    color: #222;
-    border: 3px solid #4a6;
-    border-radius: 6px;
-    font:
-      15px system-ui,
-      sans-serif;
-    white-space: pre-line;
-  }
-  .error {
-    color: #ff6b81;
-    font-weight: bold;
-  }
-</style>
