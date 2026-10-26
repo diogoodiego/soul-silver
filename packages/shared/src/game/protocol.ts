@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AI_STATES } from "../ai/controller.ts";
 import { EMOTIONS } from "../companion/schemas.ts";
 import { stats } from "../game-data/common.ts";
 import { progressionItem, saveSchema } from "../save/schema.ts";
@@ -60,6 +61,14 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("learn-answer"), forget: z.number().int().min(0).max(3).nullable() }),
   /** false is the cancel button. */
   z.strictObject({ type: z.literal("evolve-answer"), accept: z.boolean() }),
+  /** The full menu opened or closed (spec 017): the player shows as busy; refused in combat. */
+  z.strictObject({ type: z.literal("menu"), open: z.boolean() }),
+  /** Moves a party member to another slot (spec 017); refused in combat or with a bad index. */
+  z.strictObject({ type: z.literal("reorder-party"), from: z.number().int().min(0).max(5), to: z.number().int().min(0).max(5) }),
+  /** Uses a bag item on a party member outside combat (spec 017); only potions for now. */
+  z.strictObject({ type: z.literal("use-item"), item: count(), partyIndex: z.number().int().min(0).max(5) }),
+  /** Turns the AI debug overlay's data on or off for this client (spec 019); off on every connection. */
+  z.strictObject({ type: z.literal("debugAi"), on: z.boolean() }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessage>;
 
@@ -87,7 +96,7 @@ export type TickMetrics = z.infer<typeof tickMetrics>;
 export const REJECT_CODES = ["protocol-mismatch", "session-full", "session-closed", "invalid-save", "save-too-new", "name-taken", "invalid-message"] as const;
 export type RejectCode = (typeof REJECT_CODES)[number];
 
-export const NOTICE_CODES = ["no-balls", "storage-full", "ball-returned"] as const;
+export const NOTICE_CODES = ["no-balls", "storage-full", "ball-returned", "menu-blocked", "action-refused", "item-unavailable"] as const;
 export type NoticeCode = (typeof NOTICE_CODES)[number];
 
 export const CLOSE_REASONS = ["host-left", "closed-by-host"] as const;
@@ -116,6 +125,21 @@ export const hitEvent = z.strictObject({
 });
 export type HitEvent = z.infer<typeof hitEvent>;
 
+const point = z.strictObject({ x: z.number(), y: z.number() });
+
+/** One AI in the debug overlay (spec 019, FR-033). */
+export const aiDebugRow = z.strictObject({
+  entityId: count(),
+  state: z.enum(AI_STATES),
+  target: count().nullable(),
+  sight: z.strictObject({ rangePx: z.number().nonnegative(), angleDeg: z.number().min(0).max(360), facing: point }),
+  lastSeen: point.nullable(),
+  zone: z.strictObject({ x: z.number(), y: z.number(), radiusPx: z.number().nonnegative() }),
+  scores: z.array(z.strictObject({ slot: z.number().int().min(0).max(3), move: count(), damage: z.number(), hit: z.number(), utility: z.number(), score: z.number() })).max(4),
+  chosenSlot: z.number().int().min(0).max(3).nullable(),
+});
+export type AiDebugRow = z.infer<typeof aiDebugRow>;
+
 export const serverMessage = z.discriminatedUnion("type", [
   z.strictObject({
     type: z.literal("welcome"),
@@ -141,6 +165,8 @@ export const serverMessage = z.discriminatedUnion("type", [
     removed: z.array(count()),
   }),
   z.strictObject({ type: z.literal("debug"), metrics: tickMetrics }),
+  /** What each nearby AI thinks (spec 019, contracts/game-protocol-v11.md); only to clients that asked. */
+  z.strictObject({ type: z.literal("aiDebug"), tick: count(), ais: z.array(aiDebugRow) }),
   z.strictObject({ type: z.literal("combat-event"), tick: count(), events: z.array(hitEvent) }),
   z.strictObject({ type: z.literal("session-closed"), reason: z.enum(CLOSE_REASONS) }),
   /** The entity this client now moves and the camera follows: the trainer, or the Pokémon in combat (spec 014). */
@@ -148,7 +174,24 @@ export const serverMessage = z.discriminatedUnion("type", [
   /** The party as the swap picker shows it; `active` is the member out in combat. */
   z.strictObject({
     type: z.literal("party"),
-    members: z.array(z.strictObject({ species: count(), level: count(), hp: count(), hpMax: count() })).max(6),
+    members: z
+      .array(
+        z.strictObject({
+          species: count(),
+          level: count(),
+          hp: count(),
+          hpMax: count(),
+          /** Spec 017, for the party screen; absent when the species data is missing. */
+          moves: z.array(count()).max(4).optional(),
+          stats: battleStats.optional(),
+          nature: z.number().int().min(0).max(24).optional(),
+          ability: count().optional(),
+          exp: count().optional(),
+          /** Experience at the next level; equal to exp at level 100. */
+          expNext: count().optional(),
+        }),
+      )
+      .max(6),
     active: count().optional(),
   }),
   z.strictObject({ type: z.literal("reaction"), companionId: count(), species: count(), emotion: z.enum(EMOTIONS), bank: count(), text: count() }),
@@ -159,7 +202,7 @@ export const serverMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("capture"), wildId: count(), player: count(), ball: count(), shakes: z.number().int().min(0).max(3), caught: z.boolean() }),
   /** To the catcher only, once the shakes are over. */
   z.strictObject({ type: z.literal("captured"), species: count(), to: z.enum(["party", "storage"]) }),
-  /** The balls in the bag and the one the next throw uses; on join and on change. */
+  /** The whole bag (spec 017; only the balls before) and the ball the next throw uses; on join and on change. */
   z.strictObject({ type: z.literal("bag"), items: z.array(z.strictObject({ item: count(), count: z.number().int().min(1).max(999) })), selected: count().optional() }),
   z.strictObject({ type: z.literal("pokedex"), seen: z.array(count()), caught: z.array(count()) }),
   z.strictObject({ type: z.literal("notice"), code: z.enum(NOTICE_CODES) }),

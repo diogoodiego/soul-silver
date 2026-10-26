@@ -5,4 +5,5 @@ export * from "./protocol-version";
 export * from "./rom-validation";
 export * from "./server-host-protocol";
 export * from "./server-info";
+export * from "./settings";
 export * from "./update-state";

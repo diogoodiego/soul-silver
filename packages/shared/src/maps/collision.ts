@@ -40,6 +40,9 @@ const BEHAVIORS: ReadonlyMap<number, Omit<CollisionCell, "raw">> = new Map([
 ]);
 
 export function classifyPermission(raw: number): CollisionCell {
+  const known = BEHAVIORS.get(raw & 0xff);
+  // Ledges carry the blocked flag in the ROM (0x803B); the hop is what lets them be crossed.
+  if (known?.category === "ledge") return { ...known, raw };
   if (raw & BLOCKED_FLAG) return { category: "blocked", raw };
-  return { ...(BEHAVIORS.get(raw & 0xff) ?? { category: "special" }), raw };
+  return { ...(known ?? { category: "special" }), raw };
 }

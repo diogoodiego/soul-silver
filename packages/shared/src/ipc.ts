@@ -3,6 +3,7 @@ import type { SessionListing } from "./lan/discovery";
 import type { Save } from "./save/schema";
 import type { SaveResult, SlotSummary } from "./save/slot";
 import type { ServerInfo, ServerStatus } from "./server-info";
+import type { AppSettings, SettingsPatch } from "./settings";
 import type { UpdateState } from "./update-state";
 
 export const IpcChannel = {
@@ -26,6 +27,7 @@ export const IpcChannel = {
   SavesList: "saves:list",
   SavesCreate: "saves:create",
   SavesRestore: "saves:restore",
+  SavesDelete: "saves:delete",
   SavesExport: "saves:export",
   SavesImport: "saves:import",
   SessionSolo: "session:solo",
@@ -35,6 +37,8 @@ export const IpcChannel = {
   SessionsList: "sessions:list",
   SettingsGet: "settings:get",
   SettingsFirewallSeen: "settings:firewall-seen",
+  SettingsSet: "settings:set",
+  AppQuit: "app:quit",
 } as const;
 
 /** Rejection message of getServerInfo() when the game server is stopped or does not reply. */
@@ -42,10 +46,6 @@ export const SERVER_UNAVAILABLE = "server-unavailable";
 
 /** Outcome of starting or joining a session; the renderer sends `save` in its hello. */
 export type SessionResult = { ok: true; save: Save } | { ok: false; reason: string };
-
-export interface AppSettings {
-  firewallNoticeSeen: boolean;
-}
 
 /** The only API the renderer can reach, exposed by the preload as window.soulSilver. */
 export interface SoulSilverApi {
@@ -81,8 +81,10 @@ export interface SoulSilverApi {
   /** The server sent a save and it was written (or failed to be). */
   onGameSaved(listener: (result: SaveResult) => void): () => void;
   listSaves(): Promise<SlotSummary[]>;
-  /** Fails on an occupied slot unless `overwrite`. */
-  createSave(slot: number, name: string, character: "male" | "female", overwrite: boolean): Promise<SaveResult>;
+  /** Fails on an occupied slot unless `overwrite`. `starter` is one of STARTERS (spec 017). */
+  createSave(slot: number, name: string, character: "male" | "female", overwrite: boolean, starter: number): Promise<SaveResult>;
+  /** Deletes the save and its backup (spec 017). */
+  deleteSave(slot: number): Promise<SaveResult>;
   restoreBackup(slot: number): Promise<SaveResult>;
   exportSave(slot: number): Promise<SaveResult>;
   importSave(slot: number, overwrite: boolean): Promise<SaveResult>;
@@ -96,4 +98,7 @@ export interface SoulSilverApi {
   watchSessions(listener: (sessions: SessionListing[]) => void): () => void;
   getSettings(): Promise<AppSettings>;
   markFirewallNoticeSeen(): Promise<void>;
+  /** Invalid patches are refused and the old settings stay; window size and fullscreen apply at once. */
+  setSettings(patch: SettingsPatch): Promise<AppSettings>;
+  quitApp(): Promise<void>;
 }

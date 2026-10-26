@@ -1,0 +1,85 @@
+// Logical actions and their keyboard and gamepad buttons (spec 017, research R3,
+// contracts/ui-actions.md). Keys are KeyboardEvent.code values; pad buttons are Standard Gamepad
+// (Xbox layout) indices and are not remappable.
+
+export const DIRECTIONS = ["up", "down", "left", "right"] as const;
+const MENU_ACTIONS = ["confirm", "cancel", "tabPrev", "tabNext"] as const;
+const MAP_ACTIONS = ["menu", "run", "dash", "move1", "move2", "move3", "move4", "combat", "recall", "interact", "picker", "throw", "nextBall"] as const;
+
+export const ACTIONS = [...DIRECTIONS, ...MENU_ACTIONS, ...MAP_ACTIONS] as const;
+export type Action = (typeof ACTIONS)[number];
+export type Bindings = Record<Action, string[]>;
+
+/** A key may mean one thing on the map and another in menus; directions mean the same in both. */
+export function sameContext(a: Action, b: Action): boolean {
+  const context = (x: Action) => ((DIRECTIONS as readonly string[]).includes(x) ? "both" : (MENU_ACTIONS as readonly string[]).includes(x) ? "menu" : "map");
+  const ca = context(a);
+  const cb = context(b);
+  return ca === "both" || cb === "both" || ca === cb;
+}
+
+export const DEFAULT_KEYS: Readonly<Bindings> = {
+  up: ["KeyW", "ArrowUp"],
+  down: ["KeyS", "ArrowDown"],
+  left: ["KeyA", "ArrowLeft"],
+  right: ["KeyD", "ArrowRight"],
+  confirm: ["Enter", "Space"],
+  cancel: ["Escape", "Backspace"],
+  tabPrev: ["KeyQ"],
+  tabNext: ["KeyE"],
+  menu: ["Tab", "Escape"],
+  run: ["ShiftLeft", "ShiftRight"],
+  dash: ["Space"],
+  move1: ["Digit1"],
+  move2: ["Digit2"],
+  move3: ["Digit3"],
+  move4: ["Digit4"],
+  combat: ["KeyF"],
+  recall: ["KeyR"],
+  interact: ["KeyE"],
+  picker: ["KeyQ"],
+  throw: ["KeyG"],
+  nextBall: ["KeyB"],
+};
+
+export const PAD_BUTTONS: Readonly<Record<Action, number>> = {
+  up: 12,
+  down: 13,
+  left: 14,
+  right: 15,
+  confirm: 0,
+  cancel: 1,
+  tabPrev: 4,
+  tabNext: 5,
+  menu: 9,
+  run: 1,
+  dash: 4,
+  move1: 0,
+  move2: 2,
+  move3: 3,
+  move4: 5,
+  combat: 6,
+  recall: 7,
+  interact: 12,
+  picker: 8,
+  throw: 10,
+  nextBall: 15,
+};
+
+/** Keys the OS or the app keeps for itself (fullscreen, close window, Start menu). */
+export const RESERVED_KEYS: ReadonlySet<string> = new Set(["F11", "F4", "AltLeft", "AltRight", "MetaLeft", "MetaRight", "ContextMenu"]);
+
+/**
+ * Binds `action` to `key` alone. When another action of the same context already uses the key,
+ * that action gets `action`'s previous first key instead, and is returned as `swapped`.
+ */
+export function rebind(bindings: Readonly<Bindings>, action: Action, key: string): { bindings: Bindings; swapped?: Action } {
+  if (RESERVED_KEYS.has(key)) throw new Error(`reserved key: ${key}`);
+  const next = structuredClone(bindings) as Bindings;
+  const old = next[action][0];
+  next[action] = [key];
+  const other = ACTIONS.find((a) => a !== action && sameContext(a, action) && next[a].includes(key));
+  if (!other) return { bindings: next };
+  next[other] = next[other].map((k) => (k === key ? old : k)).filter((k): k is string => k !== undefined && k !== key);
+  return { bindings: next, swapped: other };
+}

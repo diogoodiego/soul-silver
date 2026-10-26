@@ -26,9 +26,9 @@ export interface MoveInput {
 /** Walking pixels per tick at 20 Hz: the original's tile per 16 frames. */
 export const MOVE_SPEED_PX = 3;
 export const RUN_SPEED_PX = 6;
-/** A ledge hop lasts this many ticks, HOP_PX each: from flush against the ledge to clear past it. */
-export const HOP_TICKS = 7;
-const HOP_PX = 4;
+/** A ledge hop lasts this many ticks, HOP_PX each: from flush against the ledge to the center of the tile past it. */
+export const HOP_TICKS = 6;
+const HOP_PX = 5;
 /** Fade out, swap maps half way, fade in: 0.3 s + 0.3 s. */
 export const WARP_TICKS = 12;
 

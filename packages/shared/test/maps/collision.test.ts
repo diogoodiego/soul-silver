@@ -28,6 +28,10 @@ describe("classifyPermission", () => {
     expect(classifyPermission(behavior)).toEqual({ category: "ledge", raw: behavior, direction });
   });
 
+  it("keeps a ledge a ledge when the ROM sets the blocked flag on it", () => {
+    expect(classifyPermission(0x803b)).toEqual({ category: "ledge", raw: 0x803b, direction: "south" });
+  });
+
   it("keeps other flag bits in raw without changing the category", () => {
     expect(classifyPermission(0x0602)).toEqual({ category: "tallGrass", raw: 0x0602 });
   });

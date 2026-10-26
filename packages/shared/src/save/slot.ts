@@ -1,7 +1,7 @@
 /** What the menu shows for one of the 3 slots (spec 012, data-model.md). */
 export type SlotSummary =
   | { index: number; status: "empty" }
-  | { index: number; status: "ok"; name: string; character: "male" | "female"; area: string; playTimeMs: number; savedAt: string; backupAvailable: boolean }
+  | { index: number; status: "ok"; name: string; character: "male" | "female"; area: string; playTimeMs: number; savedAt: string; backupAvailable: boolean; badges: number }
   | { index: number; status: "corrupt"; reason: string; backupAvailable: boolean }
   | { index: number; status: "unrecoverable"; reason: string };
 
