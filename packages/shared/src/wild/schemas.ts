@@ -19,6 +19,9 @@ export const spawnRules = z.strictObject({
   defaultCap: int(0, 64),
   /** Map header id → cap, overriding defaultCap. */
   capByMap: z.record(z.string().regex(/^\d+$/), int(0, 64)),
+  /** Between spawn attempts on an empty map. */
+  spawnIntervalMinSeconds: seconds(),
+  /** Between spawn attempts once the map is at its cap; in between it grows with the count. */
   spawnIntervalSeconds: seconds(),
   /** Half the screen, in tiles: a cell inside it (plus the margin) of any player is never used. */
   viewHalfTiles: z.strictObject({ x: tiles(), y: tiles() }),
@@ -26,6 +29,8 @@ export const spawnRules = z.strictObject({
   maxTries: int(1, 256),
   despawnRadiusTiles: tiles(),
   despawnSeconds: seconds(),
+  /** A knocked-out one stays this long where it fell, catchable, then goes. */
+  faintedSeconds: seconds(),
   /** Farther than this from its spawn point, a wild Pokémon walks back. */
   leashTiles: tiles(),
   /** One in this many spawns is shiny. */
@@ -45,7 +50,6 @@ export type SpawnRules = z.infer<typeof spawnRules>;
 
 export const temperaments = z.strictObject({
   default: z.enum(TEMPERAMENTS),
-  radii: z.strictObject({ sightTiles: tiles(), detectTiles: tiles(), territoryTiles: tiles() }),
   species: z.record(speciesKey, z.enum(TEMPERAMENTS)),
 });
 export type Temperaments = z.infer<typeof temperaments>;

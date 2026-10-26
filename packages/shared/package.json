@@ -17,7 +17,9 @@
     "./combat": "./src/combat/index.ts",
     "./companion": "./src/companion/index.ts",
     "./wild": "./src/wild/index.ts",
-    "./progression": "./src/progression/index.ts"
+    "./ai": "./src/ai/index.ts",
+    "./progression": "./src/progression/index.ts",
+    "./input": "./src/input/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

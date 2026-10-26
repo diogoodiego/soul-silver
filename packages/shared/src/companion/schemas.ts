@@ -59,6 +59,8 @@ export const battleRules = z.strictObject({
   swapCooldownSeconds: seconds(),
   /** Wild Pokémon give up a chase past this distance (read by the wild AI, spec 15). */
   chaseLimitTiles: tiles(),
+  /** The trainer touching a wild Pokémon this close starts the fight, like the combat button. */
+  contactTiles: tiles(),
   /** Combat ends when no foe is this close for disengageSeconds. */
   disengageTiles: tiles(),
   disengageSeconds: seconds(),
