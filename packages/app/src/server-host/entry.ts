@@ -1,15 +1,15 @@
 // Entry point of the game server utility process. Adapts Electron's parentPort
 // to the pure @soulsilver/server package.
 import type {} from "electron";
-import { readFileSync } from "node:fs";
+import { createWriteStream, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BUNDLED_COMBAT_CONTENT, BUNDLED_COMPANION_CONTENT, BUNDLED_WILD_CONTENT, buildCombatData, buildCompanionData, buildProgressionData, buildWildData, createGameServer, loadWorld, type CombatData, type CompanionData, type ProgressionData, type WildData } from "@soulsilver/server";
-import { GAME_DATA_FILES, parseGameDataJson, type GameDataFileOf } from "@soulsilver/shared/game-data";
+import { BUNDLED_COMBAT_CONTENT, BUNDLED_COMPANION_CONTENT, BUNDLED_WILD_CONTENT, buildCombatData, buildCompanionData, buildItemsData, buildProgressionData, buildWildData, createGameServer, loadWorld, type CombatData, type CompanionData, type ItemsData, type ProgressionData, type WildData } from "@soulsilver/server";
 import { LAN_PORT_GAME } from "@soulsilver/shared/lan";
 import { parseEventsJson } from "@soulsilver/shared/events";
 import { parseSpriteJson } from "@soulsilver/shared/sprites";
 import { parseTextJson } from "@soulsilver/shared/text";
 import type { ServerToHostMessage } from "@soulsilver/shared";
+import { readExtracted } from "./extracted";
 import { createWsListener, REMOTE_CONN_BASE } from "./ws-listener";
 
 const port = process.parentPort;
@@ -20,14 +20,8 @@ const log = (message: string) => {
 const stagesDir = process.argv.at(-1);
 /** Set by the main process in unpackaged (development) runs. */
 const devArena = process.argv.includes("--dev-arena");
-
-function readExtracted<K extends "moves" | "species" | "type-chart" | "learnsets" | "evolutions">(dir: string, kind: K): GameDataFileOf<K>["records"] {
-  const { stage, file } = GAME_DATA_FILES[kind];
-  const path = join(dir, stage, "json", file);
-  const parsed = parseGameDataJson(kind, readFileSync(path, "utf8"), path);
-  if (!parsed.ok) throw new Error(`${parsed.error.file}: ${parsed.error.path}: ${parsed.error.problem}`);
-  return parsed.data.records;
-}
+/** Development: SOULSILVER_AI_LOG=<file> appends every combat AI decision as one JSON line (spec 019, FR-034). */
+const aiLog = process.env["SOULSILVER_AI_LOG"] ? createWriteStream(process.env["SOULSILVER_AI_LOG"], { flags: "a" }) : undefined;
 
 /** Combat data (spec 013) checked against the extraction; without it the server runs without combat. */
 function combatOrNothing(dir: string): CombatData | undefined {
@@ -84,6 +78,16 @@ function progressionOrNothing(dir: string): ProgressionData | undefined {
   }
 }
 
+/** Items used from the bag (spec 017); without them every item is unavailable. */
+function itemsOrNothing(dir: string): ItemsData | undefined {
+  try {
+    return buildItemsData(readExtracted(dir, "items"));
+  } catch (error) {
+    log(`Itens desativados: ${(error as Error).message}`);
+    return undefined;
+  }
+}
+
 /** Tries the usual port and the nine after it. */
 const LAN_PORTS = Array.from({ length: 10 }, (_, i) => LAN_PORT_GAME + i);
 
@@ -135,7 +139,9 @@ const server = createGameServer({
   companion: companionOrNothing(stagesDir),
   wild: stagesDir ? wildOrNothing(stagesDir) : undefined,
   progression: stagesDir ? progressionOrNothing(stagesDir) : undefined,
+  items: stagesDir ? itemsOrNothing(stagesDir) : undefined,
   devArena,
+  onDecision: aiLog && ((d) => aiLog.write(`${JSON.stringify(d)}\n`)),
 });
 
 port.on("message", (event) => {

@@ -3,8 +3,9 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkAssets, createConsoleLogger, createRegistry, defaultStages } from "@soulsilver/extractor";
 import { loadWorld, startPosition } from "@soulsilver/server";
-import { IpcChannel, PROTOCOL_VERSION } from "@soulsilver/shared";
+import { type AppSettings, IpcChannel, PROTOCOL_VERSION } from "@soulsilver/shared";
 import { CANCELLED, SAVE_SLOTS } from "@soulsilver/shared/save";
+import { STARTERS } from "@soulsilver/shared/progression";
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell, utilityProcess, type IpcMainInvokeEvent } from "electron";
 import electronUpdater from "electron-updater";
 import { createAssetsController } from "./assets-controller";
@@ -16,6 +17,7 @@ import { createSaveStore } from "./save-store";
 import { createServerHost } from "./server-host";
 import { createSessionController, type SessionController } from "./session-controller";
 import { createSettings } from "./settings";
+import { makeStarter } from "./starter";
 import { createUpdateController } from "./update-controller";
 import { createWindowOptions } from "./window-options";
 
@@ -226,10 +228,17 @@ if (!app.requestSingleInstanceLock()) {
     handle(IpcChannel.ServerGetInfo, () => serverHost.getInfo());
     handle(IpcChannel.SavesList, () => saves.list());
     handle(IpcChannel.SavesCreate, (arg) => {
-      const { slot, name, character, overwrite } = fields(arg);
-      if (!isSlot(slot) || typeof name !== "string" || (character !== "male" && character !== "female")) return invalid;
-      return saves.create(slot, name, character, overwrite === true);
+      const { slot, name, character, overwrite, starter } = fields(arg);
+      if (!isSlot(slot) || typeof name !== "string" || (character !== "male" && character !== "female") || !STARTERS.includes(starter as (typeof STARTERS)[number])) return invalid;
+      let member;
+      try {
+        member = makeStarter(stagesDir, starter as number);
+      } catch (error) {
+        return { ok: false, reason: `Os dados do jogo extraídos estão incompletos: ${(error as Error).message}` };
+      }
+      return saves.create(slot, name, character, overwrite === true, member);
     });
+    handle(IpcChannel.SavesDelete, (slot) => (isSlot(slot) ? saves.remove(slot) : invalid));
     handle(IpcChannel.SavesRestore, (slot) => (isSlot(slot) ? saves.restoreBackup(slot) : invalid));
     handle(IpcChannel.SavesExport, async (slot) => {
       if (!isSlot(slot)) return invalid;
@@ -254,6 +263,20 @@ if (!app.requestSingleInstanceLock()) {
     });
     handle(IpcChannel.SettingsGet, () => settings.get());
     handle(IpcChannel.SettingsFirewallSeen, () => settings.markFirewallNoticeSeen());
+    const applyWindow = (s: AppSettings) => {
+      if (window.isDestroyed()) return;
+      window.setFullScreen(s.fullscreen);
+      if (!s.fullscreen) window.setContentSize(s.window.width, s.window.height);
+    };
+    void settings.get().then(applyWindow);
+    handle(IpcChannel.SettingsSet, async (patch) => {
+      const next = await settings.set(patch);
+      applyWindow(next);
+      return next;
+    });
+    handle(IpcChannel.AppQuit, () => {
+      app.quit();
+    });
     // Fire-and-forget: inputs go out every tick, so no invoke round trip.
     ipcMain.on(IpcChannel.GameSend, (event, msg: unknown) => {
       if (event.sender === window.webContents) play.sendGame(msg);

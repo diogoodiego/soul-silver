@@ -46,7 +46,8 @@ const api: SoulSilverApi = {
   }),
   onGameSaved: (listener) => subscribe<SaveResult>(IpcChannel.GameSaved, listener),
   listSaves: () => ipcRenderer.invoke(IpcChannel.SavesList) as Promise<SlotSummary[]>,
-  createSave: (slot, name, character, overwrite) => ipcRenderer.invoke(IpcChannel.SavesCreate, { slot, name, character, overwrite }) as Promise<SaveResult>,
+  createSave: (slot, name, character, overwrite, starter) => ipcRenderer.invoke(IpcChannel.SavesCreate, { slot, name, character, overwrite, starter }) as Promise<SaveResult>,
+  deleteSave: (slot) => ipcRenderer.invoke(IpcChannel.SavesDelete, slot) as Promise<SaveResult>,
   restoreBackup: (slot) => ipcRenderer.invoke(IpcChannel.SavesRestore, slot) as Promise<SaveResult>,
   exportSave: (slot) => ipcRenderer.invoke(IpcChannel.SavesExport, slot) as Promise<SaveResult>,
   importSave: (slot, overwrite) => ipcRenderer.invoke(IpcChannel.SavesImport, { slot, overwrite }) as Promise<SaveResult>,
@@ -63,6 +64,8 @@ const api: SoulSilverApi = {
   },
   getSettings: () => ipcRenderer.invoke(IpcChannel.SettingsGet) as Promise<AppSettings>,
   markFirewallNoticeSeen: () => ipcRenderer.invoke(IpcChannel.SettingsFirewallSeen) as Promise<void>,
+  setSettings: (patch) => ipcRenderer.invoke(IpcChannel.SettingsSet, patch) as Promise<AppSettings>,
+  quitApp: () => ipcRenderer.invoke(IpcChannel.AppQuit) as Promise<void>,
 };
 
 contextBridge.exposeInMainWorld("soulSilver", api);

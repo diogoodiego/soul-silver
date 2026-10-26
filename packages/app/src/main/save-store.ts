@@ -1,7 +1,7 @@
 import { mkdir, open, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { randomSuffix, renameWithRetry, writeFileAtomic } from "@soulsilver/extractor";
-import { migrate, SAVE_SLOTS, type Save, type SaveResult, type SlotSummary } from "@soulsilver/shared/save";
+import { migrate, type PartyMember, SAVE_SLOTS, type Save, type SaveResult, type SlotSummary } from "@soulsilver/shared/save";
 
 // The player's saves, in the player's PC (spec 012, principle VIII, contracts/save-file.md).
 
@@ -48,7 +48,7 @@ export function createSaveStore(options: SaveStoreOptions) {
     const [cur, bak] = await Promise.all([readSave(current(index)), readSave(backup(index))]);
     if (cur.state === "ok") {
       const s = cur.save;
-      return { index, status: "ok", name: s.name, character: s.character, area: s.area, playTimeMs: s.playTimeMs, savedAt: s.savedAt, backupAvailable: bak.state === "ok" };
+      return { index, status: "ok", name: s.name, character: s.character, area: s.area, playTimeMs: s.playTimeMs, savedAt: s.savedAt, backupAvailable: bak.state === "ok", badges: s.badges };
     }
     if (cur.state === "missing" && bak.state === "missing") return { index, status: "empty" };
     const reason = cur.state === "bad" ? cur.reason : "arquivo do save ausente";
@@ -98,13 +98,26 @@ export function createSaveStore(options: SaveStoreOptions) {
     },
     load,
     write,
-    async create(slot: number, name: string, character: "male" | "female", overwrite: boolean): Promise<SaveResult> {
+    /** `starter` (spec 017) becomes the whole party and counts as seen and caught. */
+    async create(slot: number, name: string, character: "male" | "female", overwrite: boolean, starter?: PartyMember): Promise<SaveResult> {
       if (!validSlot(slot)) return fail("slot inválido");
       const save = { schemaVersion: 1, name: name.trim(), character, ...options.start(), facing: "south", playTimeMs: 0, savedAt: clock(), rev: 0 };
       const checked = migrate(save);
       if (!checked.ok) return fail(checked.message);
       if (!overwrite && (await summary(slot)).status !== "empty") return fail("o slot já tem um save");
-      return write(slot, checked.save);
+      const withStarter = starter ? { ...checked.save, party: [starter], pokedex: { seen: [starter.species], caught: [starter.species] } } : checked.save;
+      return write(slot, withStarter);
+    },
+    /** Deletes the save and its backup (spec 017); an empty slot is already deleted. */
+    async remove(slot: number): Promise<SaveResult> {
+      if (!validSlot(slot)) return fail("slot inválido");
+      try {
+        await rm(current(slot), { force: true });
+        await rm(backup(slot), { force: true });
+        return { ok: true };
+      } catch (error) {
+        return fail(`não foi possível apagar o save: ${(error as Error).message}`);
+      }
     },
     async restoreBackup(slot: number): Promise<SaveResult> {
       if (!validSlot(slot)) return fail("slot inválido");

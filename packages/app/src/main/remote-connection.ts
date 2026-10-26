@@ -1,4 +1,4 @@
-import { LAN_PORT_GAME } from "@soulsilver/shared/lan";
+import { parseAddress } from "@soulsilver/shared/lan";
 import { WebSocket } from "ws";
 import { rawText } from "../server-host/ws-listener";
 
@@ -7,13 +7,7 @@ import { rawText } from "../server-host/ws-listener";
 
 const CONNECT_TIMEOUT_MS = 5000;
 
-/** Accepts `host` or `host:port` (IPv4 or a name). */
-export function parseAddress(text: string): { host: string; port: number } | undefined {
-  const match = /^([A-Za-z0-9.-]+)(?::(\d{1,5}))?$/.exec(text.trim());
-  if (!match) return undefined;
-  const port = match[2] ? Number(match[2]) : LAN_PORT_GAME;
-  return port >= 1 && port <= 65535 ? { host: match[1]!, port } : undefined;
-}
+export { parseAddress };
 
 export interface RemoteClientOptions {
   onMessage(msg: unknown): void;
