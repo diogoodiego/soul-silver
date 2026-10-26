@@ -64,7 +64,7 @@ try {
     });
   await send("Runtime.enable");
 
-  const VK = { ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39, ShiftLeft: 16, F3: 114, F11: 122, KeyB: 66, KeyE: 69, KeyF: 70, KeyG: 71, KeyQ: 81, KeyR: 82, Digit1: 49, Digit2: 50, Digit3: 51, Digit4: 52, Space: 32 };
+  const VK = { ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39, ShiftLeft: 16, F3: 114, F11: 122, KeyB: 66, KeyE: 69, KeyF: 70, KeyG: 71, KeyQ: 81, KeyR: 82, Digit1: 49, Digit2: 50, Digit3: 51, Digit4: 52, Space: 32, Enter: 13, Escape: 27, Tab: 9, Backspace: 8, F4: 115 };
   const key = (type, code) => send("Input.dispatchKeyEvent", { type, code, key: code === "ShiftLeft" ? "Shift" : code, windowsVirtualKeyCode: VK[code] });
 
   for (const step of steps) {

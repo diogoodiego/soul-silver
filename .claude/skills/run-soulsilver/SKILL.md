@@ -42,7 +42,12 @@ Steps, run in order:
 | `shot:<name>` | screenshot to `<outDir>/<name>.png` |
 | `eval:<js>` | evaluate in the page (promises awaited), prints the value |
 
-Keys: `ArrowUp ArrowDown ArrowLeft ArrowRight ShiftLeft F3 F11`. The renderer's console output
+Keys: `ArrowUp ArrowDown ArrowLeft ArrowRight ShiftLeft Space Enter Escape Tab Backspace F3 F4 F11`, `Digit1`–`Digit4` and `KeyB KeyE KeyF KeyG KeyQ KeyR`.
+
+**The app opens on the title screen (spec 017).** From there, `press:Enter` four times (title → Jogar → the
+last saved slot, already focused → Sozinho) reaches the map; add `wait:600` between presses and
+`wait:6000` after the last. `Tab` opens the in-game menu, `Escape` goes back. `F4` shows the yes/no
+dialog test, only in a development build (`npx electron-vite build --mode development` in `packages/app`). The renderer's console output
 and exceptions are printed too; the main/server process output goes to `<outDir>/app.log`.
 
 **Read the game state from the F3 overlay**: `press:F3` shows it; its first `dd` is the
