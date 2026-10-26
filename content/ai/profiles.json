@@ -1,0 +1,12 @@
+{
+  "kind": "ai-profiles",
+  "formatVersion": 1,
+  "value": {
+    "profiles": [
+      { "id": "novice", "reactionS": 0.8, "aimErrorDeg": 30, "leadFactor": 0, "typeKnowledge": 0.2, "dodgeChance": 0.02, "decisionIntervalS": 1.6, "temperature": 40, "sightTiles": 5, "sightAngleDeg": 100, "hearingTiles": 5, "memoryS": 3, "fleeHpFraction": 0.2, "targetSwitchMargin": 0.6, "source": "wild" },
+      { "id": "rookie", "reactionS": 0.6, "aimErrorDeg": 20, "leadFactor": 0.2, "typeKnowledge": 0.5, "dodgeChance": 0.1, "decisionIntervalS": 1.2, "temperature": 20, "sightTiles": 6, "sightAngleDeg": 110, "hearingTiles": 6, "memoryS": 4, "fleeHpFraction": 0.2, "targetSwitchMargin": 0.5, "source": "wild" },
+      { "id": "skilled", "reactionS": 0.4, "aimErrorDeg": 10, "leadFactor": 0.6, "typeKnowledge": 0.8, "dodgeChance": 0.3, "decisionIntervalS": 0.8, "temperature": 8, "sightTiles": 7, "sightAngleDeg": 120, "hearingTiles": 7, "memoryS": 5, "fleeHpFraction": 0.15, "targetSwitchMargin": 0.4, "source": "wild" },
+      { "id": "veteran", "reactionS": 0.25, "aimErrorDeg": 4, "leadFactor": 1, "typeKnowledge": 1, "dodgeChance": 0.5, "decisionIntervalS": 0.5, "temperature": 2, "sightTiles": 8, "sightAngleDeg": 130, "hearingTiles": 8, "memoryS": 6, "fleeHpFraction": 0.1, "targetSwitchMargin": 0.3, "source": "wild" }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "kind": "ai-wild-levels",
+  "formatVersion": 1,
+  "value": {
+    "bands": [
+      { "minLevel": 1, "maxLevel": 10, "profile": "novice" },
+      { "minLevel": 11, "maxLevel": 25, "profile": "rookie" },
+      { "minLevel": 26, "maxLevel": 45, "profile": "skilled" },
+      { "minLevel": 46, "maxLevel": 100, "profile": "veteran" }
+    ]
+  }
+}

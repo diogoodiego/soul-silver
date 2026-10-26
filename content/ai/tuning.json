@@ -1,0 +1,25 @@
+{
+  "kind": "ai-tuning",
+  "formatVersion": 1,
+  "value": {
+    "threat": { "wDamage": 2, "wProximity": 20, "wFirst": 15, "decayPerS": 0.1 },
+    "score": {
+      "immuneScore": 0.5,
+      "statusUsefulness": 12,
+      "buffUsefulness": 8,
+      "healUsefulness": 30,
+      "healHpFraction": 0.4,
+      "buffEarlyS": 3,
+      "buffSafeTiles": 4,
+      "outOfRange": 0.5,
+      "speedPenalty": 0.1,
+      "hitChance": { "arc": 0.9, "circle": 0.85, "capsule": 0.75, "none": 1 }
+    },
+    "noise": { "walkTiles": 2, "runTiles": 6, "moveTiles": 8, "bearingErrorDeg": 30 },
+    "perception": { "everyTicks": 4 },
+    "performance": { "dormantTiles": 24, "budgetMsPerTick": 2 },
+    "states": { "idleWanderTiles": 3, "idlePauseS": 2, "alertS": 0.6, "returnIgnoreS": 3, "repositionS": 0.5, "angryAfterEscapeS": 20 },
+    "cast": { "aiMinCastS": 0.3 },
+    "debug": { "hz": 4, "radiusTiles": 20 }
+  }
+}

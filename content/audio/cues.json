@@ -1,0 +1,38 @@
+{
+  "kind": "audio-cues",
+  "formatVersion": 1,
+  "music": { "title": "SEQ_GS_TITLE", "wildBattle": "SEQ_GS_VS_NORAPOKE", "victory": "SEQ_GS_WIN2" },
+  "effects": {
+    "hit": "SEQ_SE_DP_KOUKA_M",
+    "hit-super": "SEQ_SE_DP_KOUKA_H",
+    "hit-weak": "SEQ_SE_DP_KOUKA_L",
+    "faint": "SEQ_SE_DP_POKE_DEAD3",
+    "ball-throw": "SEQ_SE_GS_NAGERU",
+    "ball-shake": "SEQ_SE_DP_KON",
+    "ball-catch": "SEQ_SE_DP_GETTING",
+    "ball-escape": "SEQ_SE_DP_BOWA2",
+    "door": "SEQ_SE_DP_DOOR_OPEN",
+    "warp": "SEQ_SE_DP_KAIDAN2",
+    "level-up": "SEQ_ME_LVUP",
+    "evolution": "SEQ_ME_SHINKAOME",
+    "menu-cursor": "SEQ_SE_DP_SELECT",
+    "menu-confirm": "SEQ_SE_DP_DECIDE",
+    "menu-cancel": "SEQ_SE_DP_CLOSE2"
+  },
+  "archetypes": {
+    "melee": "SEQ_SE_GS_TACKLEHIT",
+    "projectile": "SEQ_SE_DP_W052",
+    "beam": "SEQ_SE_DP_W062",
+    "self-area": "SEQ_SE_DP_W089",
+    "target-area": "SEQ_SE_DP_W057",
+    "dash": "SEQ_SE_DP_W036",
+    "self-buff": "SEQ_SE_GS_PARAMETER_UP",
+    "target-debuff": "SEQ_SE_GS_PARAMETER_DOWN",
+    "field": "SEQ_SE_DP_KAZE",
+    "generic-physical": "SEQ_SE_GS_TACKLEHIT",
+    "generic-special": "SEQ_SE_DP_W060",
+    "generic-status": "SEQ_SE_GS_PARAMETER_DOWN"
+  },
+  "defaultMove": "SEQ_SE_GS_TACKLEHIT",
+  "mix": { "crossfadeMs": 800, "rangeTiles": 12, "maxVoices": 16, "faintCryRate": 0.85 }
+}

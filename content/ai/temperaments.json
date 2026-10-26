@@ -1,0 +1,10 @@
+{
+  "kind": "ai-temperaments",
+  "formatVersion": 1,
+  "value": {
+    "passive": { "onSeePlayer": "ignore", "onHurt": "weighted", "fightWeight": 0.4, "fightWhenCornered": true, "chaseLimitTiles": 8 },
+    "skittish": { "onSeePlayer": "alert-flee", "onHurt": "flee", "fightWhenCornered": true, "chaseLimitTiles": 8 },
+    "aggressive": { "onSeePlayer": "alert-approach", "onHurt": "fight", "fightWhenCornered": true, "fleeHpFraction": 0, "chaseLimitTiles": 10 },
+    "territorial": { "onSeePlayer": "alert-by-zone", "onHurt": "fight", "toleranceTiles": 3, "fightWhenCornered": true, "fleeHpFraction": 0, "chaseLimitTiles": 6 }
+  }
+}

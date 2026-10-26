@@ -3,7 +3,6 @@
   "formatVersion": 1,
   "value": {
     "default": "passive",
-    "radii": { "sightTiles": 5, "detectTiles": 6, "territoryTiles": 3 },
     "species": {
       "16": "skittish",
       "19": "aggressive",
