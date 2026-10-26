@@ -49,6 +49,7 @@ text bank.
   "swapAnimSeconds": 0.5,
   "swapCooldownSeconds": 3,
   "chaseLimitTiles": 10,
+  "contactTiles": 1,
   "disengageTiles": 8,
   "disengageSeconds": 5,
   "moneyLossBase": [8, 16, 24, 36, 48, 64, 80, 100, 120],

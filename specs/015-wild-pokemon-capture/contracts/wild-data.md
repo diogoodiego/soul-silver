@@ -10,12 +10,14 @@ Schemas in `packages/shared/src/wild/schemas.ts`, validated at server load
 {
   "defaultCap": 6,
   "capByMap": { "<mapId>": 8 },
+  "spawnIntervalMinSeconds": 0.5,
   "spawnIntervalSeconds": 4,
   "viewHalfTiles": { "x": 8, "y": 6 },
   "viewMarginTiles": 2,
   "maxTries": 16,
   "despawnRadiusTiles": 24,
   "despawnSeconds": 30,
+  "faintedSeconds": 30,
   "leashTiles": 10,
   "shinyOdds": 8192,
   "timeBands": { "morning": 4, "day": 10, "night": 20 },
@@ -36,12 +38,12 @@ caps storage at 30 (`STORAGE_MAX`).
 ```json
 {
   "default": "passive",
-  "radii": { "sightTiles": 5, "detectTiles": 6, "territoryTiles": 3 },
   "species": { "16": "skittish", "19": "aggressive", "74": "territorial" }
 }
 ```
 
-Values: `passive | skittish | aggressive | territorial`. Species keys are ids 1–493.
+Values: `passive | skittish | aggressive | territorial`. Species keys are ids 1–493. What each
+temperament does lives in `content/ai/temperaments.json` (spec 019); the sight radii moved to the AI profiles.
 
 ## balls.json (`kind: "wild-balls"`)
 
