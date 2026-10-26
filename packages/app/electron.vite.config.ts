@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "electron-vite";
 
 // The app has no runtime `dependencies`: electron-vite only externalizes those, so
@@ -25,7 +26,7 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(import.meta.dirname, "../client"),
-    plugins: [svelte()],
+    plugins: [svelte(), tailwindcss()],
     build: {
       // No packaged path may contain an `assets/` segment (asset guard, principle II).
       assetsDir: "static",
