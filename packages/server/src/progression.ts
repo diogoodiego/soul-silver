@@ -10,7 +10,8 @@ import { markCaught } from "@soulsilver/shared/wild";
 
 /** The parts of the extraction progression reads. */
 export interface ExtractedForProgression {
-  species: Pick<SpeciesRecord, "id" | "baseStats" | "baseExperience" | "evYield" | "growthRate" | "baseFriendship">[];
+  /** `abilities` only feeds the party screen (spec 017). */
+  species: (Pick<SpeciesRecord, "id" | "baseStats" | "baseExperience" | "evYield" | "growthRate" | "baseFriendship"> & Partial<Pick<SpeciesRecord, "abilities">>)[];
   learnsets: Pick<LearnsetRecord, "id" | "levelUp">[];
   evolutions: Pick<EvolutionRecord, "id" | "evolutions">[];
 }

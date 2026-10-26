@@ -17,13 +17,14 @@ export function createRecorder(seed: number) {
 
 /**
  * Re-runs a recording without connections. Joins and leaves at tick T happened between
- * ticks T and T+1; inputs at tick T were applied by the step that reached T.
+ * ticks T and T+1; inputs at tick T were applied by the step that reached T. `options` are the
+ * simulation options the recording was made with (world, combat, wild Pokémon, AI).
  */
-export function replay(recording: Recording, world: Pick<SessionOptions, "world">): Session {
+export function replay(recording: Recording, options: Pick<SessionOptions, "world"> & Partial<SessionOptions>): Session {
   if (recording.protocolVersion !== PROTOCOL_VERSION) {
     throw new Error(`Gravação do protocolo ${recording.protocolVersion}; este servidor usa o protocolo ${PROTOCOL_VERSION}.`);
   }
-  const session = createSession({ ...world, seed: recording.seed, log: () => {}, timeoutTicks: Infinity, clock: () => "1970-01-01T00:00:00.000Z", newToken: () => "" });
+  const session = createSession({ ...options, seed: recording.seed, log: () => {}, timeoutTicks: Infinity, clock: () => "1970-01-01T00:00:00.000Z", newToken: () => "" });
   const events = recording.events;
   let i = 0;
   for (;;) {

@@ -3,7 +3,7 @@ import type { PartyMember, Save } from "@soulsilver/shared/save";
 import { describe, expect, it } from "vitest";
 import { combatData, SPECIES } from "./combat-fixture";
 import { setup } from "./harness";
-import { grassMap, px, wildData } from "./wild-fixture";
+import { grassMap, px, STILL_AI, wildData } from "./wild-fixture";
 
 // Spec 015 US3: aimed Poké Balls, the Gen 4 roll, who catches first and where the catch goes.
 
@@ -17,7 +17,7 @@ const member = (species = SPECIES.chikorita.id): PartyMember => ({ species, leve
 
 function game(opts: { catchRate?: number; tiles?: number[]; saves?: Partial<Save>[] } = {}) {
   const tiles = opts.tiles ?? [7];
-  const t = setup({ world: (id) => WORLD[id], timeoutTicks: 1e9, combat: combatData(), wild: wildData(NEAR, opts.catchRate ?? 255), hour: () => 12, spawn: (n) => ({ area: "route", x: px(tiles[n - 1]!), y: px(5) }) });
+  const t = setup({ world: (id) => WORLD[id], timeoutTicks: 1e9, combat: combatData(), wild: wildData(NEAR, opts.catchRate ?? 255), ai: STILL_AI(), hour: () => 12, spawn: (n) => ({ area: "route", x: px(tiles[n - 1]!), y: px(5) }) });
   const ps = tiles.map((_, i) => t.connect(undefined, undefined, { save: { bag: [{ item: POKE, count: 5 }], ...opts.saves?.[i] } }));
   const seqs = ps.map(() => 0);
   const wild = () => t.session.world.all().find((e) => e.kind === "pokemon" && e.data["owner"] === "wild");
@@ -135,5 +135,18 @@ describe("capture (US3)", () => {
     g.ps[0]!.conn.send({ type: "select-ball", item: MASTER });
     g.ps[0]!.conn.send({ type: "select-ball", item: 2 });
     expect(g.msgs(0, "bag").at(-1)).toMatchObject({ selected: MASTER });
+  });
+
+  it("catches a knocked-out wild Pokémon with a Poké Ball", () => {
+    const g = game();
+    g.run(2);
+    const id = g.wild()!.id;
+    g.session.combat!.get(id)!.hp = 0;
+    g.run(1);
+    g.throwAll([0]);
+    g.run(20 * 5);
+    expect(g.msgs(0, "capture").at(-1)).toMatchObject({ ball: POKE, caught: true });
+    expect(g.msgs(0, "captured")).toHaveLength(1);
+    expect(g.session.world.get(id)).toBeUndefined();
   });
 });

@@ -343,3 +343,34 @@ describe("interaction (US4)", () => {
     expect(g.msgs("reaction")).toHaveLength(0);
   });
 });
+
+describe("contact (touching a wild Pokémon)", () => {
+  const foeAt = (g: ReturnType<typeof game>, dx: number, hp?: number) => {
+    const foe = g.session.world.add({ kind: "pokemon", area: g.trainer().area, x: g.trainer().x + dx, y: g.trainer().y, level: 0, facing: "west", data: {} });
+    const c = g.session.combat!.spawn(g.session.world, foe.id, { species: SPECIES.sentret.id, level: 2, moves: [MOVES.growl.id] }, "wild");
+    if (hp !== undefined) c.hp = hp;
+    return foe.id;
+  };
+
+  it("walking into a wild Pokémon starts the fight without the combat button", () => {
+    const g = game([member("cyndaquil")]);
+    foeAt(g, 40);
+    g.walk({ x: 1, y: 0 }, 12);
+    expect(g.trainer().data["inCombat"]).toBe(true);
+    expect(g.msgs("control").length).toBeGreaterThan(0);
+  });
+
+  it("a wild Pokémon a few tiles away starts nothing", () => {
+    const g = game([member("cyndaquil")]);
+    foeAt(g, 64);
+    g.walk({ x: 0, y: 0 }, 10);
+    expect(g.trainer().data["inCombat"]).toBeUndefined();
+  });
+
+  it("touching a knocked-out one starts nothing", () => {
+    const g = game([member("cyndaquil")]);
+    foeAt(g, 12, 0);
+    g.walk({ x: 0, y: 0 }, 10);
+    expect(g.trainer().data["inCombat"]).toBeUndefined();
+  });
+});

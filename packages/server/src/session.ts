@@ -5,6 +5,7 @@ import {
   protocolMismatchMessage,
   stepMovement,
   type CloseReason,
+  type NoticeCode,
   type PlayerInput,
   type RecordingEvent,
   type RejectCode,
@@ -13,8 +14,12 @@ import {
   type ArenaSpec,
   type WorldLookup,
 } from "@soulsilver/shared/game";
-import type { Direction } from "@soulsilver/shared/maps";
+import type { Decision } from "@soulsilver/shared/ai";
+import { TICKS_PER_S } from "@soulsilver/shared/combat";
+import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
+import { expForLevel, memberStats } from "@soulsilver/shared/progression";
 import { migrate, newCollection, newProgress, type PartyMember, type Save } from "@soulsilver/shared/save";
+import { buildAiData, BUNDLED_AI_CONTENT, type AiData } from "./ai-loader";
 import { spawnArena } from "./arena";
 import { createCombat, type Combat } from "./combat";
 import type { CombatData } from "./combat-loader";
@@ -22,6 +27,7 @@ import { createCaptures, type Catcher } from "./capture";
 import { createCompanions, type Trainer } from "./companion";
 import type { CompanionData } from "./companion-loader";
 import type { Connection } from "./connection";
+import { reorderParty, useItem, type ItemsData } from "./items";
 import { createProgression, type Learner, type Progression, type ProgressionData } from "./progression";
 import { createReplica, replicate, type Replica } from "./replication";
 import { startPosition } from "./start";
@@ -78,10 +84,16 @@ export interface SessionOptions {
   devParty?: PartyMember[] | undefined;
   /** Wild Pokémon and capture (spec 015); they need combat too. */
   wild?: WildData | undefined;
+  /** Combat AI data (spec 019); the bundled content/ai when omitted. */
+  ai?: AiData | undefined;
+  /** Every AI decision, for the host's decision log (spec 019, FR-034). */
+  onDecision?: ((d: Decision) => void) | undefined;
   /** Development builds: the bag a save with none starts with, so capture can be tried. */
   devBag?: Save["bag"] | undefined;
   /** Experience, levels, moves and evolution (spec 016); without it nobody grows. */
   progression?: ProgressionData | undefined;
+  /** Item data for using items from the bag (spec 017); without it every item is unavailable. */
+  items?: ItemsData | undefined;
 }
 
 interface Player {
@@ -106,6 +118,8 @@ interface Player {
   gone: boolean;
   /** In the dev arena: the wild target's entity. Arena players never get saves. */
   arenaTarget: number | undefined;
+  /** Asked for the AI debug overlay (spec 019). */
+  debugAi: boolean;
   /** Party, money, badges and respawn point, changed in place by the companion rules; bag, Pokédex and storage by capture. */
   progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"];
 }
@@ -157,6 +171,7 @@ export function createSession(options: SessionOptions): Session {
         hour: options.hour ?? (() => 12),
         home: () => startPosition(options.world),
         busy: (id): boolean => progression?.busy(id) ?? false,
+        detail: (m) => memberDetail(m),
         log: (message) => options.log(message),
       })
     : undefined;
@@ -164,17 +179,23 @@ export function createSession(options: SessionOptions): Session {
     options.progression && companions
       ? createProgression({ data: options.progression, inCombat: (id) => companions.inCombat(id), active: (id) => companions.active(id), refresh: (id) => companions.refresh(id) })
       : undefined;
+  const ai = options.ai ?? buildAiData(BUNDLED_AI_CONTENT);
+  const aiDebugEvery = Math.max(1, Math.round(TICKS_PER_S / ai.tuning.debug.hz));
+  const aiDebugRadiusPx = ai.tuning.debug.radiusTiles * MAP_TILE_PX;
   const wilds =
-    options.wild && combat
+    options.wild && combat && options.combat
       ? createWilds({
           data: options.wild,
+          ai,
           combat,
+          combatData: options.combat,
           lookup: options.world,
           world,
           rng,
           hour: options.hour ?? (() => 12),
-          chaseLimitTiles: options.companion?.battle.chaseLimitTiles ?? 10,
-          onRemove: (id, fainted) => (fainted ? progression?.faint(id, fainted.species, fainted.level) : progression?.forget(id)),
+          onDecision: options.onDecision,
+          onFaint: (id, species, level) => progression?.faint(id, species, level),
+          onRemove: (id) => progression?.forget(id),
           log: (message) => options.log(message),
         })
       : undefined;
@@ -182,6 +203,35 @@ export function createSession(options: SessionOptions): Session {
     wilds && options.wild && combat && options.combat
       ? createCaptures({ data: options.wild, wilds, combat, combatData: options.combat, world, lookup: options.world, rng, hour: options.hour ?? (() => 12), controlled: (id) => companions?.controlled(id) })
       : undefined;
+  const hpMax = (m: PartyMember) => {
+    const species = options.combat?.species(m.species);
+    return species ? memberStats(species.baseStats, m).hp : m.hp;
+  };
+  /** What the party screen shows beyond HP (spec 017); undefined without the species data. */
+  function memberDetail(m: PartyMember) {
+    const base = options.combat?.species(m.species);
+    const growth = options.progression?.species(m.species);
+    if (!base) return undefined;
+    const rate = growth?.growthRate;
+    return {
+      moves: [...m.moves],
+      stats: memberStats(base.baseStats, m),
+      nature: m.nature,
+      exp: m.experience,
+      ...(rate ? { expNext: expForLevel(rate, Math.min(100, m.level + 1)) } : {}),
+      ...(growth?.abilities ? { ability: growth.abilities[0] } : {}),
+    };
+  }
+  const notice = (p: Player, code: NoticeCode) => p.conn?.send({ type: "notice", code } satisfies ServerMessage);
+  /** The menu does not pause anything; it only shows the player as busy to the others (spec 017, FR-012). */
+  function setBusy(p: Player, busy: boolean): void {
+    const e = world.get(p.entityId);
+    if (!e || (e.data["busy"] === true) === busy) return;
+    const data = { ...e.data };
+    if (busy) data["busy"] = true;
+    else delete data["busy"];
+    world.update({ ...e, data });
+  }
   const players = new Map<number, Player>();
   const reserved = new Map<string, Reserved>();
   let state: "open" | "closing" | "closed" = "open";
@@ -211,6 +261,7 @@ export function createSession(options: SessionOptions): Session {
       pendingAck: undefined,
       gone: false,
       arenaTarget: arena?.b,
+      debugAi: false,
       progress: {
         party: base.party.map((m) => ({ ...m })),
         money: base.money,
@@ -444,6 +495,28 @@ export function createSession(options: SessionOptions): Session {
         case "select-ball":
           captures?.select(player.id, msg.item);
           return;
+        case "debugAi":
+          player.debugAi = msg.on;
+          return;
+        case "menu":
+          if (msg.open && companions?.inCombat(player.id)) notice(player, "menu-blocked");
+          else setBusy(player, msg.open);
+          return;
+        case "reorder-party":
+          if (companions?.inCombat(player.id) || progression?.busy(player.id) || !reorderParty(player.progress.party, msg.from, msg.to)) notice(player, "action-refused");
+          else companions?.refresh(player.id);
+          return;
+        case "use-item": {
+          const refused = companions?.inCombat(player.id) ? "action-refused" : useItem(player.progress, msg.item, msg.partyIndex, options.items, hpMax);
+          if (refused) {
+            notice(player, refused);
+            return;
+          }
+          companions?.refresh(player.id);
+          if (captures) captures.refresh(player.id);
+          else player.conn?.send({ type: "bag", items: player.progress.bag.map((b) => ({ ...b })) } satisfies ServerMessage);
+          return;
+        }
         case "progression-ack":
         case "learn-answer":
         case "evolve-answer":
@@ -501,7 +574,11 @@ export function createSession(options: SessionOptions): Session {
       // A ball can be thrown walking or in combat.
       captures?.input(p.id, input);
       // In combat the input moves the Pokémon and the trainer stands still.
-      if (companions?.input(p.id, input, tick)) continue;
+      if (companions?.input(p.id, input, tick)) {
+        // A fight that starts with the menu open closes it (spec 017, FR-013).
+        setBusy(p, false);
+        continue;
+      }
       // Every tick, so ledge hops and warp transitions run out without input.
       world.update(stepMovement(world.get(p.entityId)!, input ?? null, options.world));
     }
@@ -511,9 +588,10 @@ export function createSession(options: SessionOptions): Session {
       const b = combat!.get(h.target)?.owner;
       if (a === "wild" && typeof b === "number") progression?.engage(b, h.attacker);
       if (b === "wild" && typeof a === "number") progression?.engage(a, h.target);
+      if (typeof b === "number" && a !== undefined && a !== b) companions?.hitBy(b, a);
     }
     companions?.step(tick);
-    wilds?.step(tick);
+    wilds?.step(tick, hits);
     captures?.step(tick);
     progression?.step();
     const entities = world.all();
@@ -522,6 +600,7 @@ export function createSession(options: SessionOptions): Session {
       p.conn?.send(replicate(p.replica, entity, entities, tick, p.lastInputSeq));
       const seen = hits.filter((h) => world.get(h.target)?.area === entity.area);
       if (seen.length > 0) p.conn?.send({ type: "combat-event", tick, events: seen } satisfies ServerMessage);
+      if (p.debugAi && wilds && tick % aiDebugEvery === 0) p.conn?.send({ type: "aiDebug", tick, ais: wilds.ai.debug(entity.area, entity, aiDebugRadiusPx) } satisfies ServerMessage);
       // Periodically and on every map change (FR-006).
       if (entity.area !== p.lastArea || (tick - p.joinTick) % SAVE_INTERVAL_TICKS === 0) sendSave(p);
       p.lastArea = entity.area;

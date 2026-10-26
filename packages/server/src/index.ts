@@ -15,3 +15,6 @@ export * from "./wild";
 export * from "./wild-loader";
 export * from "./capture";
 export * from "./progression";
+export * from "./items";
+export * from "./ai";
+export * from "./ai-loader";

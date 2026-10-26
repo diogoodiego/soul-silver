@@ -107,13 +107,13 @@ describe("generic archetypes", () => {
 });
 
 describe("owners", () => {
-  it("Pokémon of different players never hurt each other (no PvP yet)", () => {
+  it("Pokémon of different players hurt each other (PvP)", () => {
     const t = combatSetup();
     const a = t.spawn("cyndaquil", [MOVES.tackle.id], { x: 0, y: 0 }, 1);
     const b = t.spawn("sentret", [], { x: 20, y: 0 }, 2);
     t.press(a, 1, east);
     t.step(10);
-    expect(kinds(t, b)).toEqual([]);
+    expect(kinds(t, b)).toEqual(["hit"]);
   });
 
   it("nor their own, nor themselves", () => {

@@ -4,11 +4,13 @@ import {
   type HostToServerMessage,
   type ServerToHostMessage,
 } from "@soulsilver/shared";
+import type { Decision } from "@soulsilver/shared/ai";
 import type { WorldLookup } from "@soulsilver/shared/game";
 import type { CombatData } from "./combat-loader";
 import type { CompanionData } from "./companion-loader";
 import type { WildData } from "./wild-loader";
 import type { ProgressionData } from "./progression";
+import type { ItemsData } from "./items";
 import type { Connection } from "./connection";
 import { checkCoherence } from "@soulsilver/shared/save";
 import { createSession, MAX_PLAYERS, type Session } from "./session";
@@ -52,6 +54,10 @@ export interface GameServerOptions extends Scheduler {
   companion?: CompanionData | undefined;
   /** Experience, levels and evolution (spec 016); nobody grows when omitted. */
   progression?: ProgressionData | undefined;
+  /** Item use from the bag (spec 017). */
+  items?: ItemsData | undefined;
+  /** Every combat AI decision (spec 019, FR-034); the host writes them to a log when asked. */
+  onDecision?: ((d: Decision) => void) | undefined;
   /** Opens/closes the LAN socket for other PCs (hosted sessions only); results go back as `listening`/`listen-failed`. */
   listen?(on: boolean): void;
 }
@@ -87,6 +93,8 @@ export function createGameServer(options: GameServerOptions): GameServer {
       companion: options.companion,
       wild: options.wild,
       progression: options.progression,
+      items: options.items,
+      onDecision: options.onDecision,
       hour: () => new Date().getHours(),
       ...(options.devArena ? { devParty: DEV_PARTY, devBag: DEV_BAG } : {}),
       // Without an extracted world there is nothing to check a save against.

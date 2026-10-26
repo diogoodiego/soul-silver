@@ -48,6 +48,8 @@ export interface CombatInput {
   /** Bits 0–3 are move slots 1–4. */
   buttons: number;
   aim?: Point | undefined;
+  /** The AI's floor on cast time (spec 019, FR-026): none of its moves comes out without a wind-up. */
+  minCastTicks?: number | undefined;
 }
 
 export interface Combatant {
@@ -64,7 +66,7 @@ export interface Combatant {
   confusion: StatusState | undefined;
   /** Tick at which each slot can be used again. */
   readyAt: number[];
-  casting: { slot: number; dir: Point; readyTick: number } | undefined;
+  casting: { slot: number; dir: Point; startTick: number; readyTick: number } | undefined;
   /** Last move used (executed), so clients can play its animation even when it hits nothing. */
   used: { count: number; move: number; dir: Point; arc?: { radiusPx: number; angleDeg: number } | undefined };
   dashing: boolean;
@@ -116,8 +118,8 @@ const rotate = (d: Point, deg: number): Point => {
 const facingOf = (d: Point): Direction => (Math.abs(d.x) >= Math.abs(d.y) ? (d.x >= 0 ? "east" : "west") : d.y >= 0 ? "south" : "north");
 const VECTORS: Record<Direction, Point> = { north: { x: 0, y: -1 }, south: { x: 0, y: 1 }, east: { x: 1, y: 0 }, west: { x: -1, y: 0 } };
 
-/** Pokémon of different players never hurt each other until PvP exists (spec 25). */
-export const canHarm = (a: Owner, b: Owner): boolean => a !== b && (a === "wild" || b === "wild");
+/** Any two owners fight: wild against players and player against player (PvP); never one's own Pokémon. */
+export const canHarm = (a: Owner, b: Owner): boolean => a !== b;
 
 export function createCombat(options: CombatOptions) {
   const { data, rng, lookup } = options;
@@ -337,7 +339,7 @@ export function createCombat(options: CombatOptions) {
     }
   }
 
-  function begin(c: Combatant, slot: number, aim: Point | undefined): void {
+  function begin(c: Combatant, slot: number, aim: Point | undefined, minCastTicks = 0): void {
     if (tick < c.readyAt[slot]!) return;
     const self = pos(c);
     const len = aim ? Math.hypot(aim.x, aim.y) : 0;
@@ -357,8 +359,9 @@ export function createCombat(options: CombatOptions) {
       return;
     }
     world.update({ ...self, facing: facingOf(dir) });
-    c.casting = { slot, dir, readyTick: tick + c.moves[slot]!.castTicks };
-    if (c.moves[slot]!.castTicks === 0) execute(c);
+    const castTicks = Math.max(c.moves[slot]!.castTicks, minCastTicks);
+    c.casting = { slot, dir, startTick: tick, readyTick: tick + castTicks };
+    if (castTicks === 0) execute(c);
   }
 
   function move(c: Combatant, input: Point): void {
@@ -533,7 +536,7 @@ export function createCombat(options: CombatOptions) {
         }
         if (!c.casting) {
           const slot = [0, 1, 2, 3].find((s) => pressed & (1 << s) && c.moves[s]);
-          if (slot !== undefined) begin(c, slot, input?.aim);
+          if (slot !== undefined) begin(c, slot, input?.aim, input?.minCastTicks);
         }
         if (input && !(c.casting && c.moves[c.casting.slot]!.rooted)) move(c, input.move);
       }

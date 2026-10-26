@@ -83,7 +83,8 @@ export function createCaptures(options: CaptureOptions) {
 
   function sendBag(s: State): void {
     const selected = current(s);
-    s.catcher.send({ type: "bag", items: balls(s).map((b) => ({ ...b })), ...(selected !== undefined ? { selected } : {}) });
+    // The whole bag (spec 017): the menu shows every pocket; the client picks the balls out.
+    s.catcher.send({ type: "bag", items: s.catcher.progress.bag.map((b) => ({ ...b })), ...(selected !== undefined ? { selected } : {}) });
   }
 
   function sendDex(s: State): void {
@@ -130,7 +131,7 @@ export function createCaptures(options: CaptureOptions) {
     const c = combat.get(wildId)!;
     const e = world.get(wildId)!;
     if (!s) return;
-    if (w.ai === "capturing") {
+    if (w.capturing) {
       addBall(s, f.ball, 1);
       s.catcher.send({ type: "notice", code: "ball-returned" });
       return;
@@ -153,7 +154,7 @@ export function createCaptures(options: CaptureOptions) {
     });
     const a = ball.always ? 255 : catchValue({ hpMax: c.stats.hp, hp: c.hp, catchRate: data.catchRate(w.species) ?? 255, ball: mult, status: c.major?.id });
     const { shakes, caught } = rollShakes(a, rng);
-    w.ai = "capturing";
+    w.capturing = true;
     // Holds still in the ball.
     combat.input(wildId, { move: { x: 0, y: 0 }, buttons: 0 });
     attempts.push({ playerId: f.playerId, wildId, ball: f.ball, caught, resolveTick: tick + (shakes + 1) * shakeTicks });
@@ -166,8 +167,7 @@ export function createCaptures(options: CaptureOptions) {
     const c = combat.get(a.wildId);
     if (!w || !c) return;
     if (!s || !a.caught) {
-      w.ai = "wander";
-      if (s && rng.nextFloat() < rules.angryOnEscapeChance) w.angry = true;
+      wilds.release(a.wildId, s !== undefined && rng.nextFloat() < rules.angryOnEscapeChance);
       return;
     }
     const { progress } = s.catcher;
@@ -202,7 +202,7 @@ export function createCaptures(options: CaptureOptions) {
     const ny = e.y + f.dir.y * speedPx;
     for (const w of wilds.all()) {
       const we = world.get(w.entityId);
-      if (!we || we.area !== e.area || combat.get(w.entityId)?.hp === 0) continue;
+      if (!we || we.area !== e.area) continue;
       if (distToSegment(we, e, { x: nx, y: ny }) <= HIT_PX) {
         hit(f, w.entityId, tick);
         return false;
@@ -226,11 +226,15 @@ export function createCaptures(options: CaptureOptions) {
       for (const f of flights.filter((f) => f.playerId === playerId)) world.remove(f.entityId);
       flights = flights.filter((f) => f.playerId !== playerId);
       for (const a of attempts.filter((a) => a.playerId === playerId)) {
-        const w = wilds.get(a.wildId);
-        if (w) w.ai = "wander";
+        wilds.release(a.wildId, false);
       }
       attempts = attempts.filter((a) => a.playerId !== playerId);
       states.delete(playerId);
+    },
+    /** Sends the bag again, after the menu used an item (spec 017). */
+    refresh(playerId: number): void {
+      const s = states.get(playerId);
+      if (s) sendBag(s);
     },
     select(playerId: number, item: number): void {
       const s = states.get(playerId);

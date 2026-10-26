@@ -1,5 +1,6 @@
 import type { CollisionMap, WorldMap } from "@soulsilver/shared/game";
 import type { CollisionCell } from "@soulsilver/shared/maps";
+import { buildAiData, BUNDLED_AI_CONTENT, type AiContent } from "../src/ai-loader";
 import { buildWildData, BUNDLED_WILD_CONTENT, type WildContent } from "../src/wild-loader";
 import { MOVES, SPECIES } from "./combat-fixture";
 
@@ -47,3 +48,15 @@ export function grassMap(id: string, grass: (x: number, y: number) => boolean, e
 
 /** Pixel centre of a tile. */
 export const px = (tile: number) => tile * 16 + 8;
+
+/** `content/ai` with some values replaced (spec 019). */
+export function aiData(patch: { tuning?: Record<string, object>; temperaments?: Record<string, object>; profiles?: Record<string, unknown> } = {}) {
+  const copy = JSON.parse(JSON.stringify(BUNDLED_AI_CONTENT)) as Record<string, { value: Record<string, unknown> }>;
+  for (const [group, values] of Object.entries(patch.tuning ?? {})) Object.assign(copy["tuning"]!.value[group] as object, values);
+  for (const [name, values] of Object.entries(patch.temperaments ?? {})) Object.assign(copy["temperaments"]!.value[name] as object, values);
+  for (const p of (copy["profiles"]!.value["profiles"] as Record<string, unknown>[])) Object.assign(p, patch.profiles);
+  return buildAiData(copy as unknown as AiContent);
+}
+
+/** AI that never wakes up: wild Pokémon stand still (capture tests aim at a fixed spot). */
+export const STILL_AI = () => aiData({ tuning: { performance: { dormantTiles: 0 } } });

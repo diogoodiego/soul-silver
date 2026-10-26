@@ -40,6 +40,8 @@ interface State {
   lastThreatTick: number;
   buttons: number;
   lastArea: string;
+  /** The last hit on the Pokémon out came from another player's: a blackout from it costs no money. */
+  hitByPlayer: boolean;
 }
 
 export interface CompanionOptions {
@@ -56,6 +58,8 @@ export interface CompanionOptions {
   home: () => { area: string; x: number; y: number };
   /** True while the player has progression decisions waiting (spec 016): the combat button does nothing. */
   busy?(playerId: number): boolean;
+  /** Stats, moves and experience for the party screen (spec 017). */
+  detail?(m: PartyMember): Omit<Extract<ServerMessage, { type: "party" }>["members"][number], "species" | "level" | "hp" | "hpMax"> | undefined;
   log(message: string): void;
 }
 
@@ -80,7 +84,7 @@ export function createCompanions(options: CompanionOptions) {
   };
 
   function sendParty(s: State): void {
-    const members = s.trainer.progress.party.map((m) => ({ species: m.species, level: m.level, hp: m.hp, hpMax: hpMax(m) }));
+    const members = s.trainer.progress.party.map((m) => ({ species: m.species, level: m.level, hp: m.hp, hpMax: hpMax(m), ...options.detail?.(m) }));
     s.trainer.send({ type: "party", members, ...(s.active !== undefined && s.mode === "combat" ? { active: s.active } : {}) });
   }
 
@@ -194,7 +198,8 @@ export function createCompanions(options: CompanionOptions) {
 
   function blackout(s: State): void {
     const { progress } = s.trainer;
-    const lost = moneyLoss(progress.money, progress.party.map((m) => m.level), progress.badges, data.battle.moneyLossBase);
+    // Losing to another player is like a link battle: no money changes hands.
+    const lost = s.hitByPlayer ? 0 : moneyLoss(progress.money, progress.party.map((m) => m.level), progress.badges, data.battle.moneyLossBase);
     progress.money -= lost;
     for (const m of progress.party) m.hp = hpMax(m);
     const to = progress.respawn ?? options.home();
@@ -243,6 +248,14 @@ export function createCompanions(options: CompanionOptions) {
     else if (tick - s.lastThreatTick >= toTicks(data.battle.disengageSeconds)) endCombat(s);
   }
 
+  /** A wild Pokémon still standing within contactTiles of the trainer. */
+  function touchingWild(s: State): boolean {
+    if (!combat) return false;
+    const t = trainerOf(s);
+    const reach = data.battle.contactTiles * MAP_TILE_PX;
+    return world.all().some((w) => w.kind === "pokemon" && w.area === t.area && combat.get(w.id)?.owner === "wild" && combat.get(w.id)!.hp > 0 && Math.hypot(w.x - t.x, w.y - t.y) <= reach);
+  }
+
   function interact(s: State): void {
     const t = trainerOf(s);
     const c = s.companionId === undefined ? undefined : world.get(s.companionId);
@@ -265,7 +278,7 @@ export function createCompanions(options: CompanionOptions) {
       // HP from a save is a trust boundary: never above the maximum for the level.
       for (const m of trainer.progress.party) m.hp = Math.min(m.hp, hpMax(m));
       const t = world.get(trainer.entityId)!;
-      const s: State = { trainer, trail: [], companionId: undefined, mode: "walk", active: undefined, anchor: { x: 0, y: 0 }, swapReadyTick: 0, swapUntil: 0, lastThreatTick: 0, buttons: 0, lastArea: t.area };
+      const s: State = { trainer, trail: [], companionId: undefined, mode: "walk", active: undefined, anchor: { x: 0, y: 0 }, swapReadyTick: 0, swapUntil: 0, lastThreatTick: 0, buttons: 0, lastArea: t.area, hitByPlayer: false };
       states.set(trainer.playerId, s);
       sendParty(s);
     },
@@ -278,6 +291,11 @@ export function createCompanions(options: CompanionOptions) {
       states.delete(playerId);
     },
     inCombat: (playerId: number) => states.get(playerId)?.mode === "combat",
+    /** Records who hit this player's Pokémon last: a player (PvP) or a wild one. */
+    hitBy(playerId: number, attacker: number | "wild"): void {
+      const s = states.get(playerId);
+      if (s) s.hitByPlayer = attacker !== "wild";
+    },
     /** Party index out in combat, if any. */
     active: (playerId: number) => states.get(playerId)?.active,
     /** Sends the party again, after progression changed a level or a species. */
@@ -298,7 +316,7 @@ export function createCompanions(options: CompanionOptions) {
       const pressed = buttons & ~s.buttons;
       s.buttons = buttons;
       if (s.mode === "walk") {
-        if (pressed & BUTTON.combat) startCombat(s, tick);
+        if (pressed & BUTTON.combat || touchingWild(s)) startCombat(s, tick);
         else if (pressed & BUTTON.interact) interact(s);
         // startCombat() may have changed the mode; TS cannot see that through the call.
         return (s.mode as State["mode"]) === "combat";

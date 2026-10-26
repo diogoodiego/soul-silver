@@ -2,7 +2,7 @@ import type { Entity, StateMessage, WorldMap } from "@soulsilver/shared/game";
 import { describe, expect, it } from "vitest";
 import { combatData, SPECIES } from "./combat-fixture";
 import { setup } from "./harness";
-import { grassMap, px, wildData } from "./wild-fixture";
+import { aiData, grassMap, px, wildData } from "./wild-fixture";
 
 // Spec 015: wild Pokémon spawn from the map's table, outside every view, shared by everyone (US1, US2, US4).
 
@@ -15,8 +15,8 @@ const WORLD: Record<string, WorldMap> = {
 };
 const lookup = (id: string) => WORLD[id];
 
-function game(options: { hour?: number; area?: string; wild?: ReturnType<typeof wildData>; players?: number } = {}) {
-  const t = setup({ world: lookup, timeoutTicks: 1e9, combat: combatData(), wild: options.wild ?? wildData(), hour: () => options.hour ?? 12, spawn: (n) => ({ area: options.area ?? "route", x: px(5 + n), y: px(5) }) });
+function game(options: { hour?: number; area?: string; wild?: ReturnType<typeof wildData>; ai?: ReturnType<typeof aiData>; players?: number } = {}) {
+  const t = setup({ world: lookup, timeoutTicks: 1e9, combat: combatData(), wild: options.wild ?? wildData(), ai: options.ai, hour: () => options.hour ?? 12, spawn: (n) => ({ area: options.area ?? "route", x: px(5 + n), y: px(5) }) });
   const ps = Array.from({ length: options.players ?? 1 }, () => t.connect());
   const wilds = () => t.session.world.all().filter((e) => e.kind === "pokemon" && e.data["owner"] === "wild");
   const run = (ticks: number) => {
@@ -35,6 +35,20 @@ describe("spawner (US1)", () => {
     expect(wilds.length).toBe(6);
     for (const w of wilds) expect([SPECIES.sentret.id, SPECIES.rattata.id]).toContain(w.data["species"]);
     expect(g.logs.filter((l) => l.startsWith("Wild"))).toEqual([]);
+  });
+
+  it("fills an empty map fast and slows down near the cap", () => {
+    const g = game({ wild: wildData({ spawn: { despawnSeconds: 600, defaultCap: 6, spawnIntervalMinSeconds: 0.5, spawnIntervalSeconds: 4 } }) });
+    const ticksOf: number[] = [];
+    for (let t = 1; t <= 20 * 30 && ticksOf.length < 6; t++) {
+      g.run(1);
+      if (g.wilds().length > ticksOf.length) ticksOf.push(t);
+    }
+    const gaps = ticksOf.slice(1).map((t, i) => t - ticksOf[i]!);
+    // The wait after an attempt follows the count it saw: 0 of 6 → 0.5 s; 4 of 6 (before the 6th) → 0.5 + 3.5 × 4/6 ≈ 2.8 s; at the cap, 4 s.
+    expect(gaps[0]).toBe(10);
+    expect(gaps.at(-1)).toBe(57);
+    expect(gaps).toEqual([...gaps].sort((a, b) => a - b));
   });
 
   it("puts each spawn on a grass cell out of view", () => {
@@ -91,22 +105,43 @@ describe("spawner (US1)", () => {
   });
 });
 
-describe("temperaments (US2)", () => {
+describe("temperaments (US2, driven by the spec 019 AI)", () => {
   const distance = (g: ReturnType<typeof game>) => {
     const t = g.entity(g.ps[0]!.welcome!.entityId)!;
     return Math.min(...g.wilds().map((w) => Math.hypot(w.x - t.x, w.y - t.y)));
   };
+  /** Sees across the whole map, so the out-of-view spawn notices the player. */
+  const farSight = aiData({ tuning: { performance: { dormantTiles: 64 } }, profiles: { sightTiles: 60, sightAngleDeg: 360 }, temperaments: { aggressive: { chaseLimitTiles: 60 }, skittish: { chaseLimitTiles: 60 } } });
+  const only = (temperament: string, spawn: object = {}) => wildData({ spawn: { defaultCap: 1, ...spawn }, temperaments: { default: temperament, species: {} } });
 
   it("an aggressive one comes for the player", () => {
-    const g = game({ wild: wildData({ spawn: { defaultCap: 1 }, temperaments: { default: "aggressive", species: {}, radii: { sightTiles: 5, detectTiles: 40, territoryTiles: 3 } } }) });
+    const g = game({ wild: only("aggressive", { leashTiles: 64 }), ai: farSight });
     g.run(5);
     const start = distance(g);
     g.run(20 * 3);
     expect(distance(g)).toBeLessThan(start - 32);
   });
 
+  it("an aggressive one shows the alert when it notices the player (specs 018, 019)", () => {
+    const g = game({ wild: only("aggressive", { leashTiles: 64 }), ai: farSight });
+    let alert = false;
+    for (let i = 0; i < 20; i++) {
+      g.run(1);
+      alert ||= g.wilds()[0]?.data["alert"] === true;
+    }
+    expect(alert).toBe(true);
+  });
+
+  it("a passive one never shows the alert", () => {
+    const g = game({ wild: only("passive", { leashTiles: 64 }), ai: farSight });
+    for (let i = 0; i < 30; i++) {
+      g.run(1);
+      expect(g.wilds()[0]?.data["alert"]).toBeUndefined();
+    }
+  });
+
   it("a skittish one runs away", () => {
-    const g = game({ wild: wildData({ spawn: { defaultCap: 1, leashTiles: 64 }, temperaments: { default: "skittish", species: {}, radii: { sightTiles: 40, detectTiles: 6, territoryTiles: 3 } } }) });
+    const g = game({ wild: only("skittish", { leashTiles: 64 }), ai: farSight });
     g.run(5);
     const start = distance(g);
     g.run(20 * 3);
@@ -144,5 +179,24 @@ describe("shared (US4)", () => {
     const dex = g.ps[0]!.got.filter((m) => m.type === "pokedex").at(-1);
     const species = new Set(g.wilds().map((w) => w.data["species"]));
     expect(dex?.type === "pokedex" && dex.seen).toEqual(expect.arrayContaining([...species]));
+  });
+});
+
+describe("knocked out", () => {
+  const knockOut = (g: ReturnType<typeof game>) => {
+    const w = g.wilds()[0]!;
+    g.session.combat!.get(w.id)!.hp = 0;
+    return w.id;
+  };
+
+  it("stays where it fell, does nothing, and goes after faintedSeconds", () => {
+    const g = game({ wild: wildData({ spawn: { defaultCap: 1, faintedSeconds: 2 } }) });
+    g.run(5);
+    const id = knockOut(g);
+    const at = { x: g.entity(id)!.x, y: g.entity(id)!.y };
+    g.run(20);
+    expect(g.entity(id)).toMatchObject({ ...at, data: expect.objectContaining({ hp: 0 }) as object });
+    g.run(25);
+    expect(g.entity(id)).toBeUndefined();
   });
 });
