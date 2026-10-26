@@ -6,6 +6,7 @@ import { mapsStage } from "../maps/stage.ts";
 import type { Stage } from "../pipeline/stage.ts";
 import { spritesStage } from "../sprites/stage.ts";
 import { textCatalogStage } from "../text/stage.ts";
+import { titleStage } from "../title/stage.ts";
 import { codeDecompressStage } from "./code-decompress.ts";
 import { romUnpackStage } from "./rom-unpack.ts";
 
@@ -19,4 +20,5 @@ export const defaultStages: readonly Stage[] = [
   spritesStage,
   eventsStage,
   audioStage,
+  titleStage,
 ];
