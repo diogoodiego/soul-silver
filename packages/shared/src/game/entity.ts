@@ -2,7 +2,7 @@ import type { Direction } from "../maps/areas.ts";
 
 // Anything simulated in the world (spec 010, data-model.md). New kinds (e.g. "npc") extend the union.
 
-export const ENTITY_KINDS = ["player", "pokemon", "projectile", "wild"] as const;
+export const ENTITY_KINDS = ["player", "pokemon", "projectile", "wild", "npc"] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 
 export type EntityData = Record<string, string | number | boolean>;

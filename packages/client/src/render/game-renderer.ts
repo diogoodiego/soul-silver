@@ -17,7 +17,7 @@ import {
   Texture,
   WebGLRenderer,
 } from "three";
-import { clampCamera, integerScale, OBLIQUE, obliqueProjection, VIEW_H, VIEW_W, type Bounds } from "./camera";
+import { clampCamera, fillView, OBLIQUE, obliqueProjection, VIEW_H, VIEW_W, type Bounds } from "./camera";
 import { loadBitmap, loadMapMesh, spriteUrl, type ClientWorld, type MapMesh } from "./map-assets";
 import { CLEARING_RADIUS_PX, clearings } from "./grass-clearing";
 import { buildMapObject, groundAt, setGrassClearings, type MapObject } from "./map-scene";
@@ -32,7 +32,7 @@ const PLAYER_SET = "overworld-player.json";
 export const SHAKE_MS = 800;
 const POKEMON_SET = "overworld-pokemon.json";
 /** Kinds drawn in the world; projectiles and fields (spec 013) are markers. */
-const DRAWN = new Set(["player", "pokemon", "projectile"]);
+const DRAWN = new Set(["player", "pokemon", "projectile", "npc"]);
 /** A hit target blinks at this period while its flash lasts. */
 const FLASH_MS = 60;
 const EFFECT_SET = "field-effect.json";
@@ -135,17 +135,17 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   const camera = new Camera();
   camera.matrixAutoUpdate = false;
 
-  // Window size -> whole-number scale with bars (FR-012).
-  let screen = { scale: 1, left: 0, top: 0 };
+  // Host size -> whole-number scale, and a view as large as the host at that scale: no bars (FR-012).
+  let screen = fillView(VIEW_W, VIEW_H);
   let viewTopLeft = { x: 0, y: 0 };
   const fit = () => {
-    const { scale, left, top } = integerScale(host.clientWidth, host.clientHeight);
-    screen = { scale, left, top };
+    screen = fillView(host.clientWidth, host.clientHeight);
+    renderer.setSize(screen.w, screen.h, false);
     for (const element of [canvas, fade]) {
-      element.style.width = `${VIEW_W * scale}px`;
-      element.style.height = `${VIEW_H * scale}px`;
-      element.style.left = `${left}px`;
-      element.style.top = `${top}px`;
+      element.style.width = `${screen.w * screen.scale}px`;
+      element.style.height = `${screen.h * screen.scale}px`;
+      element.style.left = "0";
+      element.style.top = "0";
     }
   };
   const observer = new ResizeObserver(fit);
@@ -433,7 +433,8 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   }
 
   function frameFor(e: Entity, moving: boolean, running: boolean, now: number) {
-    if (e.kind === "projectile") return undefined;
+    // shortcut: people are markers until the event sprite id is mapped to its overworld-npc sheet (the ROM table is not extracted yet).
+    if (e.kind === "projectile" || e.kind === "npc") return undefined;
     if (e.kind === "pokemon") {
       const step = moving ? Math.floor(now / POKEMON_FRAME_MS) % 2 : 0;
       const base = `overworld-pokemon/${String(e.data["species"])}/0`;
@@ -539,9 +540,9 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       const mapFrame = Math.floor(now / ANIMATION_FRAME_MS);
       for (const visual of visuals.values()) if (visual !== "loading") visual.object.animate(mapFrame);
       // The view follows the player's feet as drawn: raised ground draws higher.
-      const view2d = clampCamera(self.x, self.y - OBLIQUE * groundOf(self), bounds);
+      const view2d = clampCamera(self.x, self.y - OBLIQUE * groundOf(self), bounds, screen);
       viewTopLeft = view2d;
-      camera.projectionMatrix.set(...(obliqueProjection(view2d.x, view2d.y) as Parameters<typeof camera.projectionMatrix.set>));
+      camera.projectionMatrix.set(...(obliqueProjection(view2d.x, view2d.y, screen) as Parameters<typeof camera.projectionMatrix.set>));
       camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
       renderer.render(scene, camera);
       // Black at the map swap, half way through the warp (data-model.md).
@@ -559,7 +560,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     },
     /** Where a ground point of the current map is on the page, in CSS pixels relative to the host. */
     project(x: number, y: number): { x: number; y: number } {
-      return { x: screen.left + (x - viewTopLeft.x) * screen.scale, y: screen.top + (y - viewTopLeft.y) * screen.scale };
+      return { x: (x - viewTopLeft.x) * screen.scale, y: (y - viewTopLeft.y) * screen.scale };
     },
     destroy(): void {
       observer.disconnect();

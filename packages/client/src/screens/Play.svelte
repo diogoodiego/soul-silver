@@ -39,14 +39,14 @@
     step = "mode";
   }
 
-  async function begin(start: (slot: number) => Promise<SessionResult>, address?: string, arena?: ArenaSpec): Promise<void> {
+  async function begin(start: (slot: number) => Promise<SessionResult>, address?: string, arena?: ArenaSpec, hosting = false): Promise<void> {
     if (slot === undefined || busy) return;
     busy = true;
     error = undefined;
     const at = slot;
     const result = await start(at);
     busy = false;
-    if (result.ok) onPlay({ save: result.save, slot: at, ...(address ? { address } : {}), ...(arena ? { arena } : {}) });
+    if (result.ok) onPlay({ save: result.save, slot: at, ...(address ? { address } : {}), ...(arena ? { arena } : {}), ...(hosting ? { hosting } : {}) });
     else error = result.reason;
   }
 
@@ -56,7 +56,7 @@
       return;
     }
     step = "mode";
-    await begin((s) => api.startHost(s));
+    await begin((s) => api.startHost(s), undefined, undefined, true);
   }
 
   async function firewallAccepted(): Promise<void> {

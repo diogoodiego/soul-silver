@@ -26,6 +26,23 @@
   let assets = $state<AssetsState>({ status: "checking" });
   let showMain = $state(false);
   let play = $state<PlayRequest | undefined>();
+  /** Why the last switch to another session failed, shown on the main menu. */
+  let switchError = $state<string | undefined>();
+
+  /** From the Online tab: the old session saved and closed; join the new host with the same slot. */
+  async function switchTo(address: string): Promise<void> {
+    const slot = play!.slot;
+    const result = await window.soulSilver.joinSession(slot, address);
+    if (result.ok) {
+      play = { save: result.save, slot, address };
+      attempt++;
+      return;
+    }
+    play = undefined;
+    screen = "home";
+    switchError = result.reason;
+  }
+
   /** Bumped on reconnect so the game screen starts over. */
   let attempt = $state(0);
 
@@ -90,12 +107,12 @@
     <p class="text-quiet text-[0.85rem]">{t("app.version", { version: appVersion ?? "—" })}</p>
   {:else if play}
     {#key attempt}
-      <GameSession {play} onExit={() => ((play = undefined), (screen = "home"))} onReconnect={play.address ? reconnect : undefined} />
+      <GameSession {play} onExit={() => ((play = undefined), (screen = "home"))} onReconnect={play.address ? reconnect : undefined} onSwitch={play.arena ? undefined : (address: string) => void switchTo(address)} />
     {/key}
   {:else if screen === "title"}
     <Title version={appVersion} onStart={() => (screen = "home")} />
   {:else if screen === "home"}
-    <Home {update} serverReady={info !== undefined} serverFailed={failed} onPlay={() => (screen = "play")} onSettings={() => (screen = "settings")} onAbout={() => (screen = "about")} />
+    <Home notice={switchError} {update} serverReady={info !== undefined} serverFailed={failed} onPlay={() => (screen = "play")} onSettings={() => (screen = "settings")} onAbout={() => (screen = "about")} />
   {:else if screen === "about"}
     <About version={appVersion} onBack={() => (screen = "home")} />
   {:else if screen === "settings"}

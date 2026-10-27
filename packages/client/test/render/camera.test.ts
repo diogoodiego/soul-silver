@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampCamera, integerScale, OBLIQUE, obliqueProjection, VIEW_H, VIEW_W } from "../../src/render/camera";
+import { clampCamera, fillView, OBLIQUE, obliqueProjection, VIEW_H, VIEW_W } from "../../src/render/camera";
 
 const bounds = { left: 0, top: 0, right: 512, bottom: 512 };
 
@@ -27,18 +27,19 @@ describe("clampCamera", () => {
   });
 });
 
-describe("integerScale", () => {
-  it("uses the largest whole factor that fits, centered", () => {
-    expect(integerScale(1920, 1080)).toEqual({ scale: 5, left: (1920 - 5 * VIEW_W) / 2, top: (1080 - 5 * VIEW_H) / 2 });
+describe("fillView", () => {
+  it("keeps the largest whole scale at which the DS screen fits, and widens the view to cover the box", () => {
+    expect(fillView(1920, 1080)).toEqual({ scale: 5, w: 384, h: 216 });
   });
 
-  it("never goes below 1", () => {
-    expect(integerScale(100, 100).scale).toBe(1);
+  it("covers a box that is not a multiple of the scale, cutting under one scale of pixels", () => {
+    const v = fillView(1001, 777);
+    expect(v.scale).toBe(3);
+    expect([v.w * v.scale >= 1001, v.w * v.scale - 1001 < 3, v.h * v.scale >= 777, v.h * v.scale - 777 < 3]).toEqual([true, true, true, true]);
   });
 
-  it("puts bars on whole pixels", () => {
-    const s = integerScale(1001, 777);
-    expect([Number.isInteger(s.left), Number.isInteger(s.top)]).toEqual([true, true]);
+  it("never shows less than the DS screen, nor a scale below 1", () => {
+    expect(fillView(100, 100)).toEqual({ scale: 1, w: VIEW_W, h: VIEW_H });
   });
 });
 

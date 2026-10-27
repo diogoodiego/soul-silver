@@ -344,7 +344,9 @@ export function createCombat(options: CombatOptions) {
     const self = pos(c);
     const len = aim ? Math.hypot(aim.x, aim.y) : 0;
     let dir = len > 0.01 ? { x: aim!.x / len, y: aim!.y / len } : VECTORS[self.facing];
-    const target = AIMED.has(c.moves[slot]!.behavior) ? nearestFoe(c, Math.max(c.moves[slot]!.rangePx, AUTO_AIM_MIN_PX)) : undefined;
+    // No aim (every player): the nearest foe anywhere on the map; an aim (the AI) is only corrected in reach.
+    const reach = aim ? Math.max(c.moves[slot]!.rangePx, AUTO_AIM_MIN_PX) : Infinity;
+    const target = AIMED.has(c.moves[slot]!.behavior) ? nearestFoe(c, reach) : undefined;
     if (target) {
       const d = Math.hypot(target.x - self.x, target.y - self.y);
       if (d > 0.01) dir = { x: (target.x - self.x) / d, y: (target.y - self.y) / d };

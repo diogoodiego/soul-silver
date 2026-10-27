@@ -18,7 +18,7 @@ afterEach(async () => {
 describe("settings", () => {
   it("starts with the defaults", async () => {
     expect(await createSettings(path).get()).toEqual(DEFAULT_SETTINGS);
-    expect(DEFAULT_SETTINGS).toMatchObject({ firewallNoticeSeen: false, window: { width: 1280, height: 720 }, fullscreen: false, textSpeed: "mid", uiScale: 1 });
+    expect(DEFAULT_SETTINGS).toMatchObject({ firewallNoticeSeen: false, window: { width: 1280, height: 720 }, fullscreen: false, textSpeed: "mid", uiScale: 1, crt: true });
   });
 
   it("remembers the notice was seen across instances", async () => {

@@ -35,6 +35,8 @@ export interface WorldMap {
   mapsec?: number | undefined;
   /** Encounter table id (feature 008); undefined when the map has no wild Pokémon. */
   encounters?: number | undefined;
+  /** Matrix tile of this map's top-left, which event and script coordinates count from (spec 020); 0, 0 when absent. */
+  origin?: { tx: number; ty: number } | undefined;
 }
 
 export type WorldLookup = (mapId: string) => WorldMap | undefined;
@@ -71,6 +73,7 @@ export function buildWorldMap(
       }),
     widthPx: base.width * MAP_TILE_PX,
     heightPx: base.height * MAP_TILE_PX,
+    origin: { tx: ox * PIECE_TILES, ty: oz * PIECE_TILES },
   };
 }
 

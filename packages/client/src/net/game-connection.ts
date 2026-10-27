@@ -18,8 +18,8 @@ export interface GameConnectionOptions {
 
 export type GameStatus = "connecting" | "playing" | "rejected" | "closed";
 
-/** Companion and fight messages (spec 014), and bag, Pokédex and capture ones (spec 015), for the screen. */
-export type CompanionEvent = Extract<ServerMessage, { type: "party" | "reaction" | "fainted" | "blackout" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" }>;
+/** Companion and fight messages (spec 014), bag, Pokédex and capture ones (spec 015), and scripts (spec 020), for the screen. */
+export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" }>;
 
 export function createGameConnection(options: GameConnectionOptions) {
   const entities = new Map<number, Entity>();
@@ -77,6 +77,7 @@ export function createGameConnection(options: GameConnectionOptions) {
         entityId = msg.entityId;
         return;
       case "party":
+      case "players":
       case "reaction":
       case "fainted":
       case "blackout":
@@ -87,6 +88,10 @@ export function createGameConnection(options: GameConnectionOptions) {
       case "notice":
       case "exp-gain":
       case "progression":
+      case "script":
+      case "script-event":
+      case "script-lock":
+      case "script-debug":
         companionEvents.push(msg);
         return;
       case "state": {
@@ -115,9 +120,9 @@ export function createGameConnection(options: GameConnectionOptions) {
     },
     receive,
     /** One per local tick while playing; a zero vector means standing still. */
-    sendInput(move: MoveInput["move"], run: boolean, now: number, buttons = 0, aim?: MoveInput["move"]): void {
+    sendInput(move: MoveInput["move"], run: boolean, now: number, buttons = 0): void {
       if (status !== "playing") return;
-      const input = { seq: seq++, move, run, buttons, ...(aim ? { aim } : {}) };
+      const input = { seq: seq++, move, run, buttons };
       if (predicting()) predictor.apply(input, now);
       options.send({ type: "input", ...input });
     },

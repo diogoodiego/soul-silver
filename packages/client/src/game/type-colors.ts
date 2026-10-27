@@ -21,3 +21,6 @@ export const TYPE_COLORS: Record<(typeof TYPE_KEYS)[number], string> = {
   dragon: "#7038f8",
   dark: "#705848",
 };
+
+/** HP bar color: green, yellow under half, red under a fifth. */
+export const hpColor = (f: number) => (f > 0.5 ? "#4caf50" : f > 0.2 ? "#f5c518" : "#e53935");

@@ -83,6 +83,17 @@ export function createSessionController(deps: SessionControllerDeps) {
     deps.emit.gameMessage(msg);
   }
 
+  function announce(hostName: string, port: number): void {
+    stopAnnounce = deps.discovery.announce({
+      sessionId: deps.newSessionId(),
+      hostName,
+      port,
+      maxPlayers: 4,
+      protocolVersion: deps.protocolVersion,
+      players: async () => (await deps.server.getInfo()).players,
+    });
+  }
+
   async function start(slot: number, mode: Mode, open: (save: Save) => Promise<void>): Promise<SessionResult> {
     const loaded = await deps.saves.load(slot);
     if (!loaded.ok) return { ok: false, reason: loaded.reason };
@@ -118,15 +129,30 @@ export function createSessionController(deps: SessionControllerDeps) {
       start(slot, "host", async (save) => {
         const port = await deps.server.listen();
         deps.server.connectGame();
-        stopAnnounce = deps.discovery.announce({
-          sessionId: deps.newSessionId(),
-          hostName: save.name,
-          port,
-          maxPlayers: 4,
-          protocolVersion: deps.protocolVersion,
-          players: async () => (await deps.server.getInfo()).players,
-        });
+        announce(save.name, port);
       }),
+
+    /** Opens the solo session being played to the LAN, without restarting it; resolves with the port. */
+    async openToLan(): Promise<{ ok: true; port: number } | { ok: false; reason: string }> {
+      const at = active;
+      if (at?.mode !== "solo") return { ok: false, reason: "Só uma partida sozinho pode ser aberta na rede." };
+      const loaded = await deps.saves.load(at.slot);
+      if (!loaded.ok) return { ok: false, reason: loaded.reason };
+      let port: number;
+      try {
+        port = await deps.server.listen();
+      } catch (error) {
+        return { ok: false, reason: (error as Error).message };
+      }
+      // The session ended while the port opened.
+      if (active !== at) {
+        deps.server.unlisten();
+        return { ok: false, reason: "A partida terminou." };
+      }
+      announce(loaded.save.name, port);
+      at.mode = "host";
+      return { ok: true, port };
+    },
 
     joinSession: (slot: number, address: string) => start(slot, "guest", () => deps.remote.connect(address)),
 

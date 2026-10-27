@@ -38,7 +38,7 @@ export function setup(options: Partial<SessionOptions> & { spawn?: (playerId: nu
     });
     session.connect(server);
     const at = spawn(session.occupied + 1);
-    const save: Save = { schemaVersion: 4, pending: [], name, character: "male", ...at, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), ...extra.save };
+    const save: Save = { schemaVersion: 5, pending: [], flags: [], vars: {}, name, character: "male", ...at, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), ...extra.save };
     client.send({ type: "hello", protocolVersion, save, ...(extra.resumeToken ? { resumeToken: extra.resumeToken } : {}) });
     const welcome = got.find((m) => m.type === "welcome");
     return {

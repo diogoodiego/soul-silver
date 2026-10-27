@@ -5,6 +5,8 @@ import type { Save } from "@soulsilver/shared/save";
 export interface PlayRequest {
   save: Save;
   slot: number;
+  /** Started as the LAN host from the menu. */
+  hosting?: boolean;
   /** Set when joining a host; used to reconnect. */
   address?: string;
   /** The dev arena (spec 013): the session is solo and nothing is saved. */

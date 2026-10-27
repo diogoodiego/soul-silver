@@ -1,6 +1,7 @@
 import type { SessionListing } from "@soulsilver/shared/lan";
 import { afterEach, describe, expect, it } from "vitest";
-import { broadcastAddresses, createDiscovery } from "../src/main/discovery";
+import { LAN_PORT_GAME } from "@soulsilver/shared/lan";
+import { broadcastAddresses, createDiscovery, localAddresses } from "../src/main/discovery";
 
 const stops: (() => void)[] = [];
 afterEach(() => {
@@ -17,6 +18,16 @@ describe("broadcastAddresses", () => {
       V6: [iface("fe80::1", "ffff:ffff:ffff:ffff::", false, "IPv6")],
     });
     expect(addresses).toEqual(["255.255.255.255", "192.168.1.255", "10.5.255.255"]);
+  });
+});
+
+describe("localAddresses", () => {
+  const iface = (address: string, internal = false, family: "IPv4" | "IPv6" = "IPv4") => ({ address, netmask: "255.255.255.0", internal, family, mac: "", cidr: null }) as never;
+  const interfaces = { Ethernet: [iface("192.168.1.20"), iface("fe80::1", false, "IPv6")], Loopback: [iface("127.0.0.1", true)] };
+
+  it("lists the external IPv4 addresses, with the port only when it is not the default", () => {
+    expect(localAddresses(LAN_PORT_GAME, interfaces)).toEqual(["192.168.1.20"]);
+    expect(localAddresses(47801, interfaces)).toEqual(["192.168.1.20:47801"]);
   });
 });
 

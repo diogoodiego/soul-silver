@@ -5,7 +5,7 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 4;
+export const SAVE_SCHEMA_VERSION = 5;
 
 /** Temporary storage size for catches with a full party, until the PC exists (spec 021). */
 export const STORAGE_MAX = 30;
@@ -77,5 +77,9 @@ export const saveSchema = z.strictObject({
   }),
   storage: z.array(partyMember).max(STORAGE_MAX),
   pending: z.array(progressionItem),
+  /** Story flags that are set (spec 020); ids as the original game numbers them. */
+  flags: z.array(z.number().int().min(1).max(0xffff)).refine(unique, "flag repetida"),
+  /** Story variables by id (spec 020); an absent variable holds 0. */
+  vars: z.record(z.string().regex(/^\d+$/, "id de variável não numérico"), z.number().int().min(0).max(0xffff)),
 });
 export type Save = z.infer<typeof saveSchema>;

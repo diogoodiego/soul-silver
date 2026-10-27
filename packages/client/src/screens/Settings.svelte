@@ -42,6 +42,10 @@
     {/each}
   </div>
 
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <button type="button" class="aria-pressed:bg-accent aria-pressed:text-[#111]" aria-pressed={$settings.crt} onclick={() => void saveSettings({ crt: !$settings.crt })}>{t("settings.crt")}</button>
+  </div>
+
   {#each VOLUMES as key (key)}
     <div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-labelledby="{key}-label">
       <span class="min-w-48" id="{key}-label">{t(`settings.audio.${key}`)}</span>

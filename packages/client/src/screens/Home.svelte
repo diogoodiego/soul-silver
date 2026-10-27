@@ -6,18 +6,20 @@
   import UpdateNotice from "../UpdateNotice.svelte";
 
   let {
+    notice,
     update,
     serverReady,
     serverFailed,
     onPlay,
     onSettings,
     onAbout,
-  }: { update: UpdateState; serverReady: boolean; serverFailed: boolean; onPlay: () => void; onSettings: () => void; onAbout: () => void } = $props();
+  }: { notice?: string | undefined; update: UpdateState; serverReady: boolean; serverFailed: boolean; onPlay: () => void; onSettings: () => void; onAbout: () => void } = $props();
 </script>
 
 <section class="home" use:menu>
   <h1>SoulSilver Desktop</h1>
   <UpdateNotice {update} onRestart={() => void window.soulSilver.restartToUpdate()} />
+  {#if notice}<p class="text-danger font-bold" role="alert">{notice}</p>{/if}
   {#if serverFailed}
     <p class="text-danger font-bold" role="alert">{t("home.serverFailed")}</p>
   {:else if !serverReady}

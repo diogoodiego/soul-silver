@@ -11,6 +11,8 @@ import type { CompanionData } from "./companion-loader";
 import type { WildData } from "./wild-loader";
 import type { ProgressionData } from "./progression";
 import type { ItemsData } from "./items";
+import type { ScriptData } from "./scripts";
+import type { MissingCommand } from "@soulsilver/shared/script";
 import type { Connection } from "./connection";
 import { checkCoherence } from "@soulsilver/shared/save";
 import { createSession, MAX_PLAYERS, type Session } from "./session";
@@ -58,6 +60,10 @@ export interface GameServerOptions extends Scheduler {
   items?: ItemsData | undefined;
   /** Every combat AI decision (spec 019, FR-034); the host writes them to a log when asked. */
   onDecision?: ((d: Decision) => void) | undefined;
+  /** Event scripts (spec 020); nobody talks and nothing triggers when omitted. */
+  scripts?: ScriptData | undefined;
+  /** Every command a script reached that nothing implements (spec 020); the host logs them. */
+  onMissingCommand?: ((m: MissingCommand & { player: number }) => void) | undefined;
   /** Opens/closes the LAN socket for other PCs (hosted sessions only); results go back as `listening`/`listen-failed`. */
   listen?(on: boolean): void;
 }
@@ -95,7 +101,12 @@ export function createGameServer(options: GameServerOptions): GameServer {
       progression: options.progression,
       items: options.items,
       onDecision: options.onDecision,
+      scripts: options.scripts,
+      onMissingCommand: options.onMissingCommand,
+      // Development builds may change story flags from the script debugger.
+      devTools: options.devArena,
       hour: () => new Date().getHours(),
+      weekday: () => new Date().getDay(),
       ...(options.devArena ? { devParty: DEV_PARTY, devBag: DEV_BAG } : {}),
       // Without an extracted world there is nothing to check a save against.
       ...(options.world

@@ -4,8 +4,8 @@ import { writable } from "svelte/store";
 
 // Keyboard (8 directions) and gamepad (analog) to a movement vector (spec 011, research R12).
 // The device used most recently wins. Keys come from the player's bindings (spec 017); pad buttons
-// are the fixed Xbox layout in PAD_BUTTONS. Moves 1–4 (spec 013); aim with the mouse pointer or
-// the right stick. Menus get discrete actions through onAction, with hold-to-repeat on the pad.
+// are the fixed Xbox layout in PAD_BUTTONS. Moves 1–4 (spec 013); nothing aims: the server aims every
+// move and ball. Menus get discrete actions through onAction, with hold-to-repeat on the pad.
 
 export const STICK_DEADZONE = 0.2;
 const MOVE_ACTIONS = ["move1", "move2", "move3", "move4"] as const;
@@ -92,13 +92,13 @@ export function createInput(target: Window, initial: Readonly<Bindings> = DEFAUL
   const onKeyDown = (event: KeyboardEvent) => {
     const actions = bound(event.code);
     if (actions.length === 0) return;
-    held.add(event.code);
     use("keyboard");
-    // Text fields keep their own keys (Backspace deletes, Enter submits); only Escape leaves them.
+    // Text fields keep their own keys (Backspace deletes, Enter submits, letters do not walk); only Escape leaves them.
     if (event.target instanceof HTMLInputElement) {
       if (event.code === "Escape") emit("cancel");
       return;
     }
+    held.add(event.code);
     event.preventDefault();
     for (const a of actions) emit(a);
   };
@@ -110,12 +110,8 @@ export function createInput(target: Window, initial: Readonly<Bindings> = DEFAUL
   target.addEventListener("keydown", onKeyDown);
   target.addEventListener("keyup", onKeyUp);
   target.addEventListener("blur", onBlur);
-  /** Last pointer position in client pixels; aiming with it is up to the game screen. */
-  let pointer: { x: number; y: number } | undefined;
-  const onPointer = (event: PointerEvent) => {
-    pointer = { x: event.clientX, y: event.clientY };
-    use("keyboard");
-  };
+  /** The mouse only tells that keyboard and mouse are in use: nothing aims with it. */
+  const onPointer = () => use("keyboard");
   target.addEventListener("pointermove", onPointer);
   target.addEventListener("pointerdown", onPointer);
 
@@ -166,16 +162,6 @@ export function createInput(target: Window, initial: Readonly<Bindings> = DEFAUL
     held(action: Action): boolean {
       return has(held, bindings[action]) || pressed(PAD_BUTTONS[action]);
     },
-    /** Right-stick aim when it is pushed, else undefined. */
-    stickAim(): MoveInput["move"] | undefined {
-      const p = pad();
-      const v = stickVector(p?.axes[2] ?? 0, p?.axes[3] ?? 0);
-      if (v.x === 0 && v.y === 0) return undefined;
-      use("gamepad");
-      return v;
-    },
-    /** The mouse pointer while the keyboard and mouse are in use. */
-    pointer: () => (lastDevice === "keyboard" ? pointer : undefined),
     /** Discrete actions for menus; returns a function that cancels the subscription. */
     onAction(listener: (action: Action) => void): () => void {
       listeners.add(listener);

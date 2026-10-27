@@ -2,6 +2,7 @@ import {
   type AppSettings,
   type AssetsState,
   IpcChannel,
+  type LanResult,
   type ServerInfo,
   type ServerStatus,
   type SessionResult,
@@ -54,6 +55,7 @@ const api: SoulSilverApi = {
   startSolo: (slot) => ipcRenderer.invoke(IpcChannel.SessionSolo, slot) as Promise<SessionResult>,
   startHost: (slot) => ipcRenderer.invoke(IpcChannel.SessionHost, slot) as Promise<SessionResult>,
   joinSession: (slot, address) => ipcRenderer.invoke(IpcChannel.SessionJoin, { slot, address }) as Promise<SessionResult>,
+  openToLan: () => ipcRenderer.invoke(IpcChannel.SessionOpenLan) as Promise<LanResult>,
   watchSessions: (listener) => {
     const unsubscribe = subscribe<SessionListing[]>(IpcChannel.SessionsList, listener);
     void ipcRenderer.invoke(IpcChannel.SessionsWatch, true);

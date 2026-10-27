@@ -5,16 +5,23 @@
   import { PROTOCOL_VERSION } from "@soulsilver/shared";
   import { BUTTON, type Entity, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
   import type { ItemRecord } from "@soulsilver/shared/game-data";
-  import { formatText, screenText } from "@soulsilver/shared/text";
+  import { formatText, parseTextId, screenText, textVariables } from "@soulsilver/shared/text";
   import { onMount, untrack } from "svelte";
   import { audio, createAudioReactions } from "./audio";
+  import { leadIndex } from "@soulsilver/shared/companion";
   import CombatHud from "./game/CombatHud.svelte";
+  import type { MenuPage } from "./game/menu-page";
+  import MovePanel from "./game/MovePanel.svelte";
+  import OnlinePanel from "./game/OnlinePanel.svelte";
+  import PartyPanel from "./game/PartyPanel.svelte";
   import { createDialogQueue } from "./game/dialog-queue";
   import DialogBox from "./game/DialogBox.svelte";
+  import ScriptDebug from "./game/ScriptDebug.svelte";
   import { BANK, bankTexts, itemRecords, moveTypes } from "./game/game-data";
   import PauseMenu from "./game/PauseMenu.svelte";
   import { t, type MessageKey } from "./i18n";
   import { input } from "./input/app-input";
+  import { menu } from "./input/menu";
   import type { PlayRequest } from "./play-request";
   import ProgressionPrompt from "./ProgressionPrompt.svelte";
   import { createGameConnection, type GameStatus } from "./net/game-connection";
@@ -24,16 +31,38 @@
   import { createCombatFx } from "./render/combat-fx";
   import { createGameRenderer, SHAKE_MS } from "./render/game-renderer";
   import { createClientWorld } from "./render/map-assets";
-  import { currentSettings, saveSettings } from "./settings";
+  import { currentSettings, saveSettings, settings } from "./settings";
   import SwapPicker from "./SwapPicker.svelte";
+  import DexButton from "./ui/DexButton.svelte";
+  import Glyph from "./Glyph.svelte";
 
   let {
     play,
     onExit,
     onReconnect,
-  }: { play: PlayRequest; onExit: () => void; onReconnect?: (() => Promise<string | undefined>) | undefined } = $props();
+    onSwitch,
+  }: {
+    play: PlayRequest;
+    onExit: () => void;
+    onReconnect?: (() => Promise<string | undefined>) | undefined;
+    /** Leaves this session, once its final save is written, for the host at `address`. */
+    onSwitch?: ((address: string) => void) | undefined;
+  } = $props();
 
   let menuOpen = $state(false);
+  // The Online tab beside the screen.
+  let tab = $state<"party" | "online">("party");
+  let players = $state<{ id: number; name: string; host: boolean }[]>([]);
+  let me = $state<number | undefined>();
+  let mode = $state<"solo" | "host" | "guest" | "arena">(untrack(() => (play.arena ? "arena" : play.address ? "guest" : play.hosting ? "host" : "solo")));
+  let addresses = $state<string[]>([]);
+  let onlineBusy = $state(false);
+  let onlineError = $state<string | undefined>();
+  /** The host being switched to, while this session saves and closes. */
+  let switchingTo = $state<string | undefined>();
+  let switched = false;
+  /** The menu page over the screen; undefined while the menu is open on the button panel. */
+  let page = $state<MenuPage | undefined>();
   let leaving = $state(false);
   let saveNote = $state<string | undefined>();
   let reconnectError = $state<string | undefined>();
@@ -53,13 +82,15 @@
 
   const EMOTIONS: Record<string, string> = { exclaim: "!", question: "?", note: "♪", heart: "♥", sweat: "💧", angry: "💢", sleep: "💤" };
   type Member = Extract<ServerMessage, { type: "party" }>["members"][number];
+  type ScriptRequestBuffer = Extract<Extract<ServerMessage, { type: "script" }>["request"], { kind: "say" }>["buffers"][string];
   let party = $state<Member[]>([]);
   let activeMember = $state<number | undefined>();
   let picker = $state<"closed" | "open" | "fainted">("closed");
   let reaction = $state<string | undefined>();
   let notice = $state<string | undefined>();
   /** Marks over entities: who is in a fight or busy in a menu, and the companion's emotion bubble. */
-  let marks = $state<{ key: string; x: number; y: number; text: string }[]>([]);
+  /** `capture`: a knocked-out wild one, with the button that throws a ball under its mark. */
+  let marks = $state<{ key: string; x: number; y: number; text: string; capture?: boolean }[]>([]);
   /** HP bars over the foes while fighting: wild ones and other players' Pokémon (spec 017, PvP). */
   let bars = $state<{ key: string; x: number; y: number; fraction: number }[]>([]);
   /** The Pokémon under the player's control, for the HUD. */
@@ -96,10 +127,58 @@
   const dialog = createDialogQueue();
   let dialogOpen = $state(false);
 
-  const ballLabel = $derived.by(() => {
-    const b = balls.find((x) => x.item === selectedBall) ?? balls[0];
-    return b ? `${itemName(b.item)} ×${b.count}` : undefined;
-  });
+  // Spec 020: what this player's scripts ask for; the server runs them.
+  let scriptLocked = $state(false);
+  let scriptDebug = $state<Extract<ServerMessage, { type: "script-debug" }> | undefined>();
+  /** The last message's pages: a question shows them again with Yes/No under them. */
+  let lastSay: string[] = [];
+  const setScriptFlag = (flag: number, on: boolean) => window.soulSilver.sendGame({ type: "debugSetFlag", flag, on });
+  const answerScript = (id: number, answer?: number) => window.soulSilver.sendGame({ type: "script-answer", id, ...(answer === undefined ? {} : { answer }) });
+
+  /** A script message in pages, its buffers filled in; the raw id when the bank is missing. */
+  async function scriptPages(text: string, buffers: Record<string, ScriptRequestBuffer>): Promise<string[]> {
+    const { bank, index } = parseTextId(text);
+    const raw = (await bankTexts(bank)).get(index);
+    if (raw === undefined) return [text];
+    const values: Record<string, string | number> = {};
+    for (const key of textVariables(raw)) {
+      const b = buffers[key.split(":")[1] ?? ""];
+      values[key] = !b ? "" : b.kind === "player" ? play.save.name : b.kind === "species" ? speciesName(b.id) : b.value;
+    }
+    try {
+      return formatText(raw, values, text).split("{page}").map(screenText);
+    } catch (error) {
+      console.warn(`[game] Script text ${text}: ${(error as Error).message}`);
+      return [screenText(raw)];
+    }
+  }
+
+  async function scriptRequest(ev: Extract<ServerMessage, { type: "script" }>): Promise<void> {
+    const r = ev.request;
+    switch (r.kind) {
+      case "say":
+        lastSay = await scriptPages(r.text, r.buffers);
+        await dialog.say(lastSay);
+        answerScript(ev.id);
+        return;
+      case "yes-no":
+        answerScript(ev.id, (await dialog.ask(lastSay.slice(-1))) ? 0 : 1);
+        return;
+      case "starter":
+        // shortcut: the starter scene is a yes/no per species in turn; build the original's ball picker with the cutscene spec.
+        for (let i = 0; ; i = (i + 1) % r.species.length) {
+          if (await dialog.ask([t("script.starter", { name: speciesName(r.species[i]!) })])) {
+            answerScript(ev.id, i);
+            return;
+          }
+        }
+      case "wait-fade":
+      case "wait-sound":
+        // shortcut: script fades and sounds are not drawn or played yet, so their waits end at once; answer when they finish once the audio and fade layers take script cues.
+        answerScript(ev.id);
+        return;
+    }
+  }
 
   function showNotice(text: string, ms = 3500): void {
     notice = text;
@@ -109,12 +188,13 @@
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** Opening and closing the full menu tells the server, so the others see the player as busy. */
-  function setMenu(open: boolean): void {
-    if (open === menuOpen) return;
+  function setMenu(open: boolean, to?: MenuPage): void {
     if (open && inCombat) {
       showNotice(t("notice.menu-blocked"));
       return;
     }
+    page = open ? to : undefined;
+    if (open === menuOpen) return;
     menuOpen = open;
     window.soulSilver.sendGame({ type: "menu", open });
   }
@@ -168,6 +248,9 @@
         if (ev.type === "party") {
           party = ev.members;
           activeMember = ev.active;
+        } else if (ev.type === "players") {
+          players = ev.players;
+          me = game.playerId;
         } else if (ev.type === "reaction") {
           emotion = { id: ev.companionId, text: EMOTIONS[ev.emotion] ?? "", until: now + 2000 };
           void bankTexts(ev.bank).then((bank) => {
@@ -182,6 +265,14 @@
             clearTimeout(reactionTimer);
             reactionTimer = setTimeout(() => (reaction = undefined), 3500);
           });
+        } else if (ev.type === "script") {
+          void scriptRequest(ev);
+        } else if (ev.type === "script-lock") {
+          scriptLocked = ev.locked;
+        } else if (ev.type === "script-debug") {
+          scriptDebug = ev;
+        } else if (ev.type === "script-event") {
+          // The text box closes on its own once confirmed; fades and sounds wait for the shortcut in scriptRequest.
         } else if (ev.type === "fainted") {
           if (ev.canContinue) picker = "fainted";
         } else if (ev.type === "bag") {
@@ -209,31 +300,19 @@
       }
     }
 
-    /** Unit aim from the right stick, or from the own entity towards the mouse pointer. */
-    function aim(): { x: number; y: number } | undefined {
-      const stick = input.stickAim();
-      if (stick) return stick;
-      const pointer = input.pointer();
-      const self = shown.find((e) => e.id === game.entityId);
-      if (!pointer || !self) return undefined;
-      const rect = host.getBoundingClientRect();
-      const at = renderer.project(self.x, self.y);
-      const dx = pointer.x - rect.left - at.x;
-      const dy = pointer.y - rect.top - at.y;
-      const len = Math.hypot(dx, dy);
-      return len < 1 ? undefined : { x: dx / len, y: dy / len };
-    }
 
     const unsubscribeMessage = api.onGameMessage((msg) => game.receive(msg, performance.now()));
     const unsubscribeClosed = api.onGameClosed(() => {
       game.disconnected();
-      if (leaving) onExit();
+      if (leaving && !switchingTo) onExit();
     });
     let noteTimer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribeSaved = api.onGameSaved((result) => {
       saveNote = result.ok ? t("game.saved") : t("game.saveFailed", { reason: result.reason });
       clearTimeout(noteTimer);
       noteTimer = setTimeout(() => (saveNote = undefined), 2500);
+      // The final save is on disk: the slot can be loaded for the next session.
+      if (switchingTo) switchNow();
     });
     // The main process opened the connection before this screen.
     game.start();
@@ -246,7 +325,11 @@
       if (event.key === "F3") {
         showDebug = !showDebug;
         api.sendGame({ type: "debugAi", on: showDebug });
-        if (!showDebug) aiShapes = [];
+        api.sendGame({ type: "debugScript", on: showDebug });
+        if (!showDebug) {
+          aiShapes = [];
+          scriptDebug = undefined;
+        }
         event.preventDefault();
       } else if (event.key === "F11") {
         void saveSettings({ fullscreen: !currentSettings().fullscreen });
@@ -259,8 +342,8 @@
     window.addEventListener("keydown", onKeyDown);
 
     const inputTimer = setInterval(() => {
-      // Menus and the text box take the input; the world keeps going without it (FR-012).
-      const blocked = menuOpen || dialogOpen;
+      // Menus, the text box and a running script take the input; the world keeps going without it (FR-012).
+      const blocked = menuOpen || dialogOpen || scriptLocked;
       const read = input.read();
       const move = blocked ? { x: 0, y: 0 } : read.move;
       const run = !blocked && read.run;
@@ -282,7 +365,8 @@
       }
       nextBallHeld = nextBallNow;
       if (picker !== "closed" || progression) buttons &= ~(BUTTON.throw | BUTTON.combat);
-      game.sendInput(move, run, performance.now(), buttons, aim());
+      // No aim: the server aims every move and ball at the nearest foe.
+      game.sendInput(move, run, performance.now(), buttons);
     }, TICK_MS);
 
     let frames = 0;
@@ -300,7 +384,10 @@
       inCombat = !play.arena && view.self?.kind === "pokemon";
       sounds.frame(view, events, inCombat, { x: view.self?.x ?? 0, y: view.self?.y ?? 0, halfWidthPx: VIEW_W / 2 });
       // A fight closes the menu (FR-013); the server already cleared the busy mark.
-      if (inCombat && menuOpen) menuOpen = false;
+      if (inCombat && menuOpen) {
+        menuOpen = false;
+        page = undefined;
+      }
       if (!inCombat && picker !== "closed") picker = "closed";
       hudSelf = view.self?.kind === "pokemon" ? view.self : undefined;
       const fighting = hudSelf !== undefined;
@@ -308,12 +395,12 @@
         ? shown.filter((e) => e.kind === "pokemon" && e.data["owner"] !== hudSelf!.data["owner"] && Number(e.data["hpMax"] ?? 0) > 0).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]) }))
         : [];
       if (nextBars.length > 0 || bars.length > 0) bars = nextBars;
-      const nextMarks = shown.filter((e) => e.data["inCombat"] === true).map((e) => ({ key: `fight-${e.id}`, ...over(e), text: "⚔" }));
+      const nextMarks: typeof marks = shown.filter((e) => e.data["inCombat"] === true).map((e) => ({ key: `fight-${e.id}`, ...over(e), text: "⚔" }));
       for (const e of shown) if (e.data["busy"] === true && e.id !== game.entityId) nextMarks.push({ key: `busy-${e.id}`, ...over(e), text: t("game.busy") });
       // A wild Pokémon that just noticed someone (spec 019, Alert state).
       for (const e of shown) if (e.data["alert"] === true) nextMarks.push({ key: `alert-${e.id}`, ...over(e), text: "!" });
       // Knocked out, waiting for a Poké Ball.
-      for (const e of shown) if (e.data["owner"] === "wild" && e.data["hp"] === 0) nextMarks.push({ key: `ko-${e.id}`, ...over(e), text: t("game.knockedOut") });
+      for (const e of shown) if (e.data["owner"] === "wild" && e.data["hp"] === 0) nextMarks.push({ key: `ko-${e.id}`, ...over(e), text: t("game.knockedOut"), capture: balls.length > 0 });
       const bubbleOver = emotion && now < emotion.until ? shown.find((e) => e.id === emotion!.id) : undefined;
       if (bubbleOver && emotion) nextMarks.push({ key: "emotion", ...over(bubbleOver), text: emotion.text });
       if (nextMarks.length > 0 || marks.length > 0) marks = nextMarks;
@@ -362,19 +449,79 @@
     setTimeout(onExit, 4000);
   }
 
+  async function openLan(): Promise<void> {
+    onlineBusy = true;
+    onlineError = undefined;
+    const result = await window.soulSilver.openToLan();
+    onlineBusy = false;
+    if (!result.ok) {
+      onlineError = result.reason;
+      return;
+    }
+    mode = "host";
+    addresses = result.addresses;
+  }
+
+  function joinOther(address: string): void {
+    if (!onSwitch || switchingTo) return;
+    switchingTo = address;
+    onlineBusy = true;
+    onlineError = undefined;
+    leaving = true;
+    window.soulSilver.sendGame({ type: "leave" });
+    // The final save may never come; do not wait forever.
+    setTimeout(switchNow, 4000);
+  }
+
+  function switchNow(): void {
+    if (!switchingTo || switched) return;
+    switched = true;
+    onSwitch?.(switchingTo);
+  }
+
   async function reconnect(): Promise<void> {
     reconnecting = true;
     reconnectError = await onReconnect?.();
     reconnecting = false;
   }
 
-  const DIALOG = "absolute left-1/2 top-4 -translate-x-1/2 w-[min(90%,32rem)] m-0 px-4 py-3 bg-white/95 text-ink border-3 border-frame rounded-[6px] whitespace-pre-line z-3";
+  const DIALOG = "absolute left-1/2 top-4 -translate-x-1/2 w-[min(90%,32rem)] m-0 px-4 py-3 bg-white/95 text-ink palette-ink border-3 border-frame rounded-[6px] whitespace-pre-line z-3";
   const MESSAGE = "absolute left-1/2 top-1/2 -translate-1/2 m-0 text-white z-5";
+
+  /** The Pokémon out: under control in a fight, else the one following the trainer. */
+  const out = $derived(hudSelf ? activeMember : leadIndex(party));
+  const NAV: [MessageKey, MenuPage][] = [
+    ["pause.party", "party"],
+    ["pause.bag", "bag"],
+    ["pause.dex", "dex"],
+    ["pause.settings", "settings"],
+  ];
+  const NAV_CLASS = "grid grid-cols-2 gap-3";
+  const ASIDE = "grid grid-rows-[minmax(0,1fr)_auto_auto] gap-3 min-h-0";
+  const TABS: ["party" | "online", MessageKey][] = [
+    ["party", "pause.party"],
+    ["online", "online.tab"],
+  ];
 
   const REASONS: Record<string, MessageKey> = { "host-left": "game.hostLeft", "closed-by-host": "game.closedByHost", disconnected: "game.disconnected" };
 </script>
 
-<section class="fixed inset-0 bg-black" aria-label={t("game.label")}>
+{#snippet navButtons()}
+  {#each NAV as [label, to] (to)}
+    <DexButton disabled={status !== "playing"} onclick={() => setMenu(true, to)}>{t(label)}</DexButton>
+  {/each}
+  <DexButton disabled={status !== "playing" || leaving} onclick={leave}>{leaving ? t("pause.saving") : t("pause.leave")}</DexButton>
+  <DexButton disabled={status !== "playing"} onclick={() => setMenu(false)}>{t("pause.resume")}</DexButton>
+{/snippet}
+
+<section class="fixed inset-0 grid grid-cols-[minmax(0,1fr)_minmax(20rem,37.5%)] gap-8 p-8 bg-dex-red" aria-label={t("game.label")}>
+  <div class="grid grid-rows-[auto_minmax(0,1fr)_auto] min-h-0 px-3 bg-dex-shell rounded-[2px]">
+    <div class="flex justify-center gap-3 py-3" aria-hidden="true">
+      <span class="size-3.5 rounded-full bg-dex-bezel"></span>
+      <span class="size-3.5 rounded-full bg-dex-bezel"></span>
+    </div>
+    <!-- The game screen: the renderer and everything drawn over it share this box. -->
+    <div class="relative min-h-0 overflow-hidden border-[12px] border-dex-bezel bg-dex-screen font-screen" class:crt={$settings.crt}>
   <div class="absolute inset-0 overflow-hidden" bind:this={host}></div>
 
   {#if status === "rejected"}
@@ -396,7 +543,10 @@
   {/if}
 
   {#each marks as m (m.key)}
-    <span class="absolute -translate-x-1/2 -translate-y-full text-white font-bold text-[1.1rem] [text-shadow:0_1px_2px_#000] pointer-events-none z-1" style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">{m.text}</span>
+    <span class="absolute -translate-x-1/2 -translate-y-full text-white font-bold text-[1.1rem] [text-shadow:0_1px_2px_#000] pointer-events-none z-1 grid justify-items-center" style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">
+      {m.text}
+      {#if m.capture}<span class="text-[0.75em]"><Glyph action="throw" /> {t("game.captureHint")}</span>{/if}
+    </span>
   {/each}
   {#if showDebug && aiShapes.length > 0}
     <svg class="absolute inset-0 w-full h-full pointer-events-none z-1 [font:10px_monospace]" aria-label={t("debug.ai")}>
@@ -413,10 +563,9 @@
   {#if reaction}<p class={DIALOG} role="status">{reaction}</p>{/if}
   {#if notice}<p class={DIALOG} role="alert">{notice}</p>{/if}
   {#if captureLine}<p class={DIALOG} role="status">{captureLine}</p>{/if}
-  {#if ballLabel && status === "playing" && !hudSelf}<p class="absolute right-2 bottom-2 m-0 text-white text-[0.85rem] [text-shadow:0_1px_2px_#000] z-1" aria-label={t("game.ballLabel")}>◓ {ballLabel}</p>{/if}
 
   {#if status === "playing" && (hudSelf || play.arena)}
-    <CombatHud self={hudSelf} {bars} {party} active={activeMember} {speciesName} {moveName} moveType={(id: number) => types.get(id)} />
+    <CombatHud self={hudSelf} {bars} {speciesName} />
   {/if}
 
   {#if picker !== "closed"}
@@ -453,11 +602,50 @@
 
   <DialogBox queue={dialog} />
 
-  {#if menuOpen && status === "playing"}
-    <PauseMenu {party} {bag} {items} {dex} {names} {leaving} onClose={() => setMenu(false)} onLeave={leave} />
+  {#if menuOpen && !page && status === "playing"}
+    <!-- The panel beside has the input: the screen is covered and says how to get back. -->
+    <div class="absolute inset-0 z-4 grid place-content-center justify-items-center gap-3 p-6 bg-black/60 text-center text-[#eef]">
+      <p class="m-0 text-[1.4rem]">{t("menu.open")}</p>
+      <p class="m-0"><Glyph action="menu" /> {t("menu.back")}</p>
+      <p class="m-0 px-3 py-1 rounded-full bg-[#b23b3b] text-[0.8rem]">{t("pause.live")}</p>
+    </div>
+  {/if}
+  {#if menuOpen && page && status === "playing"}
+    <PauseMenu {page} {party} {bag} {items} {dex} {names} onPage={(next) => setMenu(true, next)} />
   {/if}
 
   {#if saveNote}<p class="absolute left-2 top-2 m-0 text-white text-[0.85rem] opacity-80 z-1" role="status">{saveNote}</p>{/if}
+    </div>
+    <div class="flex items-center justify-between py-3" aria-hidden="true">
+      <span class="size-3 rounded-full bg-[#7a3b2e]"></span>
+      <span class="grid gap-[3px] w-14"><span class="h-[3px] bg-dex-bezel"></span><span class="h-[3px] bg-dex-bezel"></span><span class="h-[3px] bg-dex-bezel"></span></span>
+    </div>
+  </div>
+
+  {#snippet side()}
+    <section class="relative min-h-0 grid grid-rows-[auto_minmax(0,1fr)] border-8 border-black bg-dex-screen font-screen" class:crt={$settings.crt}>
+      <div class="flex" role="tablist">
+        {#each TABS as [key, label] (key)}
+          <button type="button" role="tab" aria-selected={tab === key} class="px-4 py-2 border-none bg-transparent [font-palette:--screen]! text-muted font-semibold aria-selected:bg-black/30 aria-selected:text-white" onclick={() => (tab = key)}>{t(label)}</button>
+        {/each}
+      </div>
+      {#if tab === "party"}
+        <PartyPanel {party} {out} {speciesName} />
+      {:else}
+        <OnlinePanel {mode} {players} {me} address={play.address} {addresses} busy={onlineBusy || status !== "playing"} error={switchingTo ? t("online.switching") : onlineError} onOpen={() => void openLan()} onJoin={joinOther} />
+      {/if}
+    </section>
+    <nav class={NAV_CLASS}>{@render navButtons()}</nav>
+    <div class="mt-[clamp(0.5rem,6vh,4rem)]">
+      <MovePanel self={hudSelf} lead={party[leadIndex(party) ?? -1]} {moveName} moveType={(id: number) => types.get(id)} />
+    </div>
+  {/snippet}
+  <!-- With the menu open, the whole panel takes the pad: tabs (also LB/RB), the Online tab and the buttons. -->
+  {#if menuOpen && !page}
+    <aside class={ASIDE} use:menu={{ onBack: () => setMenu(false), onAction: (a) => (a === "menu" ? (setMenu(false), true) : a === "tabPrev" || a === "tabNext" ? ((tab = tab === "party" ? "online" : "party"), true) : false) }}>{@render side()}</aside>
+  {:else}
+    <aside class={ASIDE}>{@render side()}</aside>
+  {/if}
 
   {#if showDebug}
     <dl class="debug fixed top-2 right-2 m-0 px-3 py-2 bg-black/75 text-white [font:12px_monospace] z-6" aria-label={t("debug.label")}>
@@ -482,5 +670,6 @@
       <dt>{t("debug.audioLabel")}</dt>
       <dd>{audioStats}</dd>
     </dl>
+    <ScriptDebug view={scriptDebug} onSetFlag={setScriptFlag} />
   {/if}
 </section>

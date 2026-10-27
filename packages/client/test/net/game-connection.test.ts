@@ -97,7 +97,7 @@ describe("createGameConnection", () => {
     };
     tick();
     expect(game.view(now).self).toMatchObject({ kind: "pokemon" });
-    game.sendInput({ x: 0, y: 0 }, false, now, 1, { x: 1, y: 0 });
+    game.sendInput({ x: 0, y: 0 }, false, now, 1);
     for (let i = 0; i < 30; i++) {
       game.sendInput({ x: 0, y: 0 }, false, now);
       tick();

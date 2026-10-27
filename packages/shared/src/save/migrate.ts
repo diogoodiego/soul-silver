@@ -20,6 +20,8 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
     const upgrade = (m: { level: number }) => ({ ...m, experience: m.level === 1 ? 0 : m.level ** 3, ivs: stats(31), evs: stats(0), nature: 0 });
     return { ...save, party: (save["party"] as { level: number }[]).map(upgrade), storage: (save["storage"] as { level: number }[]).map(upgrade), pending: [], schemaVersion: 4 };
   },
+  // Spec 020: no story flags or variables yet.
+  4: (save) => ({ ...save, flags: [], vars: {}, schemaVersion: 5 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

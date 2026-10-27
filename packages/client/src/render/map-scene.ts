@@ -54,7 +54,7 @@ function show(texture: Texture, frame: MeshGroup["frames"][number]): Texture {
   return texture;
 }
 
-/** Where tall grass is hidden this frame, shared by every map: world x, z and radius per circle. */
+/** Where decor is cleared this frame, shared by every map: world x, z and radius per circle. */
 export const grassClearings = {
   uClearings: { value: Array.from({ length: MAX_CLEARINGS }, () => new Vector3()) },
   uClearingCount: { value: 0 },
@@ -65,11 +65,16 @@ export function setGrassClearings(points: readonly { x: number; y: number }[]): 
   grassClearings.uClearingCount.value = points.length;
 }
 
-/** Per tile: R 1 for tall grass, G the ground height. The grass is the layer drawn above that ground. */
+/** Tiles whose look is kept in a clearing: what has collision (walls, trees, ledges) and water. */
+const KEPT = new Set(["blocked", "ledge", "water"]);
+/** Decor layers (grass, its borders and shadows) lie flat this close above the ground; walls and trunks rise from it. */
+const DECOR_MAX_PX = 3;
+
+/** Per tile: R 1 when kept whole (KEPT), G the ground height. */
 function grassTexture(file: MapMesh["file"], grid: CollisionMap): DataTexture {
   const data = new Float32Array(file.width * file.height * 2);
   for (let i = 0; i < file.width * file.height; i++) {
-    data[i * 2] = grid.tiles[i]?.category === "tallGrass" ? 1 : 0;
+    data[i * 2] = KEPT.has(grid.tiles[i]?.category ?? "blocked") ? 1 : 0;
     data[i * 2 + 1] = file.ground[0]![i]!;
   }
   const texture = new DataTexture(data, file.width, file.height, RGFormat, FloatType);
@@ -79,7 +84,7 @@ function grassTexture(file: MapMesh["file"], grid: CollisionMap): DataTexture {
   return texture;
 }
 
-/** Drops the fragments of the grass layer (above the ground of a tall grass tile) inside a clearing. */
+/** Inside a clearing, on tiles without collision, drops the flat decor above the ground: grass, its borders and shadows. */
 function clearGrass(material: MeshBasicMaterial, grass: DataTexture, file: MapMesh["file"]): void {
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, grassClearings, { uGrass: { value: grass }, uGrassSize: { value: new Vector2(file.width, file.height) } });
@@ -104,12 +109,15 @@ uniform vec2 uGrassSize;`,
       .replace(
         "#include <clipping_planes_fragment>",
         `#include <clipping_planes_fragment>
-for (int i = 0; i < ${MAX_CLEARINGS}; i++) {
-  if (i >= uClearingCount) break;
-  if (distance(vWorldPos.xz, uClearings[i].xy) > uClearings[i].z) continue;
-  vec2 tile = floor(vMapPos.xz / ${MAP_TILE_PX.toFixed(1)});
-  vec2 cell = texture2D(uGrass, (tile + 0.5) / uGrassSize).rg;
-  if (cell.r > 0.5 && vMapPos.y > cell.g + 1.0) discard;
+// Derivatives first: they are undefined inside the loop's non-uniform flow.
+vec3 surface = normalize(cross(dFdx(vMapPos), dFdy(vMapPos)));
+vec2 cell = texture2D(uGrass, (floor(vMapPos.xz / ${MAP_TILE_PX.toFixed(1)}) + 0.5) / uGrassSize).rg;
+float above = vMapPos.y - cell.g;
+if (cell.r < 0.5 && above > 0.5 && above <= ${DECOR_MAX_PX.toFixed(1)} && abs(surface.y) > 0.9) {
+  for (int i = 0; i < ${MAX_CLEARINGS}; i++) {
+    if (i >= uClearingCount) break;
+    if (distance(vWorldPos.xz, uClearings[i].xy) <= uClearings[i].z) discard;
+  }
 }`,
       );
   };
@@ -123,7 +131,7 @@ export interface MapObject {
   dispose(): void;
 }
 
-/** `grid` is the map's level-0 collision, for where tall grass is. */
+/** `grid` is the map's level-0 collision: which tiles have collision, kept whole in a clearing. */
 export function buildMapObject({ file, vertices, textures }: MapMesh, grid?: CollisionMap): MapObject {
   const root = new Group();
   // shortcut: level 0 only; upper levels never hide their grass, extend if a fight on one shows it.

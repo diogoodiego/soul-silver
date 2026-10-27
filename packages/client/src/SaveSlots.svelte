@@ -6,6 +6,7 @@
   import Confirm from "./Confirm.svelte";
   import { t } from "./i18n";
   import { menu } from "./input/menu";
+  import SmallButton from "./ui/SmallButton.svelte";
 
   let {
     slots,
@@ -65,9 +66,9 @@
             <span>{t("saves.summary", { slot: s.index, time: playTime(s.playTimeMs), badges: s.badges })}</span>
           </button>
           <div class="flex gap-2">
-            <button type="button" class="text-[0.85rem] px-[0.6rem] py-1" onclick={() => void run(window.soulSilver.exportSave(s.index), t("saves.exported"))}>{t("saves.export")}</button>
-            <button type="button" class="text-[0.85rem] px-[0.6rem] py-1" onclick={() => importInto(s)}>{t("saves.import")}</button>
-            <button type="button" class="text-[0.85rem] px-[0.6rem] py-1 text-alarm" onclick={() => remove(s)}>{t("saves.delete")}</button>
+            <SmallButton onclick={() => void run(window.soulSilver.exportSave(s.index), t("saves.exported"))}>{t("saves.export")}</SmallButton>
+            <SmallButton onclick={() => importInto(s)}>{t("saves.import")}</SmallButton>
+            <SmallButton danger onclick={() => remove(s)}>{t("saves.delete")}</SmallButton>
           </div>
         {:else if s.status === "empty"}
           <button type="button" class="grid gap-[0.2rem] text-left px-4 py-3" onclick={() => onNew(s.index)}>
@@ -75,17 +76,17 @@
             <span>{t("saves.emptySlot", { slot: s.index })}</span>
           </button>
           <div class="flex gap-2">
-            <button type="button" class="text-[0.85rem] px-[0.6rem] py-1" onclick={() => importInto(s)}>{t("saves.import")}</button>
+            <SmallButton onclick={() => importInto(s)}>{t("saves.import")}</SmallButton>
           </div>
         {:else}
           <p class="text-danger m-0">{s.status === "corrupt" ? t("saves.corrupt", { slot: s.index, reason: s.reason }) : t("saves.unrecoverable", { slot: s.index, reason: s.reason })}</p>
           <div class="flex gap-2">
             {#if s.status === "corrupt"}
-              <button type="button" class="text-[0.85rem] px-[0.6rem] py-1" onclick={() => void run(window.soulSilver.restoreBackup(s.index), t("saves.restored"))}>{t("saves.restore")}</button>
+              <SmallButton onclick={() => void run(window.soulSilver.restoreBackup(s.index), t("saves.restored"))}>{t("saves.restore")}</SmallButton>
             {/if}
-            <button type="button" class="text-[0.85rem] px-[0.6rem] py-1" onclick={() => confirmThen(t("saves.confirmOverwrite", { slot: s.index }), () => onNew(s.index))}>{t("saves.newGameOverwrite")}</button>
-            <button type="button" class="text-[0.85rem] px-[0.6rem] py-1" onclick={() => importInto(s)}>{t("saves.import")}</button>
-            <button type="button" class="text-[0.85rem] px-[0.6rem] py-1 text-alarm" onclick={() => remove(s)}>{t("saves.delete")}</button>
+            <SmallButton onclick={() => confirmThen(t("saves.confirmOverwrite", { slot: s.index }), () => onNew(s.index))}>{t("saves.newGameOverwrite")}</SmallButton>
+            <SmallButton onclick={() => importInto(s)}>{t("saves.import")}</SmallButton>
+            <SmallButton danger onclick={() => remove(s)}>{t("saves.delete")}</SmallButton>
           </div>
         {/if}
       </li>

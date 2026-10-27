@@ -4,6 +4,7 @@ import { EMOTIONS } from "../companion/schemas.ts";
 import { stats } from "../game-data/common.ts";
 import { progressionItem, saveSchema } from "../save/schema.ts";
 import { ENTITY_KINDS } from "./entity.ts";
+import { PLAYER_NAME_MAX } from "./limits.ts";
 
 // Client <-> game server messages (spec 010, contracts/game-protocol.md). Validated on arrival on both sides.
 
@@ -69,6 +70,11 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("use-item"), item: count(), partyIndex: z.number().int().min(0).max(5) }),
   /** Turns the AI debug overlay's data on or off for this client (spec 019); off on every connection. */
   z.strictObject({ type: z.literal("debugAi"), on: z.boolean() }),
+  /** Answers the script request `id` (spec 020): 0 yes / 1 no, or the index picked; nothing for a plain confirm. */
+  z.strictObject({ type: z.literal("script-answer"), id: count(), answer: z.number().int().min(0).max(5).optional() }),
+  /** The script debugger (spec 020); off on every connection. Flag changes only with it on, in development builds. */
+  z.strictObject({ type: z.literal("debugScript"), on: z.boolean() }),
+  z.strictObject({ type: z.literal("debugSetFlag"), flag: z.number().int().min(1).max(0xffff), on: z.boolean() }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessage>;
 
@@ -140,6 +146,30 @@ export const aiDebugRow = z.strictObject({
 });
 export type AiDebugRow = z.infer<typeof aiDebugRow>;
 
+const textBuffer = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("player") }),
+  z.strictObject({ kind: z.literal("species"), id: count() }),
+  z.strictObject({ kind: z.literal("number"), value: z.number().int() }),
+]);
+const scriptSound = z.enum(["se", "fanfare", "cry"]);
+
+/** What a running script waits for from this client (spec 020); the server's own waits never come here. */
+export const scriptRequest = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("say"), text: z.string().min(1), buffers: z.record(z.string(), textBuffer) }),
+  z.strictObject({ kind: z.literal("yes-no") }),
+  z.strictObject({ kind: z.literal("starter"), species: z.array(count()).min(1).max(6) }),
+  z.strictObject({ kind: z.literal("wait-fade") }),
+  z.strictObject({ kind: z.literal("wait-sound"), sound: scriptSound }),
+]);
+export type ScriptRequestMessage = z.infer<typeof scriptRequest>;
+
+export const scriptEvent = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("close-msg") }),
+  z.strictObject({ kind: z.literal("fade"), type: count(), color: count(), duration: count() }),
+  z.strictObject({ kind: z.literal("sound"), sound: scriptSound, id: count() }),
+  z.strictObject({ kind: z.literal("bgm"), id: count().nullable() }),
+]);
+
 export const serverMessage = z.discriminatedUnion("type", [
   z.strictObject({
     type: z.literal("welcome"),
@@ -194,6 +224,8 @@ export const serverMessage = z.discriminatedUnion("type", [
       .max(6),
     active: count().optional(),
   }),
+  /** Who is in the session (v12), sent to everyone whenever someone joins or leaves. */
+  z.strictObject({ type: z.literal("players"), players: z.array(z.strictObject({ id: count(), name: z.string().min(1).max(PLAYER_NAME_MAX), host: z.boolean() })).max(4) }),
   z.strictObject({ type: z.literal("reaction"), companionId: count(), species: count(), emotion: z.enum(EMOTIONS), bank: count(), text: count() }),
   /** The Pokémon out fainted; `canContinue` is false when nobody is left (a blackout follows). */
   z.strictObject({ type: z.literal("fainted"), partyIndex: count(), canContinue: z.boolean() }),
@@ -213,6 +245,18 @@ export const serverMessage = z.discriminatedUnion("type", [
    * a learn carries the moves known now (four means the player picks one to forget).
    */
   z.strictObject({ type: z.literal("progression"), item: progressionItem, stats: battleStats.optional(), gains: battleStats.optional(), moves: z.array(count()).max(4).optional() }),
+  /** A script waits for this client (spec 020); answered with script-answer and the same id. */
+  z.strictObject({ type: z.literal("script"), id: count(), request: scriptRequest }),
+  z.strictObject({ type: z.literal("script-event"), event: scriptEvent }),
+  /** The player cannot move while a script of theirs runs. */
+  z.strictObject({ type: z.literal("script-lock"), locked: z.boolean() }),
+  /** Where this player's script is, and their flags and variables; only to clients that asked (spec 020, FR-011). */
+  z.strictObject({
+    type: z.literal("script-debug"),
+    at: z.strictObject({ file: count(), entry: count(), pc: count(), command: z.string(), depth: count() }).nullable(),
+    flags: z.array(count()),
+    vars: z.record(z.string(), count()),
+  }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessage>;
 export type StateMessage = Extract<ServerMessage, { type: "state" }>;

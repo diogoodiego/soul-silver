@@ -5,6 +5,58 @@
 /* electron-vite runs from packages/app, so the client sources are named explicitly. */
 @source "./";
 
+/* Sixtyfour Convergence (SIL Open Font License), latin subset from Google Fonts, bundled: the CSP allows no remote fonts. */
+@font-face {
+  font-family: "Sixtyfour Convergence";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/sixtyfour-convergence-latin.woff2") format("woff2");
+  /* Its glyphs are much wider and taller than the UI font at the same size: scale them to match. */
+  size-adjust: 70%;
+}
+
+/*
+ * It is a color font: its own palette (full red over faint green and blue offsets, a CRT out of
+ * convergence) ignores the CSS color. These palettes swap the red for the screens' text colors and
+ * keep the green and blue fringes.
+ */
+@font-palette-values --screen {
+  font-family: "Sixtyfour Convergence";
+  override-colors: 0 #eeeeff, 1 #eeeeff;
+}
+@font-palette-values --ink {
+  font-family: "Sixtyfour Convergence";
+  override-colors: 0 #222222, 1 #222222;
+}
+
+/* Text inside the two screens (the game and the team/online panel); light surfaces in them use the dark palette. */
+@utility font-screen {
+  font-family: "Sixtyfour Convergence", system-ui, sans-serif;
+  font-palette: --screen;
+  & :is(button, input) {
+    font-palette: --ink;
+  }
+}
+/* A CRT over a screen: scanlines and a dark vignette, above everything drawn in it and never taking clicks. */
+@utility crt {
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(to bottom, rgb(0 0 0 / 0%) 0 2px, rgb(0 0 0 / 22%) 2px 3px),
+      radial-gradient(ellipse at center, rgb(0 0 0 / 0%) 60%, rgb(0 0 0 / 45%) 100%);
+    box-shadow: inset 0 0 2.5rem rgb(0 0 0 / 55%);
+  }
+}
+
+@utility palette-ink {
+  font-palette: --ink;
+}
+
 @theme {
   --color-accent: #c0c8d8;
   --color-panel: rgb(16 20 32 / 88%);
@@ -15,6 +67,13 @@
   --color-alarm: #b00020;
   --color-focus: #ffd34d;
   --color-frame: #4a6;
+
+  /* The game screen frame, after the Pokédex. */
+  --color-dex-red: #cc0a21;
+  --color-dex-shell: #d9dcbb;
+  --color-dex-teal: #4fa8b8;
+  --color-dex-screen: #313131;
+  --color-dex-bezel: #121212;
 
   --animate-title-pulse: title-pulse 1.6s ease-in-out infinite;
   --animate-bob: bob 0.8s steps(2) infinite;

@@ -86,10 +86,10 @@ describe("capture (US3)", () => {
     expect(g.msgs(0, "notice").at(-1)).toEqual({ type: "notice", code: "no-balls" });
   });
 
-  it("uses up a ball that misses", () => {
-    const g = game();
+  it("uses up a ball that misses: no wild Pokémon in reach, it flies the way the thrower faces", () => {
+    const g = game({ tiles: [1] });
     g.run(2);
-    g.ps[0]!.conn.send({ type: "input", seq: 0, move: { x: 0, y: 0 }, run: false, buttons: BUTTON.throw, aim: { x: -1, y: 0 } });
+    g.ps[0]!.conn.send({ type: "input", seq: 0, move: { x: 0, y: 0 }, run: false, buttons: BUTTON.throw });
     g.run(20 * 2);
     expect(g.msgs(0, "bag").at(-1)).toEqual({ type: "bag", items: [{ item: POKE, count: 4 }], selected: POKE });
     expect(g.msgs(0, "capture")).toEqual([]);
@@ -148,5 +148,17 @@ describe("capture (US3)", () => {
     expect(g.msgs(0, "capture").at(-1)).toMatchObject({ ball: POKE, caught: true });
     expect(g.msgs(0, "captured")).toHaveLength(1);
     expect(g.session.world.get(id)).toBeUndefined();
+  });
+});
+
+describe("auto-aim", () => {
+  it("a ball aimed the wrong way still flies at the nearest wild Pokémon: players never aim", () => {
+    const g = game({ saves: [{ bag: [{ item: MASTER, count: 1 }] }] });
+    g.run(2);
+    g.ps[0]!.conn.send({ type: "input", seq: 0, move: { x: 0, y: 0 }, run: false, buttons: BUTTON.throw, aim: { x: -1, y: 0 } });
+    g.run(1);
+    g.ps[0]!.conn.send({ type: "input", seq: 1, move: { x: 0, y: 0 }, run: false, buttons: 0 });
+    g.run(20 * 5);
+    expect(g.msgs(0, "captured")).toHaveLength(1);
   });
 });

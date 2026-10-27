@@ -79,6 +79,15 @@ describe("using a move", () => {
     expect(t.events.find((e) => e.kind === "hit")).toMatchObject({ attacker: a, target: b });
   });
 
+  it("with no aim, turns to the nearest foe at any distance (players never aim)", () => {
+    const t = combatSetup();
+    const a = t.spawn("cyndaquil", [ember.id], { x: 0, y: 0 }, 1);
+    t.spawn("sentret", [], { x: 0, y: -300 });
+    t.press(a, 1);
+    t.step(5);
+    expect(t.combat.get(a)!.used.dir.y).toBeCloseTo(-1);
+  });
+
   it("dashes on bit 4 in the move direction, then waits for the cooldown", () => {
     const t = combatSetup();
     const a = t.spawn("cyndaquil", [], { x: 100, y: 100 }, 1);

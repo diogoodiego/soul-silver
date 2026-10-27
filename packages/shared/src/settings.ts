@@ -26,6 +26,8 @@ const fields = {
   fullscreen: z.boolean(),
   textSpeed: z.enum(TEXT_SPEEDS),
   uiScale: z.number().refine((n) => (UI_SCALES as readonly number[]).includes(n), "escala fora da lista"),
+  /** Scanlines and vignette over the game screen and the team panel. */
+  crt: z.boolean(),
   bindings,
   /** Spec 018: volumes 0–100 in steps of 5. */
   audio: z.strictObject({ master: volume, music: volume, effects: volume, muteUnfocused: z.boolean() }),
@@ -39,6 +41,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fullscreen: false,
   textSpeed: "mid",
   uiScale: 1,
+  crt: true,
   bindings: structuredClone(DEFAULT_KEYS),
   audio: { master: 80, music: 80, effects: 80, muteUnfocused: false },
 };

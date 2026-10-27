@@ -44,7 +44,7 @@
   });
 </script>
 
-<div class="absolute left-1/2 bottom-4 -translate-x-1/2 grid gap-1 w-[min(90%,28rem)] p-3 bg-black/85 text-white [font:13px_system-ui,sans-serif]" role="dialog" aria-label={t("progress.label")} use:menu>
+<div class="absolute left-1/2 bottom-4 -translate-x-1/2 grid gap-1 w-[min(90%,28rem)] p-3 bg-black/85 text-white text-[13px]" role="dialog" aria-label={t("progress.label")} use:menu>
   {#if item.kind === "level-up"}
     <p class="mt-0 mb-1">{t("progress.levelUp", { name, level: item.level })}</p>
     {#if prompt.stats && prompt.gains}

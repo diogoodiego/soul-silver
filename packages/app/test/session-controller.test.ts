@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createSessionController } from "../src/main/session-controller";
 import type { HostAnnouncement } from "../src/main/discovery";
 
-const save: Save = { schemaVersion: 4, pending: [], name: "Gold", character: "male", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, storage: [] };
+const save: Save = { schemaVersion: 5, pending: [], flags: [], vars: {}, name: "Gold", character: "male", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, storage: [] };
 
 function setup(options: { load?: () => Promise<{ ok: true; save: Save } | { ok: false; reason: string }>; listen?: () => Promise<number>; connect?: () => Promise<void>; shutdownWaitMs?: number } = {}) {
   const events: string[] = [];
@@ -113,6 +113,27 @@ describe("host", () => {
     const { controller, events, announced } = setup({ listen: () => Promise.reject(new Error("Não foi possível abrir a porta de rede")) });
     expect(await controller.startHost(1)).toEqual({ ok: false, reason: "Não foi possível abrir a porta de rede" });
     expect(events).toEqual([]);
+    expect(announced).toEqual([]);
+  });
+});
+
+describe("open to LAN", () => {
+  it("listens and announces the solo session without connecting again, and stops with it", async () => {
+    const { controller, events, announced, stopAnnounce } = setup();
+    await controller.startSolo(1);
+    expect(await controller.openToLan()).toEqual({ ok: true, port: 47800 });
+    expect(announced[0]).toMatchObject({ hostName: "Gold", port: 47800 });
+    expect(await controller.openToLan()).toMatchObject({ ok: false });
+    controller.onServerClosed();
+    expect(stopAnnounce).toHaveBeenCalled();
+    expect(events).toEqual(["connect", "unlisten", "closed"]);
+  });
+
+  it("refuses without a solo session, and returns the port failure", async () => {
+    expect(await setup().controller.openToLan()).toMatchObject({ ok: false });
+    const { controller, announced } = setup({ listen: () => Promise.reject(new Error("porta ocupada")) });
+    await controller.startSolo(1);
+    expect(await controller.openToLan()).toEqual({ ok: false, reason: "porta ocupada" });
     expect(announced).toEqual([]);
   });
 });

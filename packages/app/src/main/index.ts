@@ -11,7 +11,7 @@ import electronUpdater from "electron-updater";
 import { createAssetsController } from "./assets-controller";
 import { ASSETS_SCHEME, resolveAssetPath } from "./assets-protocol";
 import { isAllowedNavigation, permissionRequestHandler, windowOpenHandler } from "./navigation-guard";
-import { createDiscovery } from "./discovery";
+import { createDiscovery, localAddresses } from "./discovery";
 import { createRemoteClient } from "./remote-connection";
 import { createSaveStore } from "./save-store";
 import { createServerHost } from "./server-host";
@@ -254,6 +254,10 @@ if (!app.requestSingleInstanceLock()) {
     });
     handle(IpcChannel.SessionSolo, (slot) => (isSlot(slot) ? play.startSolo(slot) : invalid));
     handle(IpcChannel.SessionHost, (slot) => (isSlot(slot) ? play.startHost(slot) : invalid));
+    handle(IpcChannel.SessionOpenLan, async () => {
+      const result = await play.openToLan();
+      return result.ok ? { ok: true, addresses: localAddresses(result.port) } : result;
+    });
     handle(IpcChannel.SessionJoin, (arg) => {
       const { slot, address } = fields(arg);
       return isSlot(slot) && typeof address === "string" ? play.joinSession(slot, address) : invalid;

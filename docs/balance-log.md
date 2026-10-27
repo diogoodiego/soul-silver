@@ -53,6 +53,7 @@ reversão como uma nova linha em vez de apagar a antiga.
 | 2026-10-25 | Selvagens longe dos jogadores | sempre agem | parados e sem processar a mais de 24 tiles de qualquer treinador (`performance.dormantTiles`) | Desempenho (FR-031) | specs/019-combat-ai |
 | 2026-10-26 | Início do combate com selvagem | encontro aleatório ao andar na grama | encostar (até 1 tile, `battle-rules.json` → `contactTiles`) num selvagem de pé inicia o combate como o botão de combate | Pedido do usuário | specs/019-combat-ai |
 | 2026-10-26 | Selvagem derrotado | some ao desmaiar; não dá para capturar | fica nocauteado onde caiu por 30 s (`spawn.json` → `faintedSeconds`), dá a experiência na hora e pode ser capturado com Poké Ball; entra na equipe com 0 HP | Pedido do usuário | specs/019-combat-ai |
+| 2026-10-26 | Mira dos golpes e da Poké Ball | — (por turno, alvo escolhido no menu) | sem mira manual (mouse e analógico direito desligados): golpes miram o adversário mais próximo no mapa, a bola o selvagem mais próximo até 6 tiles, senão para onde o treinador olha; o servidor ignora a mira enviada pelo cliente | Pedido do usuário | specs/019-combat-ai |
 
 <!--
 Exemplo de linha (não é um desvio real):

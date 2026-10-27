@@ -1,10 +1,16 @@
 import { createSocket, type Socket } from "node:dgram";
 import { networkInterfaces, type NetworkInterfaceInfo } from "node:os";
-import { createSessionList, decodeAnnouncement, encodeAnnouncement, LAN_PORT_DISCOVERY, type Announcement, type SessionListing } from "@soulsilver/shared/lan";
+import { createSessionList, decodeAnnouncement, encodeAnnouncement, LAN_PORT_DISCOVERY, LAN_PORT_GAME, type Announcement, type SessionListing } from "@soulsilver/shared/lan";
 
 // LAN discovery over UDP broadcast (spec 012, research R2, contracts/lan-discovery.md).
 
 const INTERVAL_MS = 1000;
+
+/** How others reach this PC on the LAN: each external IPv4 address, with the port when it is not the default. */
+export function localAddresses(port: number, interfaces: NodeJS.Dict<NetworkInterfaceInfo[]> = networkInterfaces()): string[] {
+  const ips = Object.values(interfaces).flatMap((infos) => (infos ?? []).filter((i) => i.family === "IPv4" && !i.internal).map((i) => i.address));
+  return ips.map((ip) => (port === LAN_PORT_GAME ? ip : `${ip}:${port}`));
+}
 
 /** The limited broadcast plus the directed broadcast of every external IPv4 interface. */
 export function broadcastAddresses(interfaces: NodeJS.Dict<NetworkInterfaceInfo[]> = networkInterfaces()): string[] {

@@ -90,3 +90,20 @@ describe("session lifecycle", () => {
     expect(session.state).toBe("open");
   });
 });
+
+describe("player list", () => {
+  it("tells everyone who is in the session, again when someone leaves", () => {
+    const { session, connect } = setup();
+    const host = connect("Dio");
+    const guest = connect("Lyra");
+    session.step();
+    const lists = () => host.got.filter((m) => m.type === "players");
+    expect(lists().at(-1)).toEqual({ type: "players", players: [{ id: host.welcome!.playerId, name: "Dio", host: true }, { id: guest.welcome!.playerId, name: "Lyra", host: false }] });
+    expect(guest.got.filter((m) => m.type === "players").at(-1)).toEqual(lists().at(-1));
+    session.step();
+    expect(lists()).toHaveLength(1);
+    guest.conn.send({ type: "leave" });
+    session.step();
+    expect(lists().at(-1)).toEqual({ type: "players", players: [{ id: host.welcome!.playerId, name: "Dio", host: true }] });
+  });
+});

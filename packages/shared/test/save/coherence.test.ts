@@ -4,7 +4,9 @@ import { checkCoherence, COHERENCE_RULES, type CoherenceRule } from "../../src/s
 import type { Save } from "../../src/save/schema.ts";
 
 const save: Save = {
-  schemaVersion: 4,
+  schemaVersion: 5,
+  flags: [],
+  vars: {},
   name: "Gold",
   character: "male",
   area: "60",

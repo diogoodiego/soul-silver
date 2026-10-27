@@ -18,3 +18,4 @@ export * from "./progression";
 export * from "./items";
 export * from "./ai";
 export * from "./ai-loader";
+export * from "./scripts";

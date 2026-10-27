@@ -44,7 +44,7 @@
     <!-- Keys and the pad advance through the menu action; the click is the mouse's way. -->
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
     <p
-      class="m-0 min-h-[3.5em] px-4 py-3 bg-white/96 text-ink border-3 border-frame rounded-[6px] text-[1.1rem] leading-[1.5] whitespace-pre-line cursor-pointer"
+      class="m-0 min-h-[3.5em] px-4 py-3 bg-white/96 text-ink palette-ink border-3 border-frame rounded-[6px] text-[1.1rem] leading-[1.5] whitespace-pre-line cursor-pointer"
       onclick={() => {
         queue.confirm();
         refresh();

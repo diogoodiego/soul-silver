@@ -33,6 +33,7 @@ export const IpcChannel = {
   SessionSolo: "session:solo",
   SessionHost: "session:host",
   SessionJoin: "session:join",
+  SessionOpenLan: "session:open-lan",
   SessionsWatch: "sessions:watch",
   SessionsList: "sessions:list",
   SettingsGet: "settings:get",
@@ -46,6 +47,9 @@ export const SERVER_UNAVAILABLE = "server-unavailable";
 
 /** Outcome of starting or joining a session; the renderer sends `save` in its hello. */
 export type SessionResult = { ok: true; save: Save } | { ok: false; reason: string };
+
+/** Outcome of opening the solo session to the LAN: the addresses others type to join. */
+export type LanResult = { ok: true; addresses: string[] } | { ok: false; reason: string };
 
 /** The only API the renderer can reach, exposed by the preload as window.soulSilver. */
 export interface SoulSilverApi {
@@ -94,6 +98,8 @@ export interface SoulSilverApi {
   startHost(slot: number): Promise<SessionResult>;
   /** `address` is `ip` or `ip:port`; the game connection is open when it resolves. */
   joinSession(slot: number, address: string): Promise<SessionResult>;
+  /** Opens the solo session being played to the LAN and announces it, without restarting it. */
+  openToLan(): Promise<LanResult>;
   /** Sessions announced on the LAN while subscribed. Returns a function that cancels the subscription. */
   watchSessions(listener: (sessions: SessionListing[]) => void): () => void;
   getSettings(): Promise<AppSettings>;

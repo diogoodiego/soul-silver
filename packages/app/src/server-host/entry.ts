@@ -10,6 +10,7 @@ import { parseSpriteJson } from "@soulsilver/shared/sprites";
 import { parseTextJson } from "@soulsilver/shared/text";
 import type { ServerToHostMessage } from "@soulsilver/shared";
 import { readExtracted } from "./extracted";
+import { loadScripts } from "./scripts-loader";
 import { createWsListener, REMOTE_CONN_BASE } from "./ws-listener";
 
 const port = process.parentPort;
@@ -22,6 +23,8 @@ const stagesDir = process.argv.at(-1);
 const devArena = process.argv.includes("--dev-arena");
 /** Development: SOULSILVER_AI_LOG=<file> appends every combat AI decision as one JSON line (spec 019, FR-034). */
 const aiLog = process.env["SOULSILVER_AI_LOG"] ? createWriteStream(process.env["SOULSILVER_AI_LOG"], { flags: "a" }) : undefined;
+/** Development: SOULSILVER_SCRIPT_LOG=<file> appends every missing script command as one JSON line (spec 020, FR-008). */
+const scriptLog = process.env["SOULSILVER_SCRIPT_LOG"] ? createWriteStream(process.env["SOULSILVER_SCRIPT_LOG"], { flags: "a" }) : undefined;
 
 /** Combat data (spec 013) checked against the extraction; without it the server runs without combat. */
 function combatOrNothing(dir: string): CombatData | undefined {
@@ -142,6 +145,8 @@ const server = createGameServer({
   items: stagesDir ? itemsOrNothing(stagesDir) : undefined,
   devArena,
   onDecision: aiLog && ((d) => aiLog.write(`${JSON.stringify(d)}\n`)),
+  scripts: stagesDir ? loadScripts(stagesDir, log) : undefined,
+  onMissingCommand: scriptLog && ((m) => scriptLog.write(`${JSON.stringify({ time: new Date().toISOString(), ...m })}\n`)),
 });
 
 port.on("message", (event) => {

@@ -5,7 +5,7 @@ const all = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAtt
 const stats = { experience: 125, ivs: all(31), evs: all(0), nature: 0 };
 
 const valid = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   name: "Gold",
   character: "male",
   area: "60",
@@ -27,6 +27,8 @@ const valid = {
     { kind: "learn", member: 0, move: 86 },
     { kind: "evolve", member: 0, into: 26 },
   ],
+  flags: [400],
+  vars: { "16510": 1 },
 };
 
 describe("saveSchema", () => {

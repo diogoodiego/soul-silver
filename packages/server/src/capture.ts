@@ -106,7 +106,7 @@ export function createCaptures(options: CaptureOptions) {
     for (const s of states.values()) if (world.get(s.catcher.entityId)?.area === area) s.catcher.send(msg);
   }
 
-  function throwBall(s: State, aim: Point | undefined): void {
+  function throwBall(s: State): void {
     const { party, storage } = s.catcher.progress;
     const item = current(s);
     if (item === undefined) {
@@ -118,8 +118,14 @@ export function createCaptures(options: CaptureOptions) {
       return;
     }
     const from = world.get(options.controlled(s.catcher.playerId) ?? s.catcher.entityId)!;
-    const len = aim ? Math.hypot(aim.x, aim.y) : 0;
-    const dir = len > 0.1 ? { x: aim!.x / len, y: aim!.y / len } : VECTORS[from.facing];
+    // Aims itself at the nearest wild Pokémon in reach, else the way the thrower faces.
+    let dir = VECTORS[from.facing];
+    let best = rangePx;
+    for (const w of wilds.all()) {
+      const we = world.get(w.entityId);
+      const d = we && we.area === from.area ? Math.hypot(we.x - from.x, we.y - from.y) : Infinity;
+      if (d > 0.01 && d <= best) [best, dir] = [d, { x: (we!.x - from.x) / d, y: (we!.y - from.y) / d }];
+    }
     const e = world.add({ kind: "projectile", area: from.area, x: from.x, y: from.y, level: from.level, facing: from.facing, data: { ball: item, owner: String(s.catcher.playerId) } });
     flights.push({ playerId: s.catcher.playerId, ball: item, entityId: e.id, dir, travelled: 0 });
     addBall(s, item, -1);
@@ -249,7 +255,7 @@ export function createCaptures(options: CaptureOptions) {
       const buttons = input?.buttons ?? s.buttons;
       const pressed = buttons & ~s.buttons;
       s.buttons = buttons;
-      if (pressed & BUTTON.throw) throwBall(s, input?.aim);
+      if (pressed & BUTTON.throw) throwBall(s);
     },
     /** After the wild step: balls in flight (in player order, so the lower id wins a tie), shakes, and Pokédex "seen". */
     step(tick: number): void {

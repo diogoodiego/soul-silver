@@ -19,7 +19,8 @@
     "./wild": "./src/wild/index.ts",
     "./ai": "./src/ai/index.ts",
     "./progression": "./src/progression/index.ts",
-    "./input": "./src/input/index.ts"
+    "./input": "./src/input/index.ts",
+    "./script": "./src/script/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

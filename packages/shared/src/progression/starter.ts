@@ -11,15 +11,16 @@ import { memberStats } from "./member.ts";
 export const STARTERS = [152, 155, 158] as const;
 export const STARTER_LEVEL = 5;
 
-export function starterMember(species: Pick<SpeciesRecord, "id" | "baseStats" | "growthRate" | "baseFriendship">, levelUp: readonly { level: number; move: number }[], rng: Rng): PartyMember {
+/** Also any Pokémon a script gives (spec 020), at its level. */
+export function starterMember(species: Pick<SpeciesRecord, "id" | "baseStats" | "growthRate" | "baseFriendship">, levelUp: readonly { level: number; move: number }[], rng: Rng, level: number = STARTER_LEVEL): PartyMember {
   const iv = () => rng.nextInt(32);
   const m = {
     species: species.id,
-    level: STARTER_LEVEL,
-    moves: wildMoves(levelUp, STARTER_LEVEL),
+    level,
+    moves: wildMoves(levelUp, level),
     hp: 0,
     friendship: species.baseFriendship,
-    experience: expForLevel(species.growthRate, STARTER_LEVEL),
+    experience: expForLevel(species.growthRate, level),
     ivs: { hp: iv(), attack: iv(), defense: iv(), speed: iv(), specialAttack: iv(), specialDefense: iv() },
     evs: { hp: 0, attack: 0, defense: 0, speed: 0, specialAttack: 0, specialDefense: 0 },
     nature: rng.nextInt(25),

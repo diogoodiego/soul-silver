@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { clientMessage, serverMessage } from "../../src/game/protocol.ts";
-import { PROTOCOL_VERSION } from "../../src/protocol-version.ts";
 
 // Spec 019, contracts/game-protocol-v11.md: the AI debug overlay.
 
@@ -16,10 +15,6 @@ const row = {
 };
 
 describe("protocol v11", () => {
-  it("is version 11", () => {
-    expect(PROTOCOL_VERSION).toBe(11);
-  });
-
   it("accepts debugAi on and off", () => {
     expect(clientMessage.safeParse({ type: "debugAi", on: true }).success).toBe(true);
     expect(clientMessage.safeParse({ type: "debugAi", on: false }).success).toBe(true);
