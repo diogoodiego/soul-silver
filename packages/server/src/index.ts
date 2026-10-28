@@ -22,3 +22,4 @@ export * from "./scripts";
 export * from "./trainer-battle";
 export * from "./trainer-loader";
 export * from "./shop";
+export * from "./pc";

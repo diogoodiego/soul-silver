@@ -100,11 +100,11 @@ describe("companion (US1)", () => {
     expect(g.companion()?.area).toBe("town");
   });
 
-  it("entering a Pokémon Center makes it the respawn point", () => {
+  it("entering a Pokémon Center does not change the respawn point; the nurse does (spec 023)", () => {
     const g = game([member("cyndaquil")], { area: "town", x: 10 * 16 + 8, y: 7 * 16 + 8 });
     g.walk({ x: 0, y: -1 }, 30);
     g.walk({ x: 0, y: 0 }, 600);
-    expect(g.lastSave()?.respawn?.area).toBe("69");
+    expect(g.lastSave()?.respawn ?? null).toBeNull();
   });
 
   it("reappears behind the trainer when left too far behind", () => {

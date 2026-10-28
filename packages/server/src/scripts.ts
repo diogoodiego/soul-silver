@@ -1,6 +1,6 @@
 import type { MapEventsFile, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
 import { createRng, tileAt, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
-import { isCounter, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
+import { isCounter, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { starterMember } from "@soulsilver/shared/progression";
 import { store } from "@soulsilver/shared/pc";
 import type { PartyMember, Save } from "@soulsilver/shared/save";
@@ -60,6 +60,9 @@ export const INTRO_SCRIPT: ScriptFile = {
   partial: false,
 };
 
+/** The PC's common script (std 2010: the menu, then the storage). */
+const PC_SCRIPT = 2010;
+
 /** Default of content/trainer/tuning.json trainerFlagBase, for sessions without trainer data. */
 const TRAINER_FLAG_BASE = 1360;
 
@@ -73,7 +76,7 @@ export interface Storyteller {
   placement?: Save["npcPlacement"] | undefined;
   /** A save that was just created: Prof. Oak's introduction runs once on entering the world (spec 021, FR-011). */
   intro?: boolean | undefined;
-  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badges" | "pokedex">;
+  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badges" | "pokedex" | "respawn">;
   send(msg: ServerMessage): void;
 }
 
@@ -97,8 +100,10 @@ export interface ScriptsOptions {
   onMissing?: ((m: MissingCommand & { player: number }) => void) | undefined;
   /** Starts a scripted trainer battle (spec 022); false when there is none to start. The script waits for battleEnded. */
   battle?: ((playerId: number, trainer: number, partner: number) => boolean) | undefined;
-  /** Opens a Poké Mart (spec 023); false when there is none. The script waits for shopClosed. */
+  /** Opens a Poké Mart (spec 023); false when there is none. The script waits for serviceClosed. */
   shop?: ((playerId: number, shop: number, sell: boolean) => boolean) | undefined;
+  /** Opens the Pokémon PC (spec 023); the script waits for serviceClosed. */
+  pc?: ((playerId: number) => boolean) | undefined;
   /** Talking to a trainer (spec 022): it challenges or says its after line; true when handled. */
   talkTrainer?: ((playerId: number, npc: Entity) => boolean) | undefined;
   /** Defeated trainer t is flag trainerFlagBase + t (spec 022, content/trainer/tuning.json). */
@@ -130,8 +135,8 @@ interface State {
   lastDebug: string;
   /** The script waits on a trainer battle: the player fights meanwhile. */
   inBattle: boolean;
-  /** The script waits on a shop the server runs (spec 023). */
-  inShop: boolean;
+  /** The script waits on a shop or a PC the server runs (spec 023). */
+  inService: boolean;
   /** Result of the last trainer battle, for CheckBattleWon. */
   won: boolean;
 }
@@ -246,6 +251,9 @@ export function createScripts(options: ScriptsOptions) {
       },
       healParty() {
         for (const m of who.progress.party) m.hp = options.hpMax(m);
+        // The nurse makes this Center the blackout respawn point, in front of her counter (spec 023).
+        const e = me();
+        who.progress.respawn = { area: e.area, x: e.x, y: e.y };
         options.changed(who.playerId, "party");
       },
       // shortcut: the save keeps a badge count, not which badges; Johto's are earned in order until a spec needs the set.
@@ -314,12 +322,13 @@ export function createScripts(options: ScriptsOptions) {
           // The player controls their Pokémon until the battle ends.
           lock(s, false);
           return;
-        } else if (state.request.kind === "shop") {
-          if (!options.shop?.(s.who.playerId, state.request.shop, state.request.sell)) {
-            options.log(`Ended a script of player ${s.who.playerId}: shop ${state.request.shop} could not open`);
+        } else if (state.request.kind === "shop" || state.request.kind === "pc") {
+          const r = state.request;
+          if (!(r.kind === "shop" ? options.shop?.(s.who.playerId, r.shop, r.sell) : options.pc?.(s.who.playerId))) {
+            options.log(`Ended a script of player ${s.who.playerId}: ${r.kind === "shop" ? `shop ${r.shop}` : "the PC"} could not open`);
             break;
           }
-          s.inShop = true;
+          s.inService = true;
           lock(s, true);
           return;
         } else {
@@ -442,6 +451,11 @@ export function createScripts(options: ScriptsOptions) {
       front.x += dx;
       front.y += dy;
     }
+    // A PC tile runs the PC's common script, as the original does from the tile's behavior.
+    if (isPc(tileAt(lookup, e.area, e.level, front.x * MAP_TILE_PX + MAP_TILE_PX / 2, front.y * MAP_TILE_PX + MAP_TILE_PX / 2))) {
+      const ref = data.resolve(PC_SCRIPT, Number(e.area));
+      return ref ? start(s, ref) : false;
+    }
     const npc = world
       .all()
       .map((n) => viewOf(s, n))
@@ -466,7 +480,7 @@ export function createScripts(options: ScriptsOptions) {
 
   return {
     join(who: Storyteller): void {
-      states.set(who.playerId, { who, runner: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", shown: new Map(), moved: new Map(), framesOff: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inShop: false, won: false });
+      states.set(who.playerId, { who, runner: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", shown: new Map(), moved: new Map(), framesOff: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false });
     },
     leave(playerId: number): void {
       states.delete(playerId);
@@ -485,11 +499,11 @@ export function createScripts(options: ScriptsOptions) {
       if (s.runner) return !s.inBattle;
       return input !== undefined && (pressed & BUTTON.interact) !== 0 && interact(s);
     },
-    /** The player left the shop a script waited on. */
-    shopClosed(playerId: number): void {
+    /** The player left the shop or the PC a script waited on. */
+    serviceClosed(playerId: number): void {
       const s = states.get(playerId);
-      if (!s?.inShop) return;
-      s.inShop = false;
+      if (!s?.inService) return;
+      s.inService = false;
       s.runner!.resume();
       settle(s);
     },

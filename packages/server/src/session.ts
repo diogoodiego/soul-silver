@@ -36,6 +36,7 @@ import { createNpcs } from "./npcs";
 import { createScripts, type ScriptData, type Scripts } from "./scripts";
 import type { MissingCommand } from "@soulsilver/shared/script";
 import { startPosition } from "./start";
+import { createPcs } from "./pc";
 import { createShops, type ShopData, type Shops } from "./shop";
 import { createTrainerBattles, type TrainerBattles } from "./trainer-battle";
 import type { TrainerData } from "./trainer-loader";
@@ -278,6 +279,7 @@ export function createSession(options: SessionOptions): Session {
         onMissing: options.onMissingCommand,
         battle: (playerId, trainer, partner): boolean => trainerBattles?.startScripted(playerId, trainer, partner) ?? false,
         shop: (playerId, shop, sell): boolean => shops?.open(playerId, shop, sell) ?? false,
+        pc: (playerId): boolean => pcs.open(playerId),
         trainerFlagBase: options.trainers?.tuning.trainerFlagBase,
         talkTrainer: (playerId, npc): boolean => trainerBattles?.talk(playerId, npc) ?? false,
         log: (message) => options.log(message),
@@ -290,10 +292,17 @@ export function createSession(options: SessionOptions): Session {
           const p = players.get(playerId);
           p?.conn?.send({ type: "bag", items: p.progress.bag.map((b) => ({ ...b })) } satisfies ServerMessage);
         },
-        onClose: (playerId) => scripts?.shopClosed(playerId),
+        onClose: (playerId) => scripts?.serviceClosed(playerId),
         log: (message) => options.log(message),
       })
     : undefined;
+  const pcs = createPcs({
+    changed(playerId, what) {
+      const p = players.get(playerId);
+      if (what === "party") companions?.refresh(playerId);
+      else if (captures) captures.refresh(playerId);
+      else p?.conn?.send({ type: "bag", items: p.progress.bag.map((b) => ({ ...b })) } satisfies ServerMessage);
+    }, onClose: (playerId) => scripts?.serviceClosed(playerId) });
   const trainerBattles: TrainerBattles | undefined =
     options.trainers && combat && options.combat && companions && scripts
       ? createTrainerBattles({
@@ -400,6 +409,7 @@ export function createSession(options: SessionOptions): Session {
       scripts?.join({ playerId: id, entityId, character: base.character, flags: player.flags, vars: player.vars, placement: player.base.npcPlacement, intro: base.rev === 0 && base.playTimeMs === 0, progress: player.progress, send });
       trainerBattles?.join({ playerId: id, entityId, flags: player.flags, progress: player.progress, send });
       shops?.join({ playerId: id, progress: player.progress, send });
+      pcs.join({ playerId: id, progress: player.progress, send });
     }
     hostId ??= id;
     options.onRecord?.({ tick, kind: "join", playerId: id, name: base.name, spawn });
@@ -446,6 +456,7 @@ export function createSession(options: SessionOptions): Session {
     progression?.leave(p.id);
     scripts?.leave(p.id);
     shops?.leave(p.id);
+    pcs.leave(p.id);
     for (const id of p.arenaTarget === undefined ? [p.entityId] : [p.entityId, p.arenaTarget]) {
       combat?.remove(world, id);
       world.remove(id);
@@ -633,6 +644,12 @@ export function createSession(options: SessionOptions): Session {
           return;
         case "trainer-ready":
           trainerBattles?.ready(player.id);
+          return;
+        case "pc-move":
+        case "pc-rename":
+        case "pc-items":
+        case "pc-leave":
+          pcs.handle(player.id, msg);
           return;
         case "shop-buy":
         case "shop-sell":

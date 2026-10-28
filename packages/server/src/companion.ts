@@ -131,7 +131,6 @@ export function createCompanions(options: CompanionOptions) {
     const t = trainerOf(s);
     const party = s.trainer.progress.party;
     const lead = leadIndex(party);
-    if (t.area !== s.lastArea && data.battle.pokemonCenters.includes(Number(t.area))) s.trainer.progress.respawn = { area: t.area, x: t.x, y: t.y };
     s.lastArea = t.area;
     if (lead === undefined || inBall(party[lead]!.species, t.area)) {
       removeCompanion(s);
