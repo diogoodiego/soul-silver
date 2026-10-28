@@ -2,7 +2,7 @@
 
 ## Save v7 (muda em relação ao v6)
 - **removido** `storage`.
-- **`boxes`**: lista de 18 (`BOX_COUNT`; o servidor usa as constantes de `shared/save`, não `content/pc/pc.json`) `{ name: string(1..8), slots: (PartyMember | null)[30] }`.
+- **`boxes`**: lista de 18 (`BOX_COUNT` em `shared/save`) `{ name: string(1..8), slots: (PartyMember | null)[30] }`.
 - **`pcItems`**: `{ item, count 1..999 }[]`, máx. 50, item único.
 - `money` (0..999999), `respawn` e `bag` já existem; `respawn` passa a mudar só pela cura.
 - Migração 6 → 7: `boxes` com nomes padrão; `storage[i]` → `boxes[0].slots[i]`; `pcItems: []`.

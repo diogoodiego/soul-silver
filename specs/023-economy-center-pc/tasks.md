@@ -8,7 +8,7 @@
 
 ## Phase 1: Setup
 
-- [X] T001 [P] Criar `content/pc/pc.json` (`boxCount` 18, `slotsPerBox` 30, `defaultNames` "BOX 1"…"BOX 18") conforme [contracts/content-shops.md](contracts/content-shops.md)
+- [X] T001 [P] (removido no polimento: as caixas ficaram como constantes do schema do save) Criar `content/pc/pc.json` (`boxCount` 18, `slotsPerBox` 30, `defaultNames` "BOX 1"…"BOX 18") conforme [contracts/content-shops.md](contracts/content-shops.md)
 - [X] T002 [P] Registrar em `docs/balance-log.md` o desvio "cura não restaura PP: o jogo não guarda PP" (valor original: restaura PP; novo: só HP e status; motivo: golpes usam cooldown em tempo real) e ajustar "PP" no texto de `specs/023-economy-center-pc/spec.md` (US2 cenário 1, SC-003)
 
 ## Phase 2: Foundational (bloqueia todas as histórias)
@@ -46,8 +46,8 @@
 
 **Independent Test**: ferir e envenenar a equipe, falar com a enfermeira, conferir restauração e o retorno após blackout.
 
-- [ ] T019 [P] [US2] Teste vermelho em `packages/server/test/heal.test.ts`: `healParty` restaura HP e status de toda a equipe e grava `respawn` com a entrada do Centro corrente; só a equipe e o `respawn` do jogador curado mudam; entrar no mapa do Centro sem curar não altera `respawn`; blackout depois da cura leva àquele Centro
-- [ ] T020 [US2] Em `packages/server/src/scripts.ts` fazer `healParty` gravar o `respawn`; em `packages/server/src/companion.ts` trocar a gravação por entrada (linha do `pokemonCenters`) por guardar a entrada candidata que o `healParty` consome
+- [X] T019 [P] [US2] Teste vermelho em `packages/server/test/heal.test.ts`: `healParty` restaura HP e status de toda a equipe e grava `respawn` com a entrada do Centro corrente; só a equipe e o `respawn` do jogador curado mudam; entrar no mapa do Centro sem curar não altera `respawn`; blackout depois da cura leva àquele Centro
+- [X] T020 [US2] Em `packages/server/src/scripts.ts` fazer `healParty` gravar o `respawn`; em `packages/server/src/companion.ts` trocar a gravação por entrada (linha do `pokemonCenters`) por guardar a entrada candidata que o `healParty` consome
 
 **Checkpoint**: Cherrygrove (US1) e Centro (US2) jogáveis.
 
@@ -57,18 +57,18 @@
 
 **Independent Test**: depositar, mover de caixa, renomear, retirar; depositar e retirar um item.
 
-- [ ] T021 [P] [US3] Teste vermelho em `packages/shared/test/pc/items.test.ts`: depositar e retirar respeitam a posse, 999 por item, 50 itens distintos e o espaço da bolsa; nada se perde
-- [ ] T022 [US3] Implementar `packages/shared/src/pc/items.ts` passando T021
-- [ ] T023 [US3] Identificar o comando de script do PC no log de comandos faltantes (pesquisa R3), incluí-lo em `BRIDGED` em `packages/shared/src/script/handlers/bridge.ts` com teste em `packages/shared/test/script/` que o ponteia ao host
-- [ ] T024 [P] [US3] Teste vermelho em `packages/server/test/pc.test.ts`: o comando abre `pcOpen`; `pc-move`, `pc-rename` e `pc-items` aplicam e respondem `pcResult`; recusas (`occupied`, `empty`, `last-fighter`, `full`, `invalid`) não alteram estado; Pokémon inexistente é recusado; sem sessão tudo é recusado
-- [ ] T025 [US3] Implementar `packages/server/src/pc.ts` e ligar o comando em `packages/server/src/scripts.ts`
-- [ ] T026 [P] [US3] Criar `packages/client/src/game/PcPanel.svelte` (equipe e caixas, mover, renomear, resumo do Pokémon, aba de itens) ligado em `packages/client/src/GameSession.svelte`; textos em `packages/client/src/i18n/pt-BR.ts`; verificar manualmente
-- [ ] T027 [US3] Teste em `packages/app/test/save-store.test.ts` do carregamento de um save v6 com Pokémon no armazenamento temporário: todos aparecem no PC, sem perda nem duplicação
+- [X] T021 [P] [US3] Teste vermelho em `packages/shared/test/pc/items.test.ts`: depositar e retirar respeitam a posse, 999 por item, 50 itens distintos e o espaço da bolsa; nada se perde
+- [X] T022 [US3] Implementar `packages/shared/src/pc/items.ts` passando T021
+- [X] T023 [US3] Identificar o comando de script do PC no log de comandos faltantes (pesquisa R3), incluí-lo em `BRIDGED` em `packages/shared/src/script/handlers/bridge.ts` com teste em `packages/shared/test/script/` que o ponteia ao host
+- [X] T024 [P] [US3] Teste vermelho em `packages/server/test/pc.test.ts`: o comando abre `pcOpen`; `pc-move`, `pc-rename` e `pc-items` aplicam e respondem `pcResult`; recusas (`occupied`, `empty`, `last-fighter`, `full`, `invalid`) não alteram estado; Pokémon inexistente é recusado; sem sessão tudo é recusado
+- [X] T025 [US3] Implementar `packages/server/src/pc.ts` e ligar o comando em `packages/server/src/scripts.ts`
+- [X] T026 [P] [US3] Criar `packages/client/src/game/PcPanel.svelte` (equipe e caixas, mover, renomear, resumo do Pokémon, aba de itens) ligado em `packages/client/src/GameSession.svelte`; textos em `packages/client/src/i18n/pt-BR.ts`; verificar manualmente
+- [X] T027 [US3] Teste em `packages/app/test/save-store.test.ts` do carregamento de um save v6 com Pokémon no armazenamento temporário: todos aparecem no PC, sem perda nem duplicação
 
 ## Phase 6: Polish
 
-- [ ] T028 Rodar `pnpm -r test`, o typecheck e a validação manual completa de [quickstart.md](quickstart.md)
-- [ ] T029 Rodar `graphify update .` e atualizar `docs/balance-log.md` se algum valor mudou durante a implementação
+- [X] T028 Rodar `pnpm -r test`, o typecheck e a validação manual completa de [quickstart.md](quickstart.md)
+- [X] T029 Rodar `graphify update .` e atualizar `docs/balance-log.md` se algum valor mudou durante a implementação
 
 ## Dependencies
 

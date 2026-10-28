@@ -46,7 +46,7 @@ Protocolo 15 → 16, save v6 → v7 com migração `storage` → `boxes`. Sem de
 |-----------|-----------|
 | I Conteúdo fiel | OK: estoques e preços vêm da ROM. Desvio (sem PP, ver R5) vai para `docs/balance-log.md`. |
 | II Assets nunca distribuídos | OK: `shops.json` é gerado na pasta do usuário; fixtures sintéticos. |
-| III Data-driven | OK: schema zod para `shops.json`; caixas e nomes padrão em `content/pc/pc.json`. |
+| III Data-driven | OK: schema zod para `shops.json`; caixas fixas no schema do save (o formato depende delas). |
 | IV Servidor autoritativo | OK: o cliente só pede; dinheiro, estoque e vagas decididos no servidor. |
 | V Test-first | OK: testes antes de loja, PC, cura e migração. |
 | VI Contratos versionados | OK: protocolo 16, save v7 com migração testada; tipos em `shared`. |

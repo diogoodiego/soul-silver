@@ -1,4 +1,4 @@
-# Contrato: `shops.json` e `pc.json`
+# Contrato: `shops.json`
 
 ```json
 { "kind": "shops", "formatVersion": 1, "records": [ { "id": 0, "items": [ { "item": 4, "minBadges": 0 }, { "item": 3, "minBadges": 3 } ] }, { "id": 1, "items": [ { "item": 146, "minBadges": 0 } ] } ] }
@@ -10,4 +10,4 @@
 
 - Validado por zod no carregamento (arquivo, caminho do campo, problema).
 - Gerado pelo extrator na pasta de dados do usuário; nunca commitado. Testes usam fixture sintético.
-- `content/pc/pc.json` (escrito à mão, só se a ROM não trouxer): `{ "boxCount": 18, "slotsPerBox": 30, "defaultNames": [] }`.
+- Caixas do PC: 18 × 30 com nomes "BOX n", fixos no schema do save (`BOX_COUNT`, `BOX_SLOTS` em `shared/save`), pois o formato do save depende deles.
