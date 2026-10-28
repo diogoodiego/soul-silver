@@ -60,6 +60,7 @@ reversão como uma nova linha em vez de apagar a antiga.
 | 2026-10-26 | Mira dos golpes e da Poké Ball | — (por turno, alvo escolhido no menu) | sem mira manual (mouse e analógico direito desligados): golpes miram o adversário mais próximo no mapa, a bola o selvagem mais próximo até 6 tiles, senão para onde o treinador olha; o servidor ignora a mira enviada pelo cliente | Pedido do usuário | specs/019-combat-ai |
 | 2026-10-27 | Cura no Centro Pokémon | restaura HP, status e PP | restaura HP e status; o jogo não guarda PP | Golpes usam tempo de recarga em tempo real, sem PP | specs/023-economy-center-pc |
 
+| 2026-10-28 | PC de itens | não existe (na geração 4 o PC do jogador só tem Mailbox, Ball Capsules e Log out) | aba "Itens" no PC de Pokémon: guarda e retira itens da mochila, até 50 tipos e 999 de cada (`PC_ITEMS_MAX`) | Pedido do usuário (FR-012) | specs/023-economy-center-pc |
 <!--
 Exemplo de linha (não é um desvio real):
 | 2026-11-02 | Golpe Ember: tempo de recarga | — (por turno) | 1,2 s | Combate em tempo real não tem turnos | specs/00X-combate |
