@@ -5,10 +5,14 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 5;
+export const SAVE_SCHEMA_VERSION = 7;
 
-/** Temporary storage size for catches with a full party, until the PC exists (spec 021). */
-export const STORAGE_MAX = 30;
+/** PC boxes and slots per box, as in HGSS (spec 023). */
+export const BOX_COUNT = 18;
+export const BOX_SLOTS = 30;
+export const BOX_NAME_MAX = 8;
+/** Distinct items the PC item storage holds (HGSS). */
+export const PC_ITEMS_MAX = 50;
 
 /** A party Pokémon (spec 014, data-model.md); experience, IVs, EVs and nature from spec 016. */
 export const partyMember = z.strictObject({
@@ -45,8 +49,17 @@ const unique = (list: number[]) => new Set(list).size === list.length;
 /** What a v1 save gets on migration and a new game starts with (3000 is the HGSS starting money). */
 export const newProgress = () => ({ party: [] as PartyMember[], money: 3000, badges: 0, respawn: null });
 
-/** Bag, Pokédex and temporary storage (spec 015): what a v2 save gets and a new game starts with. */
-export const newCollection = () => ({ bag: [] as { item: number; count: number }[], pokedex: { seen: [] as number[], caught: [] as number[] }, storage: [] as PartyMember[] });
+/** Bag and Pokédex (spec 015): what a v2 save gets and a new game starts with. */
+export const newCollection = () => ({ bag: [] as { item: number; count: number }[], pokedex: { seen: [] as number[], caught: [] as number[] } });
+
+/** Empty PC boxes with the default names (spec 023). */
+export const newBoxes = () => Array.from({ length: BOX_COUNT }, (_, i) => ({ name: `BOX ${i + 1}`, slots: Array<PartyMember | null>(BOX_SLOTS).fill(null) }));
+
+const itemList = (max: number) =>
+  z
+    .array(z.strictObject({ item: z.number().int().min(1).max(0xffff), count: z.number().int().min(1).max(999) }))
+    .max(max)
+    .refine((list) => unique(list.map((b) => b.item)), "item repetido");
 
 export const saveSchema = z.strictObject({
   schemaVersion: z.number().int().min(1),
@@ -68,18 +81,26 @@ export const saveSchema = z.strictObject({
   badges: z.number().int().min(0).max(16),
   /** Last Pokémon Center entered: the blackout respawn point; null means home. */
   respawn: z.strictObject({ area: z.string().min(1), x: z.number().finite(), y: z.number().finite() }).nullable(),
-  bag: z
-    .array(z.strictObject({ item: z.number().int().min(1).max(0xffff), count: z.number().int().min(1).max(999) }))
-    .refine((bag) => unique(bag.map((b) => b.item)), "item repetido na bolsa"),
+  bag: itemList(0xffff),
   pokedex: z.strictObject({
     seen: z.array(species()).refine(unique, "espécie repetida"),
     caught: z.array(species()).refine(unique, "espécie repetida"),
   }),
-  storage: z.array(partyMember).max(STORAGE_MAX),
+  /** PC boxes (spec 023); null is an empty slot. */
+  boxes: z
+    .array(z.strictObject({ name: z.string().min(1).max(BOX_NAME_MAX).refine((s) => s.trim().length > 0, "nome vazio"), slots: z.array(partyMember.nullable()).length(BOX_SLOTS) }))
+    .length(BOX_COUNT),
+  /** PC item storage (spec 023). */
+  pcItems: itemList(PC_ITEMS_MAX),
   pending: z.array(progressionItem),
   /** Story flags that are set (spec 020); ids as the original game numbers them. */
   flags: z.array(z.number().int().min(1).max(0xffff)).refine(unique, "flag repetida"),
   /** Story variables by id (spec 020); an absent variable holds 0. */
   vars: z.record(z.string().regex(/^\d+$/, "id de variável não numérico"), z.number().int().min(0).max(0xffff)),
+  /** Where events left NPCs for this player (spec 021): area id, then person id; tile coordinates. */
+  npcPlacement: z.record(
+    z.string().min(1),
+    z.record(z.string().regex(/^\d+$/, "id de pessoa não numérico"), z.strictObject({ x: z.number().int().min(0), z: z.number().int().min(0), facing: z.enum(["north", "south", "east", "west"]) })),
+  ),
 });
 export type Save = z.infer<typeof saveSchema>;

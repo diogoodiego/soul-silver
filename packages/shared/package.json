@@ -20,7 +20,11 @@
     "./ai": "./src/ai/index.ts",
     "./progression": "./src/progression/index.ts",
     "./input": "./src/input/index.ts",
-    "./script": "./src/script/index.ts"
+    "./script": "./src/script/index.ts",
+      "./npc": "./src/npc/index.ts",
+    "./trainer": "./src/trainer/index.ts",
+    "./pc": "./src/pc/index.ts",
+    "./economy": "./src/economy/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

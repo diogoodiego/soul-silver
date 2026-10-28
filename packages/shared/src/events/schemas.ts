@@ -218,6 +218,35 @@ export type TeamMember = z.infer<typeof teamMember>;
 export const trainersFile = fileSchema("trainers", trainer);
 export type TrainersFile = z.infer<typeof trainersFile>;
 
+/** The battle music a trainer class plays (spec 022, the ARM9 class music table). */
+export const TRAINER_MUSIC = ["trainer", "rival", "leader", "rocket", "champion"] as const;
+export type TrainerMusic = (typeof TRAINER_MUSIC)[number];
+
+/** What a trainer class pays and plays (spec 022): sPrizeMoneyTbl in overlay 12, the music tables in ARM9. */
+const trainerClass = z.strictObject({ id: int(0, 255), prizeBase: int(0, 0xffff), music: z.enum(TRAINER_MUSIC) });
+export type TrainerClassRecord = z.infer<typeof trainerClass>;
+export const trainerClassesFile = fileSchema("trainer-classes", trainerClass);
+
+/**
+ * A Poké Mart's stock (spec 023). Id 0 is the common list (MartBuy), filtered by badge count; id
+ * n + 1 is special list n (SpecialMartBuy n). Prices come from items.json.
+ */
+export const COMMON_MART = 0;
+const shop = z.strictObject({
+  id: int(0, 255),
+  items: z.array(z.strictObject({ item: id(), minBadges: int(0, 16) })).min(1),
+});
+export type ShopRecord = z.infer<typeof shop>;
+export const shopsFile = fileSchema("shops", shop);
+
+/**
+ * One trainer line (spec 022): `kind` as the game numbers it (0 the challenge, 1 the line when it
+ * loses, 2 after the battle; 3 to 10 the two trainers of a double), `text` a text id of bank 728.
+ */
+const trainerMessage = z.strictObject({ trainer: id(), kind: int(0, 0xffff), text: z.string().regex(/^\d{4}:\d+$/) });
+export type TrainerMessageRecord = z.infer<typeof trainerMessage>;
+export const trainerMessagesFile = fileSchema("trainer-messages", trainerMessage);
+
 export const SCRIPT_ARG_TYPES = ["number", "text", "species", "move", "item", "trainer", "flag", "variable", "jump", "movement"] as const;
 
 /** An argument is present only when an earlier one has (or lacks) certain values. */
@@ -293,11 +322,14 @@ const codec = createGameDataCodec({
   encounters: encountersFile,
   headbutt: headbuttFile,
   trainers: trainersFile,
+  "trainer-classes": trainerClassesFile,
+  "trainer-messages": trainerMessagesFile,
+  shops: shopsFile,
   "script-commands": scriptCommandsFile,
   "events-report": eventsReportFile,
 });
 
-export type EventsFileKind = "map-events" | "script-file" | "encounters" | "headbutt" | "trainers" | "script-commands" | "events-report";
+export type EventsFileKind = "map-events" | "script-file" | "encounters" | "headbutt" | "trainers" | "trainer-classes" | "trainer-messages" | "shops" | "script-commands" | "events-report";
 export const parseEventsFile = codec.parseGameDataFile;
 export const parseEventsJson = codec.parseGameDataJson;
 export const serializeEventsFile = codec.serializeGameDataFile;

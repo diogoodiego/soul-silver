@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
+import { v7 } from "./v7.ts";
 
 // Spec 020: story flags and variables join the save (contracts/save-v5.md).
 
@@ -27,12 +28,12 @@ const v4 = {
 
 describe("save v5", () => {
   it("gives a v4 save no flags and no variables, keeping every field", () => {
-    expect(migrate(v4)).toEqual({ ok: true, save: { ...v4, schemaVersion: 5, flags: [], vars: {} } });
+    expect(migrate(v4)).toEqual({ ok: true, save: v7({ ...v4, flags: [], vars: {}, npcPlacement: {} }) });
   });
 
   it("keeps flags and variables of a v5 save", () => {
     const v5 = { ...v4, schemaVersion: 5, flags: [400, 1], vars: { "16510": 2, "16646": 0 } };
-    expect(migrate(v5)).toEqual({ ok: true, save: v5 });
+    expect(migrate(v5)).toEqual({ ok: true, save: v7({ ...v5, npcPlacement: {} }) });
   });
 
   it.each([

@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { newCollection, newProgress, SAVE_SCHEMA_VERSION, saveSchema, type Save } from "./schema.ts";
+import { newBoxes, newCollection, newProgress, SAVE_SCHEMA_VERSION, saveSchema, type PartyMember, type Save } from "./schema.ts";
 
 export type SaveFailureCode = "invalid" | "save-too-new";
 export type MigrateResult<T = Save> = { ok: true; save: T } | { ok: false; code: SaveFailureCode; message: string };
@@ -13,7 +13,7 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   // Spec 015: bag, Pokédex (the party counts as seen and caught) and temporary storage.
   2: (save) => {
     const species = [...new Set((save["party"] as { species: number }[]).map((m) => m.species))];
-    return { ...save, ...newCollection(), pokedex: { seen: species, caught: [...species] }, schemaVersion: 3 };
+    return { ...save, ...newCollection(), storage: [], pokedex: { seen: species, caught: [...species] }, schemaVersion: 3 };
   },
   // Spec 016: IV 31, no EVs and Hardy keep today's stats; medium-fast experience, raised to the real curve on join.
   3: (save) => {
@@ -22,6 +22,14 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   },
   // Spec 020: no story flags or variables yet.
   4: (save) => ({ ...save, flags: [], vars: {}, schemaVersion: 5 }),
+  // Spec 021: no NPC has been moved by an event yet.
+  5: (save) => ({ ...save, npcPlacement: {}, schemaVersion: 6 }),
+  // Spec 023: the temporary storage (at most 30) fills box 1 in order; the PC item storage starts empty.
+  6: ({ storage, ...save }) => {
+    const boxes = newBoxes();
+    (storage as PartyMember[]).forEach((m, i) => (boxes[0]!.slots[i] = m));
+    return { ...save, boxes, pcItems: [], schemaVersion: 7 };
+  },
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

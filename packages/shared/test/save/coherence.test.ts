@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { WorldMap } from "../../src/game/world-map.ts";
 import { checkCoherence, COHERENCE_RULES, type CoherenceRule } from "../../src/save/coherence.ts";
-import type { Save } from "../../src/save/schema.ts";
+import { newBoxes, type Save } from "../../src/save/schema.ts";
 
 const save: Save = {
-  schemaVersion: 5,
+  schemaVersion: 7,
   flags: [],
-  vars: {},
+  vars: {}, npcPlacement: {},
   name: "Gold",
   character: "male",
   area: "60",
@@ -22,7 +22,8 @@ const save: Save = {
   respawn: null,
   bag: [],
   pokedex: { seen: [16], caught: [16] },
-  storage: [],
+  boxes: newBoxes(),
+  pcItems: [],
   pending: [],
 };
 const map: WorldMap = { id: "60", levels: [], warps: [], neighbors: [], widthPx: 320, heightPx: 240 };

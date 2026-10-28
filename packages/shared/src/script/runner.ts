@@ -52,6 +52,8 @@ export interface CommandContext {
   callScript(scriptId: number): void;
   end(): void;
   buffers: Record<number, TextBuffer>;
+  /** The choice menu being built (MenuInit… MenuExec, spec 023). */
+  menu: MenuState;
   /** The file's message bank as a text id prefix; numbers stay numbers when the file has none. */
   text(index: number): string;
   /** Blocks the script; `then` runs on resume with the client's answer. */
@@ -61,6 +63,15 @@ export interface CommandContext {
 }
 
 export type Handler = (ctx: CommandContext) => void;
+
+export interface MenuState {
+  /** The variable the value picked goes into. */
+  into: number;
+  cancel: boolean;
+  /** Texts from the standard bank (MenuInitStdGmm) rather than the script's own. */
+  std: boolean;
+  items: { text: string; value: number }[];
+}
 
 interface Context {
   file: ScriptFile;
@@ -94,6 +105,7 @@ const nameOf = (c: ScriptCommand) => ("raw" in c ? `raw:${c.id}` : c.name);
 export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Handler>, start: { file: ScriptFile; entry: number }): Runner {
   const special = new Map<number, number>();
   const buffers: Record<number, TextBuffer> = {};
+  const menu: MenuState = { into: 0, cancel: false, std: false, items: [] };
   const contexts: Context[] = [];
   let state: RunState = { kind: "running" };
   let then: ((answer: number) => void) | undefined;
@@ -188,6 +200,7 @@ export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Han
         contexts.pop();
       },
       buffers,
+      menu,
       text(index) {
         const bank = ctx.file.messageBank;
         return bank === null ? String(index) : formatTextId(bank, index);

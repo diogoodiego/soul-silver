@@ -66,6 +66,16 @@ describe("flow", () => {
     expect([...h.flags]).toEqual([3, 4]);
   });
 
+  it("command 21 (named RestartCurrentScript, the original's ReturnCommonScript) comes back from CallStd", () => {
+    const host = fakeHost();
+    // The Poké Mart greeting (std 2011): a message, then command 21; what follows it never runs.
+    host.files.set(9, makeScript([flag(3), ["RestartCurrentScript"], flag(5), ["End"]], { file: 9 }));
+    host.std.set(2000, { file: 9, entry: 0 });
+    const { host: h, state } = go([["CallStd", { id: 2000 }], flag(4), ["End"]], host);
+    expect(state).toEqual({ kind: "done" });
+    expect([...h.flags]).toEqual([3, 4]);
+  });
+
   it("CallStd to an unknown script aborts", () => {
     expect(go([["CallStd", { id: 2001 }]]).state).toMatchObject({ kind: "aborted" });
   });

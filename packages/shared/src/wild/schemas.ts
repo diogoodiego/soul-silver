@@ -40,7 +40,6 @@ export const spawnRules = z.strictObject({
   /** One battle "turn" for the Quick and Timer Balls. */
   turnSeconds: seconds(),
   angryOnEscapeChance: z.number().min(0).max(1),
-  storageMax: int(0, 999),
   throwRangeTiles: tiles(),
   ballSpeedTilesPerSecond: z.number().positive().max(64),
   /** Time between shakes, and before the result. */

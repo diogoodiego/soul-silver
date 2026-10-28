@@ -29,7 +29,19 @@ const name = () => z.string().min(1);
 export const audioCuesFile = z.strictObject({
   kind: z.literal("audio-cues"),
   formatVersion: z.literal(GAME_DATA_FORMAT_VERSION),
-  music: z.strictObject({ title: name(), wildBattle: name(), victory: name() }),
+  music: z.strictObject({
+    title: name(),
+    wildBattle: name(),
+    victory: name(),
+    // Spec 022: battle music by trainer class, and the fanfares after a trainer and after a Gym Leader.
+    trainerBattle: name(),
+    rivalBattle: name(),
+    leaderBattle: name(),
+    rocketBattle: name(),
+    championBattle: name(),
+    trainerVictory: name(),
+    leaderVictory: name(),
+  }),
   effects: z.strictObject(Object.fromEntries(EFFECT_CUES.map((c) => [c, name()])) as Record<EffectCue, ReturnType<typeof name>>),
   archetypes: z.record(z.string(), name()),
   defaultMove: name(),

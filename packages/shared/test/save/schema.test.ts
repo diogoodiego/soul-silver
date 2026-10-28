@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, saveSchema } from "../../src/save/schema.ts";
 
 const all = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });
 const stats = { experience: 125, ivs: all(31), evs: all(0), nature: 0 };
 
 const valid = {
-  schemaVersion: 5,
+  schemaVersion: 7,
   name: "Gold",
   character: "male",
   area: "60",
@@ -21,13 +21,15 @@ const valid = {
   respawn: null,
   bag: [{ item: 4, count: 10 }],
   pokedex: { seen: [16, 25], caught: [25] },
-  storage: [{ species: 16, level: 3, moves: [33], hp: 15, friendship: 70, shiny: true, ...stats, experience: 27 }],
+  boxes: newBoxes().map((b, i) => (i === 0 ? { ...b, slots: [{ species: 16, level: 3, moves: [33], hp: 15, friendship: 70, shiny: true, ...stats, experience: 27 }, ...b.slots.slice(1)] } : b)),
+  pcItems: [{ item: 17, count: 3 }],
   pending: [
     { kind: "level-up", member: 0, level: 6 },
     { kind: "learn", member: 0, move: 86 },
     { kind: "evolve", member: 0, into: 26 },
   ],
   flags: [400],
+  npcPlacement: {},
   vars: { "16510": 1 },
 };
 
@@ -64,7 +66,8 @@ describe("saveSchema", () => {
     { bag: [{ item: 4, count: 1 }, { item: 4, count: 2 }] },
     { pokedex: { seen: [0], caught: [] } },
     { pokedex: { seen: [16, 16], caught: [] } },
-    { storage: Array.from({ length: 31 }, () => valid.party[0]) },
+    { boxes: newBoxes().slice(1) },
+    { pcItems: [{ item: 4, count: 1000 }] },
     { party: [{ ...valid.party[0], ivs: { ...all(31), hp: 32 } }] },
     { party: [{ ...valid.party[0], evs: { ...all(0), attack: 256 } }] },
     { party: [{ ...valid.party[0], evs: { ...all(85), hp: 86 } }] },

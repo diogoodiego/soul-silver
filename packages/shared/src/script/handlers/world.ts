@@ -1,7 +1,7 @@
 import type { Handler } from "../runner.ts";
 
 /** The DS field runs scripts at 30 frames a second; the server ticks at 20. */
-const framesToTicks = (frames: number) => Math.ceil((frames * 20) / 30);
+export const framesToTicks = (frames: number) => Math.ceil((frames * 20) / 30);
 // The server locks the player for as long as any script runs, so the script's own locks change nothing.
 const nothing: Handler = () => undefined;
 
@@ -23,6 +23,8 @@ export const WORLD: Record<string, Handler> = {
   WaitCry: (c) => c.block({ kind: "wait-sound", sound: "cry" }),
   PlayBGM: (c) => c.host.emit({ kind: "bgm", id: c.raw("bgm") }),
   StopBGM: (c) => c.host.emit({ kind: "bgm", id: null }),
+  // shortcut: stops at once instead of fading over `frames`; add a fade event when the client mixer can ramp.
+  FadeOutBGM: (c) => c.host.emit({ kind: "bgm", id: null }),
   LockAll: nothing,
   ReleaseAll: nothing,
   Lock: nothing,
