@@ -1,7 +1,18 @@
 {
   "kind": "audio-cues",
   "formatVersion": 1,
-  "music": { "title": "SEQ_GS_TITLE", "wildBattle": "SEQ_GS_VS_NORAPOKE", "victory": "SEQ_GS_WIN2" },
+  "music": {
+    "title": "SEQ_GS_TITLE",
+    "wildBattle": "SEQ_GS_VS_NORAPOKE",
+    "victory": "SEQ_GS_WIN2",
+    "trainerBattle": "SEQ_GS_VS_TRAINER",
+    "rivalBattle": "SEQ_GS_VS_RIVAL",
+    "leaderBattle": "SEQ_GS_VS_GYMREADER",
+    "rocketBattle": "SEQ_GS_VS_ROCKET",
+    "championBattle": "SEQ_GS_VS_CHAMP",
+    "trainerVictory": "SEQ_GS_WIN1",
+    "leaderVictory": "SEQ_GS_WIN3"
+  },
   "effects": {
     "hit": "SEQ_SE_DP_KOUKA_M",
     "hit-super": "SEQ_SE_DP_KOUKA_H",

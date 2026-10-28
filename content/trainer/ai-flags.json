@@ -1,0 +1,19 @@
+{
+  "kind": "trainer-ai-flags",
+  "formatVersion": 1,
+  "value": {
+    "bits": {
+      "0": { "name": "basic" },
+      "1": { "name": "evaluate-attack", "combat": "skilled" },
+      "2": { "name": "expert", "combat": "veteran", "switch": { "enabled": true } },
+      "3": { "name": "setup" },
+      "4": { "name": "risky" },
+      "5": { "name": "prefer-strong", "combat": "skilled" },
+      "6": { "name": "baton-pass", "switch": { "enabled": true } },
+      "7": { "name": "tag-strategy" },
+      "8": { "name": "check-hp", "switch": { "enabled": true, "hpThreshold": 0.2 }, "item": { "hpThreshold": 0.4 } },
+      "9": { "name": "weather" },
+      "10": { "name": "harassment" }
+    }
+  }
+}
