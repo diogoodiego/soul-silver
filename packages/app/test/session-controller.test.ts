@@ -1,10 +1,10 @@
-import type { Save, SaveResult } from "@soulsilver/shared/save";
+import { newBoxes, type Save, type SaveResult } from "@soulsilver/shared/save";
 import type { SessionListing } from "@soulsilver/shared/lan";
 import { describe, expect, it, vi } from "vitest";
 import { createSessionController } from "../src/main/session-controller";
 import type { HostAnnouncement } from "../src/main/discovery";
 
-const save: Save = { schemaVersion: 5, pending: [], flags: [], vars: {}, name: "Gold", character: "male", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, storage: [] };
+const save: Save = { schemaVersion: 7, pending: [], flags: [], vars: {}, npcPlacement: {}, name: "Gold", character: "male", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, boxes: newBoxes(), pcItems: [] };
 
 function setup(options: { load?: () => Promise<{ ok: true; save: Save } | { ok: false; reason: string }>; listen?: () => Promise<number>; connect?: () => Promise<void>; shutdownWaitMs?: number } = {}) {
   const events: string[] = [];

@@ -3,7 +3,7 @@
 import type {} from "electron";
 import { createWriteStream, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BUNDLED_COMBAT_CONTENT, BUNDLED_COMPANION_CONTENT, BUNDLED_WILD_CONTENT, buildCombatData, buildCompanionData, buildItemsData, buildProgressionData, buildWildData, createGameServer, loadWorld, type CombatData, type CompanionData, type ItemsData, type ProgressionData, type WildData } from "@soulsilver/server";
+import { BUNDLED_AI_CONTENT, BUNDLED_COMBAT_CONTENT, BUNDLED_COMPANION_CONTENT, BUNDLED_WILD_CONTENT, buildAiData, buildCombatData, buildCompanionData, buildItemsData, buildProgressionData, buildShopData, buildTrainerData, buildWildData, createGameServer, loadWorld, type CombatData, type CompanionData, type ItemsData, type ProgressionData, type ShopData, type TrainerData, type WildData } from "@soulsilver/server";
 import { LAN_PORT_GAME } from "@soulsilver/shared/lan";
 import { parseEventsJson } from "@soulsilver/shared/events";
 import { parseSpriteJson } from "@soulsilver/shared/sprites";
@@ -91,6 +91,35 @@ function itemsOrNothing(dir: string): ItemsData | undefined {
   }
 }
 
+/** Poké Marts (spec 023): the extracted stock and the item prices. */
+function shopsOrNothing(dir: string): ShopData | undefined {
+  try {
+    return buildShopData(readJson((t, p) => parseEventsJson("shops", t, p), join(dir, "events", "events", "shops.json")).records, readExtracted(dir, "items"));
+  } catch (error) {
+    log(`Lojas desativadas: ${(error as Error).message}`);
+    return undefined;
+  }
+}
+
+/** Trainer battles (spec 022): the extracted trainers and the bundled content/trainer. */
+function trainersOrNothing(dir: string): TrainerData | undefined {
+  try {
+    const events = join(dir, "events", "events");
+    return buildTrainerData(
+      {
+        trainers: readJson((t, p) => parseEventsJson("trainers", t, p), join(events, "trainers.json")).records,
+        classes: readJson((t, p) => parseEventsJson("trainer-classes", t, p), join(events, "trainer-classes.json")).records,
+        messages: readJson((t, p) => parseEventsJson("trainer-messages", t, p), join(events, "trainer-messages.json")).records,
+        learnsets: readExtracted(dir, "learnsets"),
+      },
+      buildAiData(BUNDLED_AI_CONTENT).profiles.map((p) => p.id),
+    );
+  } catch (error) {
+    log(`Treinadores desativados: ${(error as Error).message}`);
+    return undefined;
+  }
+}
+
 /** Tries the usual port and the nine after it. */
 const LAN_PORTS = Array.from({ length: 10 }, (_, i) => LAN_PORT_GAME + i);
 
@@ -146,6 +175,8 @@ const server = createGameServer({
   devArena,
   onDecision: aiLog && ((d) => aiLog.write(`${JSON.stringify(d)}\n`)),
   scripts: stagesDir ? loadScripts(stagesDir, log) : undefined,
+  trainers: stagesDir ? trainersOrNothing(stagesDir) : undefined,
+  shops: stagesDir ? shopsOrNothing(stagesDir) : undefined,
   onMissingCommand: scriptLog && ((m) => scriptLog.write(`${JSON.stringify({ time: new Date().toISOString(), ...m })}\n`)),
 });
 
