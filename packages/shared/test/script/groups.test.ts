@@ -281,7 +281,7 @@ describe("choice menus (spec 023)", () => {
   it("MenuExec asks the client with the items added since the init, then writes the value picked", () => {
     const host = fakeHost();
     const { runner, state } = start(mart, host);
-    expect(state).toEqual({ kind: "blocked", request: { kind: "menu", items: ["0191:321", "0191:322", "0191:323"], cancel: true } });
+    expect(state).toEqual({ kind: "blocked", request: { kind: "menu", items: ["0191:321", "0191:322", "0191:323"], cancel: true, buffers: {} } });
     expect(runner.resume(1)).toEqual({ kind: "done" });
     expect(host.vars.get(0x4001)).toBe(1);
   });
@@ -302,7 +302,52 @@ describe("choice menus (spec 023)", () => {
       ["MenuExec"],
       ["End"],
     ] as Lines);
-    expect(state).toEqual({ kind: "blocked", request: { kind: "menu", items: ["0542:4"], cancel: false } });
+    expect(state).toEqual({ kind: "blocked", request: { kind: "menu", items: ["0542:4"], cancel: false, buffers: {} } });
+  });
+});
+
+describe("Pokémon Center nurse (spec 023)", () => {
+  it("runs the nurse's commands: no card stars, the party count, a party name buffer, the rest are effects", () => {
+    const host = fakeHost();
+    host.party.push({ species: 155, level: 5, hp: 1 }, { species: 16, level: 3, hp: 0 });
+    const { state } = start(
+      [
+        ["GetTrcardStars", { arg0: 0x800c }],
+        ["CopyVar", { dst: v(0x4001), src: v(0x800c) }],
+        ["PartyCountNotEgg", { var: v(0x8006) }],
+        ["CopyVar", { dst: v(0x4002), src: v(0x8006) }],
+        ["PartyHasPokerus", { arg0: 0x8006 }],
+        ["CopyVar", { dst: v(0x4003), src: v(0x8006) }],
+        ["GetPlayerState", { var: v(0x800c) }],
+        ["CopyVar", { dst: v(0x4004), src: v(0x800c) }],
+        ["ScrCmd_379", { arg0: 0x800c }],
+        ["DebugWatch", { arg0: 0x800c }],
+        ["SetAvatarBits", { arg0: 2048 }],
+        ["UpdateAvatarState"],
+        ["ScrCmd_599"],
+        ["PokeCenAnim", { arg0: 0x8006 }],
+        ["ScrCmd_436"],
+        ["BufferPartyMonNick", { slot: 0, party_pos: 1 }],
+        ["NPCMsg", { msg_id: { text: "0040:102" } }],
+        ["End"],
+      ] as Lines,
+      host,
+    );
+    expect(state).toEqual({ kind: "blocked", request: { kind: "say", text: "0040:102", buffers: { 0: { kind: "species", id: 16 } } } });
+    expect([0x4001, 0x4002, 0x4003, 0x4004].map((id) => host.vars.get(id))).toEqual([0, 2, 0, 0]);
+  });
+
+  it("NonNPCMsgVar shows the message the variable holds, in the script's bank", () => {
+    const { state } = start([["SetVar", { var: v(0x8004), val: 83 }], ["NonNPCMsgVar", { msg_id: v(0x8004) }], ["End"]] as Lines);
+    expect(state).toMatchObject({ kind: "blocked", request: { kind: "say", text: "0542:83" } });
+  });
+});
+
+describe("PC (spec 023)", () => {
+  it("the storage command (ScrCmd_158) blocks on the PC the server runs; the screen effects around it do nothing", () => {
+    const { runner, state } = start([["ScrCmd_500", { arg0: 90 }], ["ScrCmd_501", { arg0: 90 }], ["ScrCmd_308", { arg0: 90 }], ["ScrCmd_309", { arg0: 90 }], ["ScrCmd_158", { arg0: 1 }], ["RestoreOverworld"], ["ScrCmd_502", { arg0: 90 }], ["End"]] as Lines);
+    expect(state).toEqual({ kind: "blocked", request: { kind: "pc" } });
+    expect(runner.resume()).toEqual({ kind: "done" });
   });
 });
 

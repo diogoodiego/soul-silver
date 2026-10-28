@@ -25,6 +25,6 @@ export const MENU: Record<string, Handler> = {
   },
   MenuExec: (c) => {
     const { into, items } = c.menu;
-    c.block({ kind: "menu", items: items.map((i) => i.text), cancel: c.menu.cancel }, (answer) => c.writeVar(into, items[answer]?.value ?? MENU_CANCEL));
+    c.block({ kind: "menu", items: items.map((i) => i.text), cancel: c.menu.cancel, buffers: { ...c.buffers } }, (answer) => c.writeVar(into, items[answer]?.value ?? MENU_CANCEL));
   },
 };

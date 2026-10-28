@@ -203,7 +203,7 @@ export const scriptRequest = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("say"), text: z.string().min(1), buffers: z.record(z.string(), textBuffer) }),
   z.strictObject({ kind: z.literal("yes-no") }),
   /** Spec 023: a choice list (text ids); the answer is the index, or the item count to cancel. */
-  z.strictObject({ kind: z.literal("menu"), items: z.array(textId).min(1).max(MENU_ITEMS_MAX), cancel: z.boolean() }),
+  z.strictObject({ kind: z.literal("menu"), items: z.array(textId).min(1).max(MENU_ITEMS_MAX), cancel: z.boolean(), buffers: z.record(z.string(), textBuffer) }),
   z.strictObject({ kind: z.literal("starter"), species: z.array(count()).min(1).max(6) }),
   z.strictObject({ kind: z.literal("wait-fade") }),
   z.strictObject({ kind: z.literal("wait-sound"), sound: scriptSound }),
@@ -332,9 +332,9 @@ export const serverMessage = z.discriminatedUnion("type", [
   /** Answers every shop request with the balance after it; a refusal changed nothing. */
   z.strictObject({ type: z.literal("shopResult"), ok: z.boolean(), reason: z.enum(SHOP_REFUSALS).optional(), money: count() }),
   z.strictObject({ type: z.literal("shopClose") }),
-  /** The PC opened; boxes and items are read from the player's `save` message. */
-  z.strictObject({ type: z.literal("pcOpen") }),
-  z.strictObject({ type: z.literal("pcResult"), ok: z.boolean(), reason: z.enum(PC_REFUSALS).optional() }),
+  /** The PC opened (spec 023); every answer carries the boxes and items as they are now; party and bag come in their own messages. */
+  z.strictObject({ type: z.literal("pcOpen"), boxes: saveSchema.shape.boxes, pcItems: saveSchema.shape.pcItems }),
+  z.strictObject({ type: z.literal("pcResult"), ok: z.boolean(), reason: z.enum(PC_REFUSALS).optional(), boxes: saveSchema.shape.boxes, pcItems: saveSchema.shape.pcItems }),
   z.strictObject({ type: z.literal("pcClose") }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessage>;

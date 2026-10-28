@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { clientMessage, serverMessage } from "../../src/game/protocol.ts";
 import { PROTOCOL_VERSION } from "../../src/protocol-version.ts";
+import { newBoxes } from "../../src/save/schema.ts";
 
 // Spec 023, contracts/protocol-v16.md: shops and the PC.
 
@@ -14,10 +15,10 @@ describe("protocol v16", () => {
     { type: "shopResult", ok: true, money: 2400 },
     { type: "shopResult", ok: false, reason: "money", money: 10 },
     { type: "shopClose" },
-    { type: "pcOpen" },
-    { type: "pcResult", ok: false, reason: "last-fighter" },
+    { type: "pcOpen", boxes: newBoxes(), pcItems: [{ item: 17, count: 3 }] },
+    { type: "pcResult", ok: false, reason: "last-fighter", boxes: newBoxes(), pcItems: [] },
     { type: "pcClose" },
-    { type: "script", id: 3, request: { kind: "menu", items: ["0191:321", "0191:322", "0191:323"], cancel: true } },
+    { type: "script", id: 3, request: { kind: "menu", items: ["0191:321", "0191:322", "0191:323"], cancel: true, buffers: { "0": { kind: "player" } } } },
   ])("server accepts %j", (msg) => {
     expect(serverMessage.safeParse(msg).success).toBe(true);
   });

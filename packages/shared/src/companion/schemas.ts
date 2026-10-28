@@ -67,7 +67,6 @@ export const battleRules = z.strictObject({
   /** Gen 4 blackout: highest party level times this base, indexed by badges (0 to 8+). */
   moneyLossBase: z.array(int(0, 9999)).length(9),
   /** Map header ids of Pokémon Centers: entering one makes it the blackout respawn point. */
-  pokemonCenters: z.array(id()),
 });
 export type BattleRules = z.infer<typeof battleRules>;
 

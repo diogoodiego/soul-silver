@@ -28,6 +28,9 @@ const BLOCKED_FLAG = 0x8000;
 const COUNTER_BEHAVIOR = 0x80;
 
 export const isCounter = (cell: CollisionCell | undefined) => cell !== undefined && (cell.raw & 0xff) === COUNTER_BEHAVIOR;
+/** A Pokémon Center or house PC: talking to it runs the PC script (spec 023). */
+const PC_BEHAVIOR = 0x83;
+export const isPc = (cell: CollisionCell | undefined) => cell !== undefined && (cell.raw & 0xff) === PC_BEHAVIOR;
 
 const BEHAVIORS: ReadonlyMap<number, Omit<CollisionCell, "raw">> = new Map([
   [0x00, { category: "free" }],

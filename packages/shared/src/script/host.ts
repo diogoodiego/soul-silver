@@ -21,7 +21,9 @@ export type ScriptRequest =
   /** Spec 022: a trainer battle, run by the server; `partner` is the second trainer of a tag battle, 0 for none. */
   | { kind: "battle"; trainer: number; partner: number }
   /** Spec 023: a choice list after the last message; the answer is the index picked, past the end to cancel. */
-  | { kind: "menu"; items: string[]; cancel: boolean }
+  | { kind: "menu"; items: string[]; cancel: boolean; buffers: Record<number, TextBuffer> }
+  /** Spec 023: the Pokémon storage, run by the server. */
+  | { kind: "pc" }
   /** Spec 023: a Poké Mart run by the server; `shop` is a shops.json id. */
   | { kind: "shop"; shop: number; sell: boolean }
   /** Spec 021: the triggering client stages these steps and answers when they end. */
