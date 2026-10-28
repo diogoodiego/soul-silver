@@ -1,6 +1,7 @@
 import { applyDelta, serverMessage, type AiDebugRow, type ArenaSpec, type CloseReason, type Entity, type HitEvent, type MoveInput, type ServerMessage, type TickMetrics, type WorldLookup } from "@soulsilver/shared/game";
 import { createInterpolator } from "./interpolation";
 import { createPredictor } from "./prediction";
+import { npcOccupied } from "@soulsilver/shared/npc";
 
 // The renderer's side of the game protocol (spec 010): handshake, inputs, state, prediction and interpolation.
 
@@ -19,11 +20,11 @@ export interface GameConnectionOptions {
 export type GameStatus = "connecting" | "playing" | "rejected" | "closed";
 
 /** Companion and fight messages (spec 014), bag, Pokédex and capture ones (spec 015), and scripts (spec 020), for the screen. */
-export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" }>;
+export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" | "trainerSpotted" | "trainerSay" | "trainerBattleStart" | "trainerSendOut" | "trainerItem" | "trainerBattleEnd" | "shopOpen" | "shopResult" | "shopClose" }>;
 
 export function createGameConnection(options: GameConnectionOptions) {
   const entities = new Map<number, Entity>();
-  const predictor = createPredictor(options.world);
+  const predictor = createPredictor(options.world, (area) => npcOccupied(entities.values(), area));
   const interpolator = createInterpolator();
   let status: GameStatus = "connecting";
   let rejectMessage: string | undefined;
@@ -92,6 +93,15 @@ export function createGameConnection(options: GameConnectionOptions) {
       case "script-event":
       case "script-lock":
       case "script-debug":
+      case "trainerSpotted":
+      case "trainerSay":
+      case "trainerBattleStart":
+      case "trainerSendOut":
+      case "trainerItem":
+      case "trainerBattleEnd":
+      case "shopOpen":
+      case "shopResult":
+      case "shopClose":
         companionEvents.push(msg);
         return;
       case "state": {

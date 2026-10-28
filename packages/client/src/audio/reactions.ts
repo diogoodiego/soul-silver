@@ -1,5 +1,6 @@
 import { desiredMusic, type Listener, moveSound } from "@soulsilver/shared/audio";
 import { timeOfDay } from "@soulsilver/shared/companion";
+import type { TrainerMusic } from "@soulsilver/shared/events";
 import type { Entity, HitEvent, WorldLookup } from "@soulsilver/shared/game";
 import type { MapHeader } from "@soulsilver/shared/maps";
 import movesJson from "../../../../content/combat/moves.json";
@@ -25,7 +26,19 @@ export function createAudioReactions(options: AudioReactionsOptions) {
   const themes = (async () => {
     const i = await index;
     const id = (name: string | undefined) => (name && i?.byName.get(name)?.id) || 0;
-    return { title: id(cues?.music.title), wildBattle: id(cues?.music.wildBattle), victory: id(cues?.music.victory) };
+    const m = cues?.music;
+    return {
+      title: id(m?.title),
+      wildBattle: id(m?.wildBattle),
+      victory: id(m?.victory),
+      trainerBattle: id(m?.trainerBattle),
+      rivalBattle: id(m?.rivalBattle),
+      leaderBattle: id(m?.leaderBattle),
+      rocketBattle: id(m?.rocketBattle),
+      championBattle: id(m?.championBattle),
+      trainerVictory: id(m?.trainerVictory),
+      leaderVictory: id(m?.leaderVictory),
+    };
   })();
   let hasTrack = (_name: string) => false;
   void index.then((i) => (hasTrack = (n) => i?.byName.has(n) ?? false));
@@ -40,14 +53,17 @@ export function createAudioReactions(options: AudioReactionsOptions) {
   let won = false;
   /** From the end of a won combat until the fanfare ends. */
   let victory = false;
+  /** The class music of this player's trainer battle (spec 022), until its fanfare ends. */
+  let trainer: TrainerMusic | undefined;
   /** Last seen data per entity: hp for faints, `used` for moves, `alert` for wild cries. */
   const seen = new Map<number, { hp: number; used: number; alert: boolean }>();
 
   async function updateMusic(): Promise<void> {
     const t = await themes;
-    const state = { screen: "game" as const, musicDay: header?.musicDay ?? 0, musicNight: header?.musicNight ?? 0, night, inCombat, victory };
+    const state = { screen: "game" as const, musicDay: header?.musicDay ?? 0, musicNight: header?.musicNight ?? 0, night, inCombat, victory, trainer };
     const onEnded = () => {
       victory = false;
+      trainer = undefined;
       void updateMusic();
     };
     void audio.setMusic(desiredMusic(state, t), victory ? { once: true, onEnded } : {});
@@ -121,6 +137,19 @@ export function createAudioReactions(options: AudioReactionsOptions) {
 
     companion(ev: CompanionEvent): void {
       if (ev.type === "exp-gain" && inCombat) won = true;
+      else if (ev.type === "trainerBattleStart" && ev.player === options.playerId()) {
+        trainer = ev.music;
+        void updateMusic();
+      } else if (ev.type === "trainerBattleEnd" && ev.prize !== undefined) {
+        won = true;
+        // The fight may have ended in an earlier frame than this message.
+        if (!inCombat) {
+          won = false;
+          victory = true;
+          void updateMusic();
+        }
+      }
+      else if (ev.type === "trainerBattleEnd" && ev.result !== "won" && !victory) trainer = undefined;
       else if (ev.type === "progression" && ev.item.kind !== "learn") void audio.play(ev.item.kind === "evolve" ? "evolution" : "level-up", { source: "ui", kind: "effect" });
       else if (ev.type === "capture") {
         // The capture lines and the renderer's shakes keep this rhythm.

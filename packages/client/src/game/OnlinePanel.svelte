@@ -12,6 +12,7 @@
     address,
     addresses,
     busy,
+    busyNames = [],
     error,
     onOpen,
     onJoin,
@@ -25,6 +26,8 @@
     /** Where friends join, once this PC opened its session to the LAN. */
     addresses: string[];
     busy: boolean;
+    /** Players in a script or a menu right now (spec 021); shortcut: matched by name, add the player id to the entity if names can repeat. */
+    busyNames?: string[];
     error: string | undefined;
     onOpen: () => void;
     onJoin: (address: string) => void;
@@ -49,6 +52,7 @@
         <li class="flex gap-2 items-baseline px-3 py-2 rounded-[4px] bg-black/25">
           <strong>{p.name}</strong>
           {#if p.host}<span class="text-[0.8rem] text-focus">{t("online.host")}</span>{/if}
+          {#if p.id !== me && busyNames.includes(p.name)}<span class="text-[0.8rem] text-muted">{t("game.busy")}</span>{/if}
           {#if p.id === me}<span class="ml-auto text-[0.8rem] text-muted">{t("online.you")}</span>{/if}
         </li>
       {/each}

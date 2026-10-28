@@ -2,8 +2,8 @@
   // The game screen: renderer, input, pause menu and the debug overlay (specs 010, 011 and 012);
   // the companion's reactions, the quick swap and the fight notices (spec 014); progression after a fight (spec 016);
   // the combat HUD, the dialog box, the full menu that never pauses the world and the busy mark (spec 017).
-  import { PROTOCOL_VERSION } from "@soulsilver/shared";
-  import { BUTTON, type Entity, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
+  import { CUTSCENE_TEXT_BOOST, PROTOCOL_VERSION } from "@soulsilver/shared";
+  import { BUTTON, type CutsceneActor, type CutsceneStep, type Entity, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
   import type { ItemRecord } from "@soulsilver/shared/game-data";
   import { formatText, parseTextId, screenText, textVariables } from "@soulsilver/shared/text";
   import { onMount, untrack } from "svelte";
@@ -17,6 +17,7 @@
   import { createDialogQueue } from "./game/dialog-queue";
   import DialogBox from "./game/DialogBox.svelte";
   import ScriptDebug from "./game/ScriptDebug.svelte";
+  import Shop from "./game/Shop.svelte";
   import { BANK, bankTexts, itemRecords, moveTypes } from "./game/game-data";
   import PauseMenu from "./game/PauseMenu.svelte";
   import { t, type MessageKey } from "./i18n";
@@ -26,10 +27,13 @@
   import ProgressionPrompt from "./ProgressionPrompt.svelte";
   import { createGameConnection, type GameStatus } from "./net/game-connection";
   import { TICK_MS } from "./net/prediction";
+  import { MAP_TILE_PX } from "@soulsilver/shared/maps";
+  import trainerTuning from "../../../content/trainer/tuning.json";
   import { overlayShapes, type OverlayShape } from "./render/ai-overlay";
   import { VIEW_W } from "./render/camera";
   import { createCombatFx } from "./render/combat-fx";
-  import { createGameRenderer, SHAKE_MS } from "./render/game-renderer";
+  import { createGameRenderer, SHAKE_MS, type DrawView } from "./render/game-renderer";
+  import { actorKey, stage, type Pose } from "./render/cutscene";
   import { createClientWorld } from "./render/map-assets";
   import { currentSettings, saveSettings, settings } from "./settings";
   import SwapPicker from "./SwapPicker.svelte";
@@ -49,10 +53,13 @@
     onSwitch?: ((address: string) => void) | undefined;
   } = $props();
 
+  /** The "!" and approach timing the server uses (content/trainer/tuning.json, spec 022). */
+  const TRAINER = trainerTuning.value;
   let menuOpen = $state(false);
   // The Online tab beside the screen.
   let tab = $state<"party" | "online">("party");
   let players = $state<{ id: number; name: string; host: boolean }[]>([]);
+  let busyNames = $state<string[]>([]);
   let me = $state<number | undefined>();
   let mode = $state<"solo" | "host" | "guest" | "arena">(untrack(() => (play.arena ? "arena" : play.address ? "guest" : play.hosting ? "host" : "solo")));
   let addresses = $state<string[]>([]);
@@ -91,6 +98,13 @@
   /** Marks over entities: who is in a fight or busy in a menu, and the companion's emotion bubble. */
   /** `capture`: a knocked-out wild one, with the button that throws a ball under its mark. */
   let marks = $state<{ key: string; x: number; y: number; text: string; capture?: boolean }[]>([]);
+  /** The trainer that spotted this player (spec 022): its "!" and its walk are drawn here only, the server never moves it. */
+  let approach: { npcId: number; start: number; tiles: number } | undefined;
+  /** Trainer battle arenas on this player's map, by battle id; drawn as rings on the ground. */
+  const arenas = new Map<number, { area: string; x: number; y: number; radiusPx: number }>();
+  let arenaRings = $state<{ key: number; cx: number; cy: number; rx: number; ry: number }[]>([]);
+  /** A trainer line (bank 728); trainer lines may name the player through buffer 0. */
+  const trainerLine = async (text: string) => dialog.say(await scriptPages(text, { 0: { kind: "player" } }));
   /** HP bars over the foes while fighting: wild ones and other players' Pokémon (spec 017, PvP). */
   let bars = $state<{ key: string; x: number; y: number; fraction: number }[]>([]);
   /** The Pokémon under the player's control, for the HUD. */
@@ -119,6 +133,9 @@
   const balls = $derived(bag.filter((b) => items.get(b.item)?.pocket === "balls"));
   // Spec 016: the head of the progression queue, sent only out of combat.
   let progression = $state<Extract<ServerMessage, { type: "progression" }> | undefined>();
+  /** The Poké Mart a clerk opened (spec 023), and the last refusal shown in it. */
+  let shop = $state<Extract<ServerMessage, { type: "shopOpen" }> | undefined>();
+  let shopRefused = $state<string | undefined>();
   function answer(msg: { type: "progression-ack" } | { type: "learn-answer"; forget: number | null } | { type: "evolve-answer"; accept: boolean }): void {
     progression = undefined;
     window.soulSilver.sendGame(msg);
@@ -146,16 +163,61 @@
       values[key] = !b ? "" : b.kind === "player" ? play.save.name : b.kind === "species" ? speciesName(b.id) : b.value;
     }
     try {
-      return formatText(raw, values, text).split("{page}").map(screenText);
+      // Original messages end with a page break; the empty page after it would wait for one more confirm.
+      const pages = formatText(raw, values, text).split("{page}").map(screenText).filter((p) => p.trim() !== "");
+      return pages.length > 0 ? pages : [""];
     } catch (error) {
       console.warn(`[game] Script text ${text}: ${(error as Error).message}`);
       return [screenText(raw)];
     }
   }
 
+  /** The cutscene this client stages (spec 021): start poses by actor, and the entity each actor draws. */
+  let scene: { id: number; steps: CutsceneStep[]; start: Map<string, Pose>; ids: Map<string, number>; t0: number } | undefined;
+  /** Asked for, begun on the next frame from what is drawn then. */
+  let nextScene: { id: number; actors: CutsceneActor[]; steps: CutsceneStep[] } | undefined;
+
+  function beginScene({ id, actors, steps }: NonNullable<typeof nextScene>, view: DrawView, playerId: number | undefined, now: number): void {
+    const all = view.self ? [view.self, ...view.others] : view.others;
+    const start = new Map<string, Pose>();
+    const ids = new Map<string, number>();
+    for (const a of actors) {
+      const e = a === "player" ? view.self : a === "companion" ? all.find((o) => o.kind === "pokemon" && o.data["owner"] === String(playerId)) : all.find((o) => o.kind === "npc" && o.data["person"] === a.person);
+      if (!e) continue;
+      start.set(actorKey(a), { x: e.x, y: e.y, facing: e.facing, visible: true, moving: false });
+      ids.set(actorKey(a), e.id);
+    }
+    if (view.self && !start.has("player")) start.set("player", { x: view.self.x, y: view.self.y, facing: view.self.facing, visible: true, moving: false });
+    scene = { id, steps, start, ids, t0: now };
+  }
+
+  /** Draws the cutscene's poses over what the server sends; answers once the last step ended. */
+  function staged(view: DrawView, now: number, playerId: number | undefined): DrawView {
+    if (nextScene) {
+      beginScene(nextScene, view, playerId, now);
+      nextScene = undefined;
+    }
+    if (!scene) return view;
+    const s = stage(scene.steps, scene.start, now - scene.t0);
+    if (s.done) {
+      answerScript(scene.id);
+      scene = undefined;
+    }
+    const byId = new Map([...scene?.ids ?? []].map(([k, id]) => [id, s.poses.get(k)!]));
+    const pose = (e: Entity) => {
+      const p = byId.get(e.id);
+      return p ? { ...e, x: p.x, y: p.y, facing: p.facing } : e;
+    };
+    const shownNow = (e: Entity) => byId.get(e.id)?.visible !== false;
+    return { self: view.self && pose(view.self), others: view.others.filter(shownNow).map(pose), focus: s.done ? undefined : s.focus };
+  }
+
   async function scriptRequest(ev: Extract<ServerMessage, { type: "script" }>): Promise<void> {
     const r = ev.request;
     switch (r.kind) {
+      case "cutscene":
+        nextScene = { id: ev.id, actors: r.actors, steps: r.steps };
+        return;
       case "say":
         lastSay = await scriptPages(r.text, r.buffers);
         await dialog.say(lastSay);
@@ -164,6 +226,14 @@
       case "yes-no":
         answerScript(ev.id, (await dialog.ask(lastSay.slice(-1))) ? 0 : 1);
         return;
+      case "menu": {
+        // The list comes up under the last message, as in the original; a cancel answers past the end.
+        const labels = await Promise.all(r.items.map(async (id) => (await scriptPages(id, {})).join(" ")));
+        const picked = await dialog.choose(lastSay.slice(-1), labels);
+        // shortcut: B also backs out of menus the original does not let you cancel; make the box ignore it when one matters.
+        answerScript(ev.id, picked < 0 ? r.items.length : picked);
+        return;
+      }
       case "starter":
         // shortcut: the starter scene is a yes/no per species in turn; build the original's ball picker with the cutscene spec.
         for (let i = 0; ; i = (i + 1) % r.species.length) {
@@ -293,6 +363,35 @@
           captureLines([t("capture.exp", { name: m ? speciesName(m.species) : t("capture.yourPokemon"), amount: ev.amount })]);
         } else if (ev.type === "progression") {
           progression = ev;
+        } else if (ev.type === "trainerSpotted") {
+          approach = { npcId: ev.npcId, start: now, tiles: ev.tiles };
+          // The challenge line once the trainer stands in front of the player.
+          const intro = ev.intro;
+          // The battle waits for the player to close it (as in the original).
+          if (intro) setTimeout(() => void trainerLine(intro).then(() => api.sendGame({ type: "trainer-ready" })), TRAINER.alertS * 1000 + ev.tiles * TRAINER.approachSPerTile * 1000);
+        } else if (ev.type === "trainerSay") {
+          void trainerLine(ev.text);
+        } else if (ev.type === "trainerItem") {
+          captureLines([t("trainer.item")]);
+        } else if (ev.type === "trainerBattleStart") {
+          arenas.set(ev.battleId, ev.arena);
+        } else if (ev.type === "trainerBattleEnd") {
+          arenas.delete(ev.battleId);
+          approach = undefined;
+          // Only the winner gets the trainer's line and the prize; the others just see the arena go.
+          const prize = ev.prize;
+          if (ev.defeat) void trainerLine(ev.defeat).then(() => prize !== undefined && captureLines([t("trainer.won", { money: prize })]));
+          else if (prize !== undefined) captureLines([t("trainer.won", { money: prize })]);
+        } else if (ev.type === "shopOpen") {
+          shop = ev;
+        } else if (ev.type === "shopResult") {
+          shopRefused = ev.ok ? undefined : t(`shop.refused.${ev.reason ?? "invalid"}` as MessageKey);
+          if (shop) shop = { ...shop, money: ev.money };
+        } else if (ev.type === "shopClose") {
+          shop = undefined;
+          shopRefused = undefined;
+        } else if (ev.type === "trainerSendOut") {
+          // Drawn from the entities in the state messages.
         } else {
           picker = "closed";
           showNotice(t("game.blackout", { money: ev.moneyLost }), 5000);
@@ -372,7 +471,17 @@
     let frames = 0;
     let fpsSince = performance.now();
     let frame = requestAnimationFrame(function draw(now) {
-      const view = game.view(now);
+      let view = game.view(now);
+      // The spotting trainer walks up to the player, tile by tile, after its "!".
+      const walker = approach && view.self ? view.others.find((e) => e.id === approach!.npcId) : undefined;
+      if (approach && walker && view.self) {
+        const dx = view.self.x - walker.x;
+        const dy = view.self.y - walker.y;
+        const d = Math.hypot(dx, dy);
+        const walked = Math.min(approach.tiles, Math.max(0, (now - approach.start - TRAINER.alertS * 1000) / (TRAINER.approachSPerTile * 1000))) * MAP_TILE_PX;
+        if (d > 0.01) view = { ...view, others: view.others.map((e) => (e === walker ? { ...e, x: e.x + (dx / d) * walked, y: e.y + (dy / d) * walked } : e)) };
+      }
+      view = staged(view, now, game.playerId);
       renderer.draw(view, running, now);
       shown = view.self ? [view.self, ...view.others] : view.others;
       const events = game.takeCombatEvents();
@@ -397,13 +506,25 @@
       if (nextBars.length > 0 || bars.length > 0) bars = nextBars;
       const nextMarks: typeof marks = shown.filter((e) => e.data["inCombat"] === true).map((e) => ({ key: `fight-${e.id}`, ...over(e), text: "⚔" }));
       for (const e of shown) if (e.data["busy"] === true && e.id !== game.entityId) nextMarks.push({ key: `busy-${e.id}`, ...over(e), text: t("game.busy") });
-      // A wild Pokémon that just noticed someone (spec 019, Alert state).
+      // A wild Pokémon that just noticed someone (spec 019, Alert state), or a trainer that spotted this player (spec 022).
       for (const e of shown) if (e.data["alert"] === true) nextMarks.push({ key: `alert-${e.id}`, ...over(e), text: "!" });
+      const spotter = approach && now - approach.start < TRAINER.alertS * 1000 ? shown.find((e) => e.id === approach!.npcId) : undefined;
+      if (spotter) nextMarks.push({ key: `alert-${spotter.id}`, ...over(spotter), text: "!" });
+      const here = view.self?.area;
+      const nextRings = [...arenas].filter(([, a]) => a.area === here).map(([key, a]) => {
+        const c = renderer.project(a.x, a.y);
+        const ex = renderer.project(a.x + a.radiusPx, a.y);
+        const ey = renderer.project(a.x, a.y + a.radiusPx);
+        return { key, cx: c.x, cy: c.y, rx: Math.abs(ex.x - c.x), ry: Math.abs(ey.y - c.y) };
+      });
+      if (nextRings.length > 0 || arenaRings.length > 0) arenaRings = nextRings;
       // Knocked out, waiting for a Poké Ball.
       for (const e of shown) if (e.data["owner"] === "wild" && e.data["hp"] === 0) nextMarks.push({ key: `ko-${e.id}`, ...over(e), text: t("game.knockedOut"), capture: balls.length > 0 });
       const bubbleOver = emotion && now < emotion.until ? shown.find((e) => e.id === emotion!.id) : undefined;
       if (bubbleOver && emotion) nextMarks.push({ key: "emotion", ...over(bubbleOver), text: emotion.text });
       if (nextMarks.length > 0 || marks.length > 0) marks = nextMarks;
+      const nextBusy = shown.filter((e) => e.kind === "player" && e.data["busy"] === true).map((e) => String(e.data["name"]));
+      if (nextBusy.join() !== busyNames.join()) busyNames = nextBusy;
       const self = view.self;
       position = self ? t("debug.position", { area: self.area, x: Math.round(self.x), y: Math.round(self.y), level: self.level }) : "—";
       status = game.status;
@@ -548,6 +669,13 @@
       {#if m.capture}<span class="text-[0.75em]"><Glyph action="throw" /> {t("game.captureHint")}</span>{/if}
     </span>
   {/each}
+  {#if arenaRings.length > 0}
+    <svg class="absolute inset-0 w-full h-full pointer-events-none z-1" aria-hidden="true">
+      {#each arenaRings as r (r.key)}
+        <ellipse class="fill-[rgb(255_80_80/8%)] stroke-[rgb(255_80_80/70%)] [stroke-width:2] [stroke-dasharray:6_4]" cx={r.cx} cy={r.cy} rx={r.rx} ry={r.ry} />
+      {/each}
+    </svg>
+  {/if}
   {#if showDebug && aiShapes.length > 0}
     <svg class="absolute inset-0 w-full h-full pointer-events-none z-1 [font:10px_monospace]" aria-label={t("debug.ai")}>
       {#each aiShapes as s (s.key)}
@@ -600,7 +728,11 @@
     {/key}
   {/if}
 
-  <DialogBox queue={dialog} />
+  {#if shop}
+    <Shop {shop} {bag} refused={shopRefused} {itemName} onConfirm={(item: number, qty: number) => window.soulSilver.sendGame({ type: shop!.mode === "sell" ? "shop-sell" : "shop-buy", item, qty })} onLeave={() => window.soulSilver.sendGame({ type: "shop-leave" })} />
+  {/if}
+
+  <DialogBox queue={dialog} boost={scriptLocked && $settings.fastCutsceneText ? CUTSCENE_TEXT_BOOST : 1} />
 
   {#if menuOpen && !page && status === "playing"}
     <!-- The panel beside has the input: the screen is covered and says how to get back. -->
@@ -632,7 +764,7 @@
       {#if tab === "party"}
         <PartyPanel {party} {out} {speciesName} />
       {:else}
-        <OnlinePanel {mode} {players} {me} address={play.address} {addresses} busy={onlineBusy || status !== "playing"} error={switchingTo ? t("online.switching") : onlineError} onOpen={() => void openLan()} onJoin={joinOther} />
+        <OnlinePanel {mode} {players} {busyNames} {me} address={play.address} {addresses} busy={onlineBusy || status !== "playing"} error={switchingTo ? t("online.switching") : onlineError} onOpen={() => void openLan()} onJoin={joinOther} />
       {/if}
     </section>
     <nav class={NAV_CLASS}>{@render navButtons()}</nav>
