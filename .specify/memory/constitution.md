@@ -1,12 +1,15 @@
 <!--
 Sync Impact Report
-- Versão: 1.0.0 → 1.1.0 (MINOR: orientação de render expandida)
-- Mudança: os mapas deixam de ser pré-renderizados em 2D e passam a ser desenhados em 3D com
-  three.js (WebGL), a partir da malha extraída da ROM; PixiJS sai das Restrições Técnicas.
-- Motivo: o pré-render exigia casos especiais (camadas abaixo/acima do jogador por altura fixa,
-  pontes, rampas, quadros de animação recortados) e se afastava do visual do DS; no 3D a
-  profundidade decide a oclusão e as animações são troca de textura em tempo real.
-- Templates: nenhum template cita o renderer; specs 006 e 011 recebem nota de revisão.
+- Versão: 1.1.0 → 1.2.0 (MINOR: orientação materialmente expandida)
+- Princípio modificado: V (Test-first na lógica) — nova regra "Verificação com dados reais":
+  todo spec com conteúdo jogável ou dependente de dados extraídos MUST ter verificação de
+  caminho dourado local com a ROM real; o spec só conclui quando ela passa; critérios "funciona
+  no jogo" MUST ser verificados assim.
+- Seções adicionadas: nenhuma. Seções removidas: nenhuma.
+- Compatibilidade: o Princípio II segue valendo (testes de unidade e da CI só com fixtures
+  sintéticos); a verificação com a ROM real é local, nunca na CI.
+- Follow-up: templates de spec/plan/tasks não foram alterados; o "Constitution Check" dos planos
+  passa a cobrir esta regra.
 -->
 # SoulSilver Desktop Constitution
 
@@ -86,9 +89,18 @@ mantém a lógica testável sem a pilha gráfica.
   é escrito e falha antes da implementação.
 - Render (three.js) e UI (Svelte) ficam isentos de test-first, mas cada mudança visível MUST ser
   verificada manualmente antes de ser concluída.
+- **Verificação com dados reais**: testes de unidade e da integração contínua MUST continuar
+  usando apenas fixtures sintéticos (Princípio II). Todo spec que entrega conteúdo jogável ou
+  depende de dados extraídos MUST ter uma verificação de caminho dourado executada localmente
+  com a ROM real.
+- Um spec só está concluído quando essa verificação passa.
+- Critérios de sucesso que dizem "funciona no jogo" MUST ser verificados dessa forma, e MUST NOT
+  ser dados como atendidos apenas por testes sintéticos.
 
 **Motivo**: a lógica do jogo é desenvolvida em grande parte por agentes de IA; testes escritos
-primeiro são a especificação executável que impede regressões silenciosas.
+primeiro são a especificação executável que impede regressões silenciosas. Fixtures sintéticos
+não provam que o conteúdo real funciona; a verificação local com a ROM real fecha essa lacuna
+sem distribuir nem depender de assets na CI.
 
 ### VI. Contratos versionados
 
@@ -208,4 +220,4 @@ qualquer ponto em que pare.
   MUST verificar a conformidade com esta constituição. Desvios MUST ser justificados no plano
   da feature.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-24
+**Version**: 1.2.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-28
