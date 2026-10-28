@@ -154,6 +154,20 @@ describe("corruption and restore (FR-008, FR-009)", () => {
     expect((await s.list())[0]).toMatchObject({ status: "corrupt" });
   });
 
+  it("loads a v6 save with Pokémon in the temporary storage into PC box 1, none lost (spec 023)", async () => {
+    const s = await withBackup();
+    const current = (await read(slotFile(1))) as unknown as Record<string, unknown>;
+    delete current["boxes"];
+    delete current["pcItems"];
+    const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });
+    const storage = [16, 19, 21].map((species) => ({ species, level: 3, moves: [33], hp: 15, friendship: 70, experience: 27, ivs: stats(31), evs: stats(0), nature: 0 }));
+    await writeFile(slotFile(1), JSON.stringify({ ...current, schemaVersion: 6, storage }));
+    const loaded = await s.load(1);
+    if (!loaded.ok) throw new Error(loaded.reason);
+    expect(loaded.save.boxes[0]!.slots.slice(0, 3)).toEqual(storage);
+    expect(loaded.save.boxes.flatMap((b) => b.slots).filter(Boolean)).toHaveLength(3);
+  });
+
   it("refuses a save from a newer version, keeping the file", async () => {
     const s = await withBackup();
     const newer = { ...(await read(slotFile(1))), schemaVersion: 9 };
