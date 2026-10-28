@@ -8,7 +8,7 @@ import { spritesStage } from "../../src/sprites/stage.ts";
 import type { StageContext } from "../../src/pipeline/stage.ts";
 import { btx0 } from "../fixtures/sprites/btx0.ts";
 import { buildNitroFile, buildTex0 } from "../fixtures/maps/build-nitro.ts";
-import { GRASS_EFFECT_MEMBER, ICON_PALETTE_TABLE, OVERWORLD_POKEMON_FIRST, OVERWORLD_POKEMON_TABLE } from "../../src/sprites/layout.ts";
+import { GRASS_EFFECT_MEMBER, ICON_PALETTE_TABLE, OVERWORLD_GFX_TABLE, OVERWORLD_POKEMON_FIRST, OVERWORLD_POKEMON_TABLE } from "../../src/sprites/layout.ts";
 import { SOULSILVER_US_LAYOUT } from "../../src/data/layout.ts";
 import { buildMoveScript, buildSpa } from "../fixtures/sprites/spa.ts";
 import { bgr555, buildNclr, buildNcgr, encryptPokemonPixels, encryptTrainerPixels } from "../fixtures/sprites/builders.ts";
@@ -83,6 +83,12 @@ async function fakeArchive(species: number): Promise<StageContext> {
   for (let i = 0; i < 493; i++) new DataView(arm9.buffer).setUint16(OVERWORLD_POKEMON_TABLE + 2 * i, i, true);
   await mkdir(join(root, "code-decompress", "code"), { recursive: true });
   await writeFile(join(root, "code-decompress", "code", "arm9.bin"), arm9);
+  // Field overlay sprite table: event sprite 315 is NPC member 0, then the end marker.
+  const overlay = new Uint8Array(OVERWORLD_GFX_TABLE.offset + 12);
+  new DataView(overlay.buffer).setUint16(OVERWORLD_GFX_TABLE.offset, 315, true);
+  new DataView(overlay.buffer).setUint16(OVERWORLD_GFX_TABLE.offset + 6, 0xffff, true);
+  await mkdir(join(root, "code-decompress", "code", "overlay9"), { recursive: true });
+  await writeFile(join(root, "code-decompress", "code", "overlay9", "0001.bin"), overlay);
   await mkdir(join(root, "out"), { recursive: true });
   const noop = () => {};
   return {
@@ -104,6 +110,8 @@ describe("sprites stage", { timeout: 30_000 }, () => {
     expect(files).toEqual(expect.arrayContaining(["battle.json", "battle-0.png", "battle-0-shiny.png", "overworld-player.json", "overworld-npc.json", "overworld-pokemon.json", "report.json"]));
     const set = parseSpriteJson("sprite-set", await readFile(join(root, "out", "battle.json"), "utf8"), "battle.json");
     expect(set.ok && set.data.sprites).toHaveLength(493 + 65);
+    const npcs = parseSpriteJson("sprite-set", await readFile(join(root, "out", "overworld-npc.json"), "utf8"), "overworld-npc.json");
+    expect(npcs.ok && npcs.data.sprites[0]!.gfx).toEqual([315]);
     const report = parseSpriteJson("sprite-report", await readFile(join(root, "out", "report.json"), "utf8"), "report.json");
     expect(report.ok && report.data.ok).toBe(true);
     expect(report.ok && Object.fromEntries(Object.entries(report.data.categories).map(([k, v]) => [k, v.sprites]))).toEqual({

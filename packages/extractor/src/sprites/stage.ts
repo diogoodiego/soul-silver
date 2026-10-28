@@ -3,17 +3,17 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { serializeSpriteFile, type SpriteCategory } from "@soulsilver/shared/sprites";
-import { CODE_INPUT, countNarcMembers, NARC_INPUT, readArm9, readNarcMember } from "../data/inputs.ts";
+import { CODE_INPUT, countNarcMembers, NARC_INPUT, readArm9, readNarcMember, readOverlay } from "../data/inputs.ts";
 import { SOULSILVER_US_LAYOUT } from "../data/layout.ts";
 import type { Stage, StageContext } from "../pipeline/stage.ts";
 import { extractBattle } from "./battle.ts";
 import { extractBattleFx } from "./battle-fx.ts";
 import { extractFieldEffects } from "./field-effects.ts";
 import { extractForms } from "./forms.ts";
-import { BATTLE_MEMBERS_PER_SPECIES, FIELD_EFFECT_ARCHIVE, FORMS_ARCHIVE, ICON_ARCHIVE, ITEM_ICON_ARCHIVE, MOVE_SCRIPT_ARCHIVE, OVERWORLD_ARCHIVE, PARTICLE_ARCHIVE, OVERWORLD_NPC_END, OVERWORLD_PLAYERS, SPRITE_ARCHIVES, TRAINER_ARCHIVE, TRAINER_COUNT } from "./layout.ts";
+import { BATTLE_MEMBERS_PER_SPECIES, FIELD_EFFECT_ARCHIVE, FORMS_ARCHIVE, ICON_ARCHIVE, ITEM_ICON_ARCHIVE, MOVE_SCRIPT_ARCHIVE, OVERWORLD_ARCHIVE, OVERWORLD_GFX_TABLE, PARTICLE_ARCHIVE, OVERWORLD_NPC_END, OVERWORLD_PLAYERS, SPRITE_ARCHIVES, TRAINER_ARCHIVE, TRAINER_COUNT } from "./layout.ts";
 import { extractItemIcons, extractPokemonIcons, itemIconMembers } from "./icons.ts";
 import { extractTrainers } from "./trainers.ts";
-import { extractNpcs, extractPlayers, extractPokemon, pokemonEntries } from "./overworld.ts";
+import { extractNpcs, extractPlayers, extractPokemon, gfxTable, pokemonEntries } from "./overworld.ts";
 import { buildReportFile, type CategoryResult } from "./report.ts";
 import { buildAtlas, writeAtlas, type FrameInput } from "./writer.ts";
 import type { SpriteEntry } from "@soulsilver/shared/sprites";
@@ -55,11 +55,12 @@ async function run(ctx: StageContext): Promise<void> {
   ctx.progress(0.5);
 
   const overworld = (i: number) => readNarcMember(ctx, OVERWORLD_ARCHIVE, i);
-  await add("overworld-player", await extractPlayers(overworld, OVERWORLD_PLAYERS), true);
-  await add("overworld-npc", await extractNpcs(overworld, OVERWORLD_NPC_END, OVERWORLD_PLAYERS), false);
+  const gfx = gfxTable(await readOverlay(ctx, OVERWORLD_GFX_TABLE.overlay), OVERWORLD_GFX_TABLE.offset);
+  await add("overworld-player", await extractPlayers(overworld, OVERWORLD_PLAYERS, gfx), true);
+  await add("overworld-npc", await extractNpcs(overworld, OVERWORLD_NPC_END, OVERWORLD_PLAYERS, gfx), false);
   const arm9 = await readArm9(ctx);
   const entries = pokemonEntries(arm9, species, await countNarcMembers(ctx, OVERWORLD_ARCHIVE));
-  await add("overworld-pokemon", await extractPokemon(overworld, entries), true);
+  await add("overworld-pokemon", await extractPokemon(overworld, entries, gfx), true);
   ctx.progress(0.7);
 
   await add("icon-pokemon", await extractPokemonIcons((i) => readNarcMember(ctx, ICON_ARCHIVE, i), arm9, species), true);
@@ -82,7 +83,7 @@ async function run(ctx: StageContext): Promise<void> {
 export const spritesStage: Stage = {
   id: "sprites",
   title: "Extraindo os sprites",
-  version: 4,
+  version: 5,
   weight: 10,
   inputs: [NARC_INPUT, CODE_INPUT],
   outputs: ["sprites"],

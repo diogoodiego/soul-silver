@@ -90,15 +90,24 @@ function build(
   result.sprites.push({ name, frames: names, animations, ...extra });
 }
 
+/** One frame (the first, normal palette), for objects that never animate. */
+function still(result: BattleResult, sheet: Sheet, name: string, extra: Partial<SpriteEntry>): void {
+  const image = sheet.frames[0];
+  if (!image) throw new Error("the sheet has no frames");
+  const frame = `${name}/still/0`;
+  result.frames.push({ name: frame, image, anchor: { x: image.width >> 1, y: footRow([image]) } });
+  result.sprites.push({ name, frames: [frame], animations: [], ...extra });
+}
+
 const empty = (): BattleResult => ({ frames: [], sprites: [], missing: [], failed: [] });
 
 /** The player characters, 32 frames each: walking, then running. */
-export async function extractPlayers(read: (member: number) => Promise<Uint8Array>, members: readonly number[]): Promise<BattleResult> {
+export async function extractPlayers(read: (member: number) => Promise<Uint8Array>, members: readonly number[], gfx?: ReadonlyMap<number, number[]>): Promise<BattleResult> {
   const result = empty();
   for (const [n, member] of members.entries()) {
     const name = spriteName("overworld-player", [n]);
     try {
-      build(result, readSheet(await read(member)), WALK_RUN_32, 32, name, OVERWORLD_FRAME_MS.walk, { character: `player-${n}` });
+      build(result, readSheet(await read(member)), WALK_RUN_32, 32, name, OVERWORLD_FRAME_MS.walk, { character: `player-${n}`, ...gfxOf(gfx, member) });
     } catch (error) {
       result.failed.push({ sprite: name, reason: (error as Error).message });
     }
@@ -106,8 +115,8 @@ export async function extractPlayers(read: (member: number) => Promise<Uint8Arra
   return result;
 }
 
-/** Every 16-frame character among the members before `end`, except the ones in `skip`. */
-export async function extractNpcs(read: (member: number) => Promise<Uint8Array>, end: number, skip: readonly number[]): Promise<BattleResult> {
+/** Characters among the members before `end` (except `skip`), plus the objects the field table `gfx` draws. */
+export async function extractNpcs(read: (member: number) => Promise<Uint8Array>, end: number, skip: readonly number[], gfx?: ReadonlyMap<number, number[]>): Promise<BattleResult> {
   const result = empty();
   for (let member = 0; member < end; member++) {
     if (skip.includes(member)) continue;
@@ -118,15 +127,38 @@ export async function extractNpcs(read: (member: number) => Promise<Uint8Array>,
     } catch {
       continue; // not a texture set: nothing to extract
     }
-    // Objects and special poses have other frame counts; only 16-frame characters walk.
-    if (sheet.frames.length !== 16 || sheet.shiny) continue;
+    const extra = { character: sheet.name, ...gfxOf(gfx, member) };
     try {
-      build(result, sheet, WALK_16, 16, name, OVERWORLD_FRAME_MS.walk, { character: sheet.name });
+      // Characters walk (32-frame ones also run; a 17th frame is a special pose, left out). Anything else
+      // the field table draws (objects, two-palette trees) is a still sprite; the rest is not used.
+      if (sheet.frames.length === 32 && !sheet.shiny) build(result, sheet, WALK_RUN_32, 32, name, OVERWORLD_FRAME_MS.walk, extra);
+      else if (sheet.frames.length >= 16 && !sheet.shiny) build(result, { ...sheet, frames: sheet.frames.slice(0, 16) }, WALK_16, 16, name, OVERWORLD_FRAME_MS.walk, extra);
+      else if (gfx?.has(member)) still(result, sheet, name, extra);
     } catch (error) {
       result.failed.push({ sprite: name, reason: (error as Error).message });
     }
   }
   return result;
+}
+
+const gfxOf = (gfx: ReadonlyMap<number, number[]> | undefined, member: number) => {
+  const ids = gfx?.get(member);
+  return ids ? { gfx: ids } : {};
+};
+
+/**
+ * The field overlay's sprite table (spec 021, research.md): 6-byte entries of map-event sprite id,
+ * overworld member and flags, ended by id 0xffff. Returns the event ids per member.
+ */
+export function gfxTable(code: Uint8Array, offset: number): Map<number, number[]> {
+  const byMember = new Map<number, number[]>();
+  for (let at = offset; at + 6 <= code.length; at += 6) {
+    const id = readU16(code, at);
+    if (id === 0xffff) return byMember;
+    const member = readU16(code, at + 2);
+    byMember.set(member, [...(byMember.get(member) ?? []), id]);
+  }
+  throw new Error(`overworld sprite table at 0x${offset.toString(16)} has no 0xffff end`);
 }
 
 export interface PokemonEntry {
@@ -154,13 +186,13 @@ export function pokemonEntries(arm9: Uint8Array, species: number, totalMembers: 
 }
 
 /** The following Pokémon: 8 frames (2 per direction), normal and shiny. */
-export async function extractPokemon(read: (member: number) => Promise<Uint8Array>, entries: readonly PokemonEntry[]): Promise<BattleResult> {
+export async function extractPokemon(read: (member: number) => Promise<Uint8Array>, entries: readonly PokemonEntry[], gfx?: ReadonlyMap<number, number[]>): Promise<BattleResult> {
   const result = empty();
   for (const e of entries) {
     const name = spriteName("overworld-pokemon", [e.species, e.form, e.gender]);
     try {
       const sheet = readSheet(await read(e.member));
-      build(result, sheet, POKEMON_8, 8, name, OVERWORLD_FRAME_MS.pokemon, { species: e.species, form: e.form, gender: e.gender });
+      build(result, sheet, POKEMON_8, 8, name, OVERWORLD_FRAME_MS.pokemon, { species: e.species, form: e.form, gender: e.gender, ...gfxOf(gfx, e.member) });
       if (!sheet.shiny) result.missing.push({ sprite: name, reason: "shiny palette is missing" });
     } catch (error) {
       result.failed.push({ sprite: name, reason: (error as Error).message });

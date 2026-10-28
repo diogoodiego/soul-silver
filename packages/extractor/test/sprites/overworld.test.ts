@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OVERWORLD_POKEMON_FIRST, OVERWORLD_POKEMON_TABLE } from "../../src/sprites/layout.ts";
-import { extractNpcs, extractPlayers, extractPokemon, pokemonEntries, readSheet } from "../../src/sprites/overworld.ts";
+import { extractNpcs, extractPlayers, extractPokemon, gfxTable, pokemonEntries, readSheet } from "../../src/sprites/overworld.ts";
 import { btx0 } from "../fixtures/sprites/btx0.ts";
 
 const empty = new Uint8Array(0);
@@ -119,5 +119,72 @@ describe("extractPokemon", () => {
     ]);
     expect(r.missing).toEqual([{ sprite: "overworld-pokemon/2/0/male", reason: "shiny palette is missing" }]);
     expect(r.failed).toEqual([{ sprite: "overworld-pokemon/3/0/unisex", reason: "expected 8 frames, found 7" }]);
+  });
+});
+
+describe("gfxTable", () => {
+  // Entries of 6 bytes: event sprite id, overworld member, flags; an id of 0xffff ends the table.
+  const code = (rows: [number, number, number][], at = 4) => {
+    const bytes = new Uint8Array(at + 6 * rows.length + 6);
+    const v = new DataView(bytes.buffer);
+    rows.forEach(([id, member, flags], i) => {
+      v.setUint16(at + 6 * i, id, true);
+      v.setUint16(at + 6 * i + 2, member, true);
+      v.setUint16(at + 6 * i + 4, flags, true);
+    });
+    v.setUint16(at + 6 * rows.length, 0xffff, true);
+    return bytes;
+  };
+
+  it("lists the event sprite ids each member is drawn for", () => {
+    const table = gfxTable(code([[1, 0, 0], [3, 2, 0], [315, 113, 0], [148, 58, 0], [1032, 483, 20007], [400, 2, 0]]), 4);
+    expect(table.get(0)).toEqual([1]);
+    expect(table.get(2)).toEqual([3, 400]);
+    expect(table.get(113)).toEqual([315]);
+    expect(table.get(483)).toEqual([1032]);
+    expect(table.has(1)).toBe(false);
+  });
+
+  it("fails when the table never ends", () => {
+    const bytes = code([[1, 0, 0]]);
+    bytes.fill(0, 10);
+    expect(() => gfxTable(bytes, 4)).toThrow("0xffff");
+  });
+});
+
+describe("event sprite ids on the sheets", () => {
+  it("tags NPC and Pokémon sprites with the ids drawn with them", async () => {
+    const gfx = new Map([[0, [1, 400]], [7, [1032]]]);
+    const npcs = await extractNpcs(() => Promise.resolve(btx0("boy1", 16)), 1, [], gfx);
+    expect(npcs.sprites[0]!.gfx).toEqual([1, 400]);
+    const mons = await extractPokemon(() => Promise.resolve(btx0("tsure_poke", 8, { palettes: 2 })), [{ species: 1, form: 0, gender: "unisex", member: 7 }], gfx);
+    expect(mons.sprites[0]!.gfx).toEqual([1032]);
+    const none = await extractNpcs(() => Promise.resolve(btx0("boy1", 16)), 1, []);
+    expect(none.sprites[0]!.gfx).toBeUndefined();
+  });
+});
+
+describe("extractNpcs with the field sprite table", () => {
+  const members = [btx0("monstarball", 1), btx0("pcwoman1", 17), btx0("hero", 32), btx0("bonguri", 7, { palettes: 2 }), btx0("junk", 1)];
+  const gfx = new Map([[0, [87]], [1, [335]], [2, [238]], [3, [262]]]);
+
+  it("draws every sheet the table uses: objects still, 17 frames as a walk, 32 frames as walk and run", async () => {
+    const r = await extractNpcs((m) => Promise.resolve(members[m]!), members.length, [], gfx);
+    expect(r.failed).toEqual([]);
+    const by = new Map(r.sprites.map((s) => [s.name, s]));
+    expect(by.get("overworld-npc/0")).toMatchObject({ frames: ["overworld-npc/0/still/0"], animations: [], gfx: [87] });
+    expect(by.get("overworld-npc/1")!.animations.map((a) => a.name)).toContain("walk-down");
+    expect(by.get("overworld-npc/1")!.frames).toHaveLength(16);
+    expect(by.get("overworld-npc/2")!.animations.map((a) => a.name)).toContain("run-left");
+    expect(by.get("overworld-npc/3")).toMatchObject({ frames: ["overworld-npc/3/still/0"], gfx: [262] });
+    // Not in the table: an object stays out of the atlas.
+    expect(by.has("overworld-npc/4")).toBe(false);
+  });
+});
+
+describe("extractPlayers with the field sprite table", () => {
+  it("tags the protagonists with the map sprite ids that draw them", async () => {
+    const r = await extractPlayers(() => Promise.resolve(btx0("hero", 32)), [69, 70], new Map([[69, [0]], [70, [97]]]));
+    expect(r.sprites.map((s) => s.gfx)).toEqual([[0], [97]]);
   });
 });

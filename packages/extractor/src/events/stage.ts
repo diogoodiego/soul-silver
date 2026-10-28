@@ -17,13 +17,15 @@ import { parseTextFile, parseTextId } from "@soulsilver/shared/text";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { readU16 } from "../binary.ts";
-import { CODE_INPUT, listNarcIndices, NARC_INPUT, readArm9, readNarcMember } from "../data/inputs.ts";
+import { CODE_INPUT, listNarcIndices, NARC_INPUT, readArm9, readNarcMember, readOverlay } from "../data/inputs.ts";
 import { SOULSILVER_US_LAYOUT } from "../data/layout.ts";
 import { MAP_HEADER_OFFSET, MAP_HEADER_SIZE } from "../maps/header.ts";
 import type { Stage, StageContext } from "../pipeline/stage.ts";
 import { readScriptTable } from "./command-table.ts";
 import { readEncounter, readHeadbutt } from "./encounter.ts";
-import { EVENT_ARCHIVES, HEADBUTT_ARCHIVE, LEVEL_SCRIPT_FIELD, SCRIPT_BANKS, ZERO_SCRIPT } from "./layout.ts";
+import { CLASS_MUSIC, EVENT_ARCHIVES, HEADBUTT_ARCHIVE, LEVEL_SCRIPT_FIELD, PRIZE_TABLE, SCRIPT_BANKS, SHOPS, TRAINER_CLASS_COUNT, TRAINER_MESSAGES, ZERO_SCRIPT } from "./layout.ts";
+import { readShops } from "./shops.ts";
+import { readTrainerClasses, readTrainerMessages } from "./trainer-classes.ts";
 import { resolveScript, trainerOfScript, type MapScripts } from "./refs.ts";
 import { buildEventsReportFile, type ScriptFileResult } from "./report.ts";
 import { decodeScriptFile } from "./script.ts";
@@ -128,6 +130,19 @@ async function run(ctx: StageContext): Promise<void> {
     if (trainer) trainers.push(trainer);
   }
   await write("trainers.json", "trainers", { kind: "trainers", formatVersion: EVENTS_FORMAT_VERSION, records: trainers });
+  // Trainer classes and lines (spec 022).
+  const overlay12 = await readOverlay(ctx, PRIZE_TABLE.overlay);
+  const classes = readTrainerClasses({
+    prize: overlay12.subarray(PRIZE_TABLE.offset, PRIZE_TABLE.offset + TRAINER_CLASS_COUNT * 4),
+    musicClasses: arm9.subarray(CLASS_MUSIC.classes, CLASS_MUSIC.classes + CLASS_MUSIC.classCount * 2),
+    musicList: arm9.subarray(CLASS_MUSIC.list, CLASS_MUSIC.list + CLASS_MUSIC.listCount * 4),
+    classes: TRAINER_CLASS_COUNT,
+  });
+  await write("trainer-classes.json", "trainer-classes", { kind: "trainer-classes", formatVersion: EVENTS_FORMAT_VERSION, records: classes });
+  // Poké Mart stock (spec 023).
+  await write("shops.json", "shops", { kind: "shops", formatVersion: EVENTS_FORMAT_VERSION, records: readShops(arm9, SHOPS) });
+  const messages = readTrainerMessages(await readNarcMember(ctx, TRAINER_MESSAGES.narc, TRAINER_MESSAGES.member));
+  await write("trainer-messages.json", "trainer-messages", { kind: "trainer-messages", formatVersion: EVENTS_FORMAT_VERSION, records: messages });
   const trainerIds = new Set(trainers.map((t) => t.id));
   ctx.progress(0.6);
 
@@ -200,7 +215,8 @@ async function run(ctx: StageContext): Promise<void> {
 export const eventsStage: Stage = {
   id: "events",
   title: "Lendo eventos, scripts e encontros",
-  version: 2,
+  // 3: trainer classes and trainer lines (spec 022). 4: Poké Mart stock (spec 023).
+  version: 4,
   weight: 6,
   inputs: [NARC_INPUT, CODE_INPUT, MAPS_INPUT, TEXT_INPUT],
   outputs: ["events"],

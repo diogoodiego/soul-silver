@@ -6,6 +6,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eventsStage } from "../../src/events/stage.ts";
+import { CLASS_MUSIC, PRIZE_TABLE, SHOPS, TRAINER_CLASS_COUNT } from "../../src/events/layout.ts";
+import { SEQ } from "../../src/events/trainer-classes.ts";
 import { MAP_HEADER_OFFSET, MAP_HEADER_SIZE } from "../../src/maps/header.ts";
 import type { StageContext } from "../../src/pipeline/stage.ts";
 import { buildEncounter, buildHeadbutt, buildLevelScripts, buildScriptFile, buildTrainerData, buildTrainerTeam, buildZone, cmd, concat, rel } from "../fixtures/events/builders.ts";
@@ -64,11 +66,30 @@ async function fakeRom(options: Options = {}): Promise<StageContext> {
   await narc("a/0/5/6", [new Uint8Array(8), buildTrainerTeam(0, [{ level: 5, species: 16 }]), buildTrainerTeam(2, [{ level: 8, species: 19, item: 4 }, { level: 9, species: 20 }])]);
   await narc("a/2/5/2", [buildHeadbutt({}), buildHeadbutt({ common: [{ species: 163, minLevel: 2, maxLevel: 3 }], regular: [[[4, 5]]] })]);
 
-  const arm9 = new Uint8Array(MAP_HEADER_OFFSET + 2 * MAP_HEADER_SIZE + 16);
-  new DataView(arm9.buffer).setUint16(MAP_HEADER_OFFSET + 8, 6, true); // map 0 level script file
-  new DataView(arm9.buffer).setUint16(MAP_HEADER_OFFSET + MAP_HEADER_SIZE + 8, 7, true); // map 1: a stub
-  await mkdir(join(root, "code-decompress", "code"), { recursive: true });
+  // Two trainer lines for trainer 1: the challenge and the one when it loses.
+  await narc("a/0/5/7", [new Uint8Array([1, 0, 0, 0, 1, 0, 1, 0])]);
+
+  const arm9 = new Uint8Array(Math.max(MAP_HEADER_OFFSET + 2 * MAP_HEADER_SIZE + 16, CLASS_MUSIC.list + CLASS_MUSIC.listCount * 4, SHOPS.special + SHOPS.specialCount * 4 + 4));
+  const arm9View = new DataView(arm9.buffer);
+  arm9View.setUint16(MAP_HEADER_OFFSET + 8, 6, true); // map 0 level script file
+  arm9View.setUint16(MAP_HEADER_OFFSET + MAP_HEADER_SIZE + 8, 7, true); // map 1: a stub
+  // Class 3 plays music list entry 0, the rival sequence; every other class the trainer music.
+  arm9View.setUint16(CLASS_MUSIC.classes, 3, true);
+  // Poké Marts (spec 023): Poké Balls from rank 1 in the common mart; every special mart lists one Potion, at the end of the table.
+  for (let i = 0; i < SHOPS.normalCount; i++) arm9View.setUint32(SHOPS.normal + i * 4, 4 | (1 << 16), true);
+  const list = SHOPS.special + SHOPS.specialCount * 4;
+  arm9View.setUint32(list, 17 | (0xffff << 16), true);
+  for (let i = 0; i < SHOPS.specialCount; i++) arm9View.setUint32(SHOPS.special + i * 4, 0x02000000 + list, true);
+  arm9View.setUint16(CLASS_MUSIC.list + 2, SEQ.rival, true);
+  await mkdir(join(root, "code-decompress", "code", "overlay9"), { recursive: true });
   await writeFile(join(root, "code-decompress", "code", "arm9.bin"), arm9);
+  // The prize table: class i pays i.
+  const overlay12 = new Uint8Array(PRIZE_TABLE.offset + TRAINER_CLASS_COUNT * 4);
+  for (let i = 0; i < TRAINER_CLASS_COUNT; i++) {
+    new DataView(overlay12.buffer).setUint16(PRIZE_TABLE.offset + i * 4, i, true);
+    new DataView(overlay12.buffer).setUint16(PRIZE_TABLE.offset + i * 4 + 2, i, true);
+  }
+  await writeFile(join(root, "code-decompress", "code", "overlay9", name(PRIZE_TABLE.overlay)), overlay12);
 
   await mkdir(join(root, "maps", "maps"), { recursive: true });
   await writeFile(
@@ -136,6 +157,15 @@ describe("events stage", () => {
     expect(trainers.records.map((r) => r.id)).toEqual([1, 2]);
     expect(trainers.records[1]).toMatchObject({ aiFlags: 7, class: { id: 4, text: "0730:4" }, name: "0729:2" });
     expect(trainers.records[1]!.team[0]).toMatchObject({ species: 19, item: 4 });
+    const classes = await read("trainer-classes", "trainer-classes.json");
+    expect(classes.records).toHaveLength(TRAINER_CLASS_COUNT);
+    expect(classes.records[3]).toEqual({ id: 3, prizeBase: 3, music: "rival" });
+    expect(classes.records[4]).toEqual({ id: 4, prizeBase: 4, music: "trainer" });
+    const messages = await read("trainer-messages", "trainer-messages.json");
+    expect(messages.records).toEqual([
+      { trainer: 1, kind: 0, text: "0728:0" },
+      { trainer: 1, kind: 1, text: "0728:1" },
+    ]);
   });
 
   it("reports command coverage by map and lists a reference the text catalog does not have", async () => {
