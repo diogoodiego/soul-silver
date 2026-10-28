@@ -20,7 +20,7 @@ export interface GameConnectionOptions {
 export type GameStatus = "connecting" | "playing" | "rejected" | "closed";
 
 /** Companion and fight messages (spec 014), bag, Pokédex and capture ones (spec 015), and scripts (spec 020), for the screen. */
-export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" | "trainerSpotted" | "trainerSay" | "trainerBattleStart" | "trainerSendOut" | "trainerItem" | "trainerBattleEnd" | "shopOpen" | "shopResult" | "shopClose" }>;
+export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" | "trainerSpotted" | "trainerSay" | "trainerBattleStart" | "trainerSendOut" | "trainerItem" | "trainerBattleEnd" | "shopOpen" | "shopResult" | "shopClose" | "pcOpen" | "pcResult" | "pcClose" }>;
 
 export function createGameConnection(options: GameConnectionOptions) {
   const entities = new Map<number, Entity>();
@@ -102,6 +102,9 @@ export function createGameConnection(options: GameConnectionOptions) {
       case "shopOpen":
       case "shopResult":
       case "shopClose":
+      case "pcOpen":
+      case "pcResult":
+      case "pcClose":
         companionEvents.push(msg);
         return;
       case "state": {

@@ -3,7 +3,7 @@
   // the companion's reactions, the quick swap and the fight notices (spec 014); progression after a fight (spec 016);
   // the combat HUD, the dialog box, the full menu that never pauses the world and the busy mark (spec 017).
   import { CUTSCENE_TEXT_BOOST, PROTOCOL_VERSION } from "@soulsilver/shared";
-  import { BUTTON, type CutsceneActor, type CutsceneStep, type Entity, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
+  import { BUTTON, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
   import type { ItemRecord } from "@soulsilver/shared/game-data";
   import { formatText, parseTextId, screenText, textVariables } from "@soulsilver/shared/text";
   import { onMount, untrack } from "svelte";
@@ -18,6 +18,7 @@
   import DialogBox from "./game/DialogBox.svelte";
   import ScriptDebug from "./game/ScriptDebug.svelte";
   import Shop from "./game/Shop.svelte";
+  import PcPanel from "./game/PcPanel.svelte";
   import { BANK, bankTexts, itemRecords, moveTypes } from "./game/game-data";
   import PauseMenu from "./game/PauseMenu.svelte";
   import { t, type MessageKey } from "./i18n";
@@ -136,6 +137,10 @@
   /** The Poké Mart a clerk opened (spec 023), and the last refusal shown in it. */
   let shop = $state<Extract<ServerMessage, { type: "shopOpen" }> | undefined>();
   let shopRefused = $state<string | undefined>();
+  /** The Pokémon PC's boxes while it is open (spec 023), and the last refusal. */
+  let pcBoxes = $state<Extract<ServerMessage, { type: "pcOpen" }>["boxes"] | undefined>();
+  let pcItems = $state<Extract<ServerMessage, { type: "pcOpen" }>["pcItems"]>([]);
+  let pcRefused = $state<string | undefined>();
   function answer(msg: { type: "progression-ack" } | { type: "learn-answer"; forget: number | null } | { type: "evolve-answer"; accept: boolean }): void {
     progression = undefined;
     window.soulSilver.sendGame(msg);
@@ -228,7 +233,7 @@
         return;
       case "menu": {
         // The list comes up under the last message, as in the original; a cancel answers past the end.
-        const labels = await Promise.all(r.items.map(async (id) => (await scriptPages(id, {})).join(" ")));
+        const labels = await Promise.all(r.items.map(async (id) => (await scriptPages(id, r.buffers)).join(" ")));
         const picked = await dialog.choose(lastSay.slice(-1), labels);
         // shortcut: B also backs out of menus the original does not let you cancel; make the box ignore it when one matters.
         answerScript(ev.id, picked < 0 ? r.items.length : picked);
@@ -387,6 +392,16 @@
         } else if (ev.type === "shopResult") {
           shopRefused = ev.ok ? undefined : t(`shop.refused.${ev.reason ?? "invalid"}` as MessageKey);
           if (shop) shop = { ...shop, money: ev.money };
+        } else if (ev.type === "pcOpen") {
+          pcBoxes = ev.boxes;
+          pcItems = ev.pcItems;
+        } else if (ev.type === "pcResult") {
+          pcBoxes = ev.boxes;
+          pcItems = ev.pcItems;
+          pcRefused = ev.ok ? undefined : t(`pc.refused.${ev.reason ?? "invalid"}` as MessageKey);
+        } else if (ev.type === "pcClose") {
+          pcBoxes = undefined;
+          pcRefused = undefined;
         } else if (ev.type === "shopClose") {
           shop = undefined;
           shopRefused = undefined;
@@ -726,6 +741,10 @@
         onEvolve={(accept: boolean) => answer({ type: "evolve-answer", accept })}
       />
     {/key}
+  {/if}
+
+  {#if pcBoxes}
+    <PcPanel boxes={pcBoxes} {party} {pcItems} {bag} {itemName} onItem={(dir: "deposit" | "withdraw", item: number) => window.soulSilver.sendGame({ type: "pc-items", dir, item, qty: 1 })} refused={pcRefused} {speciesName} {moveName} natureName={names.nature} onMove={(from: PcSlot, to: PcSlot) => window.soulSilver.sendGame({ type: "pc-move", from, to })} onRename={(box: number, name: string) => window.soulSilver.sendGame({ type: "pc-rename", box, name })} onLeave={() => window.soulSilver.sendGame({ type: "pc-leave" })} />
   {/if}
 
   {#if shop}
