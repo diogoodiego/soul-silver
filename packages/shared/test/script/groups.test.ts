@@ -99,6 +99,11 @@ describe("messages", () => {
     expect(start([["GetPlayerGender", { var: v(0x4001) }], ["End"]], fakeHost({ character: "female" })).host.vars.get(0x4001)).toBe(1);
   });
 
+  it("GetFriendSprite stores the other protagonist's sprite: Lyra (239) for a boy, Ethan (238) for a girl", () => {
+    expect(start([["GetFriendSprite", { arg0: 0x4020 }], ["End"]]).host.vars.get(0x4020)).toBe(239);
+    expect(start([["GetFriendSprite", { arg0: 0x4020 }], ["End"]], fakeHost({ character: "female" })).host.vars.get(0x4020)).toBe(238);
+  });
+
   it("signposts and trainer tips show the text and wait for the player", () => {
     const { runner, host } = start([["SetSignpostMap", { type: 0, map: 3 }], ["DirectionSignpost", { message: { text: "0542:4" }, type: 0, map: 3, out: v(0x4001) }], ["WaitSignpost", { out: v(0x4001) }], ["TrainerTips", { message: { text: "0542:5" }, out: v(0x4002) }], ["SetSignpostAction", { cmd: 1 }], ["WaitSignpostAction"], ["End"]]);
     expect(runner.state).toMatchObject({ request: { kind: "say", text: "0542:4" } });
@@ -224,8 +229,98 @@ describe("world", () => {
   });
 });
 
+describe("trainers (spec 022)", () => {
+  it("TrainerBattle blocks on a server-side battle, then CheckBattleWon reads the result", () => {
+    const host = fakeHost();
+    const { runner, state } = start([["TrainerBattle", { trainer: { trainer: 5 }, arg1: 0, arg2: 0, arg3: 0 }], ["CheckBattleWon", { var: v(0x4001) }], ["End"]], host);
+    expect(state).toEqual({ kind: "blocked", request: { kind: "battle", trainer: 5, partner: 0 } });
+    host.won = true;
+    expect(runner.resume()).toEqual({ kind: "done" });
+    expect(host.vars.get(0x4001)).toBe(1);
+  });
+
+  it("TrainerBattle reads the trainer from a variable, as the common trainer script passes it", () => {
+    const host = fakeHost();
+    const { state } = start([["SetVar", { var: v(0x8004), val: 50 }], ["TrainerBattle", { trainer: v(0x8004), arg1: 0, arg2: 0, arg3: 0 }], ["End"]], host);
+    expect(state).toEqual({ kind: "blocked", request: { kind: "battle", trainer: 50, partner: 0 } });
+  });
+
+  it("sets, checks and clears trainer flags", () => {
+    const { host } = start([
+      ["SetTrainerFlag", { var_or_trno: 5 }],
+      ["CheckTrainerFlag", { var_or_trno: 5 }],
+      ["GoToIf", { condition: 1, dest: { label: "L2" } }],
+      ["End"],
+      "L2:",
+      ["SetTrainerFlag", { var_or_trno: 6 }],
+      ["ClearTrainerFlag", { var_or_trno: 5 }],
+      ["End"],
+    ]);
+    expect([...host.trainerFlags]).toEqual([6]);
+  });
+
+  it("AddSpecialGameStat (the records counter after a Gym win) does not stop the script", () => {
+    const { host, state } = start([["AddSpecialGameStat", { arg0: 22 }], ["SetTrainerFlag", { var_or_trno: 50 }], ["End"]]);
+    expect(state).toEqual({ kind: "done" });
+    expect([...host.trainerFlags]).toEqual([50]);
+  });
+});
+
+describe("choice menus (spec 023)", () => {
+  // The Poké Mart's BUY / SELL / SEE YA! menu: standard texts of bank 191, the value picked into arg4.
+  const mart = [
+    ["MenuInitStdGmm", { arg0: 1, arg1: 1, arg2: 0, arg3: 1, arg4: 0x800c }],
+    ["MenuItemAdd", { arg0: 321, arg1: 255, arg2: 0 }],
+    ["MenuItemAdd", { arg0: 322, arg1: 255, arg2: 1 }],
+    ["MenuItemAdd", { arg0: 323, arg1: 255, arg2: 2 }],
+    ["MenuExec"],
+    ["CopyVar", { dst: v(0x4001), src: v(0x800c) }],
+    ["End"],
+  ] as Lines;
+
+  it("MenuExec asks the client with the items added since the init, then writes the value picked", () => {
+    const host = fakeHost();
+    const { runner, state } = start(mart, host);
+    expect(state).toEqual({ kind: "blocked", request: { kind: "menu", items: ["0191:321", "0191:322", "0191:323"], cancel: true } });
+    expect(runner.resume(1)).toEqual({ kind: "done" });
+    expect(host.vars.get(0x4001)).toBe(1);
+  });
+
+  it("an answer past the last item is a cancel: it writes 0xFFFE, which no menu branch matches", () => {
+    const host = fakeHost();
+    const { runner } = start(mart, host);
+    runner.resume(3);
+    expect(host.vars.get(0x4001)).toBe(0xfffe);
+  });
+
+  it("MenuInit takes its texts from the script's own bank, and a new init clears the old items", () => {
+    const { state } = start([
+      ["MenuInit", { arg0: 1, arg1: 1, arg2: 0, arg3: 0, arg4: 0x800c }],
+      ["MenuItemAdd", { arg0: 9, arg1: 255, arg2: 0 }],
+      ["MenuInit", { arg0: 1, arg1: 1, arg2: 0, arg3: 0, arg4: 0x800c }],
+      ["MenuItemAdd", { arg0: 4, arg1: 255, arg2: 7 }],
+      ["MenuExec"],
+      ["End"],
+    ] as Lines);
+    expect(state).toEqual({ kind: "blocked", request: { kind: "menu", items: ["0542:4"], cancel: false } });
+  });
+});
+
+describe("marts (spec 023)", () => {
+  it("MartBuy blocks on the common mart and MartSell on selling, both run by the server", () => {
+    expect(start([["MartBuy", { arg0: 0x8004 }], ["End"]]).state).toEqual({ kind: "blocked", request: { kind: "shop", shop: 0, sell: false } });
+    expect(start([["MartSell"], ["End"]]).state).toEqual({ kind: "blocked", request: { kind: "shop", shop: 0, sell: true } });
+  });
+
+  it("SpecialMartBuy n opens shop n + 1, reading n from the variable the mart script sets", () => {
+    const { runner, state } = start([["SetVar", { var: v(0x8004), val: 3 }], ["SpecialMartBuy", { arg0: 0x8004 }], ["End"]]);
+    expect(state).toEqual({ kind: "blocked", request: { kind: "shop", shop: 4, sell: false } });
+    expect(runner.resume()).toEqual({ kind: "done" });
+  });
+});
+
 describe("bridges to later specs", () => {
-  it.each(["ApplyMovement", "WaitMovement", "TrainerBattle", "WildBattle", "MartBuy"])("%s goes to the host and ends the script when nothing implements it", (name) => {
+  it.each(["WildBattle", "SealMart"])("%s goes to the host and ends the script when nothing implements it", (name) => {
     const { host, state } = start([[name, { arg0: 0 }], ["End"]]);
     expect(host.bridged).toEqual([name]);
     expect(state).toMatchObject({ kind: "missing", command: name });
@@ -233,7 +328,7 @@ describe("bridges to later specs", () => {
 
   it("goes on when the host implements it", () => {
     const host = fakeHost();
-    host.supported.add("ApplyMovement");
-    expect(start([["ApplyMovement", { arg0: 0 }], ["End"]], host).state).toEqual({ kind: "done" });
+    host.supported.add("WildBattle");
+    expect(start([["WildBattle", { arg0: 0 }], ["End"]], host).state).toEqual({ kind: "done" });
   });
 });

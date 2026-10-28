@@ -1,0 +1,16 @@
+{
+  "kind": "trainer-tuning",
+  "formatVersion": 1,
+  "value": {
+    "arenaRadiusTiles": 6,
+    "sightHz": 5,
+    "activationTiles": 12,
+    "trainerFlagBase": 1360,
+    "alertS": 1,
+    "approachSPerTile": 0.25,
+    "challengeTimeoutS": 30,
+    "itemUseS": 1.5,
+    "sendOutS": 1,
+    "ballRefusal": ["0197:859", "0197:860"]
+  }
+}

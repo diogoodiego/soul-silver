@@ -3,7 +3,23 @@ import { desiredMusic, type MusicState } from "../../src/audio/director.ts";
 
 // Spec 018, research R3 and R4.
 
-const MUSIC = { title: 1, wildBattle: 2, victory: 3 };
+const MUSIC = { title: 1, wildBattle: 2, victory: 3, trainerBattle: 4, rivalBattle: 5, leaderBattle: 6, rocketBattle: 7, championBattle: 8, trainerVictory: 9, leaderVictory: 10 };
+
+describe("desiredMusic (spec 022)", () => {
+  it("plays the trainer class's battle music", () => {
+    expect(desiredMusic(game({ inCombat: true, trainer: "trainer" }), MUSIC)).toBe(4);
+    expect(desiredMusic(game({ inCombat: true, trainer: "rival" }), MUSIC)).toBe(5);
+    expect(desiredMusic(game({ inCombat: true, trainer: "leader" }), MUSIC)).toBe(6);
+    expect(desiredMusic(game({ inCombat: true, trainer: "rocket" }), MUSIC)).toBe(7);
+    expect(desiredMusic(game({ inCombat: true, trainer: "champion" }), MUSIC)).toBe(8);
+  });
+
+  it("plays the trainer fanfare after a trainer, the leader one after a leader", () => {
+    expect(desiredMusic(game({ victory: true, trainer: "rival" }), MUSIC)).toBe(9);
+    expect(desiredMusic(game({ victory: true, trainer: "leader" }), MUSIC)).toBe(10);
+    expect(desiredMusic(game({ victory: true }), MUSIC)).toBe(3);
+  });
+});
 const game = (patch: Partial<MusicState> = {}): MusicState => ({ screen: "game", musicDay: 10, musicNight: 11, night: false, inCombat: false, victory: false, ...patch });
 
 describe("desiredMusic (US1)", () => {

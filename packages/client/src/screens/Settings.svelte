@@ -35,6 +35,10 @@
     {/each}
   </div>
 
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <button type="button" class="aria-pressed:bg-accent aria-pressed:text-[#111]" aria-pressed={$settings.fastCutsceneText} onclick={() => void saveSettings({ fastCutsceneText: !$settings.fastCutsceneText })}>{t("settings.fastCutsceneText")}</button>
+  </div>
+
   <div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-labelledby="scale-label">
     <span class="min-w-48" id="scale-label">{t("settings.uiScale")}</span>
     {#each UI_SCALES as scale (scale)}

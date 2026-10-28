@@ -1,6 +1,7 @@
 // What a running script may ask of the world (spec 020, data-model.md). The runner is pure: every
 // effect on the player, the map or the client goes through this interface.
 import type { ScriptFile } from "../events/schemas.ts";
+import type { CutsceneActor, CutsceneStep } from "../game/protocol.ts";
 
 /** A text buffer the next message fills in; the client turns ids into names. */
 export type TextBuffer = { kind: "player" } | { kind: "species"; id: number } | { kind: "number"; value: number };
@@ -16,7 +17,15 @@ export type ScriptRequest =
   | { kind: "wait-fade" }
   | { kind: "wait-sound"; sound: "se" | "fanfare" | "cry" }
   /** Counted by the server, no client involved. */
-  | { kind: "wait"; ticks: number };
+  | { kind: "wait"; ticks: number }
+  /** Spec 022: a trainer battle, run by the server; `partner` is the second trainer of a tag battle, 0 for none. */
+  | { kind: "battle"; trainer: number; partner: number }
+  /** Spec 023: a choice list after the last message; the answer is the index picked, past the end to cancel. */
+  | { kind: "menu"; items: string[]; cancel: boolean }
+  /** Spec 023: a Poké Mart run by the server; `shop` is a shops.json id. */
+  | { kind: "shop"; shop: number; sell: boolean }
+  /** Spec 021: the triggering client stages these steps and answers when they end. */
+  | { kind: "cutscene"; actors: CutsceneActor[]; steps: CutsceneStep[] };
 
 /** Things a script shows without waiting. */
 export type ScriptEvent =
@@ -48,9 +57,14 @@ export interface ScriptHost {
   partySpecies(slot: number): number;
   /** First party slot with HP left; the party size when none. */
   partyLeadAlive(): number;
-  /** False when party and storage are full. */
+  /** False when the party and every PC box are full. */
   giveMon(species: number, level: number, item: number, form: number): boolean;
   healParty(): void;
+  /** Defeated-trainer flags, by trainer id (spec 022). */
+  trainerFlag(trainer: number): boolean;
+  setTrainerFlag(trainer: number, on: boolean): void;
+  /** Whether the player won the last trainer battle. */
+  battleWon(): boolean;
   hasBadge(badge: number): boolean;
   giveBadge(badge: number): void;
   /** In matrix tiles, as the scripts compare them; facing as SCRIPT_DIRECTIONS indexes. */

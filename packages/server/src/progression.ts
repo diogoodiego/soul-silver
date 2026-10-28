@@ -172,8 +172,8 @@ export function createProgression(options: ProgressionOptions) {
       players.add(playerId);
       engaged.set(wildId, players);
     },
-    /** A wild Pokémon fainted: every player who fought it shares its experience among their participants. */
-    faint(wildId: number, species: number, level: number): void {
+    /** A wild Pokémon (or a trainer's, spec 022) fainted: every player who fought it shares its experience among their participants. */
+    faint(wildId: number, species: number, level: number, trainer = false): void {
       const foe = data.species(species);
       const players = engaged.get(wildId);
       engaged.delete(wildId);
@@ -183,7 +183,7 @@ export function createProgression(options: ProgressionOptions) {
         if (!s) continue;
         const participants = [...s.fought].filter((i) => (s.learner.progress.party[i]?.hp ?? 0) > 0);
         if (participants.length === 0) continue;
-        const gain = expGain({ baseExperience: foe.baseExperience, level, participants: participants.length, trainer: false });
+        const gain = expGain({ baseExperience: foe.baseExperience, level, participants: participants.length, trainer });
         for (const i of participants) credit(s, i, gain, foe.evYield);
       }
     },

@@ -31,6 +31,7 @@ const PLAYER_SET = "overworld-player.json";
 /** Server spawn.json shakeSeconds (spec 015). shortcut: fixed here; send it in the capture message if it is ever tuned. */
 export const SHAKE_MS = 800;
 const POKEMON_SET = "overworld-pokemon.json";
+const NPC_SET = "overworld-npc.json";
 /** Kinds drawn in the world; projectiles and fields (spec 013) are markers. */
 const DRAWN = new Set(["player", "pokemon", "projectile", "npc"]);
 /** A hit target blinks at this period while its flash lasts. */
@@ -83,6 +84,8 @@ interface Frame {
 export interface DrawView {
   self: Entity | undefined;
   others: Entity[];
+  /** Where a cutscene points the camera (spec 021); the player's feet otherwise. */
+  focus?: { x: number; y: number } | undefined;
 }
 
 function pixelTexture(image: ImageBitmap): Texture {
@@ -186,9 +189,20 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   }
   void loadSet(PLAYER_SET).then((set) => {
     if (!set) log("Player sprites missing; drawing markers");
+    indexGfx(set);
   });
+  /** Map-event sprite id -> the overworld sheet it is drawn with (spec 021); filled from the sets' gfx lists. */
+  const sheetOfGfx = new Map<number, string>();
+  const indexGfx = (set: SpriteSetFile | undefined) => {
+    for (const s of set?.sprites ?? []) for (const g of s.gfx ?? []) sheetOfGfx.set(g, s.name);
+  };
   void loadSet(POKEMON_SET).then((set) => {
     if (!set) log("Pokémon sprites missing; drawing markers");
+    indexGfx(set);
+  });
+  void loadSet(NPC_SET).then((set) => {
+    if (!set) log("NPC sprites missing; drawing markers");
+    indexGfx(set);
   });
   let rustle: { frame: string; ms: number }[] = [];
   void loadSet(EFFECT_SET).then((set) => {
@@ -433,8 +447,15 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   }
 
   function frameFor(e: Entity, moving: boolean, running: boolean, now: number) {
-    // shortcut: people are markers until the event sprite id is mapped to its overworld-npc sheet (the ROM table is not extracted yet).
-    if (e.kind === "projectile" || e.kind === "npc") return undefined;
+    if (e.kind === "projectile") return undefined;
+    if (e.kind === "npc") {
+      // Objects (rocks, trees, item balls) are one still frame; an id with no sheet stays a marker.
+      const sheet = sheetOfGfx.get(Number(e.data["sprite"]));
+      if (sheet === undefined) return undefined;
+      const pokemon = sheet.startsWith("overworld-pokemon/");
+      const step = moving ? Math.floor(now / (pokemon ? POKEMON_FRAME_MS : WALK_FRAME_MS)) % (pokemon ? 2 : 4) : 0;
+      return frames.get(`${sheet}/walk/${FACING[e.facing]}/${step}`) ?? frames.get(`${sheet}/still/0`);
+    }
     if (e.kind === "pokemon") {
       const step = moving ? Math.floor(now / POKEMON_FRAME_MS) % 2 : 0;
       const base = `overworld-pokemon/${String(e.data["species"])}/0`;
@@ -540,7 +561,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       const mapFrame = Math.floor(now / ANIMATION_FRAME_MS);
       for (const visual of visuals.values()) if (visual !== "loading") visual.object.animate(mapFrame);
       // The view follows the player's feet as drawn: raised ground draws higher.
-      const view2d = clampCamera(self.x, self.y - OBLIQUE * groundOf(self), bounds, screen);
+      const view2d = view.focus ? clampCamera(view.focus.x, view.focus.y - OBLIQUE * groundOf(self), bounds, screen) : clampCamera(self.x, self.y - OBLIQUE * groundOf(self), bounds, screen);
       viewTopLeft = view2d;
       camera.projectionMatrix.set(...(obliqueProjection(view2d.x, view2d.y, screen) as Parameters<typeof camera.projectionMatrix.set>));
       camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();

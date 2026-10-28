@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { BUTTON, clientMessage, serverMessage } from "../../src/game/protocol.ts";
+import { newBoxes } from "../../src/save/schema.ts";
 
 const entity = { id: 1, kind: "player", area: "a", x: 1.5, y: 2, level: 0, facing: "north", data: { name: "Ana" } };
 const still = { x: 0, y: 0 };
-const save = { schemaVersion: 5, flags: [], vars: {}, name: "Ana", character: "female", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, storage: [], pending: [] };
+const save = { schemaVersion: 7, flags: [], vars: {}, npcPlacement: {}, name: "Ana", character: "female", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, boxes: newBoxes(), pcItems: [], pending: [] };
 
 describe("clientMessage", () => {
   it.each([

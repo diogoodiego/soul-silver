@@ -35,6 +35,8 @@ export const MESSAGE: Record<string, Handler> = {
   BufferSpeciesName: (c) => void (c.buffers[c.raw("slot")] = { kind: "species", id: c.get("species") }),
   BufferMonSpeciesName: (c) => void (c.buffers[c.raw("slot")] = { kind: "species", id: c.host.partySpecies(c.get("party_pos")) }),
   GetPlayerGender: (c) => c.writeVar(c.ptr("var"), c.host.character === "male" ? 0 : 1),
+  // The other protagonist, as a map sprite id (field table: 238 = hero, 239 = heroine); spec 021.
+  GetFriendSprite: (c) => c.writeVar(c.raw("arg0"), c.host.character === "male" ? 239 : 238),
   SetSignpostMap: nothing,
   SetSignpostAction: nothing,
   WaitSignpostAction: nothing,

@@ -5,8 +5,8 @@ import { PROTOCOL_VERSION } from "../../src/protocol-version.ts";
 // Spec 020, contracts/protocol-v13.md: what scripts ask of the client, and the script debugger.
 
 describe("protocol v13", () => {
-  it("is version 13", () => {
-    expect(PROTOCOL_VERSION).toBe(13);
+  it("is at least version 13", () => {
+    expect(PROTOCOL_VERSION).toBeGreaterThanOrEqual(13);
   });
 
   it.each([
@@ -43,7 +43,7 @@ describe("protocol v13", () => {
 
   it.each([
     { type: "script-answer", id: -1 },
-    { type: "script-answer", id: 1, answer: 7 },
+    { type: "script-answer", id: 1, answer: 33 },
     { type: "debugSetFlag", flag: 0, on: true },
     { type: "debugSetFlag", flag: 70000, on: true },
   ])("rejects %j", (msg) => {

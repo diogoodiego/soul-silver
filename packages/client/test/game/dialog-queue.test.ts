@@ -59,6 +59,24 @@ describe("dialog queue", () => {
     expect(await third).toBe(false);
   });
 
+  it("offers a list after the text: the cursor wraps, confirm answers its index, cancel answers -1", async () => {
+    const d = createDialogQueue();
+    const first = d.choose(["What do you need?"], ["BUY", "SELL", "SEE YA!"]);
+    d.confirm();
+    expect(d.view()).toMatchObject({ choosing: true, options: ["BUY", "SELL", "SEE YA!"], cursor: 0 });
+    d.move(-1);
+    expect(d.view()?.cursor).toBe(2);
+    d.move(1);
+    d.move(1);
+    d.confirm();
+    expect(await first).toBe(1);
+
+    const second = d.choose(["What do you need?"], ["BUY", "SELL"]);
+    d.confirm();
+    d.cancel();
+    expect(await second).toBe(-1);
+  });
+
   it("cancel only completes the text while it is typing", () => {
     const d = createDialogQueue();
     void d.ask(["Again?"]);

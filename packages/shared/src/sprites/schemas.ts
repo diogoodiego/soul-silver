@@ -55,6 +55,8 @@ const sprite = z.strictObject({
   item: id().optional(),
   trainer: id().optional(),
   character: z.string().min(1).optional(),
+  /** Overworld sheets: the map-event sprite ids drawn with this sheet (spec 021). */
+  gfx: z.array(int(0, 0xffff)).min(1).optional(),
   /** Battle effects: the move, or the status, the particles belong to. */
   move: id().optional(),
   status: z.string().min(1).optional(),

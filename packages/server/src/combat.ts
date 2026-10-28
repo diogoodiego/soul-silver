@@ -32,8 +32,8 @@ import type { World } from "./world";
 // Real-time combat (spec 013): the server decides every hit, every amount and every status.
 // Combatants are `pokemon` entities; projectiles and fields in flight are `projectile` entities.
 
-/** A player id, or "wild" for Pokémon nobody owns. */
-export type Owner = number | "wild";
+/** A player id, "wild" for Pokémon nobody owns, or "trainer" for an NPC trainer's (spec 022). */
+export type Owner = number | "wild" | "trainer";
 
 export interface CombatantSpec {
   species: number;
@@ -55,6 +55,8 @@ export interface CombatInput {
 export interface Combatant {
   entityId: number;
   owner: Owner;
+  /** The trainer battle it fights in (spec 022); moves only reach combatants with the same value. */
+  battle: number | undefined;
   species: number;
   level: number;
   types: number[];
@@ -137,7 +139,7 @@ export function createCombat(options: CombatOptions) {
   const immobile = (c: Combatant) => majorDef(c)?.immobile === true;
   const pos = (c: Combatant) => world.get(c.entityId)!;
   const body = (c: Combatant): Body => ({ x: pos(c).x, y: pos(c).y, r: tuning.bodyRadiusPx });
-  const foes = (c: Combatant) => [...combatants.values()].filter((t) => t.hp > 0 && canHarm(c.owner, t.owner));
+  const foes = (c: Combatant) => [...combatants.values()].filter((t) => t.hp > 0 && canHarm(c.owner, t.owner) && c.battle === t.battle);
   const roll = (chance: number) => chance >= 100 || rng.nextInt(100) < chance;
   /** Position of the closest foe within `range` px, if any. */
   function nearestFoe(c: Combatant, range: number): Point | undefined {
@@ -232,7 +234,7 @@ export function createCombat(options: CombatOptions) {
 
   /** Everything a move does to one target it reached. */
   function hit(c: Combatant, t: Combatant, move: CombatMove, from: Point, dir: Point): void {
-    if (t.hp === 0) return;
+    if (t.hp === 0 || pos(t).data["cutscene"] === true) return;
     const eff = effectiveness(data.typeChart, move.type, t.types);
     const damage = move.effects.find((e) => e.kind === "damage");
     if (damage) {
@@ -428,6 +430,8 @@ export function createCombat(options: CombatOptions) {
       flash: tick < c.flashUntil,
       // Shiny wild Pokémon (spec 015) keep their palette.
       ...(e.data["shiny"] === true ? { shiny: true } : {}),
+      // Out of reach during its trainer's cutscene (spec 021); the session sets and clears it.
+      ...(e.data["cutscene"] === true ? { cutscene: true } : {}),
     };
     c.moves.forEach((m, i) => {
       data[`move${i + 1}`] = m.id;
@@ -457,6 +461,7 @@ export function createCombat(options: CombatOptions) {
       const c: Combatant = {
         entityId,
         owner,
+        battle: undefined,
         species: spec.species,
         level: spec.level,
         types: [...species.types],
@@ -485,6 +490,10 @@ export function createCombat(options: CombatOptions) {
     },
     get: (id: number): Combatant | undefined => combatants.get(id),
     has: (id: number) => combatants.has(id),
+    /** Puts a combatant into a trainer battle, or back out with undefined. */
+    setBattle(id: number, battle: number | undefined): void {
+      get(id).battle = battle;
+    },
     /** This tick's input; it is used by the next step and then dropped. */
     input(id: number, input: CombatInput): void {
       inputs.set(id, input);

@@ -20,9 +20,24 @@ export { NO_SCRIPT, SCRIPT_BANKS, TRAINER_SCRIPTS, VAR_BASE } from "@soulsilver/
 /** Script id 0 runs the first script of this file. */
 export const ZERO_SCRIPT = { file: 140, messageBank: 184 } as const;
 
-/** Message banks of the trainer names and the trainer class names. */
+/** Message banks of the trainer lines, the trainer names and the trainer class names. */
+export const TRAINER_MESSAGE_BANK = 728;
 export const TRAINER_NAME_BANK = 729;
 export const TRAINER_CLASS_BANK = 730;
+
+/** Trainer classes, and where their tables live (spec 022; checked against the US ROM and pret/pokeheartgold). */
+export const TRAINER_CLASS_COUNT = 129;
+export const TRAINER_MESSAGES = { narc: "a/0/5/7", member: 0 } as const;
+/** sPrizeMoneyTbl, 0x0226C4C4 in RAM. */
+export const PRIZE_TABLE = { overlay: 12, offset: 0x34c04 } as const;
+/** The class list at 0x020FC3CA and the (transition, sequence) list after it, offsets in ARM9. */
+export const CLASS_MUSIC = { classes: 0xfc3ca, list: 0xfc40a, classCount: 32, listCount: 45 } as const;
+
+/**
+ * Poké Mart tables in ARM9 (spec 023): sNormalMartItems at 0x020FBF22 (19 pairs), the special mart
+ * pointer table at 0x0210FA3C (30 lists), and MartBuy's badge count → rank switch (0x020480B2).
+ */
+export const SHOPS = { normal: 0xfbf22, normalCount: 19, special: 0x10fa3c, specialCount: 30, badgeRank: [1, 2, 2, 3, 3, 4, 4, 5, 6] } as const;
 
 /** Level script types (init_script_types.h). */
 export const LEVEL_SCRIPT = { frameTable: 1, onTransition: 2, onResume: 3, onLoad: 4 } as const;

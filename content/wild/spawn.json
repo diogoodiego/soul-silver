@@ -17,7 +17,6 @@
     "timeBands": { "morning": 4, "day": 10, "night": 20 },
     "turnSeconds": 5,
     "angryOnEscapeChance": 0.5,
-    "storageMax": 30,
     "throwRangeTiles": 6,
     "ballSpeedTilesPerSecond": 12,
     "shakeSeconds": 0.8

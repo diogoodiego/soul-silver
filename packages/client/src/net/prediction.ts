@@ -1,4 +1,4 @@
-import { stepMovement, type Entity, type PlayerInput, type WorldLookup } from "@soulsilver/shared/game";
+import { stepMovement, type Entity, type Occupied, type PlayerInput, type WorldLookup } from "@soulsilver/shared/game";
 
 // Client-side prediction of the player's own entity (spec 010, research R4). Between ticks the view
 // blends from the previous predicted step to the latest one (spec 011, research R3).
@@ -8,7 +8,8 @@ export const SNAP_PX = 32;
 const SMOOTH_MS = 100;
 export const TICK_MS = 50;
 
-export function createPredictor(world: WorldLookup) {
+/** `occupied` says which tiles of an area NPCs hold (spec 021); without it only the map blocks. */
+export function createPredictor(world: WorldLookup, occupied?: (area: string) => Occupied) {
   let pending: PlayerInput[] = [];
   let predicted: Entity | undefined;
   /** The step before `predicted`, while blending towards it. */
@@ -16,7 +17,7 @@ export function createPredictor(world: WorldLookup) {
   let appliedAt = 0;
   let offset = { x: 0, y: 0, at: 0 };
 
-  const step = (entity: Entity, input: PlayerInput) => stepMovement(entity, input, world);
+  const step = (entity: Entity, input: PlayerInput) => stepMovement(entity, input, world, occupied?.(entity.area));
 
   function blended(now: number): Entity {
     const k = Math.min(1, Math.max(0, (now - appliedAt) / TICK_MS));

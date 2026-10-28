@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import { BUTTON, type ServerMessage } from "@soulsilver/shared/game";
-import { newCollection, newProgress } from "@soulsilver/shared/save";
+import { newBoxes, newCollection, newProgress } from "@soulsilver/shared/save";
 import { createRunner, SCRIPT_HANDLERS, type ScriptHost } from "@soulsilver/shared/script";
 import { createMemoryConnectionPair, createSession, loadWorld } from "@soulsilver/server";
 import { describe, expect, it } from "vitest";
@@ -47,7 +47,7 @@ describe.skipIf(!existsSync(join(stages, "events", "events", "scripts")))("scrip
     client.onMessage((m) => got.push(m as ServerMessage));
     session.connect(server);
     // Standing just north of them, facing south.
-    const save = { schemaVersion: 5, name: "Gold", character: "male", area: "34", x: (person.x - o.tx) * 16 + 8, y: (person.z - 1 - o.ty) * 16 + 8, facing: "south", playTimeMs: 0, savedAt: "2026-10-26T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), pending: [], flags: [], vars: {} };
+    const save = { schemaVersion: 7, boxes: newBoxes(), pcItems: [], name: "Gold", character: "male", area: "34", x: (person.x - o.tx) * 16 + 8, y: (person.z - 1 - o.ty) * 16 + 8, facing: "south", playTimeMs: 0, savedAt: "2026-10-26T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), pending: [], flags: [], vars: {}, npcPlacement: {} };
     client.send({ type: "hello", protocolVersion: PROTOCOL_VERSION, save });
     session.step();
     client.send({ type: "input", seq: 1, move: { x: 0, y: 0 }, run: false, buttons: BUTTON.interact });

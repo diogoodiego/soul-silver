@@ -3,11 +3,14 @@ import {
   createController,
   enrage,
   lineOfSight,
+  newThreat,
   profileFor,
   reachPx,
   stepController,
   type AiEnv,
+  type AiHooks,
   type AiTick,
+  type SkillProfile,
   type Controller,
   type Decision,
   type MoveView,
@@ -39,11 +42,18 @@ export interface AiOptions {
   onDecision?: ((d: Decision) => void) | undefined;
 }
 
+/** Bodies an AI may fight: those of its own trainer battle with another owner, or, outside one, anyone outside one (spec 022). */
+function fights(me: Combatant, body: Entity, combat: Combat): boolean {
+  const other = combat.get(body.id);
+  if (me.battle === undefined) return other?.battle === undefined;
+  return other !== undefined && other.battle === me.battle && other.owner !== me.owner;
+}
+
 const WALKABLE = new Set(["free", "tallGrass"]);
 const NOISE_EPS = 0.5;
 
-/** A trainer, or a Pokémon some player owns. */
-const isOpponentBody = (e: Entity) => e.kind === "player" || (e.kind === "pokemon" && typeof e.data["owner"] === "string" && e.data["owner"] !== "wild");
+/** A trainer, or a Pokémon some player owns; never one in a cutscene (spec 021): the AI forgets its threat. */
+const isOpponentBody = (e: Entity) => e.data["cutscene"] !== true && (e.kind === "player" || (e.kind === "pokemon" && typeof e.data["owner"] === "string" && e.data["owner"] !== "wild"));
 
 export function createAi(options: AiOptions) {
   const { data, combat, combatData, world, lookup, rng } = options;
@@ -96,12 +106,14 @@ export function createAi(options: AiOptions) {
   return {
     get: (id: number) => controllers.get(id),
     decisions: () => log,
-    add(entityId: number, o: { home: Point; level: number; temperament: Temperament; leashPx: number; facing?: Point }): Controller {
+    /** `profile` and `hooks` are a trainer's (spec 022); a wild Pokémon's profile comes from its level. */
+    add(entityId: number, o: { home: Point; level: number; temperament: Temperament; leashPx: number; facing?: Point; profile?: SkillProfile; hooks?: AiHooks }): Controller {
       const c = createController({
         id: entityId,
         home: o.home,
         leashPx: o.leashPx,
-        profile: profileFor(o.level, data.wildLevels, data.profiles),
+        hooks: o.hooks,
+        profile: o.profile ?? profileFor(o.level, data.wildLevels, data.profiles),
         temperament: data.temperaments[o.temperament],
         angry: data.temperaments.aggressive,
         tuning,
@@ -143,6 +155,8 @@ export function createAi(options: AiOptions) {
       // Far from every trainer: no perception, no decision, no movement (FR-031).
       if (!here.some((b) => b.kind === "player" && Math.hypot(b.x - e.x, b.y - e.y) <= dormantPx)) {
         combat.input(id, { move: { x: 0, y: 0 }, buttons: 0 });
+        // Nobody to fight (gone, or in a cutscene, spec 021): it lets go and wanders when it wakes.
+        if (c.threat.current !== undefined || c.threat.values.size > 0) c.threat = newThreat();
         return undefined;
       }
       const major = me.major ? combatData.statuses.get(me.major.id) : undefined;
@@ -166,7 +180,7 @@ export function createAi(options: AiOptions) {
       const t: AiTick = {
         tick,
         self,
-        opponents: here.map(opponentView),
+        opponents: here.filter((b) => fights(me, b, combat)).map(opponentView),
         noises: frame.noises.get(e.area) ?? [],
         hurtBy: [...hurtBy].map(([attacker, amount]) => ({ id: attacker, amount })),
       };

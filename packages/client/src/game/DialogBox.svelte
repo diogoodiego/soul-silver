@@ -1,13 +1,15 @@
 <script lang="ts">
   // Text box (spec 017, US4): types the head of the dialog queue at the configured speed; confirm
-  // finishes and advances, and a question ends in Yes/No (cancel is No). Clicks work the same.
+  // finishes and advances, and a question ends in Yes/No (cancel is No) or a script's list (spec 023).
+  // Clicks work the same.
   import { onMount } from "svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
   import { currentSettings } from "../settings";
   import type { DialogQueue, DialogView } from "./dialog-queue";
 
-  let { queue }: { queue: DialogQueue } = $props();
+  /** `boost`: script text may type faster than the configured speed (spec 021). */
+  let { queue, boost = 1 }: { queue: DialogQueue; boost?: number } = $props();
 
   let view = $state<DialogView | undefined>();
   const refresh = () => (view = queue.view());
@@ -15,7 +17,7 @@
   onMount(() => {
     let last = performance.now();
     let frame = requestAnimationFrame(function draw(now) {
-      queue.step(now - last, currentSettings().textSpeed);
+      queue.step(now - last, currentSettings().textSpeed, boost);
       last = now;
       refresh();
       frame = requestAnimationFrame(draw);
@@ -26,14 +28,15 @@
   function onAction(action: string): boolean {
     if (action === "confirm") queue.confirm();
     else if (action === "cancel") queue.cancel();
-    else if (view?.choosing && (action === "up" || action === "down" || action === "left" || action === "right")) queue.move();
+    else if (view?.choosing && (action === "up" || action === "left")) queue.move(-1);
+    else if (view?.choosing && (action === "down" || action === "right")) queue.move(1);
     refresh();
     // The box owns every key while it is up.
     return true;
   }
 
-  function choose(yes: boolean): void {
-    if (view?.yes !== yes) queue.move();
+  function choose(index: number): void {
+    queue.move(index - (view?.cursor ?? 0));
     queue.confirm();
     refresh();
   }
@@ -54,8 +57,9 @@
     </p>
     {#if view.choosing}
       <div class="absolute right-0 bottom-[calc(100%+0.4rem)] grid gap-1 p-[0.4rem] bg-white/96 border-3 border-frame rounded-[6px]">
-        <button type="button" class={["text-left bg-transparent border-none text-ink", view.yes && "before:content-['▶_']"]} onclick={() => choose(true)}>{t("common.yes")}</button>
-        <button type="button" class={["text-left bg-transparent border-none text-ink", !view.yes && "before:content-['▶_']"]} onclick={() => choose(false)}>{t("common.no")}</button>
+        {#each view.options.length > 0 ? view.options : [t("common.yes"), t("common.no")] as label, i (i)}
+          <button type="button" class={["text-left bg-transparent border-none text-ink", view.cursor === i && "before:content-['▶_']"]} onclick={() => choose(i)}>{label}</button>
+        {/each}
       </div>
     {/if}
   </div>

@@ -13,6 +13,8 @@ export const TEXT_SPEEDS = ["slow", "mid", "fast"] as const;
 export type TextSpeed = (typeof TEXT_SPEEDS)[number];
 /** Frames per character at 60 fps, as in the original. */
 export const TEXT_FRAMES_PER_CHAR: Record<TextSpeed, number> = { slow: 8, mid: 4, fast: 1 };
+/** How much faster script text types with fastCutsceneText on. */
+export const CUTSCENE_TEXT_BOOST = 2;
 export const UI_SCALES = [0.75, 1, 1.25, 1.5] as const;
 
 const windowSize = z.strictObject({ width: z.number(), height: z.number() }).refine((w) => WINDOW_SIZES.some((s) => s.width === w.width && s.height === w.height), "tamanho de janela fora da lista");
@@ -25,6 +27,8 @@ const fields = {
   window: windowSize,
   fullscreen: z.boolean(),
   textSpeed: z.enum(TEXT_SPEEDS),
+  /** Spec 021: script text types this many times faster than textSpeed. */
+  fastCutsceneText: z.boolean(),
   uiScale: z.number().refine((n) => (UI_SCALES as readonly number[]).includes(n), "escala fora da lista"),
   /** Scanlines and vignette over the game screen and the team panel. */
   crt: z.boolean(),
@@ -40,6 +44,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   window: { ...WINDOW_SIZES[0] },
   fullscreen: false,
   textSpeed: "mid",
+  fastCutsceneText: false,
   uiScale: 1,
   crt: true,
   bindings: structuredClone(DEFAULT_KEYS),

@@ -22,6 +22,8 @@ export const FLOW: Record<string, Handler> = {
   GoToIf: (c) => holds(c.raw("condition"), c.cmp) && c.jump("dest"),
   CallIf: (c) => holds(c.raw("condition"), c.cmp) && c.call("sub"),
   CallStd: (c) => c.callScript(c.raw("id")),
+  // Command 21 is ReturnCommonScript in the original; the command table names it RestartCurrentScript.
+  RestartCurrentScript: (c) => c.end(),
   CompareVarToValue: (c) => void (c.cmp = compare(c.readVar(c.ptr("var")), c.raw("val"))),
   // Both arguments name variables (ScrCmd_CompareVarToVar reads two pointers).
   CompareVarToVar: (c) => void (c.cmp = compare(c.readVar(c.ptr("a")), c.readVar(c.ptr("b")))),

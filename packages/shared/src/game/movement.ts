@@ -55,13 +55,18 @@ interface Blocker {
   ty: number;
 }
 
+/** Tiles held by something that is not map collision, such as an NPC (spec 021); tile coordinates in the entity's map. */
+export type Occupied = (tx: number, ty: number) => boolean;
+const held: CollisionCell = { category: "blocked", raw: 0x8000 };
+
 /** The solid tiles under the footprint at (x, y). */
-function blockers(world: WorldLookup, e: Entity, x: number, y: number): Blocker[] {
+function blockers(world: WorldLookup, e: Entity, x: number, y: number, occupied?: Occupied): Blocker[] {
   const found: Blocker[] = [];
   for (let ty = tileOf(y - HALF_BOX); ty <= lastTileOf(y + HALF_BOX); ty++) {
     for (let tx = tileOf(x - HALF_BOX); tx <= lastTileOf(x + HALF_BOX); tx++) {
       const cell = cellAt(world, e, tx * MAP_TILE_PX, ty * MAP_TILE_PX);
       if (solid(cell)) found.push({ cell: cell!, tx, ty });
+      else if (occupied?.(tx, ty)) found.push({ cell: held, tx, ty });
     }
   }
   return found;
@@ -82,13 +87,13 @@ function counter(e: Entity, key: "hop" | "warping"): number {
 }
 
 /** Moves one axis pixel by pixel; returns where it stopped and what stopped it. */
-function slideAxis(world: WorldLookup, e: Entity, x: number, y: number, delta: number, axis: "x" | "y") {
+function slideAxis(world: WorldLookup, e: Entity, x: number, y: number, delta: number, axis: "x" | "y", occupied?: Occupied) {
   const steps = Math.ceil(Math.abs(delta));
   const unit = steps === 0 ? 0 : delta / steps;
   for (let i = 0; i < steps; i++) {
     const nx = axis === "x" ? x + unit : x;
     const ny = axis === "y" ? y + unit : y;
-    const hit = blockers(world, e, nx, ny);
+    const hit = blockers(world, e, nx, ny, occupied);
     if (hit.length > 0) return { x, y, hit };
     x = nx;
     y = ny;
@@ -180,7 +185,7 @@ export function unstick(e: Entity, world: WorldLookup): Entity {
 }
 
 /** One tick of movement. Input is ignored while hopping or warping. An unknown map is open ground. */
-export function stepMovement(entity: Entity, input: MoveInput | null, world: WorldLookup): Entity {
+export function stepMovement(entity: Entity, input: MoveInput | null, world: WorldLookup, occupied?: Occupied): Entity {
   const warping = counter(entity, "warping");
   if (warping > 0) {
     const next = { ...entity, data: withCounter(entity.data, "warping", warping - 1) };
@@ -208,7 +213,7 @@ export function stepMovement(entity: Entity, input: MoveInput | null, world: Wor
   // Only the dominant axis moves: the other component of the input vector is dropped entirely.
   const amount = (sx !== 0 ? Math.abs(mx) : Math.abs(my)) * speed;
   const axis = sx !== 0 ? "x" : "y";
-  const along = slideAxis(world, entity, entity.x, entity.y, (sx !== 0 ? sx : sy) * amount, axis);
+  const along = slideAxis(world, entity, entity.x, entity.y, (sx !== 0 ? sx : sy) * amount, axis, occupied);
 
   const start = hopStart(world, entity, along.x, along.y, dir, along.hit);
   if (start) return { ...entity, x: start[0], y: start[1], facing: dir, data: withCounter(entity.data, "hop", HOP_TICKS) };

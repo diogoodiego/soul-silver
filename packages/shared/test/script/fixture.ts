@@ -8,7 +8,7 @@ type Line = string | [name: string, args?: Record<string, unknown>] | ScriptComm
  * `lines` is the code in order; a string line like "L2:" labels the next command. Every entry
  * label must be defined. Jumps are written as { label: "L2" }.
  */
-export function makeScript(lines: Line[], options: { file?: number; entries?: string[]; messageBank?: number | null } = {}): ScriptFile {
+export function makeScript(lines: Line[], options: { file?: number; entries?: string[]; messageBank?: number | null; movements?: ScriptFile["movements"] } = {}): ScriptFile {
   const code: ScriptCommand[] = [];
   const labels: Record<string, number> = {};
   for (const line of lines) {
@@ -18,7 +18,7 @@ export function makeScript(lines: Line[], options: { file?: number; entries?: st
   }
   const entries = options.entries ?? ["L1"];
   if (!("L1" in labels)) labels["L1"] = 0;
-  return { kind: "script-file", formatVersion: 1, file: options.file ?? 1, messageBank: options.messageBank === undefined ? 7 : options.messageBank, entries, code, labels, movements: {}, unreachableBytes: 0, partial: false };
+  return { kind: "script-file", formatVersion: 1, file: options.file ?? 1, messageBank: options.messageBank === undefined ? 7 : options.messageBank, entries, code, labels, movements: options.movements ?? {}, unreachableBytes: 0, partial: false };
 }
 
 export interface FakeHost extends ScriptHost {
@@ -40,6 +40,9 @@ export interface FakeHost extends ScriptHost {
   files: Map<number, ScriptFile>;
   std: Map<number, { file: number; entry: number }>;
   position: { x: number; z: number; facing: number };
+  trainerFlags: Set<number>;
+  /** Result of the last trainer battle. */
+  won: boolean;
 }
 
 export function fakeHost(over: Partial<FakeHost> = {}): FakeHost {
@@ -61,7 +64,12 @@ export function fakeHost(over: Partial<FakeHost> = {}): FakeHost {
     files: new Map(),
     std: new Map(),
     position: { x: 10, z: 20, facing: 1 },
+    trainerFlags: new Set(),
+    won: false,
     character: "male",
+    trainerFlag: (id) => host.trainerFlags.has(id),
+    setTrainerFlag: (id, on) => void (on ? host.trainerFlags.add(id) : host.trainerFlags.delete(id)),
+    battleWon: () => host.won,
     flag: (id) => host.flags.has(id),
     setFlag: (id, on) => void (on ? host.flags.add(id) : host.flags.delete(id)),
     getVar: (id) => host.vars.get(id) ?? 0,

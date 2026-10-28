@@ -24,6 +24,10 @@ export interface CollisionCell {
 }
 
 const BLOCKED_FLAG = 0x8000;
+/** Shop and Pokémon Center counters: talking to one reaches the tile behind it (spec 023). */
+const COUNTER_BEHAVIOR = 0x80;
+
+export const isCounter = (cell: CollisionCell | undefined) => cell !== undefined && (cell.raw & 0xff) === COUNTER_BEHAVIOR;
 
 const BEHAVIORS: ReadonlyMap<number, Omit<CollisionCell, "raw">> = new Map([
   [0x00, { category: "free" }],

@@ -24,6 +24,9 @@ export const OVERWORLD_PLAYERS = [69, 70] as const;
 /** Characters (16 frames) live before this member; objects and 3D models follow. */
 export const OVERWORLD_NPC_END = 266;
 
+/** Field overlay table of map-event sprite id -> overworld member (spec 021): 6-byte entries ended by id 0xffff. */
+export const OVERWORLD_GFX_TABLE = { overlay: 1, offset: 0x21ba8 } as const;
+
 /** First member of the following-Pokémon block (8 frames, normal and shiny palette). */
 export const OVERWORLD_POKEMON_FIRST = 297;
 

@@ -1,5 +1,5 @@
 import { BUTTON, type ServerMessage, type WorldMap } from "@soulsilver/shared/game";
-import type { PartyMember, Save } from "@soulsilver/shared/save";
+import { BOX_SLOTS, newBoxes, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { describe, expect, it } from "vitest";
 import { combatData, SPECIES } from "./combat-fixture";
 import { setup } from "./harness";
@@ -61,18 +61,24 @@ describe("capture (US3)", () => {
     expect(save.pokedex.caught).toContain(species);
   });
 
-  it("sends a catch to storage when the party is full", () => {
-    const g = game({ saves: [{ bag: [{ item: MASTER, count: 1 }], party: Array.from({ length: 6 }, () => member()) }] });
+  it("sends a catch to the first free PC slot when the party is full (spec 023)", () => {
+    const boxes = newBoxes();
+    boxes[0]!.slots[0] = member();
+    const g = game({ saves: [{ bag: [{ item: MASTER, count: 1 }], party: Array.from({ length: 6 }, () => member()), boxes }] });
     g.run(2);
     g.throwAll([0]);
     g.run(20 * 5);
     expect(g.msgs(0, "captured").at(-1)).toMatchObject({ to: "storage" });
     g.session.close("closed-by-host");
-    expect(g.ps[0]!.saves().at(-1)!.save.storage).toHaveLength(1);
+    const saved = g.ps[0]!.saves().at(-1)!.save.boxes;
+    expect(saved[0]!.slots[1]).not.toBeNull();
+    expect(saved.flatMap((b) => b.slots).filter(Boolean)).toHaveLength(2);
   });
 
-  it("does not throw with the party and the storage full", () => {
-    const g = game({ saves: [{ party: Array.from({ length: 6 }, () => member()), storage: Array.from({ length: 30 }, () => member()) }] });
+  it("does not throw with the party and every PC box full", () => {
+    const boxes = newBoxes();
+    for (const b of boxes) b.slots = Array.from({ length: BOX_SLOTS }, () => member());
+    const g = game({ saves: [{ party: Array.from({ length: 6 }, () => member()), boxes }] });
     g.run(2);
     g.throwAll([0]);
     expect(g.msgs(0, "notice").at(-1)).toEqual({ type: "notice", code: "storage-full" });
