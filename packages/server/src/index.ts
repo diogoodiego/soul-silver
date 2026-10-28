@@ -19,3 +19,6 @@ export * from "./items";
 export * from "./ai";
 export * from "./ai-loader";
 export * from "./scripts";
+export * from "./trainer-battle";
+export * from "./trainer-loader";
+export * from "./shop";

@@ -7,7 +7,7 @@ import { flatWorld, setup } from "./harness";
 type Line = string | [string, Record<string, unknown>?] | ScriptCommand;
 
 /** Code in order; "Ln:" labels the next command; entries are L1, L2... in order. */
-export function scriptFile(file: number, lines: Line[]): ScriptFile {
+export function scriptFile(file: number, lines: Line[], movements: ScriptFile["movements"] = {}): ScriptFile {
   const code: ScriptCommand[] = [];
   const labels: Record<string, number> = {};
   for (const line of lines) {
@@ -16,7 +16,7 @@ export function scriptFile(file: number, lines: Line[]): ScriptFile {
     else code.push(line);
   }
   const entries = Object.keys(labels).filter((l) => /^L\d+$/.test(l)).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
-  return { kind: "script-file", formatVersion: 1, file, messageBank: 7, entries, code, labels, movements: {}, unreachableBytes: 0, partial: false };
+  return { kind: "script-file", formatVersion: 1, file, messageBank: 7, entries, code, labels, movements, unreachableBytes: 0, partial: false };
 }
 
 const ref = (entry: number) => ({ id: entry + 1, file: 100, entry });

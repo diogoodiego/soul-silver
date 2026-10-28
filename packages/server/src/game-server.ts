@@ -11,7 +11,9 @@ import type { CompanionData } from "./companion-loader";
 import type { WildData } from "./wild-loader";
 import type { ProgressionData } from "./progression";
 import type { ItemsData } from "./items";
+import type { ShopData } from "./shop";
 import type { ScriptData } from "./scripts";
+import type { TrainerData } from "./trainer-loader";
 import type { MissingCommand } from "@soulsilver/shared/script";
 import type { Connection } from "./connection";
 import { checkCoherence } from "@soulsilver/shared/save";
@@ -64,6 +66,10 @@ export interface GameServerOptions extends Scheduler {
   scripts?: ScriptData | undefined;
   /** Every command a script reached that nothing implements (spec 020); the host logs them. */
   onMissingCommand?: ((m: MissingCommand & { player: number }) => void) | undefined;
+  /** Trainer battles (spec 022); no trainer fights when omitted. */
+  trainers?: TrainerData | undefined;
+  /** Poké Marts (spec 023); clerks' scripts end as missing when omitted. */
+  shops?: ShopData | undefined;
   /** Opens/closes the LAN socket for other PCs (hosted sessions only); results go back as `listening`/`listen-failed`. */
   listen?(on: boolean): void;
 }
@@ -102,7 +108,10 @@ export function createGameServer(options: GameServerOptions): GameServer {
       items: options.items,
       onDecision: options.onDecision,
       scripts: options.scripts,
+      intro: true,
       onMissingCommand: options.onMissingCommand,
+      trainers: options.trainers,
+      shops: options.shops,
       // Development builds may change story flags from the script debugger.
       devTools: options.devArena,
       hour: () => new Date().getHours(),

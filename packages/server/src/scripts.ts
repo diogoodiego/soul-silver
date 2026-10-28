@@ -1,9 +1,12 @@
 import type { MapEventsFile, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
-import { createRng, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
-import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
+import { createRng, tileAt, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
+import { isCounter, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { starterMember } from "@soulsilver/shared/progression";
-import { STORAGE_MAX, type PartyMember, type Save } from "@soulsilver/shared/save";
+import { store } from "@soulsilver/shared/pc";
+import type { PartyMember, Save } from "@soulsilver/shared/save";
+import type { CutsceneActor, CutsceneStep } from "@soulsilver/shared/npc";
 import { createRunner, SCRIPT_DIRECTIONS, SCRIPT_HANDLERS, type MissingCommand, type Runner, type ScriptHost } from "@soulsilver/shared/script";
+import type { Npcs } from "./npcs";
 import type { ProgressionData } from "./progression";
 import type { World } from "./world";
 
@@ -26,7 +29,39 @@ export const SCRIPT_TIMEOUT_TICKS = 1200;
 const STEP: Record<Direction, [number, number]> = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
 const OPPOSITE: Record<Direction, Direction> = { north: "south", south: "north", west: "east", east: "west" };
 const BAG_MAX = 999;
+/** Map sprites chosen by script variable (the field table has no entry for them). */
+const VAR_SPRITE_FIRST = 101;
+const VAR_SPRITE_LAST = 116;
+const VAR_SPRITE_BASE = 0x4020;
 const MONEY_MAX = 999999;
+/**
+ * Prof. Oak's introduction (text bank 219). In the original it is a screen of its own, not a field
+ * script; here its speech runs as one, minus the gender and name questions the new-game menu asked.
+ */
+const INTRO_BANK = 219;
+export const INTRO_SCRIPT: ScriptFile = {
+  kind: "script-file",
+  formatVersion: 1,
+  file: -1,
+  messageBank: INTRO_BANK,
+  entries: ["L1"],
+  labels: { L1: 0 },
+  code: [
+    { name: "NPCMsg", args: { msg_id: 6 } },
+    { name: "NPCMsg", args: { msg_id: 34 } },
+    { name: "NPCMsg", args: { msg_id: 35 } },
+    { name: "BufferPlayersName", args: { slot: 0 } },
+    { name: "NPCMsg", args: { msg_id: 43 } },
+    { name: "CloseMsg", args: {} },
+    { name: "End", args: {} },
+  ],
+  movements: {},
+  unreachableBytes: 0,
+  partial: false,
+};
+
+/** Default of content/trainer/tuning.json trainerFlagBase, for sessions without trainer data. */
+const TRAINER_FLAG_BASE = 1360;
 
 export interface Storyteller {
   playerId: number;
@@ -34,7 +69,11 @@ export interface Storyteller {
   character: Save["character"];
   flags: Set<number>;
   vars: Map<number, number>;
-  progress: Pick<Save, "party" | "storage" | "bag" | "money" | "badges" | "pokedex">;
+  /** Where scripts moved people for good, the save's npcPlacement (spec 021); mutated in place. */
+  placement?: Save["npcPlacement"] | undefined;
+  /** A save that was just created: Prof. Oak's introduction runs once on entering the world (spec 021, FR-011). */
+  intro?: boolean | undefined;
+  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badges" | "pokedex">;
   send(msg: ServerMessage): void;
 }
 
@@ -42,16 +81,28 @@ export interface ScriptsOptions {
   data: ScriptData;
   world: World;
   lookup: WorldLookup;
+  /** Gives the people their movement patterns (spec 021). */
+  npcs?: Npcs | undefined;
   progression?: ProgressionData | undefined;
   seed: number;
   hpMax(m: PartyMember): number;
   weekday(): number;
   timeoutTicks?: number | undefined;
+  /** Runs Prof. Oak's introduction for saves that were just created (off in tests that do not ask for it). */
+  intro?: boolean | undefined;
   /** Development builds: the debugger may change flags. */
   devTools?: boolean | undefined;
   /** After the party or the bag changed, so the client gets them again. */
   changed(playerId: number, what: "party" | "bag"): void;
   onMissing?: ((m: MissingCommand & { player: number }) => void) | undefined;
+  /** Starts a scripted trainer battle (spec 022); false when there is none to start. The script waits for battleEnded. */
+  battle?: ((playerId: number, trainer: number, partner: number) => boolean) | undefined;
+  /** Opens a Poké Mart (spec 023); false when there is none. The script waits for shopClosed. */
+  shop?: ((playerId: number, shop: number, sell: boolean) => boolean) | undefined;
+  /** Talking to a trainer (spec 022): it challenges or says its after line; true when handled. */
+  talkTrainer?: ((playerId: number, npc: Entity) => boolean) | undefined;
+  /** Defeated trainer t is flag trainerFlagBase + t (spec 022, content/trainer/tuning.json). */
+  trainerFlagBase?: number | undefined;
   log(message: string): void;
 }
 
@@ -69,17 +120,26 @@ interface State {
   tile: string;
   /** HidePerson / ShowPerson for this visit of the map, by person id. */
   shown: Map<number, boolean>;
+  /** Where cutscenes left people for this visit of the map, in map tiles, by person id. */
+  moved: Map<number, { tx: number; ty: number; facing: Direction }>;
   /** The frame table stops after one of its scripts failed, until the map is entered again. */
   framesOff: boolean;
   /** The running script came from the frame table. */
   frameRunning: boolean;
   debug: boolean;
   lastDebug: string;
+  /** The script waits on a trainer battle: the player fights meanwhile. */
+  inBattle: boolean;
+  /** The script waits on a shop the server runs (spec 023). */
+  inShop: boolean;
+  /** Result of the last trainer battle, for CheckBattleWon. */
+  won: boolean;
 }
 
 export function createScripts(options: ScriptsOptions) {
   const { data, world, lookup } = options;
   const timeout = options.timeoutTicks ?? SCRIPT_TIMEOUT_TICKS;
+  const trainerFlagBase = options.trainerFlagBase ?? TRAINER_FLAG_BASE;
   const rng = createRng(options.seed);
   const states = new Map<number, State>();
   /** Person entities by area, spawned the first time someone enters the map. */
@@ -104,6 +164,7 @@ export function createScripts(options: ScriptsOptions) {
     for (const n of eventsOf(area)?.npcs ?? []) {
       const e = world.add({ kind: "npc", area, x: center(n.x - o.tx), y: center(n.z - o.ty), level: 0, facing: SCRIPT_DIRECTIONS[n.facing] ?? "south", data: { sprite: n.sprite, person: n.id } });
       ids.set(n.id, e.id);
+      options.npcs?.add(e.id, { person: n.id, movement: n.movement, xRange: n.xRange, yRange: n.yRange, tx: n.x - o.tx, ty: n.z - o.ty });
     }
   }
 
@@ -173,10 +234,10 @@ export function createScripts(options: ScriptsOptions) {
           options.log(`Script gives species ${species} but there is no species data; nothing given`);
           return false;
         }
-        const to = who.progress.party.length < 6 ? who.progress.party : who.progress.storage.length < STORAGE_MAX ? who.progress.storage : undefined;
-        if (!to) return false;
         // shortcut: held item and form are not kept, the party has no field for them yet; add both when a spec needs them.
-        to.push(starterMember(info, options.progression!.levelUp(species), rng, Math.max(1, Math.min(100, level))));
+        const mon = starterMember(info, options.progression!.levelUp(species), rng, Math.max(1, Math.min(100, level)));
+        if (who.progress.party.length < 6) who.progress.party.push(mon);
+        else if (!store(who.progress.boxes, mon)) return false;
         const dex = who.progress.pokedex;
         if (!dex.seen.includes(species)) dex.seen.push(species);
         if (!dex.caught.includes(species)) dex.caught.push(species);
@@ -188,6 +249,9 @@ export function createScripts(options: ScriptsOptions) {
         options.changed(who.playerId, "party");
       },
       // shortcut: the save keeps a badge count, not which badges; Johto's are earned in order until a spec needs the set.
+      trainerFlag: (t) => who.flags.has(trainerFlagBase + t),
+      setTrainerFlag: (t, on) => void (on ? who.flags.add(trainerFlagBase + t) : who.flags.delete(trainerFlagBase + t)),
+      battleWon: () => s.won,
       hasBadge: (b) => b < who.progress.badges,
       giveBadge: (b) => void (who.progress.badges = Math.max(who.progress.badges, Math.min(16, b + 1))),
       playerPosition() {
@@ -214,14 +278,17 @@ export function createScripts(options: ScriptsOptions) {
         const e = personOf(me().area, id);
         return e && visibleTo(s, e) ? tileOf(e) : undefined;
       },
+      // Only for this player and kept in their save: the shared person stays put for the others (FR-009).
       movePerson(id, x, z, facing) {
-        const e = personOf(me().area, id);
-        const o = origin(me().area);
-        if (e) world.update({ ...e, x: center(x - o.tx), y: center(z - o.ty), facing: SCRIPT_DIRECTIONS[facing] ?? e.facing });
+        const area = me().area;
+        const e = personOf(area, id);
+        if (!e || !who.placement) return;
+        s.moved.delete(id);
+        (who.placement[area] ??= {})[String(id)] = { x, z, facing: SCRIPT_DIRECTIONS[facing] ?? e.facing };
       },
       weekday: () => options.weekday(),
       emit: (event) => send(s, { type: "script-event", event }),
-      // Nothing implements movement, battles or marts yet: each ends the script as missing (FR-008).
+      // Nothing implements wild battles or marts yet: each ends the script as missing (FR-008).
       bridge: () => false,
       file: (id) => data.file(id),
       resolve: (id) => data.resolve(id, Number(me().area)),
@@ -238,6 +305,23 @@ export function createScripts(options: ScriptsOptions) {
       case "blocked":
         if (state.request.kind === "wait") {
           s.waitUntil = tick + state.request.ticks;
+        } else if (state.request.kind === "battle") {
+          if (!options.battle?.(s.who.playerId, state.request.trainer, state.request.partner)) {
+            options.log(`Ended a script of player ${s.who.playerId}: trainer battle ${state.request.trainer} could not start`);
+            break;
+          }
+          s.inBattle = true;
+          // The player controls their Pokémon until the battle ends.
+          lock(s, false);
+          return;
+        } else if (state.request.kind === "shop") {
+          if (!options.shop?.(s.who.playerId, state.request.shop, state.request.sell)) {
+            options.log(`Ended a script of player ${s.who.playerId}: shop ${state.request.shop} could not open`);
+            break;
+          }
+          s.inShop = true;
+          lock(s, true);
+          return;
         } else {
           s.asked++;
           s.askedAt = tick;
@@ -259,6 +343,56 @@ export function createScripts(options: ScriptsOptions) {
     finish(s);
   }
 
+  /** A cutscene ended: the player and the people it moved stay where the steps left them. */
+  function stage(s: State, steps: readonly CutsceneStep[]): void {
+    const me = world.get(s.who.entityId)!;
+    const at = new Map<string, { tx: number; ty: number; facing: Direction }>();
+    const key = (a: CutsceneActor) => (typeof a === "string" ? a : String(a.person));
+    const where = (a: CutsceneActor) => {
+      const k = key(a);
+      if (!at.has(k)) {
+        const e = a === "player" ? me : a === "companion" ? companionOf(s) : personOf(me.area, a.person);
+        const v = e && (a === "player" ? e : viewOf(s, e));
+        at.set(k, v ? { tx: Math.floor(v.x / MAP_TILE_PX), ty: Math.floor(v.y / MAP_TILE_PX), facing: v.facing } : { tx: 0, ty: 0, facing: "south" });
+      }
+      return at.get(k)!;
+    };
+    for (const step of steps) {
+      if (step.kind === "walk" || step.kind === "jump" || step.kind === "face") {
+        const p = where(step.actor);
+        const n = step.kind === "face" ? 0 : step.count;
+        p.tx += STEP[step.dir][0] * n;
+        p.ty += STEP[step.dir][1] * n;
+        p.facing = step.dir;
+      } else if ((step.kind === "show" || step.kind === "hide") && typeof step.actor === "object") {
+        s.shown.set(step.actor.person, step.kind === "show");
+      }
+    }
+    for (const [k, p] of at) {
+      const c = k === "companion" ? companionOf(s) : undefined;
+      if (k === "player") world.update({ ...me, x: center(p.tx), y: center(p.ty), facing: p.facing });
+      else if (c) world.update({ ...c, x: center(p.tx), y: center(p.ty), facing: p.facing });
+      else if (k !== "companion") s.moved.set(Number(k), p);
+    }
+  }
+
+  /** The player's following Pokémon, when it is out. */
+  function companionOf(s: State): Entity | undefined {
+    return world.all().find((e) => e.kind === "pokemon" && e.data["owner"] === String(s.who.playerId) && e.data["role"] === "companion");
+  }
+
+  /** A person as this player sees it: moved by their cutscene, else by their save. */
+  function viewOf(s: State, e: Entity): Entity {
+    if (e.kind !== "npc") return e;
+    const person = e.data["person"] as number;
+    const m = s.moved.get(person);
+    if (m) return { ...e, x: center(m.tx), y: center(m.ty), facing: m.facing };
+    const p = s.who.placement?.[e.area]?.[String(person)];
+    if (!p) return e;
+    const o = origin(e.area);
+    return { ...e, x: center(p.x - o.tx), y: center(p.z - o.ty), facing: p.facing };
+  }
+
   function finish(s: State): void {
     s.runner = undefined;
     s.waitUntil = undefined;
@@ -268,9 +402,8 @@ export function createScripts(options: ScriptsOptions) {
   }
 
   /** Starts a script for this player; false when it cannot (file missing, or one already runs). */
-  function start(s: State, ref: { file: number; entry: number }, frame = false): boolean {
+  function start(s: State, ref: { file: number; entry: number }, frame = false, file = data.file(ref.file)): boolean {
     if (s.runner) return false;
-    const file = data.file(ref.file);
     if (!file) {
       options.log(`Player ${s.who.playerId}: script file ${ref.file} is not in the extraction`);
       return false;
@@ -285,6 +418,7 @@ export function createScripts(options: ScriptsOptions) {
   function enterMap(s: State, e: Entity): void {
     s.area = e.area;
     s.shown.clear();
+    s.moved.clear();
     s.framesOff = false;
     for (let v = TEMP_VARS.from; v <= TEMP_VARS.to; v++) s.who.vars.delete(v);
     for (let f = MAPTEMP_FLAGS.from; f <= MAPTEMP_FLAGS.to; f++) s.who.flags.delete(f);
@@ -303,12 +437,21 @@ export function createScripts(options: ScriptsOptions) {
     const e = world.get(s.who.entityId)!;
     const [dx, dy] = STEP[e.facing];
     const front = { x: Math.floor(e.x / MAP_TILE_PX) + dx, y: Math.floor(e.y / MAP_TILE_PX) + dy };
+    // Across a counter, as the original does for clerks and nurses.
+    if (isCounter(tileAt(lookup, e.area, e.level, front.x * MAP_TILE_PX + MAP_TILE_PX / 2, front.y * MAP_TILE_PX + MAP_TILE_PX / 2))) {
+      front.x += dx;
+      front.y += dy;
+    }
     const npc = world
       .all()
+      .map((n) => viewOf(s, n))
       .find((n) => n.kind === "npc" && n.area === e.area && Math.floor(n.x / MAP_TILE_PX) === front.x && Math.floor(n.y / MAP_TILE_PX) === front.y && visibleTo(s, n));
     const events = eventsOf(e.area);
     if (npc) {
-      const ref = events?.npcs.find((n) => n.id === npc.data["person"])?.script;
+      const person = events?.npcs.find((n) => n.id === npc.data["person"]);
+      // Trainers run the battle rules, not a script of their own.
+      if (person?.trainer && options.talkTrainer) return options.talkTrainer(s.who.playerId, npc);
+      const ref = person?.script;
       if (!ref) return false;
       // Before the first step: FacePlayer usually runs in it.
       s.talkedTo = npc.id;
@@ -323,19 +466,48 @@ export function createScripts(options: ScriptsOptions) {
 
   return {
     join(who: Storyteller): void {
-      states.set(who.playerId, { who, runner: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", shown: new Map(), framesOff: false, frameRunning: false, debug: false, lastDebug: "" });
+      states.set(who.playerId, { who, runner: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", shown: new Map(), moved: new Map(), framesOff: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inShop: false, won: false });
     },
     leave(playerId: number): void {
       states.delete(playerId);
     },
     busy: (playerId: number) => states.get(playerId)?.runner !== undefined,
+    /** In a script and not fighting its trainer battle: out of reach of combat (spec 021, US4). */
+    sheltered(playerId: number): boolean {
+      const s = states.get(playerId);
+      return s?.runner !== undefined && !s.inBattle;
+    },
     /** True when the input is the script's: the player is locked, or interact started a script. */
     input(playerId: number, input: PlayerInput | undefined, pressed: number, now: number): boolean {
       tick = now;
       const s = states.get(playerId);
       if (!s) return false;
-      if (s.runner) return true;
+      if (s.runner) return !s.inBattle;
       return input !== undefined && (pressed & BUTTON.interact) !== 0 && interact(s);
+    },
+    /** The player left the shop a script waited on. */
+    shopClosed(playerId: number): void {
+      const s = states.get(playerId);
+      if (!s?.inShop) return;
+      s.inShop = false;
+      s.runner!.resume();
+      settle(s);
+    },
+    /** The trainer battle a script waited on is over: CheckBattleWon reads `won`. */
+    battleEnded(playerId: number, won: boolean): void {
+      const s = states.get(playerId);
+      if (!s) return;
+      s.won = won;
+      if (!s.inBattle) return;
+      s.inBattle = false;
+      s.runner!.resume();
+      settle(s);
+    },
+    /** The trainer behind a person entity, with its sight range in tiles (spec 022, research R1). */
+    trainerOf(e: Entity): { trainer: number; sightTiles: number } | undefined {
+      if (e.kind !== "npc") return undefined;
+      const n = eventsOf(e.area)?.npcs.find((p) => p.id === e.data["person"]);
+      return n?.trainer ? { trainer: n.trainer, sightTiles: n.param[0] } : undefined;
     },
     answer(playerId: number, id: number, answer: number | undefined): void {
       const s = states.get(playerId);
@@ -344,6 +516,7 @@ export function createScripts(options: ScriptsOptions) {
         options.log(`Discarded script-answer ${id} from player ${playerId}: nothing waits for it`);
         return;
       }
+      if (request.kind === "cutscene") stage(s, request.steps);
       s.runner!.resume(answer);
       settle(s);
     },
@@ -366,6 +539,12 @@ export function createScripts(options: ScriptsOptions) {
           }
           continue;
         }
+        // After the map's own entry scripts, before anything the player walks into.
+        if (s.who.intro && options.intro) {
+          s.who.intro = false;
+          start(s, { file: INTRO_SCRIPT.file, entry: 0 }, false, INTRO_SCRIPT);
+          continue;
+        }
         const t = tileOf(e);
         const key = `${e.area}:${t.x},${t.z}`;
         if (key !== s.tile) {
@@ -381,6 +560,16 @@ export function createScripts(options: ScriptsOptions) {
     visible(playerId: number, e: Entity): boolean {
       const s = states.get(playerId);
       return !s || visibleTo(s, e);
+    },
+    /** The entity as this player sees it: sprite ids 101 to 116 take the sprite in the player's variable 0x4020 + n (spec 021). */
+    view(playerId: number, e: Entity): Entity {
+      const s0 = states.get(playerId);
+      if (s0) e = viewOf(s0, e);
+      const sprite = e.data["sprite"];
+      if (e.kind !== "npc" || typeof sprite !== "number" || sprite < VAR_SPRITE_FIRST || sprite > VAR_SPRITE_LAST) return e;
+      const s = states.get(playerId);
+      // As in the original, an unset variable is 0: sprite 0, the hero.
+      return s ? { ...e, data: { ...e.data, sprite: s.who.vars.get(VAR_SPRITE_BASE + sprite - VAR_SPRITE_FIRST) ?? 0 } } : e;
     },
     debug(playerId: number, on: boolean): void {
       const s = states.get(playerId);

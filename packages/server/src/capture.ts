@@ -2,6 +2,7 @@ import { toTicks, type Point } from "@soulsilver/shared/combat";
 import { BUTTON, type PlayerInput, type Rng, type ServerMessage, type WorldLookup } from "@soulsilver/shared/game";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { expForLevel } from "@soulsilver/shared/progression";
+import { firstFree, store } from "@soulsilver/shared/pc";
 import type { PartyMember, Save } from "@soulsilver/shared/save";
 import { ballMultiplier, catchValue, markCaught, markSeen, rollShakes, timeOfDay } from "@soulsilver/shared/wild";
 import type { Combat } from "./combat";
@@ -11,13 +12,13 @@ import type { Wilds } from "./wild";
 import type { World } from "./world";
 
 // Thrown Poké Balls (spec 015, research R8–R11): the server flies the ball, decides who hit first,
-// rolls the shakes and puts the catch in the party or the temporary storage.
+// rolls the shakes and puts the catch in the party or the first free PC slot (spec 023).
 
 /** A player as capture sees them; the progress fields are the player's own and change in place. */
 export interface Catcher {
   playerId: number;
   entityId: number;
-  progress: Pick<Save, "party" | "bag" | "pokedex" | "storage">;
+  progress: Pick<Save, "party" | "bag" | "pokedex" | "boxes">;
   send(msg: ServerMessage): void;
 }
 
@@ -107,13 +108,13 @@ export function createCaptures(options: CaptureOptions) {
   }
 
   function throwBall(s: State): void {
-    const { party, storage } = s.catcher.progress;
+    const { party, boxes } = s.catcher.progress;
     const item = current(s);
     if (item === undefined) {
       s.catcher.send({ type: "notice", code: "no-balls" });
       return;
     }
-    if (party.length >= 6 && storage.length >= rules.storageMax) {
+    if (party.length >= 6 && !firstFree(boxes)) {
       s.catcher.send({ type: "notice", code: "storage-full" });
       return;
     }
@@ -193,7 +194,8 @@ export function createCaptures(options: CaptureOptions) {
       ...(w.shiny ? { shiny: true } : {}),
     };
     const to = progress.party.length < 6 ? "party" : "storage";
-    progress[to].push(member);
+    if (to === "party") progress.party.push(member);
+    else store(progress.boxes, member);
     markCaught(progress.pokedex, w.species);
     wilds.remove(a.wildId);
     s.catcher.send({ type: "captured", species: w.species, to });
