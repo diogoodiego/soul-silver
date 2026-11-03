@@ -20,6 +20,7 @@ O servidor ignora, sem responder, um golpe pedido em qualquer destas situações
 - o slot está vazio.
 
 O `hello` aceita `arena?: { a, b }`, onde cada lado é `{ species, level: 1..100, moves: id[1..4] }`.
+(Substituído no protocolo v18 pela arena com treinador, time e adversário: ver `specs/024-playable-campaign-zephyr/contracts/protocol-v18.md`.)
 Só é aceito pelo servidor iniciado com `--dev-arena`, isto é, com o app não empacotado. Nos outros
 casos, e com espécie ou golpe inexistente, a resposta é `reject` com o código novo `invalid-message`.
 

@@ -61,6 +61,7 @@ reversão como uma nova linha em vez de apagar a antiga.
 | 2026-10-27 | Cura no Centro Pokémon | restaura HP, status e PP | restaura HP e status; o jogo não guarda PP | Golpes usam tempo de recarga em tempo real, sem PP | specs/023-economy-center-pc |
 
 | 2026-10-28 | PC de itens | não existe (na geração 4 o PC do jogador só tem Mailbox, Ball Capsules e Log out) | aba "Itens" no PC de Pokémon: guarda e retira itens da mochila, até 50 tipos e 999 de cada (`PC_ITEMS_MAX`) | Pedido do usuário (FR-012) | specs/023-economy-center-pc |
+| 2026-11-03 | Nenhum desvio | — | — | O spec liga a história (scripts, eventos e flags da ROM) sem mudar valores de balanceamento | specs/024-playable-campaign-zephyr |
 <!--
 Exemplo de linha (não é um desvio real):
 | 2026-11-02 | Golpe Ember: tempo de recarga | — (por turno) | 1,2 s | Combate em tempo real não tem turnos | specs/00X-combate |
