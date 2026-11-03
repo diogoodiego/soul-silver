@@ -23,7 +23,22 @@ import { MAP_HEADER_OFFSET, MAP_HEADER_SIZE } from "../maps/header.ts";
 import type { Stage, StageContext } from "../pipeline/stage.ts";
 import { readScriptTable } from "./command-table.ts";
 import { readEncounter, readHeadbutt } from "./encounter.ts";
-import { CLASS_MUSIC, EVENT_ARCHIVES, HEADBUTT_ARCHIVE, LEVEL_SCRIPT_FIELD, PRIZE_TABLE, SCRIPT_BANKS, SHOPS, TRAINER_CLASS_COUNT, TRAINER_MESSAGES, ZERO_SCRIPT } from "./layout.ts";
+import {
+  CLASS_MUSIC,
+  EVENT_ARCHIVES,
+  HEADBUTT_ARCHIVE,
+  INIT_SCRIPT,
+  LEVEL_SCRIPT_FIELD,
+  NEW_GAME_LOCATION,
+  PRIZE_TABLE,
+  SCRIPT_BANKS,
+  SHOPS,
+  STD_MESSAGES,
+  TRAINER_CLASS_COUNT,
+  TRAINER_MESSAGES,
+  ZERO_SCRIPT,
+} from "./layout.ts";
+import { readNewGameStart, readStdMessageBanks } from "./new-game.ts";
 import { readShops } from "./shops.ts";
 import { readTrainerClasses, readTrainerMessages } from "./trainer-classes.ts";
 import { resolveScript, trainerOfScript, type MapScripts } from "./refs.ts";
@@ -141,6 +156,10 @@ async function run(ctx: StageContext): Promise<void> {
   await write("trainer-classes.json", "trainer-classes", { kind: "trainer-classes", formatVersion: EVENTS_FORMAT_VERSION, records: classes });
   // Poké Mart stock (spec 023).
   await write("shops.json", "shops", { kind: "shops", formatVersion: EVENTS_FORMAT_VERSION, records: readShops(arm9, SHOPS) });
+  // New game start and the std message banks (spec 024).
+  await write("new-game.json", "new-game", { kind: "new-game", formatVersion: EVENTS_FORMAT_VERSION, ...readNewGameStart(arm9, NEW_GAME_LOCATION), initScript: INIT_SCRIPT });
+  const banks = readStdMessageBanks(await readOverlay(ctx, STD_MESSAGES.overlay), STD_MESSAGES);
+  await write("std-messages.json", "std-messages", { kind: "std-messages", formatVersion: EVENTS_FORMAT_VERSION, banks });
   const messages = readTrainerMessages(await readNarcMember(ctx, TRAINER_MESSAGES.narc, TRAINER_MESSAGES.member));
   await write("trainer-messages.json", "trainer-messages", { kind: "trainer-messages", formatVersion: EVENTS_FORMAT_VERSION, records: messages });
   const trainerIds = new Set(trainers.map((t) => t.id));
@@ -216,7 +235,8 @@ export const eventsStage: Stage = {
   id: "events",
   title: "Lendo eventos, scripts e encontros",
   // 3: trainer classes and trainer lines (spec 022). 4: Poké Mart stock (spec 023).
-  version: 4,
+  // 5: new-game start and std message table (spec 024).
+  version: 5,
   weight: 6,
   inputs: [NARC_INPUT, CODE_INPUT, MAPS_INPUT, TEXT_INPUT],
   outputs: ["events"],

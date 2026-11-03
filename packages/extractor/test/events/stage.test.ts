@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eventsStage } from "../../src/events/stage.ts";
-import { CLASS_MUSIC, PRIZE_TABLE, SHOPS, TRAINER_CLASS_COUNT } from "../../src/events/layout.ts";
+import { CLASS_MUSIC, NEW_GAME_LOCATION, PRIZE_TABLE, SHOPS, STD_MESSAGES, TRAINER_CLASS_COUNT } from "../../src/events/layout.ts";
 import { SEQ } from "../../src/events/trainer-classes.ts";
 import { MAP_HEADER_OFFSET, MAP_HEADER_SIZE } from "../../src/maps/header.ts";
 import type { StageContext } from "../../src/pipeline/stage.ts";
@@ -69,7 +69,7 @@ async function fakeRom(options: Options = {}): Promise<StageContext> {
   // Two trainer lines for trainer 1: the challenge and the one when it loses.
   await narc("a/0/5/7", [new Uint8Array([1, 0, 0, 0, 1, 0, 1, 0])]);
 
-  const arm9 = new Uint8Array(Math.max(MAP_HEADER_OFFSET + 2 * MAP_HEADER_SIZE + 16, CLASS_MUSIC.list + CLASS_MUSIC.listCount * 4, SHOPS.special + SHOPS.specialCount * 4 + 4));
+  const arm9 = new Uint8Array(Math.max(MAP_HEADER_OFFSET + 2 * MAP_HEADER_SIZE + 16, CLASS_MUSIC.list + CLASS_MUSIC.listCount * 4, SHOPS.special + SHOPS.specialCount * 4 + 4, NEW_GAME_LOCATION + 20));
   const arm9View = new DataView(arm9.buffer);
   arm9View.setUint16(MAP_HEADER_OFFSET + 8, 6, true); // map 0 level script file
   arm9View.setUint16(MAP_HEADER_OFFSET + MAP_HEADER_SIZE + 8, 7, true); // map 1: a stub
@@ -81,6 +81,8 @@ async function fakeRom(options: Options = {}): Promise<StageContext> {
   arm9View.setUint32(list, 17 | (0xffff << 16), true);
   for (let i = 0; i < SHOPS.specialCount; i++) arm9View.setUint32(SHOPS.special + i * 4, 0x02000000 + list, true);
   arm9View.setUint16(CLASS_MUSIC.list + 2, SEQ.rival, true);
+  // New game (spec 024): map 64, tile (6, 6), facing south.
+  [64, 0xffffffff, 6, 6, 1].forEach((n, i) => arm9View.setUint32(NEW_GAME_LOCATION + i * 4, n, true));
   await mkdir(join(root, "code-decompress", "code", "overlay9"), { recursive: true });
   await writeFile(join(root, "code-decompress", "code", "arm9.bin"), arm9);
   // The prize table: class i pays i.
@@ -90,6 +92,9 @@ async function fakeRom(options: Options = {}): Promise<StageContext> {
     new DataView(overlay12.buffer).setUint16(PRIZE_TABLE.offset + i * 4 + 2, i, true);
   }
   await writeFile(join(root, "code-decompress", "code", "overlay9", name(PRIZE_TABLE.overlay)), overlay12);
+  const overlay1 = new Uint8Array(STD_MESSAGES.offset + STD_MESSAGES.count * 2);
+  [752, 211, 30, 435].forEach((n, i) => new DataView(overlay1.buffer).setUint16(STD_MESSAGES.offset + i * 2, n, true));
+  await writeFile(join(root, "code-decompress", "code", "overlay9", name(STD_MESSAGES.overlay)), overlay1);
 
   await mkdir(join(root, "maps", "maps"), { recursive: true });
   await writeFile(
@@ -161,6 +166,8 @@ describe("events stage", () => {
     expect(classes.records).toHaveLength(TRAINER_CLASS_COUNT);
     expect(classes.records[3]).toEqual({ id: 3, prizeBase: 3, music: "rival" });
     expect(classes.records[4]).toEqual({ id: 4, prizeBase: 4, music: "trainer" });
+    expect(await read("new-game", "new-game.json")).toEqual({ kind: "new-game", formatVersion: 1, map: 64, tx: 6, ty: 6, facing: "south", initScript: 9600 });
+    expect((await read("std-messages", "std-messages.json")).banks).toEqual([752, 211, 30, 435]);
     const messages = await read("trainer-messages", "trainer-messages.json");
     expect(messages.records).toEqual([
       { trainer: 1, kind: 0, text: "0728:0" },

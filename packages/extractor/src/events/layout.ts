@@ -37,7 +37,11 @@ export const CLASS_MUSIC = { classes: 0xfc3ca, list: 0xfc40a, classCount: 32, li
  * Poké Mart tables in ARM9 (spec 023): sNormalMartItems at 0x020FBF22 (19 pairs), the special mart
  * pointer table at 0x0210FA3C (30 lists), and MartBuy's badge count → rank switch (0x020480B2).
  */
-export const SHOPS = { normal: 0xfbf22, normalCount: 19, special: 0x10fa3c, specialCount: 30, badgeRank: [1, 2, 2, 3, 3, 4, 4, 5, 6] } as const;
+/** New game (spec 024, research R1/R3): sLocation_PlayerRoom in ARM9, _std_init, ov01_022067C8. */
+export const NEW_GAME_LOCATION = 0xfa17c;
+export const INIT_SCRIPT = 9600;
+export const STD_MESSAGES = { overlay: 1, offset: 0x20ec8, count: 4 } as const;
+export const SHOPS ={ normal: 0xfbf22, normalCount: 19, special: 0x10fa3c, specialCount: 30, badgeRank: [1, 2, 2, 3, 3, 4, 4, 5, 6] } as const;
 
 /** Level script types (init_script_types.h). */
 export const LEVEL_SCRIPT = { frameTable: 1, onTransition: 2, onResume: 3, onLoad: 4 } as const;

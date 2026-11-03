@@ -23,10 +23,21 @@ import { buildMapMesh } from "./mesh.ts";
 import { readModels } from "./nsbmd.ts";
 import { readPiece, type Piece } from "./piece.ts";
 import { encodePng } from "./png.ts";
+import { buildPropMesh } from "./props.ts";
 import { buildMapScene, type BuildingSource } from "./scene.ts";
 import { readTextureSet, type TextureSet } from "./texture.ts";
 
 const MIB = 1024 * 1024;
+
+/** Models scripts place at run time, with the map whose building archive and area textures they use (spec 024). */
+export const SCRIPT_PROPS = [{ model: 0x8d, map: 61 }] as const;
+
+async function writeMesh(folder: string, mesh: ReturnType<typeof buildMapMesh>): Promise<void> {
+  await mkdir(join(folder, "textures"), { recursive: true });
+  await writeFile(join(folder, "mesh.json"), serializeMapFile("map-mesh", mesh.file));
+  await writeFile(join(folder, "mesh.bin"), new Uint8Array(mesh.vertices.buffer));
+  for (const [i, image] of mesh.textures.entries()) await writeFile(join(folder, "textures", `${i}.png`), encodePng(image));
+}
 
 /** Archive paths confirmed on the ROM (research.md R0). */
 export const MAP_ARCHIVES = {
@@ -209,11 +220,8 @@ async function run(ctx: StageContext): Promise<void> {
       });
       const collision = await step("collision", () => buildCollision(header.id, mapCellsWithPieces));
 
-      await mkdir(join(folder, "textures"), { recursive: true });
+      await writeMesh(folder, mesh);
       await mkdir(join(folder, "collision"), { recursive: true });
-      await writeFile(join(folder, "mesh.json"), serializeMapFile("map-mesh", mesh.file));
-      await writeFile(join(folder, "mesh.bin"), new Uint8Array(mesh.vertices.buffer));
-      for (const [i, image] of mesh.textures.entries()) await writeFile(join(folder, "textures", `${i}.png`), encodePng(image));
       for (const level of collision.levels) {
         await writeFile(join(folder, "collision", `${level.level}.json`), serializeMapFile("map-collision", level));
       }
@@ -227,6 +235,19 @@ async function run(ctx: StageContext): Promise<void> {
     ctx.progress((header.id + 1) / headers.records.length);
   }
 
+  for (const prop of SCRIPT_PROPS) {
+    const header = headers.records.find((h) => h.id === prop.map);
+    if (!header) continue;
+    const areaData = areaBytes[header.area]!;
+    const archive = header.areaType === "indoor" ? MAP_ARCHIVES.roomBuildings : MAP_ARCHIVES.fieldBuildings;
+    const { mesh, warnings } = buildPropMesh(prop.model, await buildings(archive, [prop.model]), await textureSet(areaData[2]! | (areaData[3]! << 8)));
+    if (warnings.some((w) => w.code === "missing-model")) {
+      ctx.log.warn(`Prop ${prop.model} is not in ${archive}`, "maps");
+      continue;
+    }
+    await writeMesh(join(out, "props", String(prop.model).padStart(4, "0")), mesh);
+  }
+
   const report: MapReportFile = { kind: "map-report", formatVersion: MAP_FORMAT_VERSION, records };
   await writeFile(join(out, "report.json"), serializeMapFile("map-report", report));
 }
@@ -234,7 +255,8 @@ async function run(ctx: StageContext): Promise<void> {
 export const mapsStage: Stage = {
   id: "maps",
   title: "Desenhando os mapas",
-  version: 6,
+  // 7: script props (spec 024).
+  version: 7,
   weight: 20,
   inputs: [NARC_INPUT, CODE_INPUT],
   outputs: ["maps"],
