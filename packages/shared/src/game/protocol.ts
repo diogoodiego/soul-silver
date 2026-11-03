@@ -39,7 +39,19 @@ export const arenaCombatant = z.strictObject({
   moves: z.array(count()).min(1).max(4),
 });
 export type ArenaCombatant = z.infer<typeof arenaCombatant>;
-export const arenaSpec = z.strictObject({ a: arenaCombatant, b: arenaCombatant });
+const arenaTeam = z.array(arenaCombatant).min(1).max(6);
+/**
+ * The dev arena: the player's trainer and team against an NPC trainer (its id in the extraction, with a team of the
+ * tester's choosing) or wild Pokémon with no trainer, fighting with the wild AI or standing still as targets.
+ */
+export const arenaSpec = z.strictObject({
+  trainer: z.strictObject({ name: z.string().trim().min(1).max(PLAYER_NAME_MAX), character: z.enum(["male", "female"]) }),
+  team: arenaTeam,
+  foe: z.discriminatedUnion("kind", [
+    z.strictObject({ kind: z.literal("wild"), behavior: z.enum(["ai", "idle"]), team: arenaTeam }),
+    z.strictObject({ kind: z.literal("trainer"), trainer: count(), team: arenaTeam }),
+  ]),
+});
 export type ArenaSpec = z.infer<typeof arenaSpec>;
 
 /** A party index or a PC box slot (spec 023); a party index past the end withdraws to the end. */
@@ -81,6 +93,8 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("evolve-answer"), accept: z.boolean() }),
   /** The full menu opened or closed (spec 017): the player shows as busy; refused in combat. */
   z.strictObject({ type: z.literal("menu"), open: z.boolean() }),
+  /** "Estou preso" (spec 024): back to the last Pokémon Center or home; the server may refuse it. */
+  z.strictObject({ type: z.literal("rescue") }),
   /** Moves a party member to another slot (spec 017); refused in combat or with a bad index. */
   z.strictObject({ type: z.literal("reorder-party"), from: z.number().int().min(0).max(5), to: z.number().int().min(0).max(5) }),
   /** Uses a bag item on a party member outside combat (spec 017); only potions for now. */
@@ -88,10 +102,20 @@ export const clientMessage = z.discriminatedUnion("type", [
   /** Turns the AI debug overlay's data on or off for this client (spec 019); off on every connection. */
   z.strictObject({ type: z.literal("debugAi"), on: z.boolean() }),
   /** Answers the script request `id` (spec 020): 0 yes / 1 no, or the index picked; nothing for a plain confirm. */
-  z.strictObject({ type: z.literal("script-answer"), id: count(), answer: z.number().int().min(0).max(MENU_ITEMS_MAX).optional() }),
+  z.strictObject({
+    type: z.literal("script-answer"),
+    id: count(),
+    answer: z.number().int().min(0).max(MENU_ITEMS_MAX).optional(),
+    /** The name typed for a name request (spec 024). */
+    text: z.string().max(PLAYER_NAME_MAX).optional(),
+  }),
   /** The script debugger (spec 020); off on every connection. Flag changes only with it on, in development builds. */
   z.strictObject({ type: z.literal("debugScript"), on: z.boolean() }),
   z.strictObject({ type: z.literal("debugSetFlag"), flag: z.number().int().min(1).max(0xffff), on: z.boolean() }),
+  /** Spec 024: development builds and the golden path only; moves the player to a tile of a map. */
+  z.strictObject({ type: z.literal("debugWarp"), map: z.number().int().min(0).max(0xffff), tx: z.number().int().min(0), ty: z.number().int().min(0) }),
+  /** Spec 024: development builds and the golden path only; every party member's HP, capped at its maximum. */
+  z.strictObject({ type: z.literal("debugSetHp"), hp: z.number().int().min(1) }),
   /** Spec 022: the player closed the challenge line of the trainer that spotted them; the battle may start. */
   z.strictObject({ type: z.literal("trainer-ready") }),
   /** Spec 023: shop and PC requests, refused without an open session. */
@@ -178,6 +202,13 @@ const textBuffer = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("player") }),
   z.strictObject({ kind: z.literal("species"), id: count() }),
   z.strictObject({ kind: z.literal("number"), value: z.number().int() }),
+  /** Spec 024: BufferRivalsName; the server sends the name the save holds. */
+  z.strictObject({ kind: z.literal("rival"), name: z.string().max(PLAYER_NAME_MAX) }),
+  /** Spec 024: a name the server knows (a party nickname, the friend's name). */
+  z.strictObject({ kind: z.literal("name"), name: z.string().min(1).max(PLAYER_NAME_MAX) }),
+  /** Spec 024: the receive-item std script's item and pocket (POCKET_KEYS index). */
+  z.strictObject({ kind: z.literal("item"), id: count() }),
+  z.strictObject({ kind: z.literal("pocket"), id: z.number().int().min(0).max(7) }),
 ]);
 const scriptSound = z.enum(["se", "fanfare", "cry"]);
 
@@ -205,6 +236,8 @@ export const scriptRequest = z.discriminatedUnion("kind", [
   /** Spec 023: a choice list (text ids); the answer is the index, or the item count to cancel. */
   z.strictObject({ kind: z.literal("menu"), items: z.array(textId).min(1).max(MENU_ITEMS_MAX), cancel: z.boolean(), buffers: z.record(z.string(), textBuffer) }),
   z.strictObject({ kind: z.literal("starter"), species: z.array(count()).min(1).max(6) }),
+  /** Spec 024: NameRival, or NicknameInput for `species`; answered with script-answer `text`, empty to keep the default name. */
+  z.strictObject({ kind: z.literal("name"), purpose: z.enum(["rival", "nickname"]), species: count().optional() }),
   z.strictObject({ kind: z.literal("wait-fade") }),
   z.strictObject({ kind: z.literal("wait-sound"), sound: scriptSound }),
   /** Spec 021: the client stages these steps and answers when they end; actors it controls stop following the server. */
@@ -217,6 +250,13 @@ export const scriptEvent = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("fade"), type: count(), color: count(), duration: count() }),
   z.strictObject({ kind: z.literal("sound"), sound: scriptSound, id: count() }),
   z.strictObject({ kind: z.literal("bgm"), id: count().nullable() }),
+  z.strictObject({ kind: z.literal("bgm-reset") }),
+  /** Spec 024: the map's script props (the starter balls), replacing any before; x, z in the map's units, its top-left corner 0. */
+  z.strictObject({
+    kind: z.literal("props"),
+    area: z.string(),
+    props: z.array(z.strictObject({ model: count(), x: z.number(), y: z.number(), z: z.number() })).max(16),
+  }),
 ]);
 
 export const serverMessage = z.discriminatedUnion("type", [
@@ -257,6 +297,8 @@ export const serverMessage = z.discriminatedUnion("type", [
       .array(
         z.strictObject({
           species: count(),
+          /** Spec 024: absent shows the species' name. */
+          nickname: z.string().min(1).max(10).optional(),
           level: count(),
           hp: count(),
           hpMax: count(),
@@ -279,6 +321,7 @@ export const serverMessage = z.discriminatedUnion("type", [
   /** The Pokémon out fainted; `canContinue` is false when nobody is left (a blackout follows). */
   z.strictObject({ type: z.literal("fainted"), partyIndex: count(), canContinue: z.boolean() }),
   z.strictObject({ type: z.literal("blackout"), moneyLost: count(), area: z.string() }),
+  z.strictObject({ type: z.literal("rescued") }),
   /** A ball hit a wild Pokémon (spec 015): clients play `shakes`, then the result. Sent to the whole area. */
   z.strictObject({ type: z.literal("capture"), wildId: count(), player: count(), ball: count(), shakes: z.number().int().min(0).max(3), caught: z.boolean() }),
   /** To the catcher only, once the shakes are over. */
@@ -302,9 +345,16 @@ export const serverMessage = z.discriminatedUnion("type", [
   /** Where this player's script is, and their flags and variables; only to clients that asked (spec 020, FR-011). */
   z.strictObject({
     type: z.literal("script-debug"),
-    at: z.strictObject({ file: count(), entry: count(), pc: count(), command: z.string(), depth: count() }).nullable(),
+    /** `file` is -1 for Prof. Oak's intro, a script with no file of its own. */
+    at: z.strictObject({ file: z.number().int().min(-1), entry: count(), pc: count(), command: z.string(), depth: count() }).nullable(),
     flags: z.array(count()),
     vars: z.record(z.string(), count()),
+    /** Spec 024: the current map's objects, the flag that hides each one and whether it shows now. */
+    objects: z.array(z.strictObject({ id: count(), sprite: count(), hideFlag: count().nullable(), visible: z.boolean() })),
+    /** Spec 024: the map's scripts and triggers, their condition as text and whether it holds now. */
+    triggers: z.array(z.strictObject({ kind: z.enum(["mapScript", "trigger"]), script: z.string(), condition: z.string(), met: z.boolean() })),
+    /** Spec 024: the latest flag and variable changes, oldest first; `script` is "file:entry" or "dev". */
+    changes: z.array(z.strictObject({ tick: count(), kind: z.enum(["flag", "var"]), id: count(), value: count(), script: z.string() })).max(64),
   }),
   /** Spec 022: only to the player spotted; the client shows the "!", walks the trainer over `tiles`, then its challenge line (a text id). */
   z.strictObject({ type: z.literal("trainerSpotted"), npcId: count(), trainerId: count(), tiles: count(), intro: textId.optional() }),

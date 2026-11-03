@@ -247,7 +247,30 @@ const trainerMessage = z.strictObject({ trainer: id(), kind: int(0, 0xffff), tex
 export type TrainerMessageRecord = z.infer<typeof trainerMessage>;
 export const trainerMessagesFile = fileSchema("trainer-messages", trainerMessage);
 
-export const SCRIPT_ARG_TYPES = ["number", "text", "species", "move", "item", "trainer", "flag", "variable", "jump", "movement"] as const;
+/**
+ * Where a new game starts (spec 024, research R1): sLocation_PlayerRoom in ARM9, and the script the
+ * original runs once on a new game (_std_init) to hide the characters' later versions.
+ */
+export const newGameFile = z.strictObject({
+  kind: z.literal("new-game"),
+  formatVersion: z.literal(EVENTS_FORMAT_VERSION),
+  map: u16(),
+  tx: u16(),
+  ty: u16(),
+  facing: z.enum(["north", "south", "east", "west"]),
+  initScript: u16(),
+});
+export type NewGameFile = z.infer<typeof newGameFile>;
+
+/** The message banks GetStdMsgNaix picks from, by index (spec 024): ov01_022067C8 in overlay 1. */
+export const stdMessagesFile = z.strictObject({
+  kind: z.literal("std-messages"),
+  formatVersion: z.literal(EVENTS_FORMAT_VERSION),
+  banks: z.array(u16()).min(1),
+});
+export type StdMessagesFile = z.infer<typeof stdMessagesFile>;
+
+export const SCRIPT_ARG_TYPES =["number", "text", "species", "move", "item", "trainer", "flag", "variable", "jump", "movement"] as const;
 
 /** An argument is present only when an earlier one has (or lacks) certain values. */
 const argWhen = z.strictObject({ arg: z.string(), in: z.array(id()).optional(), notIn: z.array(id()).optional() });
@@ -325,11 +348,25 @@ const codec = createGameDataCodec({
   "trainer-classes": trainerClassesFile,
   "trainer-messages": trainerMessagesFile,
   shops: shopsFile,
+  "new-game": newGameFile,
+  "std-messages": stdMessagesFile,
   "script-commands": scriptCommandsFile,
   "events-report": eventsReportFile,
 });
 
-export type EventsFileKind = "map-events" | "script-file" | "encounters" | "headbutt" | "trainers" | "trainer-classes" | "trainer-messages" | "shops" | "script-commands" | "events-report";
+export type EventsFileKind =
+  | "map-events"
+  | "script-file"
+  | "encounters"
+  | "headbutt"
+  | "trainers"
+  | "trainer-classes"
+  | "trainer-messages"
+  | "shops"
+  | "new-game"
+  | "std-messages"
+  | "script-commands"
+  | "events-report";
 export const parseEventsFile = codec.parseGameDataFile;
 export const parseEventsJson = codec.parseGameDataJson;
 export const serializeEventsFile = codec.serializeGameDataFile;

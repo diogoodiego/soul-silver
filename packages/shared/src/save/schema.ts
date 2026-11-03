@@ -5,7 +5,10 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 7;
+export const SAVE_SCHEMA_VERSION = 8;
+
+/** The story revision new saves get (spec 024); a lower one marks a save whose story state predates it. */
+export const STORY_REV = 1;
 
 /** PC boxes and slots per box, as in HGSS (spec 023). */
 export const BOX_COUNT = 18;
@@ -22,6 +25,8 @@ export const partyMember = z.strictObject({
   /** 0 means fainted. */
   hp: z.number().int().nonnegative(),
   friendship: z.number().int().min(0).max(255),
+  /** Spec 024: absent shows the species' name; 10 characters, as the original's POKEMON_NAME_LENGTH. */
+  nickname: z.string().min(1).max(10).optional(),
   /** Absent means not shiny (spec 015). */
   shiny: z.boolean().optional(),
   /** Total experience; the level follows it on the species' growth curve. */
@@ -102,5 +107,9 @@ export const saveSchema = z.strictObject({
     z.string().min(1),
     z.record(z.string().regex(/^\d+$/, "id de pessoa não numérico"), z.strictObject({ x: z.number().int().min(0), z: z.number().int().min(0), facing: z.enum(["north", "south", "east", "west"]) })),
   ),
+  /** The rival's name (spec 024); empty until the story asks for it (NameRival). */
+  rivalName: z.string().max(PLAYER_NAME_MAX),
+  /** Below STORY_REV the save's story state predates the original new-game state (spec 024). */
+  storyRev: z.number().int().nonnegative(),
 });
 export type Save = z.infer<typeof saveSchema>;

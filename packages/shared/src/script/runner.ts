@@ -54,10 +54,13 @@ export interface CommandContext {
   buffers: Record<number, TextBuffer>;
   /** The choice menu being built (MenuInit… MenuExec, spec 023). */
   menu: MenuState;
+  /** The scripted Pokégear call SetPhoneCall picked, as "caller:call:arg", for RunPhoneCall (spec 024). */
+  phone: { call: string | undefined };
   /** The file's message bank as a text id prefix; numbers stay numbers when the file has none. */
   text(index: number): string;
   /** Blocks the script; `then` runs on resume with the client's answer. */
-  block(request: ScriptRequest, then?: (answer: number) => void): void;
+  /** `text` is what a name request got back. */
+  block(request: ScriptRequest, then?: (answer: number, text?: string) => void): void;
   /** Ends the script as if the command were missing (a later spec owns it). */
   unsupported(): void;
 }
@@ -94,7 +97,7 @@ export interface Runner {
   /** Runs until the script blocks or ends. */
   step(): RunState;
   /** Continues a blocked script; `answer` is the client's reply when the request has one. */
-  resume(answer?: number): RunState;
+  resume(answer?: number, text?: string): RunState;
   snapshot(): Snapshot | undefined;
 }
 
@@ -106,9 +109,10 @@ export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Han
   const special = new Map<number, number>();
   const buffers: Record<number, TextBuffer> = {};
   const menu: MenuState = { into: 0, cancel: false, std: false, items: [] };
+  const phone = { call: undefined as string | undefined };
   const contexts: Context[] = [];
   let state: RunState = { kind: "running" };
-  let then: ((answer: number) => void) | undefined;
+  let then: ((answer: number, text?: string) => void) | undefined;
 
   const abort = (reason: string): never => {
     throw new Abort(reason);
@@ -201,6 +205,7 @@ export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Han
       },
       buffers,
       menu,
+      phone,
       text(index) {
         const bank = ctx.file.messageBank;
         return bank === null ? String(index) : formatTextId(bank, index);
@@ -255,13 +260,13 @@ export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Han
       return state;
     },
     step: run,
-    resume(answer = 0) {
+    resume(answer = 0, text?: string) {
       if (state.kind !== "blocked") return state;
       const after = then;
       then = undefined;
       state = { kind: "running" };
       try {
-        after?.(answer);
+        after?.(answer, text);
       } catch (error) {
         if (!(error instanceof Abort)) throw error;
         state = { kind: "aborted", reason: error.message };

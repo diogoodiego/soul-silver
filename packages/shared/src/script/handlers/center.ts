@@ -11,12 +11,18 @@ export const CENTER: Record<string, Handler> = {
   PartyCountNotEgg: (c) => c.writeVar(c.ptr("var"), c.host.partyCount()),
   // No Pokérus in the remake (yet): the nurse never mentions it.
   PartyHasPokerus: (c) => c.writeVar(c.ptr("arg0"), 0),
+  // Bad eggs (a corrupted save's) cannot exist here: the party is always legal and the nurse heals (spec 024).
+  PartyLegalCheck: (c) => c.writeVar(c.ptr("arg0"), 0),
   // 0 is on foot; biking and surfing states are not told apart yet.
   GetPlayerState: (c) => c.writeVar(c.ptr("var"), 0),
   // shortcut: the time-of-day greeting is not chosen; 2 makes the script use its plain greeting. Read the clock when a spec needs it.
   ScrCmd_379: (c) => c.writeVar(c.ptr("arg0"), 2),
   // No nicknames: the species name stands in.
-  BufferPartyMonNick: (c) => void (c.buffers[c.raw("slot")] = { kind: "species", id: c.host.partySpecies(c.get("party_pos")) }),
+  BufferPartyMonNick: (c) => {
+    const slot = c.get("party_pos");
+    const nickname = c.host.partyNickname(slot);
+    c.buffers[c.raw("slot")] = nickname ? { kind: "name", name: nickname } : { kind: "species", id: c.host.partySpecies(slot) };
+  },
   // The command table calls the argument a text; the scripts pass the variable that holds its index.
   NonNPCMsgVar: (c) => {
     const arg = c.args["msg_id"];

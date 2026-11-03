@@ -26,7 +26,7 @@ export interface FakeHost extends ScriptHost {
   vars: Map<number, number>;
   events: ScriptEvent[];
   bag: Map<number, number>;
-  party: { species: number; level: number; hp: number }[];
+  party: { species: number; level: number; hp: number; nickname?: string; friendship?: number }[];
   storage: number;
   wallet: number;
   badges: Set<number>;
@@ -43,12 +43,14 @@ export interface FakeHost extends ScriptHost {
   trainerFlags: Set<number>;
   /** Result of the last trainer battle. */
   won: boolean;
+  rival: string;
 }
 
 export function fakeHost(over: Partial<FakeHost> = {}): FakeHost {
   const host: FakeHost = {
     flags: new Set(),
     vars: new Map(),
+    rival: "",
     events: [],
     bag: new Map(),
     party: [],
@@ -96,6 +98,20 @@ export function fakeHost(over: Partial<FakeHost> = {}): FakeHost {
       const i = host.party.findIndex((m) => m.hp > 0);
       return i === -1 ? host.party.length : i;
     },
+    partyNickname: (slot) => host.party[slot]?.nickname,
+    rivalName: () => host.rival,
+    setRivalName: (name) => void (host.rival = name),
+    defaultRivalName: () => "Heart",
+    companionOut: () => false,
+    itemPocket: (item) => (item === 17 ? 1 : 0),
+    stdMessageBank: (i) => [752, 211, 30, 435][i] ?? 0,
+    partyFriendship: (slot) => (host.party[slot] ? (host.party[slot].friendship ?? 70) : 0),
+    nicknamePartyMon(slot, name) {
+      const m = host.party[slot];
+      if (!m) return;
+      if (name === "") delete m.nickname;
+      else m.nickname = name;
+    },
     giveMon(species, level) {
       if (host.party.length < 6) host.party.push({ species, level, hp: 1 });
       else if (host.storage < 30) host.storage++;
@@ -113,6 +129,7 @@ export function fakeHost(over: Partial<FakeHost> = {}): FakeHost {
     personPosition: (id) => (id === 1 ? { x: 3, z: 4 } : undefined),
     movePerson: () => undefined,
     weekday: () => 2,
+    random16: () => 0x1234,
     emit: (e) => void host.events.push(e),
     bridge(command) {
       host.bridged.push(command);

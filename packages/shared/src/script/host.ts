@@ -4,7 +4,7 @@ import type { ScriptFile } from "../events/schemas.ts";
 import type { CutsceneActor, CutsceneStep } from "../game/protocol.ts";
 
 /** A text buffer the next message fills in; the client turns ids into names. */
-export type TextBuffer = { kind: "player" } | { kind: "species"; id: number } | { kind: "number"; value: number };
+export type TextBuffer = { kind: "player" } | { kind: "species"; id: number } | { kind: "number"; value: number } | { kind: "name"; name: string } | { kind: "rival"; name: string } | { kind: "item"; id: number } | { kind: "pocket"; id: number };
 
 /** What a blocked script waits for. `answer` on resume: 0 yes / 1 no, or the index picked. */
 export type ScriptRequest =
@@ -13,6 +13,8 @@ export type ScriptRequest =
   | { kind: "yes-no" }
   /** The starter scene: the client answers the index of the species picked. */
   | { kind: "starter"; species: number[] }
+  /** A naming screen; answered with the text typed. Spec 024: the rival, or the party member of `species`. */
+  | { kind: "name"; purpose: "rival" } | { kind: "name"; purpose: "nickname"; species: number }
   /** Wait for the fade, sound effect, fanfare or cry started earlier to finish. */
   | { kind: "wait-fade" }
   | { kind: "wait-sound"; sound: "se" | "fanfare" | "cry" }
@@ -34,7 +36,11 @@ export type ScriptEvent =
   | { kind: "close-msg" }
   | { kind: "fade"; type: number; color: number; duration: number }
   | { kind: "sound"; sound: "se" | "fanfare" | "cry"; id: number }
-  | { kind: "bgm"; id: number | null };
+  | { kind: "bgm"; id: number | null }
+  /** ResetBGM: the map's music again (spec 024). */
+  | { kind: "bgm-reset" }
+  /** Building models a script places on the map (spec 024), replacing any before; in map units. */
+  | { kind: "props"; props: { model: number; x: number; y: number; z: number }[] };
 
 /** Directions as the game numbers them. */
 export const SCRIPT_DIRECTIONS = ["north", "south", "west", "east"] as const;
@@ -61,6 +67,22 @@ export interface ScriptHost {
   partyLeadAlive(): number;
   /** False when the party and every PC box are full. */
   giveMon(species: number, level: number, item: number, form: number): boolean;
+  /** Spec 024: an empty name clears the nickname, so the species' name shows. */
+  nicknamePartyMon(slot: number, name: string): void;
+  partyNickname(slot: number): string | undefined;
+  /** 0 past the end of the party. */
+  partyFriendship(slot: number): number;
+  /** Spec 024: the save's rival name; empty until NameRival. */
+  rivalName(): string;
+  setRivalName(name: string): void;
+  /** The name the rival takes when nothing is typed, from the game's text. */
+  defaultRivalName(): string;
+  /** Whether a Pokémon follows the player now (spec 014): false with the lead in its ball. */
+  companionOut(): boolean;
+  /** GetStdMsgNaix: the extracted ov01_022067C8 table (std-messages.json); 0 past its end. */
+  stdMessageBank(index: number): number;
+  /** The bag pocket of an item, as POCKET_KEYS indexes (ITEMATTR_FIELD_POCKET); 0 when unknown. */
+  itemPocket(item: number): number;
   healParty(): void;
   /** Defeated-trainer flags, by trainer id (spec 022). */
   trainerFlag(trainer: number): boolean;
@@ -81,6 +103,8 @@ export interface ScriptHost {
   movePerson(id: number, x: number, z: number, facing: number): void;
   /** 0 Sunday to 6 Saturday. */
   weekday(): number;
+  /** A uniform u16 from the simulation's seeded generator (LCRandom in the original). */
+  random16(): number;
   emit(event: ScriptEvent): void;
   /**
    * Commands owned by later specs (movement and camera, battles, marts, PC). Returns false when

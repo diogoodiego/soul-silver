@@ -11,6 +11,7 @@ import { MART } from "./handlers/mart.ts";
 import { MENU } from "./handlers/menu.ts";
 import { TRAINER } from "./handlers/trainer.ts";
 import { WORLD } from "./handlers/world.ts";
+import { STORY } from "./handlers/story.ts";
 import type { Handler } from "./runner.ts";
 
 export * from "./host.ts";
@@ -18,4 +19,4 @@ export * from "./runner.ts";
 export { BRIDGED } from "./handlers/bridge.ts";
 
 /** Every command the interpreter knows, by the name the extractor gives it. */
-export const SCRIPT_HANDLERS: ReadonlyMap<string, Handler> = new Map(Object.entries({ ...FLOW, ...FLAGS, ...MESSAGE, ...ITEMS, ...POKEMON, ...WORLD, ...TRAINER, ...CUTSCENE, ...MART, ...MENU, ...CENTER, ...BRIDGE }));
+export const SCRIPT_HANDLERS: ReadonlyMap<string, Handler> = new Map(Object.entries({ ...FLOW, ...FLAGS, ...MESSAGE, ...ITEMS, ...POKEMON, ...WORLD, ...TRAINER, ...CUTSCENE, ...MART, ...MENU, ...CENTER, ...BRIDGE, ...STORY }));

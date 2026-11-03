@@ -4,7 +4,9 @@ import { checkCoherence, COHERENCE_RULES, type CoherenceRule } from "../../src/s
 import { newBoxes, type Save } from "../../src/save/schema.ts";
 
 const save: Save = {
-  schemaVersion: 7,
+  schemaVersion: 8,
+  rivalName: "",
+  storyRev: 1,
   flags: [],
   vars: {}, npcPlacement: {},
   name: "Gold",

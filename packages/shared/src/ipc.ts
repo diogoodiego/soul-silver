@@ -30,6 +30,7 @@ export const IpcChannel = {
   SavesDelete: "saves:delete",
   SavesExport: "saves:export",
   SavesImport: "saves:import",
+  SavesRestartStory: "saves:restart-story",
   SessionSolo: "session:solo",
   SessionHost: "session:host",
   SessionJoin: "session:join",
@@ -85,13 +86,15 @@ export interface SoulSilverApi {
   /** The server sent a save and it was written (or failed to be). */
   onGameSaved(listener: (result: SaveResult) => void): () => void;
   listSaves(): Promise<SlotSummary[]>;
-  /** Fails on an occupied slot unless `overwrite`. `starter` is one of STARTERS (spec 017). */
-  createSave(slot: number, name: string, character: "male" | "female", overwrite: boolean, starter: number): Promise<SaveResult>;
+  /** Fails on an occupied slot unless `overwrite`. No starter: Prof. Elm gives it (spec 024). */
+  createSave(slot: number, name: string, character: "male" | "female", overwrite: boolean): Promise<SaveResult>;
   /** Deletes the save and its backup (spec 017). */
   deleteSave(slot: number): Promise<SaveResult>;
   restoreBackup(slot: number): Promise<SaveResult>;
   exportSave(slot: number): Promise<SaveResult>;
   importSave(slot: number, overwrite: boolean): Promise<SaveResult>;
+  /** Spec 024: an outdated save starts the story again in its slot; the old one stays as the backup. */
+  restartStory(slot: number): Promise<SaveResult>;
   /** Local session, never announced; the game connection is open when it resolves. */
   startSolo(slot: number): Promise<SessionResult>;
   /** Opens the LAN socket and announces the session; `reason` explains a port failure. */

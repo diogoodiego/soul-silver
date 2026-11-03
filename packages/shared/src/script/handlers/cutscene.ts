@@ -40,6 +40,9 @@ export const CUTSCENE: Record<string, Handler> = {
   ToggleFollowingPokemonMovement: nothing,
   FollowingPokemonMovement: nothing,
   WaitFollowingPokemonMovement: nothing,
+  // Spec 024: they put the follower beside the player (ov01_02205720, ov01_02205784).
+  ScrCmd_605: nothing,
+  ScrCmd_608: nothing,
   SetFollowMonInhibitState: nothing,
   FollowMonFacePlayer: nothing,
   FollowMonInteract: nothing,

@@ -6,3 +6,4 @@ export * from "./recording.ts";
 export * from "./world-map.ts";
 export * from "./limits.ts";
 export * from "./items.ts";
+export * from "./duplicates.ts";

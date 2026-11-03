@@ -30,8 +30,10 @@ describe("protocol v13", () => {
   it("accepts the lock and the debug view", () => {
     expect(serverMessage.safeParse({ type: "script-lock", locked: true }).success).toBe(true);
     const at = { file: 842, entry: 2, pc: 17, command: "NPCMsg", depth: 1 };
-    expect(serverMessage.safeParse({ type: "script-debug", at, flags: [400], vars: { "16510": 1 } }).success).toBe(true);
-    expect(serverMessage.safeParse({ type: "script-debug", at: null, flags: [], vars: {} }).success).toBe(true);
+    // Spec 024 (v17) adds the debugger's panels.
+    const panels = { objects: [], triggers: [], changes: [] };
+    expect(serverMessage.safeParse({ type: "script-debug", at, flags: [400], vars: { "16510": 1 }, ...panels }).success).toBe(true);
+    expect(serverMessage.safeParse({ type: "script-debug", at: null, flags: [], vars: {}, ...panels }).success).toBe(true);
   });
 
   it("accepts answers, the debugger switch and flag changes", () => {

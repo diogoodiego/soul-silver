@@ -5,7 +5,22 @@ export const framesToTicks = (frames: number) => Math.ceil((frames * 20) / 30);
 // The server locks the player for as long as any script runs, so the script's own locks change nothing.
 const nothing: Handler = () => undefined;
 
+/** ScrCmd_PlaceStarterBallsInElmsLab: the room model and its three points on the machine. */
+const STARTER_BALL = 0x8d;
+const STARTER_BALL_AT = [
+  [131, 65],
+  [141, 65],
+  [136, 72],
+] as const;
+const FLAG_GOT_TM51_FROM_FALKNER = 0x73;
+const FLAG_MET_PASSERBY_BOY = 0x99;
+
 export const WORLD: Record<string, Handler> = {
+  PlaceStarterBallsInElmsLab: (c) => {
+    const h = c.host;
+    const n = h.flag(FLAG_GOT_TM51_FROM_FALKNER) ? 0 : h.flag(FLAG_MET_PASSERBY_BOY) ? 1 : h.partyCount() > 0 ? 2 : 3;
+    h.emit({ kind: "props", props: STARTER_BALL_AT.slice(0, n).map(([x, z]) => ({ model: STARTER_BALL, x, y: 0, z })) });
+  },
   Warp: (c) => c.host.warp(c.get("arg0"), c.get("arg2"), c.get("arg3"), c.get("arg4")),
   FadeScreen: (c) => c.host.emit({ kind: "fade", type: c.raw("direction"), color: c.raw("color"), duration: c.raw("arg0") }),
   WaitFade: (c) => c.block({ kind: "wait-fade" }),
@@ -22,6 +37,8 @@ export const WORLD: Record<string, Handler> = {
   PlayCry: (c) => c.host.emit({ kind: "sound", sound: "cry", id: c.get("arg0") }),
   WaitCry: (c) => c.block({ kind: "wait-sound", sound: "cry" }),
   PlayBGM: (c) => c.host.emit({ kind: "bgm", id: c.raw("bgm") }),
+  TempBGM: (c) => c.host.emit({ kind: "bgm", id: c.raw("arg0") }),
+  ResetBGM: (c) => c.host.emit({ kind: "bgm-reset" }),
   StopBGM: (c) => c.host.emit({ kind: "bgm", id: null }),
   // shortcut: stops at once instead of fading over `frames`; add a fade event when the client mixer can ramp.
   FadeOutBGM: (c) => c.host.emit({ kind: "bgm", id: null }),

@@ -1,7 +1,8 @@
 /** What the menu shows for one of the 3 slots (spec 012, data-model.md). */
 export type SlotSummary =
   | { index: number; status: "empty" }
-  | { index: number; status: "ok"; name: string; character: "male" | "female"; area: string; playTimeMs: number; savedAt: string; backupAvailable: boolean; badges: number }
+  /** `staleStory`: made before the current story revision (spec 024); the player may start the story again. */
+  | { index: number; status: "ok"; name: string; character: "male" | "female"; area: string; playTimeMs: number; savedAt: string; backupAvailable: boolean; badges: number; staleStory: boolean }
   | { index: number; status: "corrupt"; reason: string; backupAvailable: boolean }
   | { index: number; status: "unrecoverable"; reason: string };
 

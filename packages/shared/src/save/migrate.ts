@@ -30,6 +30,8 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
     (storage as PartyMember[]).forEach((m, i) => (boxes[0]!.slots[i] = m));
     return { ...save, boxes, pcItems: [], schemaVersion: 7 };
   },
+  // Spec 024: no rival name yet; the story state predates the original new-game state.
+  7: (save) => ({ ...save, rivalName: "", storyRev: 0, schemaVersion: 8 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

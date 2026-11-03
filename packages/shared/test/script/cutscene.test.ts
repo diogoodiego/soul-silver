@@ -68,6 +68,10 @@ describe("follower commands (spec 021)", () => {
       ["ToggleFollowingPokemonMovement", { flag: { flag: 1 } }],
       ["FollowingPokemonMovement", { movement: 48 }],
       ["WaitFollowingPokemonMovement"],
+      // Spec 024: placing the follower beside the player after the starter scene.
+      ["ScrCmd_605", { arg0: 3, arg1: 2 }],
+      ["ScrCmd_608"],
+      ["ScrCmd_609"],
       ["FollowerPokeIsEventTrigger", { arg0: 1, arg1: 0, arg2: 0x4001 }],
       ["GetFollowPokePartyIndex", { arg0: { variable: 0x4002 } }],
       ["End"],

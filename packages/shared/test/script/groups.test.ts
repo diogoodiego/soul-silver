@@ -150,10 +150,9 @@ describe("Pokémon", () => {
     expect(host.vars.get(0x4002)).toBe(155);
   });
 
-  it("ChooseStarter gives nothing when the new-game starter is already in the party", () => {
+  it("ChooseStarter always opens the scene: the lab's script, not the party, guards it (FLAG_GOT_STARTER)", () => {
     const host = fakeHost({ party: [{ species: 158, level: 5, hp: 20 }] });
-    expect(start([["ChooseStarter"], ["End"]], host).state).toEqual({ kind: "done" });
-    expect(host.party).toHaveLength(1);
+    expect(start([["ChooseStarter"], ["End"]], host).state).toEqual({ kind: "blocked", request: { kind: "starter", species: [152, 155, 158] } });
   });
 
   it("HealParty heals, GetPartyLeadAlive finds the first standing member", () => {
@@ -206,6 +205,19 @@ describe("world", () => {
       { kind: "bgm", id: 1000 },
       { kind: "bgm", id: null },
     ]);
+  });
+
+  // ScrCmd_PlaceStarterBallsInElmsLab: model 0x8D at three fixed points, fewer as the story goes on.
+  it.each([
+    { label: "before the starter", party: 0, flags: [], balls: 3 },
+    { label: "with the starter", party: 1, flags: [], balls: 2 },
+    { label: "after the rival took one", party: 1, flags: [0x99], balls: 1 },
+    { label: "after Falkner's TM51", party: 1, flags: [0x99, 0x73], balls: 0 },
+  ])("PlaceStarterBallsInElmsLab puts the balls left $label", ({ party, flags, balls }) => {
+    const host = fakeHost({ party: Array.from({ length: party }, () => ({ species: 155, level: 5, hp: 20 })), flags: new Set(flags) });
+    start([["PlaceStarterBallsInElmsLab"], ["End"]], host);
+    const all = [{ model: 0x8d, x: 131, y: 0, z: 65 }, { model: 0x8d, x: 141, y: 0, z: 65 }, { model: 0x8d, x: 136, y: 0, z: 72 }];
+    expect(host.events).toEqual([{ kind: "props", props: all.slice(0, balls) }]);
   });
 
   it("locks are the server's: LockAll, ReleaseAll, Lock and Release do nothing", () => {
@@ -337,6 +349,12 @@ describe("Pokémon Center nurse (spec 023)", () => {
     expect([0x4001, 0x4002, 0x4003, 0x4004].map((id) => host.vars.get(id))).toEqual([0, 2, 0, 0]);
   });
 
+  it("PartyLegalCheck finds no bad egg, so the nurse goes on to heal (spec 024: Cherrygrove's nurse, 4:3)", () => {
+    const host = fakeHost();
+    start([["SetVar", { var: v(0x800c), val: 1 }], ["PartyLegalCheck", { arg0: 0x800c }], ["CopyVar", { dst: v(0x4001), src: v(0x800c) }], ["End"]] as Lines, host);
+    expect(host.vars.get(0x4001)).toBe(0);
+  });
+
   it("NonNPCMsgVar shows the message the variable holds, in the script's bank", () => {
     const { state } = start([["SetVar", { var: v(0x8004), val: 83 }], ["NonNPCMsgVar", { msg_id: v(0x8004) }], ["End"]] as Lines);
     expect(state).toMatchObject({ kind: "blocked", request: { kind: "say", text: "0542:83" } });
@@ -351,7 +369,49 @@ describe("PC (spec 023)", () => {
   });
 });
 
+describe("scripted phone calls (spec 024)", () => {
+  // Std 3:39 as the ROM has it: SetPhoneCall, the ring, then RunPhoneCall.
+  const call = (caller: number, type: number, arg: number) =>
+    [
+      ["SetVar", { var: v(0x8004), val: caller }],
+      ["SetVar", { var: v(0x8005), val: type }],
+      ["SetVar", { var: v(0x8006), val: arg }],
+      ["SetPhoneCall", { arg0: 0x8004, arg1: 0x8005, arg2: 0x8006 }],
+      ["PlaySE", { arg0: 2168 }],
+      ["RunPhoneCall"],
+      ["RestoreOverworld"],
+      ["End"],
+    ] as Lines;
+
+  it("Elm's call on Route 30 after Mr. Pokémon (caller 1, call 2) says his line, with the player's name", () => {
+    expect(start(call(1, 2, 0)).state).toEqual({ kind: "blocked", request: { kind: "say", text: "0716:33", buffers: { 0: { kind: "player" } } } });
+  });
+
+  it("a call not mapped yet stays a missing command", () => {
+    expect(start(call(1, 9, 0)).state).toMatchObject({ kind: "missing", command: "SetPhoneCall" });
+  });
+});
+
 describe("marts (spec 023)", () => {
+  it("the mart's entry script (144:0) finds no Mystery Gift and no gift from Mom (spec 024), so the delivery man stays hidden", () => {
+    const host = fakeHost();
+    const { state } = start(
+      [
+        ["SetVar", { var: v(0x4000), val: 7 }],
+        ["SetVar", { var: v(0x4138), val: 7 }],
+        ["MysteryGift", { arg0: 0 }],
+        ["MomGiftCheck", { arg0: 0x4000 }],
+        ["NopVar490", { arg0: 0x4000 }],
+        ["MysteryGift", { arg0: 1, arg1: 0x4138 }],
+        ["MysteryGift", { arg0: 7 }],
+        ["End"],
+      ] as Lines,
+      host,
+    );
+    expect(state).toEqual({ kind: "done" });
+    expect([host.vars.get(0x4000), host.vars.get(0x4138)]).toEqual([0, 0]);
+  });
+
   it("MartBuy blocks on the common mart and MartSell on selling, both run by the server", () => {
     expect(start([["MartBuy", { arg0: 0x8004 }], ["End"]]).state).toEqual({ kind: "blocked", request: { kind: "shop", shop: 0, sell: false } });
     expect(start([["MartSell"], ["End"]]).state).toEqual({ kind: "blocked", request: { kind: "shop", shop: 0, sell: true } });

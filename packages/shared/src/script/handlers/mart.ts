@@ -17,4 +17,14 @@ export const MART: Record<string, Handler> = {
   ScrCmd_308: () => undefined,
   ScrCmd_309: () => undefined,
   RestoreOverworld: () => undefined,
+  // Every mart's entry script (144:0, spec 024) asks for a Mystery Gift and Mom's purchases before showing the
+  // delivery man: neither exists in this game, so there is never a gift. 0 starts the check, 1 asks whether one waits, 7 ends it.
+  MysteryGift: (c) => {
+    const op = c.get("arg0");
+    if (op === 1) c.writeVar(c.ptr("arg1"), 0);
+    else if (op !== 0 && op !== 7) c.unsupported();
+  },
+  // shortcut: Mom does not shop with the player's savings yet; give her gifts when her bank comes (spec 023's optional commands).
+  MomGiftCheck: (c) => c.writeVar(c.ptr("arg0"), 0),
+  NopVar490: () => undefined,
 };

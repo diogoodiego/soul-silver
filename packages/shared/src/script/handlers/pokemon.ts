@@ -7,11 +7,14 @@ const VAR_PLAYER_STARTER = 0x4030;
 export const POKEMON: Record<string, Handler> = {
   GiveMon: (c) => c.writeVar(c.ptr("retvar"), c.host.giveMon(c.get("species"), c.get("level"), c.get("heldItem"), c.get("form")) ? 1 : 0),
   ChooseStarter: (c) => {
-    // shortcut: the new game still hands out a starter (spec 017), so the lab scene is skipped when one is in the party; drop this once the new-game pick goes.
-    if (Array.from({ length: c.host.partyCount() }, (_, i) => c.host.partySpecies(i)).some((s) => (STARTERS as readonly number[]).includes(s))) return;
     c.block({ kind: "starter", species: [...STARTERS] }, (answer) => {
       c.host.giveMon(STARTERS[answer] ?? STARTERS[0], STARTER_LEVEL, 0, 0);
     });
+  },
+  NicknameInput: (c) => {
+    const slot = c.get("arg0");
+    // shortcut: the bug contest's catch (slot 255) is not named; it has no party slot until the contest exists.
+    c.block({ kind: "name", purpose: "nickname", species: c.host.partySpecies(slot) }, (_, text) => c.host.nicknamePartyMon(slot, text ?? ""));
   },
   SetStarterChoice: (c) => c.writeVar(VAR_PLAYER_STARTER, c.get("arg0")),
   GetStarterChoice: (c) => c.writeVar(c.ptr("var"), c.readVar(VAR_PLAYER_STARTER)),

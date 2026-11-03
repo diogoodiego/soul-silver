@@ -4,7 +4,7 @@ import { newBoxes } from "../../src/save/schema.ts";
 
 const entity = { id: 1, kind: "player", area: "a", x: 1.5, y: 2, level: 0, facing: "north", data: { name: "Ana" } };
 const still = { x: 0, y: 0 };
-const save = { schemaVersion: 7, flags: [], vars: {}, npcPlacement: {}, name: "Ana", character: "female", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, boxes: newBoxes(), pcItems: [], pending: [] };
+const save = { schemaVersion: 8, flags: [], vars: {}, npcPlacement: {}, rivalName: "", storyRev: 1, name: "Ana", character: "female", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, boxes: newBoxes(), pcItems: [], pending: [] };
 
 describe("clientMessage", () => {
   it.each([
@@ -15,7 +15,8 @@ describe("clientMessage", () => {
     { type: "input", seq: 5, move: { x: -0.71, y: 0.71 }, run: true, buttons: 3 },
     { type: "input", seq: 6, move: { x: 1, y: 1 }, run: false, buttons: 0 },
     { type: "input", seq: 7, move: still, run: false, buttons: 1, aim: { x: 0.6, y: -0.8 } },
-    { type: "hello", protocolVersion: 5, save, arena: { a: { species: 155, level: 10, moves: [52] }, b: { species: 152, level: 10, moves: [33, 45] } } },
+    { type: "hello", protocolVersion: 5, save, arena: { trainer: { name: "Gold", character: "male" }, team: [{ species: 155, level: 10, moves: [52] }], foe: { kind: "wild", behavior: "idle", team: [{ species: 152, level: 10, moves: [33, 45] }] } } },
+    { type: "hello", protocolVersion: 5, save, arena: { trainer: { name: "Gold", character: "male" }, team: [{ species: 155, level: 10, moves: [52] }, { species: 16, level: 5, moves: [33] }], foe: { kind: "trainer", trainer: 20, team: [{ species: 16, level: 9, moves: [33, 28] }] } } },
     { type: "leave" },
     { type: "input", seq: 8, move: still, run: false, buttons: 0b1110_0000 },
     { type: "swap", partyIndex: 5 },
@@ -48,9 +49,11 @@ describe("clientMessage", () => {
     { type: "input", seq: 1, move: still, buttons: 0 },
     { type: "input", seq: 1, move: still, run: false, buttons: 0, extra: true },
     { type: "input", seq: 1, move: still, run: false, buttons: 1, aim: { x: 2, y: 0 } },
-    { type: "hello", protocolVersion: 5, save, arena: { a: { species: 155, level: 101, moves: [52] }, b: { species: 152, level: 10, moves: [33] } } },
-    { type: "hello", protocolVersion: 5, save, arena: { a: { species: 155, level: 10, moves: [] }, b: { species: 152, level: 10, moves: [33] } } },
-    { type: "hello", protocolVersion: 5, save, arena: { a: { species: 155, level: 10, moves: [1, 2, 3, 4, 5] }, b: { species: 152, level: 10, moves: [33] } } },
+    { type: "hello", protocolVersion: 5, save, arena: { trainer: { name: "Gold", character: "male" }, team: [{ species: 155, level: 101, moves: [52] }], foe: { kind: "wild", behavior: "ai", team: [{ species: 155, level: 10, moves: [52] }] } } },
+    { type: "hello", protocolVersion: 5, save, arena: { trainer: { name: "Gold", character: "male" }, team: [{ species: 155, level: 10, moves: [] }], foe: { kind: "wild", behavior: "ai", team: [{ species: 155, level: 10, moves: [52] }] } } },
+    { type: "hello", protocolVersion: 5, save, arena: { trainer: { name: "Gold", character: "male" }, team: [{ species: 155, level: 10, moves: [52] }, { species: 155, level: 10, moves: [52] }, { species: 155, level: 10, moves: [52] }, { species: 155, level: 10, moves: [52] }, { species: 155, level: 10, moves: [52] }, { species: 155, level: 10, moves: [52] }, { species: 155, level: 10, moves: [52] }], foe: { kind: "wild", behavior: "ai", team: [{ species: 155, level: 10, moves: [52] }] } } },
+    { type: "hello", protocolVersion: 5, save, arena: { trainer: { name: "Gold", character: "male" }, team: [{ species: 155, level: 10, moves: [52] }], foe: { kind: "wild", behavior: "ai", trainer: 20, team: [{ species: 155, level: 10, moves: [52] }] } } },
+    { type: "hello", protocolVersion: 5, save, arena: { trainer: { name: "", character: "male" }, team: [{ species: 155, level: 10, moves: [52] }], foe: { kind: "trainer", trainer: 20, team: [{ species: 155, level: 10, moves: [52] }] } } },
     { type: "swap", partyIndex: 6 },
     { type: "swap" },
     { type: "select-ball", item: -1 },

@@ -15,6 +15,8 @@ export interface MusicState {
   victory: boolean;
   /** The class music of the trainer this player fights or just beat (spec 022); undefined against wild Pokémon. */
   trainer?: TrainerMusic | undefined;
+  /** What a script plays over the map's music (spec 024); null when it stopped it, undefined for none. */
+  scriptMusic?: number | null | undefined;
 }
 
 export interface MusicTracks {
@@ -35,5 +37,6 @@ export function desiredMusic(state: MusicState, music: MusicTracks): number | nu
   if (state.screen === "title") return music.title;
   if (state.victory) return state.trainer === undefined ? music.victory : state.trainer === "leader" ? music.leaderVictory : music.trainerVictory;
   if (state.inCombat) return state.trainer === undefined ? music.wildBattle : music[`${state.trainer}Battle`];
+  if (state.scriptMusic !== undefined) return state.scriptMusic;
   return (state.night ? state.musicNight : state.musicDay) || null;
 }
