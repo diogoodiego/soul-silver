@@ -1,14 +1,14 @@
 import { mkdir, open, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { randomSuffix, renameWithRetry, writeFileAtomic } from "@soulsilver/extractor";
-import { migrate, type PartyMember, SAVE_SLOTS, type Save, type SaveResult, type SlotSummary } from "@soulsilver/shared/save";
+import { applyNewGame, migrate, type NewGameStart, restartStory, SAVE_SLOTS, STORY_REV, type Save, type SaveResult, type SlotSummary } from "@soulsilver/shared/save";
 
 // The player's saves, in the player's PC (spec 012, principle VIII, contracts/save-file.md).
 
 export interface SaveStoreOptions {
   dir: string;
-  /** Where a new game starts. */
-  start: () => { area: string; x: number; y: number };
+  /** Where a new game starts (spec 024: the extraction's new-game.json); undefined when it has none. */
+  start: () => NewGameStart | undefined;
   clock?: () => string;
   /** Injected in tests to fail the renames. */
   rename?: (from: string, to: string) => Promise<void>;
@@ -48,7 +48,7 @@ export function createSaveStore(options: SaveStoreOptions) {
     const [cur, bak] = await Promise.all([readSave(current(index)), readSave(backup(index))]);
     if (cur.state === "ok") {
       const s = cur.save;
-      return { index, status: "ok", name: s.name, character: s.character, area: s.area, playTimeMs: s.playTimeMs, savedAt: s.savedAt, backupAvailable: bak.state === "ok", badges: s.badges };
+      return { index, status: "ok", name: s.name, character: s.character, area: s.area, playTimeMs: s.playTimeMs, savedAt: s.savedAt, backupAvailable: bak.state === "ok", badges: s.badges, staleStory: s.storyRev < STORY_REV };
     }
     if (cur.state === "missing" && bak.state === "missing") return { index, status: "empty" };
     const reason = cur.state === "bad" ? cur.reason : "arquivo do save ausente";
@@ -98,15 +98,24 @@ export function createSaveStore(options: SaveStoreOptions) {
     },
     load,
     write,
-    /** `starter` (spec 017) becomes the whole party and counts as seen and caught. */
-    async create(slot: number, name: string, character: "male" | "female", overwrite: boolean, starter?: PartyMember): Promise<SaveResult> {
+    /** No Pokémon: the starter comes from Prof. Elm's script (spec 024). */
+    async create(slot: number, name: string, character: "male" | "female", overwrite: boolean): Promise<SaveResult> {
       if (!validSlot(slot)) return fail("slot inválido");
-      const save = { schemaVersion: 1, name: name.trim(), character, ...options.start(), facing: "south", playTimeMs: 0, savedAt: clock(), rev: 0 };
+      const start = options.start();
+      if (!start) return fail("a extração não tem o início do jogo novo; extraia a ROM de novo");
+      const save = { schemaVersion: 1, name: name.trim(), character, area: "0", x: 0, y: 0, facing: "south", playTimeMs: 0, savedAt: clock(), rev: 0 };
       const checked = migrate(save);
       if (!checked.ok) return fail(checked.message);
       if (!overwrite && (await summary(slot)).status !== "empty") return fail("o slot já tem um save");
-      const withStarter = starter ? { ...checked.save, party: [starter], pokedex: { seen: [starter.species], caught: [starter.species] } } : checked.save;
-      return write(slot, withStarter);
+      return write(slot, applyNewGame(checked.save, start));
+    },
+    /** Spec 024 (US7): the story from the start, keeping name, character and play time; the old save becomes the backup. */
+    async restartStory(slot: number): Promise<SaveResult> {
+      const start = options.start();
+      if (!start) return fail("a extração não tem o início do jogo novo; extraia a ROM de novo");
+      const loaded = await load(slot);
+      if (!loaded.ok) return loaded;
+      return write(slot, restartStory(loaded.save, start));
     },
     /** Deletes the save and its backup (spec 017); an empty slot is already deleted. */
     async remove(slot: number): Promise<SaveResult> {

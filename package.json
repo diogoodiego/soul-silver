@@ -20,7 +20,8 @@
     "extract": "node packages/extractor/src/cli.ts",
     "maps:view": "node packages/extractor/src/viewer/run.ts",
     "sprites:view": "node packages/extractor/src/viewer/sprites-run.ts",
-    "audio:view": "node packages/extractor/src/viewer/audio-run.ts"
+    "audio:view": "node packages/extractor/src/viewer/audio-run.ts",
+    "golden": "npm run golden -w @soulsilver/app"
   },
   "devDependencies": {
     "@electron/asar": "^4.3.1",

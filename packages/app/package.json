@@ -13,7 +13,8 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
-    "dist": "electron-vite build && electron-builder --win --x64 --publish never"
+    "dist": "electron-vite build && electron-builder --win --x64 --publish never",
+    "golden": "vitest run -c vitest.golden.config.ts"
   },
   "devDependencies": {
     "@soulsilver/extractor": "*",

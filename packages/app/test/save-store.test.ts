@@ -12,7 +12,7 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-const start = () => ({ area: "60", x: 10, y: 20 });
+const start = () => ({ map: 64, tx: 6, ty: 6, facing: "south" as const });
 const clock = () => "2026-10-24T12:00:00.000Z";
 const store = (rename?: (from: string, to: string) => Promise<void>) => createSaveStore({ dir: join(dir, "saves"), start, clock, ...(rename ? { rename } : {}) });
 const slotFile = (n: number) => join(dir, "saves", `slot-${n}.json`);
@@ -23,11 +23,17 @@ describe("create and list", () => {
     expect(await store().list()).toEqual([1, 2, 3].map((index) => ({ index, status: "empty" })));
   });
 
-  it("creates a save at the start position", async () => {
+  it("creates a save in the original's start tile, with no Pokémon and the new-game state (spec 024)", async () => {
     const s = store();
     expect(await s.create(1, " Gold ", "male", false)).toEqual({ ok: true });
-    expect(await read(slotFile(1))).toMatchObject({ schemaVersion: 7, name: "Gold", rev: 0, playTimeMs: 0, area: "60", x: 10, y: 20, party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {} });
+    expect(await read(slotFile(1))).toMatchObject({ schemaVersion: 8, name: "Gold", rev: 0, playTimeMs: 0, area: "64", x: 104, y: 104, facing: "south", party: [], money: 3000, badges: 0, respawn: null, bag: [], pokedex: { seen: [], caught: [] }, pcItems: [], pending: [], flags: [960], vars: {}, npcPlacement: {}, rivalName: "", storyRev: 1 });
     expect((await s.list())[0]).toMatchObject({ index: 1, status: "ok", name: "Gold", character: "male", backupAvailable: false, badges: 0 });
+  });
+
+  it("refuses to create a save without the extraction's new-game data", async () => {
+    const s = createSaveStore({ dir: join(dir, "saves"), start: () => undefined, clock });
+    expect(await s.create(1, "Gold", "male", false)).toMatchObject({ ok: false, reason: expect.stringMatching(/extração/) as unknown });
+    expect((await s.list())[0]).toMatchObject({ status: "empty" });
   });
 
   it("refuses an occupied slot without overwrite", async () => {
@@ -45,6 +51,47 @@ describe("create and list", () => {
 
   it.each([0, 4, 1.5])("refuses slot %s", async (slot) => {
     expect(await store().create(slot, "Gold", "male", false)).toMatchObject({ ok: false });
+  });
+});
+
+describe("restart story (spec 024, US7)", () => {
+  async function outdated() {
+    const s = store();
+    await s.create(1, "Gold", "male", false);
+    const loaded = await s.load(1);
+    if (!loaded.ok) throw new Error("setup");
+    await s.write(1, { ...loaded.save, storyRev: 0, rev: 7, playTimeMs: 60_000, area: "34", flags: [106, 960], vars: { [String(0x4108)]: 3 } });
+    return s;
+  }
+
+  it("marks a save older than the story revision in the slot summary", async () => {
+    const s = await outdated();
+    expect((await s.list())[0]).toMatchObject({ status: "ok", staleStory: true });
+    await s.create(2, "Silver", "female", false);
+    expect((await s.list())[1]).toMatchObject({ status: "ok", staleStory: false });
+  });
+
+  it("starts the story again, keeping the old save as the backup", async () => {
+    const s = await outdated();
+    expect(await s.restartStory(1)).toEqual({ ok: true });
+    expect(await read(slotFile(1))).toMatchObject({ name: "Gold", rev: 7, playTimeMs: 60_000, area: "64", flags: [960], vars: {}, storyRev: 1 });
+    expect(await read(`${slotFile(1)}.bak`)).toMatchObject({ rev: 7, area: "34", storyRev: 0 });
+    expect((await s.list())[0]).toMatchObject({ staleStory: false });
+  });
+
+  it("refuses an empty or corrupt slot and leaves it as it was", async () => {
+    const s = store();
+    expect(await s.restartStory(1)).toMatchObject({ ok: false });
+    await mkdir(join(dir, "saves"), { recursive: true });
+    await writeFile(slotFile(2), "{ not json");
+    expect(await s.restartStory(2)).toMatchObject({ ok: false });
+    expect(await readFile(slotFile(2), "utf8")).toBe("{ not json");
+  });
+
+  it("refuses without the extraction's new-game data", async () => {
+    await outdated();
+    const s = createSaveStore({ dir: join(dir, "saves"), start: () => undefined, clock });
+    expect(await s.restartStory(1)).toMatchObject({ ok: false, reason: expect.stringMatching(/extração/) as unknown });
   });
 });
 
@@ -217,15 +264,7 @@ describe("export and import (FR-011)", () => {
   });
 });
 
-describe("spec 017: starter and delete", () => {
-  const starter = { species: 155, level: 5, moves: [33, 43], hp: 20, friendship: 70, experience: 135, ivs: { hp: 1, attack: 2, defense: 3, speed: 4, specialAttack: 5, specialDefense: 6 }, evs: { hp: 0, attack: 0, defense: 0, speed: 0, specialAttack: 0, specialDefense: 0 }, nature: 3 };
-
-  it("starts a new game with the chosen starter, seen and caught", async () => {
-    const s = store();
-    expect(await s.create(1, "Gold", "male", false, starter)).toEqual({ ok: true });
-    expect(await read(slotFile(1))).toMatchObject({ party: [starter], pokedex: { seen: [155], caught: [155] } });
-  });
-
+describe("spec 017: delete", () => {
   it("deletes a save and its backup, leaving the slot empty", async () => {
     const s = store();
     await s.create(1, "Gold", "male", false);

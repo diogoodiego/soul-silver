@@ -2,10 +2,9 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkAssets, createConsoleLogger, createRegistry, defaultStages } from "@soulsilver/extractor";
-import { loadWorld, startPosition } from "@soulsilver/server";
+import { loadWorld } from "@soulsilver/server";
 import { type AppSettings, IpcChannel, PROTOCOL_VERSION } from "@soulsilver/shared";
 import { CANCELLED, SAVE_SLOTS } from "@soulsilver/shared/save";
-import { STARTERS } from "@soulsilver/shared/progression";
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell, utilityProcess, type IpcMainInvokeEvent } from "electron";
 import electronUpdater from "electron-updater";
 import { createAssetsController } from "./assets-controller";
@@ -17,7 +16,7 @@ import { createSaveStore } from "./save-store";
 import { createServerHost } from "./server-host";
 import { createSessionController, type SessionController } from "./session-controller";
 import { createSettings } from "./settings";
-import { makeStarter } from "./starter";
+import { readNewGameStart } from "../server-host/extracted";
 import { createUpdateController } from "./update-controller";
 import { createWindowOptions } from "./window-options";
 
@@ -186,7 +185,13 @@ if (!app.requestSingleInstanceLock()) {
     const stagesDir = join(userData, "extraction", "stages");
     const saves = createSaveStore({
       dir: join(userData, "saves"),
-      start: () => startPosition(loadWorld(stagesDir, (message) => console.warn(`[saves] ${message}`))),
+      start: () => {
+        const log = (message: string) => console.warn(`[saves] ${message}`);
+        const start = readNewGameStart(stagesDir, log);
+        // The original counts tiles in the map matrix; the save counts them from the map's corner.
+        const origin = start && loadWorld(stagesDir, log)(String(start.map))?.origin;
+        return start && { ...start, tx: start.tx - (origin?.tx ?? 0), ty: start.ty - (origin?.ty ?? 0) };
+      },
     });
     const settings = createSettings(join(userData, "settings.json"));
     const lanLog = (message: string) => {
@@ -228,18 +233,13 @@ if (!app.requestSingleInstanceLock()) {
     handle(IpcChannel.ServerGetInfo, () => serverHost.getInfo());
     handle(IpcChannel.SavesList, () => saves.list());
     handle(IpcChannel.SavesCreate, (arg) => {
-      const { slot, name, character, overwrite, starter } = fields(arg);
-      if (!isSlot(slot) || typeof name !== "string" || (character !== "male" && character !== "female") || !STARTERS.includes(starter as (typeof STARTERS)[number])) return invalid;
-      let member;
-      try {
-        member = makeStarter(stagesDir, starter as number);
-      } catch (error) {
-        return { ok: false, reason: `Os dados do jogo extraídos estão incompletos: ${(error as Error).message}` };
-      }
-      return saves.create(slot, name, character, overwrite === true, member);
+      const { slot, name, character, overwrite } = fields(arg);
+      if (!isSlot(slot) || typeof name !== "string" || (character !== "male" && character !== "female")) return invalid;
+      return saves.create(slot, name, character, overwrite === true);
     });
     handle(IpcChannel.SavesDelete, (slot) => (isSlot(slot) ? saves.remove(slot) : invalid));
     handle(IpcChannel.SavesRestore, (slot) => (isSlot(slot) ? saves.restoreBackup(slot) : invalid));
+    handle(IpcChannel.SavesRestartStory, (slot) => (isSlot(slot) ? saves.restartStory(slot) : invalid));
     handle(IpcChannel.SavesExport, async (slot) => {
       if (!isSlot(slot)) return invalid;
       const result = await dialog.showSaveDialog(window, { defaultPath: `slot-${slot}.sssave`, filters: [{ name: "Save do SoulSilver", extensions: ["sssave"] }] });

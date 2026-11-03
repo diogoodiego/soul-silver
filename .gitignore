@@ -10,5 +10,8 @@ assets/
 *.nds
 *.NDS
 
+# Layer 4 screenshots contain game art (constitution, principles II and V)
+.evidence/
+
 # TypeScript incremental build cache
 *.tsbuildinfo
