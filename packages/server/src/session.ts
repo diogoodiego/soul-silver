@@ -5,6 +5,7 @@ import {
   createRng,
   protocolMismatchMessage,
   stepMovement,
+  unstick,
   type CloseReason,
   type NoticeCode,
   type PlayerInput,
@@ -20,9 +21,9 @@ import { TICKS_PER_S } from "@soulsilver/shared/combat";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { npcOccupied } from "@soulsilver/shared/npc";
 import { expForLevel, memberStats } from "@soulsilver/shared/progression";
-import { migrate, newBoxes, newCollection, newProgress, type PartyMember, type Save } from "@soulsilver/shared/save";
+import { migrate, newBoxes, newCollection, newProgress, STORY_REV, storyUnstarted, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { buildAiData, BUNDLED_AI_CONTENT, type AiData } from "./ai-loader";
-import { spawnArena } from "./arena";
+import { ARENA_AREA, ARENA_MAP, ARENA_SPAWN, arenaMember, foeSpot, trainerMember } from "./arena";
 import { createCombat, type Combat } from "./combat";
 import type { CombatData } from "./combat-loader";
 import { createCaptures, type Catcher } from "./capture";
@@ -33,7 +34,7 @@ import { reorderParty, useItem, type ItemsData } from "./items";
 import { createProgression, type Learner, type Progression, type ProgressionData } from "./progression";
 import { createReplica, replicate, type Replica } from "./replication";
 import { createNpcs } from "./npcs";
-import { createScripts, type ScriptData, type Scripts } from "./scripts";
+import { createScripts, type ScriptData, type Scripts, type StuckPlayer } from "./scripts";
 import type { MissingCommand } from "@soulsilver/shared/script";
 import { startPosition } from "./start";
 import { createPcs } from "./pc";
@@ -113,6 +114,8 @@ export interface SessionOptions {
   intro?: boolean | undefined;
   /** Every command a script reached that nothing implements (spec 020, FR-008). */
   onMissingCommand?: ((m: MissingCommand & { player: number }) => void) | undefined;
+  /** A script left the player unable to move (spec 024). */
+  onStuck?: ((s: StuckPlayer) => void) | undefined;
   /** Development builds: the script debugger may change flags. */
   devTools?: boolean | undefined;
   /** Day of the week on the host clock (0 Sunday); Sunday when omitted. */
@@ -120,6 +123,9 @@ export interface SessionOptions {
   /** Trainer battles (spec 022); they need combat, the companion rules and scripts too. */
   trainers?: TrainerData | undefined;
 }
+
+/** A save but the parts snapshot() fills at save time. */
+type BeforeScript = Omit<Save, "playTimeMs" | "savedAt" | "rev" | "boxes" | "pcItems">;
 
 interface Player {
   id: number;
@@ -137,12 +143,14 @@ interface Player {
   playTimeMs: number;
   joinTick: number;
   rev: number;
+  /** The save state captured when the running script started; undefined between scripts. */
+  beforeScript?: BeforeScript | undefined;
   lastArea: string;
   /** Rev of a save sent while closing that has not been acknowledged yet. */
   pendingAck: number | undefined;
   gone: boolean;
-  /** In the dev arena: the wild target's entity. Arena players never get saves. */
-  arenaTarget: number | undefined;
+  /** In the dev arena: its wild foes' entities (a trainer's battle keeps its own). Arena players never get saves. */
+  arenaFoes: number[] | undefined;
   /** Asked for the AI debug overlay (spec 019). */
   debugAi: boolean;
   /** Party, money, badges and respawn point, changed in place by the companion rules; bag, Pokédex and PC boxes by capture. */
@@ -188,20 +196,21 @@ const nameKey = (name: string) => name.trim().toLocaleLowerCase("en");
 
 export function createSession(options: SessionOptions): Session {
   const world = createWorld();
+  const lookup: WorldLookup = (id) => (id === ARENA_AREA ? ARENA_MAP : options.world(id));
   const rng = createRng(options.seed);
   const timeoutTicks = options.timeoutTicks ?? DEFAULT_TIMEOUT_TICKS;
   const { clock } = options;
-  const combat = options.combat ? createCombat({ data: options.combat, rng, lookup: options.world }) : undefined;
+  const combat = options.combat ? createCombat({ data: options.combat, rng, lookup: lookup }) : undefined;
   const companions = options.companion
     ? createCompanions({
         data: options.companion,
         combat,
         combatData: options.combat,
-        lookup: options.world,
+        lookup: lookup,
         world,
         rng,
         hour: options.hour ?? (() => 12),
-        home: () => startPosition(options.world),
+        home: () => startPosition(lookup),
         busy: (id): boolean => progression?.busy(id) ?? false,
         detail: (m) => memberDetail(m),
         log: (message) => options.log(message),
@@ -221,7 +230,7 @@ export function createSession(options: SessionOptions): Session {
           ai,
           combat,
           combatData: options.combat,
-          lookup: options.world,
+          lookup: lookup,
           world,
           rng,
           hour: options.hour ?? (() => 12),
@@ -233,7 +242,7 @@ export function createSession(options: SessionOptions): Session {
       : undefined;
   const captures =
     wilds && options.wild && combat && options.combat
-      ? createCaptures({ data: options.wild, wilds, combat, combatData: options.combat, world, lookup: options.world, rng, hour: options.hour ?? (() => 12), controlled: (id) => companions?.controlled(id) })
+      ? createCaptures({ data: options.wild, wilds, combat, combatData: options.combat, world, lookup: lookup, rng, hour: options.hour ?? (() => 12), controlled: (id) => companions?.controlled(id) })
       : undefined;
   const hpMax = (m: PartyMember) => {
     const species = options.combat?.species(m.species);
@@ -254,14 +263,15 @@ export function createSession(options: SessionOptions): Session {
       ...(growth?.abilities ? { ability: growth.abilities[0] } : {}),
     };
   }
-  const npcs = options.scripts ? createNpcs({ world, lookup: options.world, seed: options.seed, log: options.log }) : undefined;
+  const npcs = options.scripts ? createNpcs({ world, lookup: lookup, seed: options.seed, log: options.log }) : undefined;
   const scripts: Scripts | undefined = options.scripts
     ? createScripts({
         data: options.scripts,
         world,
-        lookup: options.world,
+        lookup: lookup,
         npcs,
         progression: options.progression,
+        items: options.items,
         seed: options.seed,
         hpMax,
         weekday: options.weekday ?? (() => 0),
@@ -277,6 +287,11 @@ export function createSession(options: SessionOptions): Session {
           }
         },
         onMissing: options.onMissingCommand,
+        onStuck: options.onStuck,
+        onStart: (playerId) => {
+          const p = players.get(playerId);
+          if (p) p.beforeScript = capture(p);
+        },
         battle: (playerId, trainer, partner): boolean => trainerBattles?.startScripted(playerId, trainer, partner) ?? false,
         shop: (playerId, shop, sell): boolean => shops?.open(playerId, shop, sell) ?? false,
         pc: (playerId): boolean => pcs.open(playerId),
@@ -312,7 +327,7 @@ export function createSession(options: SessionOptions): Session {
           combatData: options.combat,
           companions,
           world,
-          lookup: options.world,
+          lookup: lookup,
           rng,
           items: options.items,
           progression,
@@ -341,6 +356,18 @@ export function createSession(options: SessionOptions): Session {
     else delete data["busy"];
     world.update({ ...e, data });
   }
+  /** "Estou preso" (spec 024): to the blackout spot, cutting short a script in progress; never a way out of a fight. */
+  function rescue(p: Player): boolean {
+    if (p.arenaFoes !== undefined || companions?.inCombat(p.id) || trainerBattles?.inBattle(p.id) || scripts?.abort(p.id) === false) return false;
+    const to = p.progress.respawn ?? startPosition(lookup);
+    const e = world.get(p.entityId)!;
+    const data = { ...e.data };
+    delete data["hop"];
+    delete data["warping"];
+    world.update(unstick({ ...e, area: to.area, x: to.x, y: to.y, level: 0, facing: "south", data }, lookup));
+    p.conn?.send({ type: "rescued" } satisfies ServerMessage);
+    return true;
+  }
   /** The player and their Pokémon are out of reach while a cutscene runs (spec 021, FR-012): combat and wild AIs skip them. */
   function setSheltered(p: Player, on: boolean): void {
     for (const e of world.all()) {
@@ -363,9 +390,9 @@ export function createSession(options: SessionOptions): Session {
   /** Player ids last sent in the "players" list. */
   let roster = "";
 
-  function add(base: Save, conn: Connection | undefined, spawn: Spawn, token: string, arena?: { a: number; b: number }): Player {
+  function add(base: Save, conn: Connection | undefined, spawn: Spawn, token: string, arena = false): Player {
     const id = nextPlayerId++;
-    const entityId = arena?.a ?? world.add({ kind: "player", area: spawn.area, x: spawn.x, y: spawn.y, level: spawn.level, facing: spawn.facing, data: { name: base.name, character: base.character } }).id;
+    const entityId = world.add({ kind: "player", area: spawn.area, x: spawn.x, y: spawn.y, level: spawn.level, facing: spawn.facing, data: { name: base.name, character: base.character } }).id;
     const player: Player = {
       id,
       entityId,
@@ -382,7 +409,7 @@ export function createSession(options: SessionOptions): Session {
       lastArea: spawn.area,
       pendingAck: undefined,
       gone: false,
-      arenaTarget: arena?.b,
+      arenaFoes: arena ? [] : undefined,
       debugAi: false,
       progress: {
         party: base.party.map((m) => ({ ...m })),
@@ -401,13 +428,14 @@ export function createSession(options: SessionOptions): Session {
       menuOpen: false,
     };
     players.set(id, player);
+    const send = (msg: ServerMessage) => player.conn?.send(msg);
+    companions?.join({ playerId: id, entityId, progress: player.progress, send });
+    captures?.join({ playerId: id, entityId, progress: player.progress, send });
+    progression?.join({ playerId: id, progress: player.progress, send });
+    trainerBattles?.join({ playerId: id, entityId, flags: player.flags, progress: player.progress, send });
+    // The arena has no story, shops or PC.
     if (!arena) {
-      const send = (msg: ServerMessage) => player.conn?.send(msg);
-      companions?.join({ playerId: id, entityId, progress: player.progress, send });
-      captures?.join({ playerId: id, entityId, progress: player.progress, send });
-      progression?.join({ playerId: id, progress: player.progress, send });
-      scripts?.join({ playerId: id, entityId, character: base.character, flags: player.flags, vars: player.vars, placement: player.base.npcPlacement, intro: base.rev === 0 && base.playTimeMs === 0, progress: player.progress, send });
-      trainerBattles?.join({ playerId: id, entityId, flags: player.flags, progress: player.progress, send });
+      scripts?.join({ playerId: id, entityId, character: base.character, flags: player.flags, vars: player.vars, placement: player.base.npcPlacement, rival: player.base, intro: base.rev === 0 && base.playTimeMs === 0, init: (base.rev === 0 && base.playTimeMs === 0) || storyUnstarted(base), progress: player.progress, send });
       shops?.join({ playerId: id, progress: player.progress, send });
       pcs.join({ playerId: id, progress: player.progress, send });
     }
@@ -416,8 +444,28 @@ export function createSession(options: SessionOptions): Session {
     return player;
   }
 
-  /** The player's save as of now; each call takes the next rev. */
+  /**
+   * The player's save as of now; each call takes the next rev. While a script runs, the state from just before it
+   * (spec 024), as the original never saves mid-script: a scene cut short by a save would run again on load over
+   * effects it already had (a second Mystery Egg).
+   */
   function snapshot(p: Player): Save {
+    if (!scripts?.busy(p.id)) p.beforeScript = undefined;
+    // What the player buys or stores in a shop or PC the script opened is kept; the rest of the scene still starts over.
+    else if (scripts.inService(p.id)) p.beforeScript = capture(p);
+    // The boxes and the PC's items only change in the PC, so they are always saved as they are.
+    return {
+      ...(p.beforeScript ?? capture(p)),
+      boxes: structuredClone(p.progress.boxes),
+      pcItems: p.progress.pcItems.map((b) => ({ ...b })),
+      playTimeMs: p.playTimeMs + (tick - p.joinTick) * TICK_MS,
+      savedAt: clock(),
+      rev: ++p.rev,
+    };
+  }
+
+  /** The save state but the rev, the time and the PC, which change apart from scripts. */
+  function capture(p: Player): BeforeScript {
     const e = world.get(p.entityId)!;
     return {
       ...p.base,
@@ -425,8 +473,6 @@ export function createSession(options: SessionOptions): Session {
       party: p.progress.party.map((m) => ({ ...m })),
       bag: p.progress.bag.map((b) => ({ ...b })),
       pokedex: { seen: [...p.progress.pokedex.seen], caught: [...p.progress.pokedex.caught] },
-      boxes: structuredClone(p.progress.boxes),
-      pcItems: p.progress.pcItems.map((b) => ({ ...b })),
       pending: p.progress.pending.map((i) => ({ ...i })),
       flags: [...p.flags].sort((a, b) => a - b),
       vars: Object.fromEntries([...p.vars].map(([k, v]) => [String(k), v])),
@@ -434,14 +480,11 @@ export function createSession(options: SessionOptions): Session {
       x: e.x,
       y: e.y,
       facing: e.facing,
-      playTimeMs: p.playTimeMs + (tick - p.joinTick) * TICK_MS,
-      savedAt: clock(),
-      rev: ++p.rev,
     };
   }
 
   function sendSave(p: Player): void {
-    if (!p.conn || p.arenaTarget !== undefined) return;
+    if (!p.conn || p.arenaFoes !== undefined) return;
     const save = snapshot(p);
     if (state === "closing") p.pendingAck = save.rev;
     p.conn.send({ type: "save", save } satisfies ServerMessage);
@@ -457,7 +500,7 @@ export function createSession(options: SessionOptions): Session {
     scripts?.leave(p.id);
     shops?.leave(p.id);
     pcs.leave(p.id);
-    for (const id of p.arenaTarget === undefined ? [p.entityId] : [p.entityId, p.arenaTarget]) {
+    for (const id of [p.entityId, ...(p.arenaFoes ?? [])]) {
       combat?.remove(world, id);
       world.remove(id);
     }
@@ -532,6 +575,36 @@ export function createSession(options: SessionOptions): Session {
   }
 
   /** Handles a hello; returns the new player or undefined when it was refused. */
+  /** Why this arena cannot be built, checked before anything enters the world; undefined when it can. */
+  function arenaProblem(spec: ArenaSpec): string | undefined {
+    if (!combat || !options.combat || !options.devArena) return "A arena de teste só existe em builds de desenvolvimento.";
+    if (spec.foe.kind === "trainer" && !trainerBattles) return "Arena inválida: lutas de treinador precisam dos dados de treinadores e de scripts";
+    if (spec.foe.kind === "trainer" && !options.trainers?.trainer(spec.foe.trainer)) return `Arena inválida: treinador ${spec.foe.trainer} não existe na extração`;
+    if (spec.foe.kind === "wild" && spec.foe.behavior === "ai" && !wilds) return "Arena inválida: selvagens com IA precisam dos dados de selvagens";
+    try {
+      for (const c of [...spec.team, ...spec.foe.team]) arenaMember(c, options.combat, options.progression);
+    } catch (error) {
+      return `Arena inválida: ${(error as Error).message}`;
+    }
+    return undefined;
+  }
+
+  /** The arena's foes (arenaProblem passed): wild ones east of the player, or the trainer's battle, which keeps its own. */
+  function spawnFoes(p: Player, foe: ArenaSpec["foe"]): number[] {
+    if (foe.kind === "trainer") {
+      trainerBattles?.startScripted(p.id, foe.trainer, 0, foe.team.map(trainerMember));
+      return [];
+    }
+    return foe.team.map((c, i) => {
+      const at = foeSpot(i);
+      if (foe.behavior === "ai") return wilds!.place(ARENA_AREA, at.x, at.y, c, tick);
+      // A still target: a wild combatant the AI never drives.
+      const e = world.add({ kind: "pokemon", area: ARENA_AREA, ...at, level: 0, facing: "west", data: {} });
+      combat!.spawn(world, e.id, c, "wild");
+      return e.id;
+    });
+  }
+
   function admit(conn: Connection, msg: { protocolVersion: number; save: unknown; resumeToken?: string | undefined; arena?: ArenaSpec | undefined }): { player: Player; resumed: boolean } | undefined {
     if (msg.protocolVersion !== PROTOCOL_VERSION) {
       reject(conn, "protocol-mismatch", protocolMismatchMessage(PROTOCOL_VERSION, msg.protocolVersion));
@@ -546,12 +619,24 @@ export function createSession(options: SessionOptions): Session {
       reject(conn, migrated.code === "save-too-new" ? "save-too-new" : "invalid-save", migrated.message);
       return undefined;
     }
-    let save = options.devParty && migrated.save.party.length === 0 ? { ...migrated.save, party: options.devParty.map((m) => ({ ...m })) } : migrated.save;
-    if (options.devBag && save.bag.length === 0) save = { ...save, bag: options.devBag.map((b) => ({ ...b })) };
+    // A new game's story gives the starter and the balls (spec 024); the dev kit is for older saves.
+    const devKit = migrated.save.storyRev < STORY_REV;
+    let save = devKit && options.devParty && migrated.save.party.length === 0 ? { ...migrated.save, party: options.devParty.map((m) => ({ ...m })) } : migrated.save;
+    if (devKit && options.devBag && save.bag.length === 0) save = { ...save, bag: options.devBag.map((b) => ({ ...b })) };
     const problem = options.validateSave?.(save);
     if (problem) {
       reject(conn, "invalid-save", problem);
       return undefined;
+    }
+    if (msg.arena) {
+      const arena = arenaProblem(msg.arena);
+      if (arena) {
+        reject(conn, "invalid-message", arena);
+        return undefined;
+      }
+      // The arena's trainer and team stand in for the save's for this session, and a blackout comes back to the arena; nothing is ever saved.
+      const { trainer, team } = msg.arena;
+      save = { ...save, name: trainer.name, character: trainer.character, party: team.map((c) => arenaMember(c, options.combat!, options.progression)), bag: [], pending: [], flags: [], vars: {}, respawn: { area: ARENA_AREA, x: ARENA_SPAWN.x, y: ARENA_SPAWN.y } };
     }
     const key = nameKey(save.name);
     const held = reserved.get(key);
@@ -568,20 +653,10 @@ export function createSession(options: SessionOptions): Session {
       return undefined;
     }
     if (msg.arena) {
-      if (!combat || !options.devArena) {
-        reject(conn, "invalid-message", "A arena de teste só existe em builds de desenvolvimento.");
-        return undefined;
-      }
-      let arena: { a: number; b: number };
-      try {
-        // Owned by the id add() is about to take.
-        arena = spawnArena(world, combat, msg.arena, nextPlayerId);
-      } catch (error) {
-        reject(conn, "invalid-message", `Arena inválida: ${(error as Error).message}`);
-        return undefined;
-      }
       // shortcut: arena joins are not recorded, so a replay of an arena session does not rebuild it; record them if arena replays matter.
-      return { player: add(save, conn, { area: "", x: 0, y: 0, level: 0, facing: "south" }, options.newToken(), arena), resumed: false };
+      const player = add(save, conn, ARENA_SPAWN, options.newToken(), true);
+      player.arenaFoes = spawnFoes(player, msg.arena.foe);
+      return { player, resumed: false };
     }
     return { player: add(save, conn, { area: save.area, x: save.x, y: save.y, level: 0, facing: save.facing }, options.newToken()), resumed: false };
   }
@@ -639,7 +714,7 @@ export function createSession(options: SessionOptions): Session {
           player.debugAi = msg.on;
           return;
         case "script-answer":
-          if (scripts) scripts.answer(player.id, msg.id, msg.answer);
+          if (scripts) scripts.answer(player.id, msg.id, msg.answer, msg.text);
           else options.log(`Discarded script-answer from ${who}: this session has no scripts`);
           return;
         case "trainer-ready":
@@ -663,12 +738,21 @@ export function createSession(options: SessionOptions): Session {
         case "debugSetFlag":
           scripts?.setFlag(player.id, msg.flag, msg.on);
           return;
+        case "debugWarp":
+          scripts?.warp(player.id, msg.map, msg.tx, msg.ty);
+          return;
+        case "debugSetHp":
+          scripts?.setHp(player.id, msg.hp);
+          return;
         case "menu":
           if (msg.open && companions?.inCombat(player.id)) notice(player, "menu-blocked");
           else {
             player.menuOpen = msg.open;
             setBusy(player, msg.open || (scripts?.busy(player.id) ?? false));
           }
+          return;
+        case "rescue":
+          if (!rescue(player)) notice(player, "action-refused");
           return;
         case "reorder-party":
           if (companions?.inCombat(player.id) || progression?.busy(player.id) || !reorderParty(player.progress.party, msg.from, msg.to)) notice(player, "action-refused");
@@ -742,21 +826,17 @@ export function createSession(options: SessionOptions): Session {
         p.lastInputSeq = input.seq;
         options.onRecord?.({ tick, kind: "input", playerId: p.id, input });
       }
-      if (p.arenaTarget !== undefined) {
-        if (input) combat!.input(p.entityId, { move: input.move, buttons: input.buttons, aim: input.aim });
-        continue;
-      }
       const buttons = input?.buttons ?? p.buttons;
       const pressed = buttons & ~p.buttons;
       p.buttons = buttons;
       // A trainer saw the player: held while the "!" shows and the trainer walks up (spec 022).
       if (trainerBattles?.locked(p.id)) {
-        world.update(stepMovement(world.get(p.entityId)!, null, options.world));
+        world.update(stepMovement(world.get(p.entityId)!, null, lookup));
         continue;
       }
       // A running script holds the player; interact on a person or a sign starts one (spec 020).
       if (scripts?.input(p.id, input, pressed, tick)) {
-        world.update(stepMovement(world.get(p.entityId)!, null, options.world));
+        world.update(stepMovement(world.get(p.entityId)!, null, lookup));
         continue;
       }
       // A ball can be thrown walking or in combat, but never at a trainer's Pokémon (spec 022).
@@ -772,7 +852,7 @@ export function createSession(options: SessionOptions): Session {
       }
       // Every tick, so ledge hops and warp transitions run out without input.
       const me = world.get(p.entityId)!;
-      world.update(stepMovement(me, input ?? null, options.world, npcs && npcOccupied(world.all().filter((e) => scripts!.visible(p.id, e)).map((e) => scripts!.view(p.id, e)), me.area)));
+      world.update(stepMovement(me, input ?? null, lookup, npcs && npcOccupied(world.all().filter((e) => scripts!.visible(p.id, e)).map((e) => scripts!.view(p.id, e)), me.area)));
     }
     npcs?.step();
     const hits = combat?.step(tick, world) ?? [];
@@ -791,7 +871,7 @@ export function createSession(options: SessionOptions): Session {
     scripts?.step(tick);
     scripts?.sendDebug();
     // Others see a player in a script as busy (principle VII), as with the menu.
-    if (scripts) for (const p of players.values()) if (p.arenaTarget === undefined) {
+    if (scripts) for (const p of players.values()) if (p.arenaFoes === undefined) {
           setBusy(p, p.menuOpen || scripts.busy(p.id) || (trainerBattles?.locked(p.id) ?? false));
           setSheltered(p, scripts.sheltered(p.id));
         }
@@ -828,7 +908,7 @@ export function createSession(options: SessionOptions): Session {
       for (const p of players.values()) p.conn?.send(msg);
     },
     join: (name, spawn) => {
-      const base: Save = { schemaVersion: 7, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
+      const base: Save = { schemaVersion: 8, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
       return add(base, undefined, spawn, "").id;
     },
     leave(playerId) {

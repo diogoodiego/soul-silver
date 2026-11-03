@@ -12,7 +12,8 @@ import type { World } from "./world";
 // The companion and the rules around a fight (spec 014): the party lead follows its trainer along
 // the trail; the combat button puts it under the player's control while the trainer stands still.
 
-const SOLID = new Set(["blocked", "water", "ledge"]);
+/** Tiles a Pokémon cannot stand on. */
+export const SOLID = new Set(["blocked", "water", "ledge"]);
 const STEP: Record<Direction, [number, number]> = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
 const OPPOSITE: Record<Direction, Direction> = { north: "south", south: "north", east: "west", west: "east" };
 
@@ -96,7 +97,7 @@ export function createCompanions(options: CompanionOptions) {
   };
 
   function sendParty(s: State): void {
-    const members = s.trainer.progress.party.map((m) => ({ species: m.species, level: m.level, hp: m.hp, hpMax: hpMax(m), ...options.detail?.(m) }));
+    const members = s.trainer.progress.party.map((m) => ({ species: m.species, ...(m.nickname ? { nickname: m.nickname } : {}), level: m.level, hp: m.hp, hpMax: hpMax(m), ...options.detail?.(m) }));
     s.trainer.send({ type: "party", members, ...(s.active !== undefined && s.mode === "combat" ? { active: s.active } : {}) });
   }
 

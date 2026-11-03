@@ -1,11 +1,13 @@
-import type { MapEventsFile, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
-import { createRng, tileAt, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
+import type { MapEventsFile, NewGameFile, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
+import { createRng, stepMovement, tileAt, unstick, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
 import { isCounter, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { starterMember } from "@soulsilver/shared/progression";
 import { store } from "@soulsilver/shared/pc";
 import type { PartyMember, Save } from "@soulsilver/shared/save";
-import type { CutsceneActor, CutsceneStep } from "@soulsilver/shared/npc";
+import { npcOccupied, type CutsceneActor, type CutsceneStep } from "@soulsilver/shared/npc";
 import { createRunner, SCRIPT_DIRECTIONS, SCRIPT_HANDLERS, type MissingCommand, type Runner, type ScriptHost } from "@soulsilver/shared/script";
+import { POCKET_KEYS } from "@soulsilver/shared/game-data";
+import type { ItemsData } from "./items";
 import type { Npcs } from "./npcs";
 import type { ProgressionData } from "./progression";
 import type { World } from "./world";
@@ -19,6 +21,12 @@ export interface ScriptData {
   events(map: number): MapEventsFile | undefined;
   /** Where a script id leads from `map` (global ids ignore the map). */
   resolve(scriptId: number, map: number): { file: number; entry: number } | undefined;
+  /** Where a new game starts and the script it runs once (spec 024); absent in older extractions. */
+  newGame?: Omit<NewGameFile, "kind" | "formatVersion"> | undefined;
+  /** The message banks GetStdMsgNaix picks from, by index (spec 024). */
+  stdMessageBanks?: readonly number[] | undefined;
+  /** The rival's name when nothing is typed, from the game's text (spec 024). */
+  defaultRival?: string | undefined;
 }
 
 /** Temporary variables and map flags the game clears on every map change (vars.h, flags.h). */
@@ -26,9 +34,13 @@ const TEMP_VARS = { from: 0x4000, to: 0x401f };
 const MAPTEMP_FLAGS = { from: 0x1, to: 0x40 };
 /** A script waits this long for an answer before the player is let go: 60 s at 20 Hz. */
 export const SCRIPT_TIMEOUT_TICKS = 1200;
+/** Requests the server ends itself, never timed out: waits, trainer battles, shops and the PC (spec 024). */
+const OPEN_ENDED = new Set(["wait", "battle", "shop", "pc"]);
 const STEP: Record<Direction, [number, number]> = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
 const OPPOSITE: Record<Direction, Direction> = { north: "south", south: "north", west: "east", east: "west" };
 const BAG_MAX = 999;
+/** The Pokémon Centers' ground floors, the original's sPokemonCenterMaps: only there does healing set the respawn point. */
+const POKEMON_CENTERS = new Set(["501", "475", "428", "434", "358", "393", "482", "508", "407", "69", "158", "166", "236", "185", "226", "81", "246", "293", "514", "511", "466", "169", "528", "534"]);
 /** Map sprites chosen by script variable (the field table has no entry for them). */
 const VAR_SPRITE_FIRST = 101;
 const VAR_SPRITE_LAST = 116;
@@ -76,7 +88,11 @@ export interface Storyteller {
   placement?: Save["npcPlacement"] | undefined;
   /** A save that was just created: Prof. Oak's introduction runs once on entering the world (spec 021, FR-011). */
   intro?: boolean | undefined;
+  /** The story has not started (a new save, or one restarted, spec 024): _std_init runs once on joining. */
+  init?: boolean | undefined;
   progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badges" | "pokedex" | "respawn">;
+  /** The save's rival name (spec 024); mutated in place, the session saves it. */
+  rival?: Pick<Save, "rivalName"> | undefined;
   send(msg: ServerMessage): void;
 }
 
@@ -89,6 +105,8 @@ export interface ScriptsOptions {
   progression?: ProgressionData | undefined;
   seed: number;
   hpMax(m: PartyMember): number;
+  /** The bag pocket of each item (spec 024: the receive-item std script). */
+  items?: ItemsData | undefined;
   weekday(): number;
   timeoutTicks?: number | undefined;
   /** Runs Prof. Oak's introduction for saves that were just created (off in tests that do not ask for it). */
@@ -98,6 +116,10 @@ export interface ScriptsOptions {
   /** After the party or the bag changed, so the client gets them again. */
   changed(playerId: number, what: "party" | "bag"): void;
   onMissing?: ((m: MissingCommand & { player: number }) => void) | undefined;
+  /** A script ended with the player unable to take a step (spec 024). */
+  onStuck?: ((s: StuckPlayer) => void) | undefined;
+  /** A script is about to run for this player: the state as it is now is what saves keep until it ends (spec 024). */
+  onStart?: ((playerId: number) => void) | undefined;
   /** Starts a scripted trainer battle (spec 022); false when there is none to start. The script waits for battleEnded. */
   battle?: ((playerId: number, trainer: number, partner: number) => boolean) | undefined;
   /** Opens a Poké Mart (spec 023); false when there is none. The script waits for serviceClosed. */
@@ -111,9 +133,27 @@ export interface ScriptsOptions {
   log(message: string): void;
 }
 
+/** Who was left stuck, by which script, on which tile (matrix coordinates), and whether unstick freed them. */
+export interface StuckPlayer {
+  player: number;
+  file: number;
+  entry: number;
+  area: string;
+  x: number;
+  z: number;
+  /** Visible people on or next to the player's tile, by person id. */
+  people: number[];
+  freed: boolean;
+}
+
+/** One step's input in each direction, to see whether the player can still walk. */
+const PROBES = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
+
 interface State {
   who: Storyteller;
   runner: Runner | undefined;
+  /** The script the runner started from, for the stuck check at its end. */
+  script: { file: number; entry: number } | undefined;
   /** Id of the request the client must answer; ids only grow. */
   asked: number;
   askedAt: number;
@@ -129,6 +169,8 @@ interface State {
   moved: Map<number, { tx: number; ty: number; facing: Direction }>;
   /** The frame table stops after one of its scripts failed, until the map is entered again. */
   framesOff: boolean;
+  /** The field comes back after the starter scene: onResume runs again once the script ends, as the original. */
+  resume: boolean;
   /** The running script came from the frame table. */
   frameRunning: boolean;
   debug: boolean;
@@ -139,7 +181,15 @@ interface State {
   inService: boolean;
   /** Result of the last trainer battle, for CheckBattleWon. */
   won: boolean;
+  /** The latest flag and variable changes for the debugger (spec 024), kept while it is off too. */
+  changes: FlagChange[];
 }
+
+type DebugView = Extract<ServerMessage, { type: "script-debug" }>;
+type FlagChange = DebugView["changes"][number];
+const HISTORY = 64;
+const hex = (n: number) => `0x${n.toString(16)}`;
+const scriptName = (file: number, entry: number) => `${String(file).padStart(4, "0")}:${entry}`;
 
 export function createScripts(options: ScriptsOptions) {
   const { data, world, lookup } = options;
@@ -187,6 +237,28 @@ export function createScripts(options: ScriptsOptions) {
     return hideFlag === 0 || !s.who.flags.has(hideFlag);
   }
 
+  /** A value from a frame or trigger condition: 0x4000 and up name a variable. */
+  const operand = (s: State, v: number) => (v >= 0x4000 ? (s.who.vars.get(v) ?? 0) : v);
+  const frameMet = (s: State, f: { variable: number; value: number }) => (s.who.vars.get(f.variable) ?? 0) === operand(s, f.value);
+  const triggerMet = (s: State, g: { variable: number; value: number }) => (s.who.vars.get(g.variable) ?? 0) === g.value;
+
+  /**
+   * shortcut: only what scripts and the debugger write; the battle's defeated-trainer flag (trainer-battle.ts)
+   * and the map's temporary resets are not listed. Route them through here when the golden path needs them.
+   */
+  function record(s: State, kind: FlagChange["kind"], id: number, value: number, script?: string): void {
+    const at = s.runner?.snapshot();
+    s.changes.push({ tick, kind, id, value, script: script ?? (at ? scriptName(at.file, at.entry) : "dev") });
+    if (s.changes.length > HISTORY) s.changes.shift();
+  }
+
+  function writeFlag(s: State, id: number, on: boolean, script?: string): void {
+    if (s.who.flags.has(id) === on) return;
+    if (on) s.who.flags.add(id);
+    else s.who.flags.delete(id);
+    record(s, "flag", id, on ? 1 : 0, script);
+  }
+
   function send(s: State, msg: ServerMessage): void {
     s.who.send(msg);
   }
@@ -204,9 +276,14 @@ export function createScripts(options: ScriptsOptions) {
     return {
       character: who.character,
       flag: (id) => who.flags.has(id),
-      setFlag: (id, on) => void (on ? who.flags.add(id) : who.flags.delete(id)),
+      setFlag: (id, on) => writeFlag(s, id, on),
       getVar: (id) => who.vars.get(id) ?? 0,
-      setVar: (id, v) => void (v === 0 ? who.vars.delete(id) : who.vars.set(id, v)),
+      setVar(id, v) {
+        if ((who.vars.get(id) ?? 0) === v) return;
+        if (v === 0) who.vars.delete(id);
+        else who.vars.set(id, v);
+        record(s, "var", id, v);
+      },
       money: () => who.progress.money,
       addMoney: (n) => void (who.progress.money = Math.max(0, Math.min(MONEY_MAX, who.progress.money + n))),
       hasItem: (item, count) => (bagRow(item)?.count ?? 0) >= count,
@@ -233,6 +310,22 @@ export function createScripts(options: ScriptsOptions) {
         const i = who.progress.party.findIndex((m) => m.hp > 0);
         return i === -1 ? who.progress.party.length : i;
       },
+      partyNickname: (slot) => who.progress.party[slot]?.nickname,
+      partyFriendship: (slot) => who.progress.party[slot]?.friendship ?? 0,
+      rivalName: () => who.rival?.rivalName ?? "",
+      setRivalName: (name) => void (who.rival && (who.rival.rivalName = name)),
+      defaultRivalName: () => data.defaultRival ?? "",
+      companionOut: () => companionOf(s) !== undefined,
+      stdMessageBank: (i) => data.stdMessageBanks?.[i] ?? 0,
+      itemPocket: (item) => Math.max(0, POCKET_KEYS.indexOf(options.items?.item(item)?.pocket ?? "items")),
+      nicknamePartyMon(slot, name) {
+        const mon = who.progress.party[slot];
+        if (!mon) return;
+        const trimmed = name.trim().slice(0, 10);
+        if (trimmed === "") delete mon.nickname;
+        else mon.nickname = trimmed;
+        options.changed(who.playerId, "party");
+      },
       giveMon(species, level) {
         const info = options.progression?.species(species);
         if (!info) {
@@ -251,14 +344,14 @@ export function createScripts(options: ScriptsOptions) {
       },
       healParty() {
         for (const m of who.progress.party) m.hp = options.hpMax(m);
-        // The nurse makes this Center the blackout respawn point, in front of her counter (spec 023).
+        // The nurse makes this Center the blackout respawn point, in front of her counter (spec 023); Mr. Pokémon and Mom heal too, but do not.
         const e = me();
-        who.progress.respawn = { area: e.area, x: e.x, y: e.y };
+        if (POKEMON_CENTERS.has(e.area)) who.progress.respawn = { area: e.area, x: e.x, y: e.y };
         options.changed(who.playerId, "party");
       },
       // shortcut: the save keeps a badge count, not which badges; Johto's are earned in order until a spec needs the set.
       trainerFlag: (t) => who.flags.has(trainerFlagBase + t),
-      setTrainerFlag: (t, on) => void (on ? who.flags.add(trainerFlagBase + t) : who.flags.delete(trainerFlagBase + t)),
+      setTrainerFlag: (t, on) => writeFlag(s, trainerFlagBase + t, on),
       battleWon: () => s.won,
       hasBadge: (b) => b < who.progress.badges,
       giveBadge: (b) => void (who.progress.badges = Math.max(who.progress.badges, Math.min(16, b + 1))),
@@ -295,7 +388,9 @@ export function createScripts(options: ScriptsOptions) {
         (who.placement[area] ??= {})[String(id)] = { x, z, facing: SCRIPT_DIRECTIONS[facing] ?? e.facing };
       },
       weekday: () => options.weekday(),
-      emit: (event) => send(s, { type: "script-event", event }),
+      random16: () => rng.nextInt(0x10000),
+      // Props go with the map they are on: a map's onResume runs before the client draws it (spec 024).
+      emit: (event) => send(s, { type: "script-event", event: event.kind === "props" ? { ...event, area: s.area ?? "" } : event }),
       // Nothing implements wild battles or marts yet: each ends the script as missing (FR-008).
       bridge: () => false,
       file: (id) => data.file(id),
@@ -355,14 +450,15 @@ export function createScripts(options: ScriptsOptions) {
   /** A cutscene ended: the player and the people it moved stay where the steps left them. */
   function stage(s: State, steps: readonly CutsceneStep[]): void {
     const me = world.get(s.who.entityId)!;
-    const at = new Map<string, { tx: number; ty: number; facing: Direction }>();
+    // In pixels from where each actor stands, as the client animates them, so the scene ends where it was drawn.
+    const at = new Map<string, { x: number; y: number; facing: Direction }>();
     const key = (a: CutsceneActor) => (typeof a === "string" ? a : String(a.person));
     const where = (a: CutsceneActor) => {
       const k = key(a);
       if (!at.has(k)) {
         const e = a === "player" ? me : a === "companion" ? companionOf(s) : personOf(me.area, a.person);
         const v = e && (a === "player" ? e : viewOf(s, e));
-        at.set(k, v ? { tx: Math.floor(v.x / MAP_TILE_PX), ty: Math.floor(v.y / MAP_TILE_PX), facing: v.facing } : { tx: 0, ty: 0, facing: "south" });
+        at.set(k, v ? { x: v.x, y: v.y, facing: v.facing } : { x: center(0), y: center(0), facing: "south" });
       }
       return at.get(k)!;
     };
@@ -370,8 +466,8 @@ export function createScripts(options: ScriptsOptions) {
       if (step.kind === "walk" || step.kind === "jump" || step.kind === "face") {
         const p = where(step.actor);
         const n = step.kind === "face" ? 0 : step.count;
-        p.tx += STEP[step.dir][0] * n;
-        p.ty += STEP[step.dir][1] * n;
+        p.x += STEP[step.dir][0] * n * MAP_TILE_PX;
+        p.y += STEP[step.dir][1] * n * MAP_TILE_PX;
         p.facing = step.dir;
       } else if ((step.kind === "show" || step.kind === "hide") && typeof step.actor === "object") {
         s.shown.set(step.actor.person, step.kind === "show");
@@ -379,9 +475,9 @@ export function createScripts(options: ScriptsOptions) {
     }
     for (const [k, p] of at) {
       const c = k === "companion" ? companionOf(s) : undefined;
-      if (k === "player") world.update({ ...me, x: center(p.tx), y: center(p.ty), facing: p.facing });
-      else if (c) world.update({ ...c, x: center(p.tx), y: center(p.ty), facing: p.facing });
-      else if (k !== "companion") s.moved.set(Number(k), p);
+      if (k === "player") world.update({ ...me, x: p.x, y: p.y, facing: p.facing });
+      else if (c) world.update({ ...c, x: p.x, y: p.y, facing: p.facing });
+      else if (k !== "companion") s.moved.set(Number(k), { tx: Math.floor(p.x / MAP_TILE_PX), ty: Math.floor(p.y / MAP_TILE_PX), facing: p.facing });
     }
   }
 
@@ -408,6 +504,27 @@ export function createScripts(options: ScriptsOptions) {
     s.talkedTo = undefined;
     s.frameRunning = false;
     lock(s, false);
+    checkFree(s);
+  }
+
+  /** The player must be able to walk away from a finished script, by the same rules as movement; else it is logged and they go to the nearest free tile. */
+  function checkFree(s: State): void {
+    const me = world.get(s.who.entityId);
+    if (!me || !lookup(me.area) || !s.script) return;
+    const occupied = options.npcs && npcOccupied(world.all().filter((e) => visibleTo(s, e)).map((e) => viewOf(s, e)), me.area);
+    const moves = PROBES.some((move) => {
+      const n = stepMovement(me, { move, run: false }, lookup, occupied);
+      return n.x !== me.x || n.y !== me.y || n.area !== me.area || n.data["warping"] !== me.data["warping"] || n.data["hop"] !== me.data["hop"];
+    });
+    if (moves) return;
+    // The people on or next to the player's tile: a cutscene that ends with someone on top of them shows here.
+    const near = (e: Entity) => Math.abs(Math.floor(e.x / MAP_TILE_PX) - Math.floor(me.x / MAP_TILE_PX)) <= 1 && Math.abs(Math.floor(e.y / MAP_TILE_PX) - Math.floor(me.y / MAP_TILE_PX)) <= 1;
+    const people = world.all().filter((e) => e.kind === "npc" && e.area === me.area && visibleTo(s, e)).map((e) => viewOf(s, e)).filter(near).map((e) => e.data["person"] as number);
+    const freed = unstick(me, lookup);
+    if (freed !== me) world.update(freed);
+    const t = tileOf(me);
+    options.log(`Player ${s.who.playerId} cannot move after script ${s.script.file}:${s.script.entry}, at map ${me.area} (${t.x},${t.z}), people around: [${people.join(", ")}]${freed !== me ? "; moved to the nearest free tile" : ""}`);
+    options.onStuck?.({ player: s.who.playerId, ...s.script, area: me.area, x: t.x, z: t.z, people, freed: freed !== me });
   }
 
   /** Starts a script for this player; false when it cannot (file missing, or one already runs). */
@@ -417,7 +534,12 @@ export function createScripts(options: ScriptsOptions) {
       options.log(`Player ${s.who.playerId}: script file ${ref.file} is not in the extraction`);
       return false;
     }
+    // The original moves on a grid: a script starts with the player on their tile's center, so its walks and the people it brings line up.
+    const me = world.get(s.who.entityId);
+    if (me) world.update({ ...me, x: center(Math.floor(me.x / MAP_TILE_PX)), y: center(Math.floor(me.y / MAP_TILE_PX)) });
+    options.onStart?.(s.who.playerId);
     s.runner = createRunner(hostFor(s), SCRIPT_HANDLERS, { file, entry: ref.entry });
+    s.script = { file: ref.file, entry: ref.entry };
     s.frameRunning = frame;
     s.runner.step();
     settle(s);
@@ -434,12 +556,33 @@ export function createScripts(options: ScriptsOptions) {
     spawnPeople(e.area);
     const level = eventsOf(e.area)?.levelScripts;
     // Each runs to its end before the next; a blocking one keeps the rest for after it (rare in the original).
-    for (const ref of [level?.onTransition, level?.onLoad]) if (ref && !s.runner) start(s, ref);
+    // onResume runs on every return to the field, the first included (it places the starter balls, spec 024).
+    for (const ref of [level?.onTransition, level?.onLoad, level?.onResume]) if (ref && !s.runner) start(s, ref);
   }
 
   function frameScript(s: State, area: string): ScriptRef | undefined {
-    const read = (v: number) => (v >= 0x4000 ? (s.who.vars.get(v) ?? 0) : v);
-    return eventsOf(area)?.levelScripts.frames.find((f) => (s.who.vars.get(f.variable) ?? 0) === read(f.value))?.script;
+    return eventsOf(area)?.levelScripts.frames.find((f) => frameMet(s, f))?.script;
+  }
+
+  /** The debugger's panels for the player's map, from the checks the game itself makes (research R6). */
+  function panels(s: State): Pick<DebugView, "objects" | "triggers"> {
+    const area = s.area ?? "";
+    const events = eventsOf(area);
+    if (!events) return { objects: [], triggers: [] };
+    const objects = events.npcs.map((n) => {
+      const e = personOf(area, n.id);
+      return { id: n.id, sprite: n.sprite, hideFlag: n.hideFlag || null, visible: e !== undefined && visibleTo(s, e) };
+    });
+    const frames = events.levelScripts.frames.map((f) => ({
+      kind: "mapScript" as const,
+      script: scriptName(f.script.file, f.script.entry),
+      condition: `var ${hex(f.variable)} = ${f.value >= 0x4000 ? `var ${hex(f.value)}` : f.value}`,
+      met: frameMet(s, f),
+    }));
+    const triggers = events.triggers.flatMap((g) =>
+      g.script ? [{ kind: "trigger" as const, script: scriptName(g.script.file, g.script.entry), condition: `var ${hex(g.variable)} = ${g.value} @ (${g.x}, ${g.z}) ${g.w}×${g.h}`, met: triggerMet(s, g) }] : [],
+    );
+    return { objects, triggers: [...frames, ...triggers] };
   }
 
   function interact(s: State): boolean {
@@ -480,12 +623,24 @@ export function createScripts(options: ScriptsOptions) {
 
   return {
     join(who: Storyteller): void {
-      states.set(who.playerId, { who, runner: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", shown: new Map(), moved: new Map(), framesOff: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false });
+      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false, changes: [] };
+      states.set(who.playerId, s);
+      // Spec 024: a story not yet started runs _std_init to its end before any map, as RunInitScript does.
+      const init = who.init && data.newGame ? data.resolve(data.newGame.initScript, data.newGame.map) : undefined;
+      if (init) {
+        start(s, init);
+        if (s.runner) {
+          options.log(`Player ${who.playerId}: the new-game init script stopped before its end`);
+          finish(s);
+        }
+      }
     },
     leave(playerId: number): void {
       states.delete(playerId);
     },
     busy: (playerId: number) => states.get(playerId)?.runner !== undefined,
+    /** A shop or the PC the script opened is open: what the player trades there is saved at once (spec 024). */
+    inService: (playerId: number) => states.get(playerId)?.inService === true,
     /** In a script and not fighting its trainer battle: out of reach of combat (spec 021, US4). */
     sheltered(playerId: number): boolean {
       const s = states.get(playerId);
@@ -498,6 +653,16 @@ export function createScripts(options: ScriptsOptions) {
       if (!s) return false;
       if (s.runner) return !s.inBattle;
       return input !== undefined && (pressed & BUTTON.interact) !== 0 && interact(s);
+    },
+    /** Ends the running script where it stands, for "Estou preso"; false while it waits on a battle, a shop or the PC. */
+    abort(playerId: number): boolean {
+      const s = states.get(playerId);
+      if (s?.inBattle || s?.inService) return false;
+      if (s?.runner) {
+        s.framesOff ||= s.frameRunning;
+        finish(s);
+      }
+      return true;
     },
     /** The player left the shop or the PC a script waited on. */
     serviceClosed(playerId: number): void {
@@ -523,7 +688,7 @@ export function createScripts(options: ScriptsOptions) {
       const n = eventsOf(e.area)?.npcs.find((p) => p.id === e.data["person"]);
       return n?.trainer ? { trainer: n.trainer, sightTiles: n.param[0] } : undefined;
     },
-    answer(playerId: number, id: number, answer: number | undefined): void {
+    answer(playerId: number, id: number, answer: number | undefined, text?: string): void {
       const s = states.get(playerId);
       const request = s?.runner?.state.kind === "blocked" ? s.runner.state.request : undefined;
       if (!s || !request || request.kind === "wait" || id !== s.asked) {
@@ -531,7 +696,8 @@ export function createScripts(options: ScriptsOptions) {
         return;
       }
       if (request.kind === "cutscene") stage(s, request.steps);
-      s.runner!.resume(answer);
+      if (request.kind === "starter") s.resume = true;
+      s.runner!.resume(answer, text);
       settle(s);
     },
     /** After movement: map entry, triggers, the frame table, waits and timeouts. */
@@ -547,11 +713,17 @@ export function createScripts(options: ScriptsOptions) {
             s.waitUntil = undefined;
             s.runner.resume();
             settle(s);
-          } else if (state.kind === "blocked" && state.request.kind !== "wait" && tick - s.askedAt >= timeout) {
+          // A battle, a shop and the PC always end (on their own or when the player leaves) and may well outlast the timeout.
+          } else if (state.kind === "blocked" && !OPEN_ENDED.has(state.request.kind) && tick - s.askedAt >= timeout) {
             options.log(`Player ${s.who.playerId}: script timed out waiting for ${state.request.kind}`);
             finish(s);
           }
           continue;
+        }
+        if (s.resume) {
+          s.resume = false;
+          const ref = eventsOf(e.area)?.levelScripts.onResume;
+          if (ref && start(s, ref)) continue;
         }
         // After the map's own entry scripts, before anything the player walks into.
         if (s.who.intro && options.intro) {
@@ -563,7 +735,7 @@ export function createScripts(options: ScriptsOptions) {
         const key = `${e.area}:${t.x},${t.z}`;
         if (key !== s.tile) {
           s.tile = key;
-          const trigger = eventsOf(e.area)?.triggers.find((g) => g.script && t.x >= g.x && t.x < g.x + g.w && t.z >= g.z && t.z < g.z + g.h && (s.who.vars.get(g.variable) ?? 0) === g.value);
+          const trigger = eventsOf(e.area)?.triggers.find((g) => g.script && t.x >= g.x && t.x < g.x + g.w && t.z >= g.z && t.z < g.z + g.h && triggerMet(s, g));
           if (trigger?.script && start(s, trigger.script)) continue;
         }
         const frame = s.framesOff ? undefined : frameScript(s, e.area);
@@ -598,8 +770,28 @@ export function createScripts(options: ScriptsOptions) {
         options.log(`Refused debugSetFlag from player ${playerId}: the script debugger is off or this is not a development build`);
         return;
       }
-      if (on) s.who.flags.add(flag);
-      else s.who.flags.delete(flag);
+      writeFlag(s, flag, on, "dev");
+    },
+    /** Development and the golden path (spec 024): a teleport to a map tile, in the script warp's coordinates. */
+    warp(playerId: number, map: number, tx: number, ty: number): void {
+      const s = states.get(playerId);
+      const area = String(map);
+      if (!s?.debug || !options.devTools || s.runner || !lookup(area)) {
+        options.log(`Refused debugWarp from player ${playerId}: the script debugger is off, this is not a development build, a script runs or map ${map} does not exist`);
+        return;
+      }
+      const o = origin(area);
+      world.update({ ...world.get(s.who.entityId)!, area, x: center(tx - o.tx), y: center(ty - o.ty), level: 0 });
+    },
+    /** Development and the golden path (spec 024): every party member's HP, capped at its maximum. */
+    setHp(playerId: number, hp: number): void {
+      const s = states.get(playerId);
+      if (!s?.debug || !options.devTools) {
+        options.log(`Refused debugSetHp from player ${playerId}: the script debugger is off or this is not a development build`);
+        return;
+      }
+      for (const m of s.who.progress.party) m.hp = Math.min(hp, options.hpMax(m));
+      options.changed(playerId, "party");
     },
     /** The debugger's view, for clients that asked, only when it changed. */
     sendDebug(): void {
@@ -610,6 +802,8 @@ export function createScripts(options: ScriptsOptions) {
           at: s.runner?.snapshot() ?? null,
           flags: [...s.who.flags].sort((a, b) => a - b),
           vars: Object.fromEntries([...s.who.vars].sort(([a], [b]) => a - b).map(([k, v]) => [String(k), v])),
+          ...panels(s),
+          changes: s.changes,
         } satisfies ServerMessage;
         const json = JSON.stringify(msg);
         if (json === s.lastDebug) continue;

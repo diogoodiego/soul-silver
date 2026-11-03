@@ -28,9 +28,12 @@ describe("blocking commands", () => {
     t.step();
     expect(t.of(a, "script").at(-1)).toEqual({ type: "script", id: 2, request: { kind: "yes-no" } });
     a.conn.send({ type: "script-answer", id: 2, answer: 0 });
+    // The wait still holds the player; a save then keeps the state from before the script (spec 024).
     t.step(19);
+    expect(t.of(a, "script-lock").at(-1)?.locked).toBe(true);
+    t.step(3);
     t.session.close("closed-by-host");
-    expect(a.saves().at(-1)!.save.flags).toEqual([310]);
+    expect(a.saves().at(-1)!.save.flags).toEqual([310, 311]);
   });
 
   it("the wait ends after 30 frames' worth of ticks", () => {

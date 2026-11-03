@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { mapEvents, npc, scriptData, scriptFile, story } from "./scripts-fixture";
+import { at, mapEvents, npc, scriptData, scriptFile, story } from "./scripts-fixture";
+import { member } from "./trainer-fixture";
 
 // Spec 020 US4, FR-011: the script debugger.
 
@@ -16,7 +17,7 @@ describe("script debugger", () => {
     t.press(a);
     t.press(b);
     expect(t.of(b, "script-debug")).toEqual([]);
-    expect(t.of(a, "script-debug").at(-1)).toEqual({ type: "script-debug", at: { file: 100, entry: 0, pc: 2, command: "NPCMsg", depth: 1 }, flags: [], vars: {} });
+    expect(t.of(a, "script-debug").at(-1)).toEqual({ type: "script-debug", at: { file: 100, entry: 0, pc: 2, command: "NPCMsg", depth: 1 }, flags: [], vars: {}, objects: [{ id: 0, sprite: 3, hideFlag: null, visible: true }], triggers: [], changes: [] });
   });
 
   it("changes a flag in development builds, and the next event sees it", () => {
@@ -44,5 +45,53 @@ describe("script debugger", () => {
     release.step();
     release.press(b);
     expect(release.of(b, "script").at(-1)?.request).toMatchObject({ text: "0007:1" });
+  });
+
+  it("teleports in development builds with the debugger on (spec 024), and refuses otherwise", () => {
+    const where = (t: ReturnType<typeof story>, c: ReturnType<ReturnType<typeof story>["connect"]>) => {
+      const e = t.session.world.get(c.welcome!.entityId)!;
+      return { area: e.area, x: e.x, y: e.y };
+    };
+    const dev = story(data(), { devTools: true });
+    const a = dev.connect();
+    a.conn.send({ type: "debugScript", on: true });
+    a.conn.send({ type: "debugWarp", map: 61, tx: 3, ty: 4 });
+    dev.step();
+    expect(where(dev, a)).toEqual({ area: "61", x: at(3), y: at(4) });
+
+    const off = story(data(), { devTools: true });
+    const b = off.connect();
+    b.conn.send({ type: "debugWarp", map: 61, tx: 3, ty: 4 });
+    off.step();
+    expect(where(off, b).area).toBe("60");
+
+    const release = story(data());
+    const c = release.connect();
+    c.conn.send({ type: "debugScript", on: true });
+    c.conn.send({ type: "debugWarp", map: 61, tx: 3, ty: 4 });
+    release.step();
+    expect(where(release, c).area).toBe("60");
+  });
+
+  it("sets the party's HP in development builds with the debugger on (spec 024, the Center check), and refuses otherwise", () => {
+    const hp = (t: ReturnType<typeof story>, c: ReturnType<ReturnType<typeof story>["connect"]>) => {
+      t.session.close("closed-by-host");
+      return c.saves().at(-1)!.save.party.map((m) => m.hp);
+    };
+    const party = [member("cyndaquil", 10, 30), member("sentret", 10, 25)];
+
+    const dev = story(data(), { devTools: true });
+    const a = dev.connect(undefined, undefined, { save: { party } });
+    a.conn.send({ type: "debugScript", on: true });
+    a.conn.send({ type: "debugSetHp", hp: 3 });
+    dev.step();
+    expect(hp(dev, a)).toEqual([3, 3]);
+
+    const off = story(data(), { devTools: true });
+    const b = off.connect(undefined, undefined, { save: { party } });
+    b.conn.send({ type: "debugSetHp", hp: 3 });
+    off.step();
+    expect(hp(off, b)).toEqual([30, 25]);
+    expect(off.logs.some((l) => l.includes("Refused debugSetHp"))).toBe(true);
   });
 });

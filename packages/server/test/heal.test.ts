@@ -7,25 +7,38 @@ import { at, mapEvents, npc, scriptData, scriptFile, story } from "./scripts-fix
 // point, where the player stands; only the healed player changes.
 
 const nurse = scriptFile(100, ["L1:", ["HealParty"], ["End"]]);
-const data = () => scriptData([nurse], { 60: mapEvents({ npcs: [npc(0, 1, 2, 0)] }) });
+const CENTER = "69";
+const data = () => scriptData([nurse], { 60: mapEvents({ npcs: [npc(0, 1, 2, 0)] }), [CENTER]: mapEvents({ npcs: [npc(0, 1, 2, 0)] }) });
+const inCenter = { spawn: () => ({ area: CENTER, x: at(1), y: at(1) }) };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });
 const mon = (species: number, hp: number): PartyMember => ({ species, level: 5, moves: [33], hp, friendship: 70, experience: 125, ivs: stats(31), evs: stats(0), nature: 0 });
 
 describe("healing at the Pokémon Center (US2)", () => {
   it("restores every member's HP and records where the player stands as the respawn point", () => {
-    const t = story(data(), { combat: combatData() });
+    const t = story(data(), { combat: combatData(), ...inCenter });
     const c = t.connect(undefined, undefined, { save: { party: [mon(SPECIES.chikorita.id, 3), mon(SPECIES.chikorita.id, 0)], respawn: null } });
     t.step();
     t.press(c);
     t.session.close("closed-by-host");
     const save = c.saves().at(-1)!.save;
     expect(save.party.every((m) => m.hp > 3)).toBe(true);
-    expect(save.respawn).toEqual({ area: "60", x: at(1), y: at(1) });
+    expect(save.respawn).toEqual({ area: CENTER, x: at(1), y: at(1) });
+  });
+
+  it("heals outside a Center without moving the respawn point, as Mr. Pokémon does", () => {
+    const t = story(data(), { combat: combatData() });
+    const c = t.connect(undefined, undefined, { save: { party: [mon(SPECIES.chikorita.id, 3)], respawn: null } });
+    t.step();
+    t.press(c);
+    t.session.close("closed-by-host");
+    const save = c.saves().at(-1)!.save;
+    expect(save.party[0]!.hp).toBeGreaterThan(3);
+    expect(save.respawn).toBeNull();
   });
 
   it("changes only the healed player", () => {
-    const t = story(data(), { combat: combatData() });
+    const t = story(data(), { combat: combatData(), ...inCenter });
     const a = t.connect(undefined, undefined, { save: { party: [mon(SPECIES.chikorita.id, 3)], respawn: null } });
     const b = t.connect(undefined, undefined, { save: { party: [mon(SPECIES.chikorita.id, 3)], respawn: null } });
     t.step();

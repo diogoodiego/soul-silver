@@ -1,9 +1,9 @@
-import { reachPx, type MoveView } from "@soulsilver/shared/ai";
-import { BUTTON, createRng, type HitEvent, type WorldMap } from "@soulsilver/shared/game";
+import { createRng, type HitEvent, type WorldMap } from "@soulsilver/shared/game";
 import type { Temperament } from "@soulsilver/shared/wild";
 import { createAi } from "../src/ai";
 import { buildAiData, BUNDLED_AI_CONTENT, type AiData } from "../src/ai-loader";
 import { createCombat } from "../src/combat";
+import { createReferenceBot } from "../src/reference-bot";
 import { createWorld } from "../src/world";
 import { combatData, SPECIES } from "./combat-fixture";
 import { grassMap, px } from "./wild-fixture";
@@ -45,30 +45,9 @@ export function startFight(o: FightOptions) {
   runner.add(wild, { home: { x: px(16), y: px(20) }, level: o.wild.level, temperament: o.temperament ?? "aggressive", leashPx: 10 * 16, facing: { x: -1, y: 0 } });
   let hits: HitEvent[] = [];
   let tick = 0;
-  let dodgedCast = -1;
-
-  /** The reference bot: closes in, uses its strongest ready move, sidesteps half the casts it sees. */
-  function bot(): void {
-    const s = world.get(starter)!;
-    const w = world.get(wild)!;
-    const me = combat.get(starter)!;
-    const foe = combat.get(wild)!;
-    const d = Math.hypot(w.x - s.x, w.y - s.y);
-    const dir = { x: (w.x - s.x) / d, y: (w.y - s.y) / d };
-    let move = d > 20 ? dir : { x: 0, y: 0 };
-    let buttons = 0;
-    if (foe.casting && foe.casting.startTick !== dodgedCast) {
-      dodgedCast = foe.casting.startTick;
-      if (botRng.nextFloat() < 0.5) {
-        buttons |= BUTTON.dash;
-        move = { x: -dir.y, y: dir.x };
-      }
-    }
-    const ready = me.moves.map((m, slot) => ({ m, slot })).filter(({ slot }) => tick >= me.readyAt[slot]!);
-    const best = ready.sort((a, b) => b.m.power - a.m.power)[0];
-    if (best && !me.casting && tick % 2 === 0 && d <= reachPx(best.m as unknown as MoveView) + 8) buttons |= 1 << best.slot;
-    combat.input(starter, { move, buttons, aim: dir });
-  }
+  const reference = createReferenceBot(botRng);
+  const side = (id: number) => ({ x: world.get(id)!.x, y: world.get(id)!.y, c: combat.get(id)! });
+  const bot = () => combat.input(starter, reference(side(starter), side(wild), tick));
 
   const f = {
     world,

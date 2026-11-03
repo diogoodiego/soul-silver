@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SCRIPT_TIMEOUT_TICKS } from "../src/scripts";
 import { buildShopData } from "../src/shop";
 import { mapEvents, npc, scriptData, scriptFile, story } from "./scripts-fixture";
 
@@ -101,6 +102,19 @@ describe("Poké Mart (US1)", () => {
     c.conn.send({ type: "shop-leave" });
     t.step();
     expect(t.of(c, "shopClose")).toHaveLength(1);
+    t.session.close("closed-by-host");
+    expect(c.saves().at(-1)!.save.flags).toContain(320);
+  });
+
+  it("waits however long the player shops: the script goes on only when they leave (spec 024)", () => {
+    const { t, c } = atClerk();
+    for (let i = 0; i < SCRIPT_TIMEOUT_TICKS + 10; i++) {
+      c.conn.send({ type: "input", seq: 1000 + i, move: { x: 0, y: 0 }, run: false, buttons: 0 });
+      t.step();
+    }
+    expect(t.logs.filter((l) => l.includes("script timed out"))).toEqual([]);
+    c.conn.send({ type: "shop-leave" });
+    t.step();
     t.session.close("closed-by-host");
     expect(c.saves().at(-1)!.save.flags).toContain(320);
   });

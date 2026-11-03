@@ -93,16 +93,26 @@ export function createWilds(options: WildOptions) {
     const shiny = rollShiny(rules.shinyOdds, rng);
     const x = cell.x * MAP_TILE_PX + MAP_TILE_PX / 2;
     const y = cell.y * MAP_TILE_PX + MAP_TILE_PX / 2;
-    const e = world.add({ kind: "pokemon", area, x, y, level: 0, facing: "south", data: shiny ? { shiny: true } : {} });
     try {
-      const c = combat.spawn(world, e.id, { species: slot.species, level, moves: wildMoves(data.levelUp(slot.species), level) }, "wild");
-      wilds.set(e.id, { entityId: e.id, species: slot.species, shiny, origin: { x, y }, capturing: false, lastHp: c.hp, lastNearTick: tick, engagedTick: undefined, faintedTick: undefined });
-      const temperament = data.temperaments.species[String(slot.species)] ?? data.temperaments.default;
-      ai.add(e.id, { home: { x, y }, level, temperament, leashPx: rules.leashTiles * MAP_TILE_PX });
+      add(area, x, y, { species: slot.species, level, moves: wildMoves(data.levelUp(slot.species), level) }, shiny, tick);
     } catch (error) {
-      world.remove(e.id);
       options.log(`Wild ${slot.species} on map ${area} not spawned: ${(error as Error).message}`);
     }
+  }
+
+  /** A wild Pokémon with its AI at (x, y); nothing is left in the world when the combatant cannot spawn. */
+  function add(area: string, x: number, y: number, spec: { species: number; level: number; moves: number[] }, shiny: boolean, tick: number): number {
+    const e = world.add({ kind: "pokemon", area, x, y, level: 0, facing: "south", data: shiny ? { shiny: true } : {} });
+    try {
+      const c = combat.spawn(world, e.id, spec, "wild");
+      wilds.set(e.id, { entityId: e.id, species: spec.species, shiny, origin: { x, y }, capturing: false, lastHp: c.hp, lastNearTick: tick, engagedTick: undefined, faintedTick: undefined });
+      const temperament = data.temperaments.species[String(spec.species)] ?? data.temperaments.default;
+      ai.add(e.id, { home: { x, y }, level: spec.level, temperament, leashPx: rules.leashTiles * MAP_TILE_PX });
+    } catch (error) {
+      world.remove(e.id);
+      throw error;
+    }
+    return e.id;
   }
 
   function remove(id: number): void {
@@ -117,6 +127,8 @@ export function createWilds(options: WildOptions) {
     get: (id: number) => wilds.get(id),
     all: () => [...wilds.values()],
     remove,
+    /** The dev arena: a wild Pokémon of the tester's choosing, with the AI, as a spawn would be; throws on a bad spec. */
+    place: (area: string, x: number, y: number, spec: { species: number; level: number; moves: number[] }, tick: number) => add(area, x, y, spec, false, tick),
     /** The AI runner, for the debug overlay and the decision log. */
     ai,
     /** A ball escape (spec 015): back to the world, maybe enraged. */

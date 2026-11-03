@@ -11,7 +11,7 @@ import { createAi } from "./ai";
 import type { AiData } from "./ai-loader";
 import type { Combat } from "./combat";
 import type { CombatData } from "./combat-loader";
-import type { Companions } from "./companion";
+import { SOLID, type Companions } from "./companion";
 import type { ItemsData } from "./items";
 import type { Progression } from "./progression";
 import type { TrainerData } from "./trainer-loader";
@@ -335,8 +335,9 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     return lineOfSight(blocks, npc, me) ? along : undefined;
   }
 
-  function prepare(f: Fighter, trainerId: number): Battle | undefined {
-    const trainer = data.trainer(trainerId);
+  function prepare(f: Fighter, trainerId: number, override?: TrainerRecord["team"]): Battle | undefined {
+    const record = data.trainer(trainerId);
+    const trainer = record && override ? { ...record, team: override } : record;
     if (!trainer) {
       options.log(`Player ${f.playerId}: trainer ${trainerId} is not in the extraction`);
       return undefined;
@@ -372,18 +373,23 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     };
   }
 
-  /** The arena lies ahead of the player, toward the trainer: half of it in front, the trainer's side at its far edge. */
+  /**
+   * The arena lies ahead of the player, toward the trainer: half of it in front, the trainer's side at its far edge,
+   * or at the last walkable point before a wall (a trainer on a raised altar, like Elder Li's, stands in one).
+   */
   function place(b: Battle, dir: Point): void {
     const me = world.get(b.fighter.entityId)!;
     world.update({ ...me, facing: facingOf(dir) });
     b.arena = { area: me.area, x: me.x + dir.x * (radiusPx / 2), y: me.y + dir.y * (radiusPx / 2), radiusPx };
-    b.side = { x: me.x + dir.x * radiusPx, y: me.y + dir.y * radiusPx };
+    let reach = 0;
+    for (let d = MAP_TILE_PX / 2; d <= radiusPx && !SOLID.has(tileAt(options.lookup, me.area, me.level, me.x + dir.x * d, me.y + dir.y * d)?.category ?? "blocked"); d += MAP_TILE_PX / 2) reach = d;
+    b.side = { x: me.x + dir.x * reach, y: me.y + dir.y * reach };
   }
 
-  function start(playerId: number, trainerId: number, npc: Entity | undefined, tiles: number): boolean {
+  function start(playerId: number, trainerId: number, npc: Entity | undefined, tiles: number, team?: TrainerRecord["team"]): boolean {
     const f = fighters.get(playerId);
     if (!f || battles.has(playerId) || leadIndex(f.progress.party) === undefined) return false;
-    const b = prepare(f, trainerId);
+    const b = prepare(f, trainerId, team);
     if (!b) return false;
     const me = world.get(f.entityId)!;
     if (npc) {
@@ -410,10 +416,11 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
       fighters.delete(playerId);
     },
     /** A script's TrainerBattle (spec 022, FR-003): the same battle, no approach. `partner` is not supported yet. */
-    startScripted(playerId: number, trainerId: number, partner: number): boolean {
+    /** `team` replaces the trainer's own (the dev arena). */
+    startScripted(playerId: number, trainerId: number, partner: number, team?: TrainerRecord["team"]): boolean {
       // shortcut: tag battles (two trainers, `partner`) fight the first trainer only; add the partner's team when a script needs it.
       if (partner !== 0) options.log(`Player ${playerId}: tag battle partner ${partner} ignored`);
-      return start(playerId, trainerId, undefined, 0);
+      return start(playerId, trainerId, undefined, 0, team);
     },
     /** The player talked to a person: a trainer not yet beaten challenges, a beaten one says its after line. False when it is not a trainer. */
     talk(playerId: number, npc: Entity): boolean {

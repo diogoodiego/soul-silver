@@ -64,6 +64,22 @@ describe("busy in a menu (US6)", () => {
     expect(g.me().data["busy"]).toBeUndefined();
   });
 
+  it("Estou preso goes home before any Pokémon Center", () => {
+    const g = game([member("cyndaquil", 20)]);
+    g.send({ type: "rescue" });
+    expect(g.me().area).toBe("60");
+    expect(g.msgs("rescued")).toHaveLength(1);
+  });
+
+  it("Estou preso is no way out of a fight", () => {
+    const g = game([member("cyndaquil", 20)]);
+    g.fight();
+    g.send({ type: "rescue" });
+    expect(g.me().area).toBe("a");
+    expect(g.msgs("rescued")).toHaveLength(0);
+    expect(g.notice()).toBe("action-refused");
+  });
+
   it("refuses the menu in combat and says why", () => {
     const g = game([member("cyndaquil", 20)]);
     g.fight();
