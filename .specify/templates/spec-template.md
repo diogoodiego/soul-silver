@@ -117,6 +117,29 @@
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
 
+## Como testar *(mandatory)*
+
+<!--
+  ACTION REQUIRED: Constituição, princípio V (Camadas de verificação).
+  Liste os casos de teste por camada, com o comando que roda cada um. Esta seção é a exceção à
+  regra de não citar ferramentas no spec: comandos e arquivos de teste são esperados aqui.
+  Uma camada que não se aplica fica na tabela como "Não se aplica", com o motivo.
+  Todo spec que entrega conteúdo jogável ou depende de dados extraídos MUST listar a camada 3.
+  Critérios de sucesso que dizem "funciona no jogo" MUST ser verificados pelas camadas 3 ou 4.
+-->
+
+| Camada | Casos de teste | Comando |
+|--------|----------------|---------|
+| 1. Unidade (vitest com fixtures sintéticos; CI) | [caso] | `npx vitest run [arquivo]` |
+| 2. Servidor sem interface (`packages/server/test/harness.ts`, com cenários de 2 a 4 jogadores; CI) | [cenário] | `npx vitest run [arquivo]` |
+| 3. ROM real (só local, nunca na CI) | [marco do caminho dourado ou sonda] | `npm run golden` ou [equivalente] |
+| 4. App (driver da skill `run-soulsilver`) | [roteiro, capturas nomeadas e leitura do overlay F3] | `node .claude/skills/run-soulsilver/driver.mjs [passos]` |
+| 5. Manual (só o que nenhuma camada automatiza) | [roteiro escrito: sensação dos controles, som, legibilidade] | Não há |
+
+**Conclusão**: as camadas 1 e 2 passam na integração contínua; a camada 3 listada passa
+localmente, com o relatório anexado ao `tasks.md`; as capturas da camada 4 listada estão salvas em
+`.evidence/[###]/`, pasta fora do git.
+
 ## Assumptions
 
 <!--

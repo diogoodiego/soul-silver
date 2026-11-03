@@ -1,15 +1,20 @@
 <!--
 Sync Impact Report
-- Versão: 1.1.0 → 1.2.0 (MINOR: orientação materialmente expandida)
-- Princípio modificado: V (Test-first na lógica) — nova regra "Verificação com dados reais":
-  todo spec com conteúdo jogável ou dependente de dados extraídos MUST ter verificação de
-  caminho dourado local com a ROM real; o spec só conclui quando ela passa; critérios "funciona
-  no jogo" MUST ser verificados assim.
+- Versão: 1.3.0 → 1.4.0 (MINOR: orientação materialmente expandida)
+- Princípio modificado: V (Test-first na lógica) — "Camadas de verificação" ganha a ordem de
+  escolha: servidor sem interface sempre que possível; app só para o que o servidor não
+  verifica, com o slot 3 como save de teste.
+- Versão anterior não commitada: 1.2.0 → 1.3.0 criou "Camadas de verificação", com seção "Como
+  testar" obrigatória, tarefas por camada e critérios de conclusão, absorveu "Verificação com
+  dados reais" e passou a verificação de render e UI de "manual" para camada 4 ou 5.
 - Seções adicionadas: nenhuma. Seções removidas: nenhuma.
-- Compatibilidade: o Princípio II segue valendo (testes de unidade e da CI só com fixtures
-  sintéticos); a verificação com a ROM real é local, nunca na CI.
-- Follow-up: templates de spec/plan/tasks não foram alterados; o "Constitution Check" dos planos
-  passa a cobrir esta regra.
+- Compatibilidade: o Princípio II segue valendo; a camada 3 é local, nunca na CI.
+- Templates atualizados na 1.3.0: spec-template.md e tasks-template.md. Na 1.4.0 eles não mudam:
+  a regra escolhe a camada, e o formato da seção "Como testar" continua o mesmo.
+- Follow-up: o script `npm run golden` ainda não existe (tarefa T047 do spec 024).
+- Follow-up: `.claude/skills/speckit-specify` veta ferramentas no spec e
+  `.claude/skills/speckit-tasks` trata testes como opcionais. Os templates registram a exceção;
+  as skills não foram alteradas.
 -->
 # SoulSilver Desktop Constitution
 
@@ -88,19 +93,39 @@ mantém a lógica testável sem a pilha gráfica.
   rede, descoberta na LAN, extrator e migrações de save MUST seguir red-green-refactor: o teste
   é escrito e falha antes da implementação.
 - Render (three.js) e UI (Svelte) ficam isentos de test-first, mas cada mudança visível MUST ser
-  verificada manualmente antes de ser concluída.
-- **Verificação com dados reais**: testes de unidade e da integração contínua MUST continuar
-  usando apenas fixtures sintéticos (Princípio II). Todo spec que entrega conteúdo jogável ou
-  depende de dados extraídos MUST ter uma verificação de caminho dourado executada localmente
-  com a ROM real.
-- Um spec só está concluído quando essa verificação passa.
-- Critérios de sucesso que dizem "funciona no jogo" MUST ser verificados dessa forma, e MUST NOT
-  ser dados como atendidos apenas por testes sintéticos.
+  verificada na camada 4 ou, se nenhuma camada a automatiza, na camada 5, antes de ser concluída.
+- **Camadas de verificação**: todo spec MUST ter uma seção "Como testar" que lista os casos de
+  teste por camada, com o comando que roda cada um. O `tasks.md` MUST ter tarefas para cada
+  camada listada. Uma camada que não se aplica MUST constar como "Não se aplica", com o motivo.
+  As camadas são:
+  1. **Unidade**: vitest com fixtures sintéticos. Roda na integração contínua.
+  2. **Servidor sem interface**: o harness com clientes falsos em memória
+     (`packages/server/test/harness.ts`), incluindo cenários com 2 a 4 jogadores. Roda na
+     integração contínua.
+  3. **ROM real**: o caminho dourado e sondas locais que usam a extração real (`npm run golden`
+     e equivalentes). Rodam só localmente, nunca na integração contínua (Princípio II).
+  4. **App**: roteiro executado pelo driver da skill `run-soulsilver`, com capturas de tela
+     nomeadas e leitura do overlay F3.
+  5. **Manual**: só para o que nenhuma camada automatiza (sensação dos controles, som,
+     legibilidade), com roteiro escrito.
+- As verificações MUST ser feitas pelo servidor sem interface sempre que possível (camadas 2 e
+  3). Só o que o servidor não consegue verificar vai para o app (camada 4). No app, o agente
+  pode abrir o app e MUST usar o save do slot 3 como save de teste.
+- Testes de unidade e da integração contínua MUST continuar usando apenas fixtures sintéticos
+  (Princípio II). Todo spec que entrega conteúdo jogável ou depende de dados extraídos MUST
+  listar a camada 3.
+- Um spec só é concluído quando, além das tarefas, as camadas 1 e 2 passam na integração
+  contínua, a camada 3 listada passa localmente com o relatório anexado ao `tasks.md` e as
+  capturas da camada 4 listada estão salvas em `.evidence/<número-do-spec>/`.
+- A pasta `.evidence/` MUST estar no `.gitignore`, porque as capturas contêm arte do jogo
+  (Princípio II).
+- Critérios de sucesso que dizem "funciona no jogo" MUST ser verificados pelas camadas 3 ou 4, e
+  MUST NOT ser dados como atendidos apenas por testes sintéticos.
 
 **Motivo**: a lógica do jogo é desenvolvida em grande parte por agentes de IA; testes escritos
 primeiro são a especificação executável que impede regressões silenciosas. Fixtures sintéticos
-não provam que o conteúdo real funciona; a verificação local com a ROM real fecha essa lacuna
-sem distribuir nem depender de assets na CI.
+não provam que o conteúdo real funciona; as camadas 3 e 4 fecham essa lacuna sem distribuir nem
+depender de assets na CI, e a camada 5 cobre apenas o que exige um jogador humano.
 
 ### VI. Contratos versionados
 
@@ -220,4 +245,4 @@ qualquer ponto em que pare.
   MUST verificar a conformidade com esta constituição. Desvios MUST ser justificados no plano
   da feature.
 
-**Version**: 1.2.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-28
+**Version**: 1.4.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-02

@@ -9,7 +9,7 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: Required. The "Como testar" section of spec.md requests them: tasks.md MUST have tasks for each layer it lists (constitution, principle V). Layers marked "Não se aplica" get no tasks.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -80,12 +80,12 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 1 (layers 1 and 2) ⚠️
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T010 [P] [US1] Camada 1 (unidade): [caso] com fixture sintético em packages/[pacote]/test/[nome].test.ts
+- [ ] T011 [P] [US1] Camada 2 (servidor sem interface): [cenário] com o harness, incluindo 2 a 4 jogadores, em packages/server/test/[nome].test.ts
 
 ### Implementation for User Story 1
 
@@ -106,10 +106,10 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 2 (layers 1 and 2) ⚠️
 
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T018 [P] [US2] Camada 1 (unidade): [caso] com fixture sintético em packages/[pacote]/test/[nome].test.ts
+- [ ] T019 [P] [US2] Camada 2 (servidor sem interface): [cenário] com o harness, incluindo 2 a 4 jogadores, em packages/server/test/[nome].test.ts
 
 ### Implementation for User Story 2
 
@@ -128,10 +128,10 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 3 (layers 1 and 2) ⚠️
 
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T024 [P] [US3] Camada 1 (unidade): [caso] com fixture sintético em packages/[pacote]/test/[nome].test.ts
+- [ ] T025 [P] [US3] Camada 2 (servidor sem interface): [cenário] com o harness, incluindo 2 a 4 jogadores, em packages/server/test/[nome].test.ts
 
 ### Implementation for User Story 3
 
@@ -154,9 +154,23 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
+
+---
+
+## Phase N+1: Verificação por camada
+
+**Purpose**: Close the spec under constitution principle V, with one task for each layer listed in the "Como testar" section of spec.md
+
+- [ ] TXXX Camadas 1 e 2: confirmar que passam na integração contínua
+- [ ] TXXX Camada 3: rodar `npm run golden` ou [equivalente] localmente com a extração real, nunca na CI, e anexar o relatório abaixo
+- [ ] TXXX Camada 4: executar o roteiro com o driver da skill `run-soulsilver`, ler o overlay F3 e salvar as capturas nomeadas em `.evidence/[###]/`
+- [ ] TXXX Camada 5: executar o roteiro manual escrito em spec.md
+
+### Relatório da camada 3
+
+[Anexar aqui o relatório da última execução]
 
 ---
 
@@ -169,7 +183,8 @@ Examples of foundational tasks (adjust based on your project):
 - **User Stories (Phase 3+)**: All depend on Foundational phase completion
   - User stories can then proceed in parallel (if staffed)
   - Or sequentially in priority order (P1 → P2 → P3)
-- **Polish (Final Phase)**: Depends on all desired user stories being complete
+- **Polish**: Depends on all desired user stories being complete
+- **Verificação por camada (Final Phase)**: Depends on Polish - the spec is only complete when it passes
 
 ### User Story Dependencies
 
@@ -179,7 +194,7 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Within Each User Story
 
-- Tests (if included) MUST be written and FAIL before implementation
+- Tests MUST be written and FAIL before implementation
 - Models before services
 - Services before endpoints
 - Core implementation before integration
@@ -199,9 +214,9 @@ Examples of foundational tasks (adjust based on your project):
 ## Parallel Example: User Story 1
 
 ```bash
-# Launch all tests for User Story 1 together (if tests requested):
-Task: "Contract test for [endpoint] in tests/contract/test_[name].py"
-Task: "Integration test for [user journey] in tests/integration/test_[name].py"
+# Launch all tests for User Story 1 together:
+Task: "Camada 1 (unidade): [caso] em packages/[pacote]/test/[nome].test.ts"
+Task: "Camada 2 (servidor sem interface): [cenário] em packages/server/test/[nome].test.ts"
 
 # Launch all models for User Story 1 together:
 Task: "Create [Entity1] model in src/models/[entity1].py"
