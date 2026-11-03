@@ -50,7 +50,7 @@
       <li>
         <button type="button" class={["grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center w-full text-left", i === selected && "border-accent", i === moving && "outline-2 outline-dashed outline-focus"]} onclick={() => pick(i)} onfocus={() => moving === undefined && (selected = i)}>
           <PokemonIcon species={m.species} />
-          <span>{speciesName(m.species)}</span>
+          <span>{m.nickname ?? speciesName(m.species)}</span>
           <span>{t("hud.level", { level: m.level })}</span>
           <span class={[m.hp === 0 && "text-danger"]}>{m.hp}/{m.hpMax}</span>
         </button>
@@ -60,7 +60,7 @@
 
   {#if member}
     <article aria-live="polite">
-      <h3>{speciesName(member.species)} · {t("hud.level", { level: member.level })}</h3>
+      <h3>{member.nickname ?? speciesName(member.species)} · {t("hud.level", { level: member.level })}</h3>
       {#if member.stats}
         <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-[0.15rem] mt-0 mx-0 mb-2">
           {#each STATS as k (k)}

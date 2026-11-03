@@ -56,7 +56,7 @@
     {:else if page === "dex"}
       <Pokedex seen={dex.seen} caught={dex.caught} speciesName={names.species} onBack={back} />
     {:else if page === "settings"}
-      <Settings onControls={() => onPage("controls")} onBack={back} />
+      <Settings onControls={() => onPage("controls")} onRescue={() => send({ type: "rescue" })} onBack={back} />
     {:else}
       <Controls onBack={() => onPage("settings")} />
     {/if}

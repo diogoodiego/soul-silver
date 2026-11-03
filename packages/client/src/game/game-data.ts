@@ -34,7 +34,7 @@ export function bankTexts(bank: number): Promise<Map<number, string>> {
 
 const files = new Map<string, Promise<unknown>>();
 
-async function records<K extends "items" | "moves">(kind: K): Promise<GameDataFileOf<K>["records"]> {
+async function records<K extends "items" | "moves" | "species">(kind: K): Promise<GameDataFileOf<K>["records"]> {
   let p = files.get(kind);
   if (!p) {
     const { stage, file } = GAME_DATA_FILES[kind];
@@ -57,7 +57,29 @@ export const itemRecords = () => records("items").then((list) => new Map(list.ma
 /** The type key of every move, by id (for the HUD colors). */
 export const moveTypes = () => records("moves").then((list) => new Map(list.map((m) => [m.id, TYPE_KEYS[m.type] ?? "unknown"])));
 
+/** The type keys of every species, by id (spec 024: the starter preview). */
+export const speciesTypes = () => records("species").then((list) => new Map(list.map((r) => [r.id, r.types.map((t) => TYPE_KEYS[t] ?? "unknown")])));
+
 const ICONS = "assets://stages/sprites/sprites";
+type Frame = { url: string; x: number; y: number; w: number; h: number };
+let fronts: Promise<Map<number, Frame>> | undefined;
+
+/** The battle front sprite of each species (form 0), as a page URL and a frame (spec 024). */
+export function pokemonFronts() {
+  fronts ??= fetch(`${ICONS}/battle.json`)
+    .then((r) => r.json() as Promise<{ pages: { file: string }[]; frames: { name: string; page: number; x: number; y: number; w: number; h: number }[] }>)
+    .then((set) => {
+      const out = new Map<number, Frame>();
+      for (const f of set.frames) {
+        const m = /^battle\/(\d+)\/0\/front\/(unisex|male)$/.exec(f.name);
+        const page = set.pages[f.page];
+        if (m && page && !out.has(Number(m[1]))) out.set(Number(m[1]), { url: `${ICONS}/${page.file}`, x: f.x, y: f.y, w: f.w, h: f.h });
+      }
+      return out;
+    })
+    .catch(() => new Map<number, Frame>());
+  return fronts;
+}
 let icons: Promise<Map<number, { url: string; x: number; y: number; w: number; h: number }>> | undefined;
 
 /** The party icon of each species (form 0), as a page URL and a frame. */

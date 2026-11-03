@@ -3,8 +3,8 @@
   // the companion's reactions, the quick swap and the fight notices (spec 014); progression after a fight (spec 016);
   // the combat HUD, the dialog box, the full menu that never pauses the world and the busy mark (spec 017).
   import { CUTSCENE_TEXT_BOOST, PROTOCOL_VERSION } from "@soulsilver/shared";
-  import { BUTTON, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
-  import type { ItemRecord } from "@soulsilver/shared/game-data";
+  import { BUTTON, PLAYER_NAME_MAX, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
+  import { POCKET_KEYS, type ItemRecord } from "@soulsilver/shared/game-data";
   import { formatText, parseTextId, screenText, textVariables } from "@soulsilver/shared/text";
   import { onMount, untrack } from "svelte";
   import { audio, createAudioReactions } from "./audio";
@@ -18,6 +18,8 @@
   import DialogBox from "./game/DialogBox.svelte";
   import ScriptDebug from "./game/ScriptDebug.svelte";
   import Shop from "./game/Shop.svelte";
+  import StarterChoice from "./game/StarterChoice.svelte";
+  import NameInput from "./game/NameInput.svelte";
   import PcPanel from "./game/PcPanel.svelte";
   import { BANK, bankTexts, itemRecords, moveTypes } from "./game/game-data";
   import PauseMenu from "./game/PauseMenu.svelte";
@@ -135,6 +137,10 @@
   // Spec 016: the head of the progression queue, sent only out of combat.
   let progression = $state<Extract<ServerMessage, { type: "progression" }> | undefined>();
   /** The Poké Mart a clerk opened (spec 023), and the last refusal shown in it. */
+  /** The starter scene a script waits on (spec 024). */
+  let starter = $state<{ id: number; species: number[] } | undefined>();
+  /** A naming screen a script waits on (spec 024). */
+  let naming = $state<{ id: number; title: string; max: number; keep: string } | undefined>();
   let shop = $state<Extract<ServerMessage, { type: "shopOpen" }> | undefined>();
   let shopRefused = $state<string | undefined>();
   /** The Pokémon PC's boxes while it is open (spec 023), and the last refusal. */
@@ -165,7 +171,7 @@
     const values: Record<string, string | number> = {};
     for (const key of textVariables(raw)) {
       const b = buffers[key.split(":")[1] ?? ""];
-      values[key] = !b ? "" : b.kind === "player" ? play.save.name : b.kind === "species" ? speciesName(b.id) : b.value;
+      values[key] = !b ? "" : b.kind === "player" ? play.save.name : b.kind === "species" ? speciesName(b.id) : b.kind === "rival" || b.kind === "name" ? b.name : b.kind === "item" ? itemName(b.id) : b.kind === "pocket" ? t(`pocket.${POCKET_KEYS[b.id] ?? "items"}`) : b.value;
     }
     try {
       // Original messages end with a page break; the empty page after it would wait for one more confirm.
@@ -189,32 +195,58 @@
     for (const a of actors) {
       const e = a === "player" ? view.self : a === "companion" ? all.find((o) => o.kind === "pokemon" && o.data["owner"] === String(playerId)) : all.find((o) => o.kind === "npc" && o.data["person"] === a.person);
       if (!e) continue;
-      start.set(actorKey(a), { x: e.x, y: e.y, facing: e.facing, visible: true, moving: false });
+      // The server puts the player on their tile's center as a script starts; the scene starts there too.
+      const onGrid = (v: number) => (a === "player" ? Math.floor(v / MAP_TILE_PX) * MAP_TILE_PX + MAP_TILE_PX / 2 : v);
+      start.set(actorKey(a), { x: onGrid(e.x), y: onGrid(e.y), facing: e.facing, visible: true, moving: false });
       ids.set(actorKey(a), e.id);
     }
-    if (view.self && !start.has("player")) start.set("player", { x: view.self.x, y: view.self.y, facing: view.self.facing, visible: true, moving: false });
+    if (view.self && !start.has("player")) start.set("player", { x: Math.floor(view.self.x / MAP_TILE_PX) * MAP_TILE_PX + MAP_TILE_PX / 2, y: Math.floor(view.self.y / MAP_TILE_PX) * MAP_TILE_PX + MAP_TILE_PX / 2, facing: view.self.facing, visible: true, moving: false });
     scene = { id, steps, start, ids, t0: now };
   }
 
   /** Draws the cutscene's poses over what the server sends; answers once the last step ended. */
   function staged(view: DrawView, now: number, playerId: number | undefined): DrawView {
     if (nextScene) {
-      beginScene(nextScene, view, playerId, now);
+      // From what is drawn: a scene right after another starts where the last one ended.
+      beginScene(nextScene, holding(view, now), playerId, now);
       nextScene = undefined;
+      held = undefined;
     }
-    if (!scene) return view;
+    if (!scene) return holding(view, now);
     const s = stage(scene.steps, scene.start, now - scene.t0);
+    const byId = new Map([...scene.ids].map(([k, id]) => [id, s.poses.get(k)!]));
     if (s.done) {
       answerScript(scene.id);
       scene = undefined;
+      held = { poses: byId, since: now };
     }
-    const byId = new Map([...scene?.ids ?? []].map(([k, id]) => [id, s.poses.get(k)!]));
     const pose = (e: Entity) => {
       const p = byId.get(e.id);
       return p ? { ...e, x: p.x, y: p.y, facing: p.facing } : e;
     };
     const shownNow = (e: Entity) => byId.get(e.id)?.visible !== false;
     return { self: view.self && pose(view.self), others: view.others.filter(shownNow).map(pose), focus: s.done ? undefined : s.focus };
+  }
+
+  /** A scene's end poses, drawn until the server's positions catch up, so nobody jumps back for a tick. */
+  let held: { poses: Map<number, Pose>; since: number } | undefined;
+  const HOLD_MS = 1000;
+
+  function holding(view: DrawView, now: number): DrawView {
+    if (!held) return view;
+    const h = held;
+    const pose = (e: Entity) => {
+      const p = h.poses.get(e.id);
+      if (!p) return e;
+      if (Math.abs(e.x - p.x) < 1 && Math.abs(e.y - p.y) < 1) {
+        h.poses.delete(e.id);
+        return e;
+      }
+      return { ...e, x: p.x, y: p.y, facing: p.facing };
+    };
+    const out = { ...view, self: view.self && pose(view.self), others: view.others.map(pose) };
+    if (h.poses.size === 0 || now - h.since > HOLD_MS) held = undefined;
+    return out;
   }
 
   async function scriptRequest(ev: Extract<ServerMessage, { type: "script" }>): Promise<void> {
@@ -240,13 +272,11 @@
         return;
       }
       case "starter":
-        // shortcut: the starter scene is a yes/no per species in turn; build the original's ball picker with the cutscene spec.
-        for (let i = 0; ; i = (i + 1) % r.species.length) {
-          if (await dialog.ask([t("script.starter", { name: speciesName(r.species[i]!) })])) {
-            answerScript(ev.id, i);
-            return;
-          }
-        }
+        starter = { id: ev.id, species: r.species };
+        return;
+      case "name":
+        naming = { id: ev.id, max: r.purpose === "rival" ? PLAYER_NAME_MAX : 10, title: r.purpose === "rival" ? t("name.rival") : t("name.nickname", { name: speciesName(r.species ?? 0) }), keep: t(r.purpose === "rival" ? "name.default" : "name.keep") };
+        return;
       case "wait-fade":
       case "wait-sound":
         // shortcut: script fades and sounds are not drawn or played yet, so their waits end at once; answer when they finish once the audio and fade layers take script cues.
@@ -344,9 +374,13 @@
           void scriptRequest(ev);
         } else if (ev.type === "script-lock") {
           scriptLocked = ev.locked;
+          if (!ev.locked) sounds.scriptEnded();
         } else if (ev.type === "script-debug") {
           scriptDebug = ev;
         } else if (ev.type === "script-event") {
+          if (ev.event.kind === "props") renderer.setProps(ev.event.area, ev.event.props);
+          else if (ev.event.kind === "bgm") sounds.scriptMusic(ev.event.id);
+          else if (ev.event.kind === "bgm-reset") sounds.scriptMusic(undefined);
           // The text box closes on its own once confirmed; fades and sounds wait for the shortcut in scriptRequest.
         } else if (ev.type === "fainted") {
           if (ev.canContinue) picker = "fainted";
@@ -365,7 +399,7 @@
           captureLines([t(`notice.${ev.code}` as MessageKey)]);
         } else if (ev.type === "exp-gain") {
           const m = party[ev.partyIndex];
-          captureLines([t("capture.exp", { name: m ? speciesName(m.species) : t("capture.yourPokemon"), amount: ev.amount })]);
+          captureLines([t("capture.exp", { name: m ? (m.nickname ?? speciesName(m.species)) : t("capture.yourPokemon"), amount: ev.amount })]);
         } else if (ev.type === "progression") {
           progression = ev;
         } else if (ev.type === "trainerSpotted") {
@@ -405,6 +439,16 @@
         } else if (ev.type === "shopClose") {
           shop = undefined;
           shopRefused = undefined;
+        } else if (ev.type === "rescued") {
+          // The script may have been cut short: nothing it left on screen waits for an answer now.
+          dialog.clear();
+          scene = undefined;
+          nextScene = undefined;
+          held = undefined;
+          starter = undefined;
+          naming = undefined;
+          setMenu(false);
+          showNotice(t("game.rescued"));
         } else if (ev.type === "trainerSendOut") {
           // Drawn from the entities in the state messages.
         } else {
@@ -433,7 +477,7 @@
 
     // The menu action opens the full menu; once open, the menu screens take the input.
     const offAction = input.onAction((action) => {
-      if (action === "menu" && !menuOpen && !dialogOpen && picker === "closed" && !progression && status === "playing") setMenu(true);
+      if (action === "menu" && !menuOpen && (!dialogOpen || scriptLocked) && picker === "closed" && !progression && status === "playing") setMenu(true);
     });
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "F3") {
@@ -505,7 +549,7 @@
       fx.update(now);
       companionEvents(now);
       dialogOpen = dialog.view() !== undefined;
-      inCombat = !play.arena && view.self?.kind === "pokemon";
+      inCombat = view.self?.kind === "pokemon";
       sounds.frame(view, events, inCombat, { x: view.self?.x ?? 0, y: view.self?.y ?? 0, halfWidthPx: VIEW_W / 2 });
       // A fight closes the menu (FR-013); the server already cleared the busy mark.
       if (inCombat && menuOpen) {
@@ -747,6 +791,27 @@
     <PcPanel boxes={pcBoxes} {party} {pcItems} {bag} {itemName} onItem={(dir: "deposit" | "withdraw", item: number) => window.soulSilver.sendGame({ type: "pc-items", dir, item, qty: 1 })} refused={pcRefused} {speciesName} {moveName} natureName={names.nature} onMove={(from: PcSlot, to: PcSlot) => window.soulSilver.sendGame({ type: "pc-move", from, to })} onRename={(box: number, name: string) => window.soulSilver.sendGame({ type: "pc-rename", box, name })} onLeave={() => window.soulSilver.sendGame({ type: "pc-leave" })} />
   {/if}
 
+  {#if naming}
+    <NameInput
+      title={naming.title}
+      max={naming.max}
+      keep={naming.keep}
+      onDone={(text: string) => {
+        window.soulSilver.sendGame({ type: "script-answer", id: naming!.id, text });
+        naming = undefined;
+      }}
+    />
+  {/if}
+  {#if starter}
+    <StarterChoice
+      species={starter.species}
+      {speciesName}
+      onPick={(i: number) => {
+        answerScript(starter!.id, i);
+        starter = undefined;
+      }}
+    />
+  {/if}
   {#if shop}
     <Shop {shop} {bag} refused={shopRefused} {itemName} onConfirm={(item: number, qty: number) => window.soulSilver.sendGame({ type: shop!.mode === "sell" ? "shop-sell" : "shop-buy", item, qty })} onLeave={() => window.soulSilver.sendGame({ type: "shop-leave" })} />
   {/if}

@@ -2,11 +2,14 @@
   // Settings (spec 017, US7): window size, fullscreen, text speed, interface scale and controls;
   // audio volumes (spec 018). Each change is saved by the main process and applies at once.
   import { TEXT_SPEEDS, UI_SCALES, WINDOW_SIZES } from "@soulsilver/shared";
+  import Confirm from "../Confirm.svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
   import { saveSettings, settings } from "../settings";
 
-  let { onControls, onBack }: { onControls: () => void; onBack: () => void } = $props();
+  // onRescue only in game: the title screen has nowhere to rescue from.
+  let { onControls, onRescue, onBack }: { onControls: () => void; onRescue?: () => void; onBack: () => void } = $props();
+  let askingRescue = $state(false);
 
   const VOLUMES = ["master", "music", "effects"] as const;
   /** Steps of 5 between 0 and 100. */
@@ -65,6 +68,10 @@
 
   <div class="flex gap-2">
     <button type="button" onclick={onControls}>{t("settings.controls")}</button>
+    {#if onRescue}<button type="button" onclick={() => (askingRescue = true)}>{t("settings.stuck")}</button>{/if}
     <button type="button" onclick={onBack}>{t("common.back")}</button>
   </div>
+  {#if askingRescue}
+    <Confirm question={t("settings.stuck.confirm")} onAnswer={(yes) => { askingRescue = false; if (yes) onRescue?.(); }} />
+  {/if}
 </section>

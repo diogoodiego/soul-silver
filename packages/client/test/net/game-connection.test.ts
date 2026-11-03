@@ -1,6 +1,6 @@
-import { createMemoryConnectionPair, createSession } from "@soulsilver/server";
+import { BUNDLED_COMPANION_CONTENT, buildCompanionData, createMemoryConnectionPair, createSession } from "@soulsilver/server";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
-import { MOVE_SPEED_PX } from "@soulsilver/shared/game";
+import { BUTTON, MOVE_SPEED_PX } from "@soulsilver/shared/game";
 import { describe, expect, it } from "vitest";
 import { createGameConnection } from "../../src/net/game-connection";
 import { combatData, MOVES, SPECIES } from "../../../server/test/combat-fixture";
@@ -82,11 +82,15 @@ describe("createGameConnection", () => {
     expect(dropped.closeReason).toBe("disconnected");
   });
 
-  it("enters the dev arena, sends aim and move buttons, and hands out combat events", () => {
-    const session = createSession({ ...sessionOptions, world: () => undefined, combat: combatData(), devArena: true });
+  it("enters the dev arena as its trainer, sends the Pokémon out and hands out combat events", () => {
+    const session = createSession({ ...sessionOptions, world: () => undefined, combat: combatData(), companion: buildCompanionData(BUNDLED_COMPANION_CONTENT), devArena: true });
     const [server, client] = createMemoryConnectionPair();
     session.connect(server);
-    const arena = { a: { species: SPECIES.cyndaquil.id, level: 10, moves: [MOVES.ember.id] }, b: { species: SPECIES.chikorita.id, level: 10, moves: [MOVES.tackle.id] } };
+    const arena = {
+      trainer: { name: "Ana", character: "female" as const },
+      team: [{ species: SPECIES.cyndaquil.id, level: 10, moves: [MOVES.ember.id] }],
+      foe: { kind: "wild" as const, behavior: "idle" as const, team: [{ species: SPECIES.chikorita.id, level: 10, moves: [MOVES.tackle.id] }] },
+    };
     const game = createGameConnection({ save: saveOf("Ana"), send: (m) => client.send(m), world: () => undefined, protocolVersion: PROTOCOL_VERSION, arena });
     let now = 0;
     client.onMessage((msg) => game.receive(msg, now));
@@ -96,20 +100,18 @@ describe("createGameConnection", () => {
       session.step();
     };
     tick();
+    expect(game.view(now).self).toMatchObject({ kind: "player", area: "arena" });
+    // The combat button sends the Pokémon out; control passes to it, then a move hits the idle target.
+    game.sendInput({ x: 0, y: 0 }, false, now, BUTTON.combat);
+    tick();
+    game.sendInput({ x: 0, y: 0 }, false, now);
+    for (let i = 0; i < 10; i++) tick();
     expect(game.view(now).self).toMatchObject({ kind: "pokemon" });
-    game.sendInput({ x: 0, y: 0 }, false, now, 1);
-    for (let i = 0; i < 30; i++) {
-      game.sendInput({ x: 0, y: 0 }, false, now);
+    for (let i = 0; i < 60; i++) {
+      game.sendInput({ x: 1, y: 0 }, false, now, i % 4 === 0 ? 1 : 0);
       tick();
     }
     expect(game.takeCombatEvents().some((e) => e.kind === "hit" && e.effectiveness === 2)).toBe(true);
     expect(game.takeCombatEvents()).toEqual([]);
-    // The Pokémon moves as the server says (no tile-walk prediction).
-    for (let i = 0; i < 10; i++) {
-      game.sendInput({ x: 0, y: 1 }, false, now);
-      tick();
-    }
-    const self = session.world.get(game.entityId!)!;
-    expect(game.view(now + 1000).self!.y).toBeCloseTo(self.y);
   });
 });

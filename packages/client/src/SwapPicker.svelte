@@ -6,6 +6,7 @@
 
   interface Member {
     species: number;
+    nickname?: string | undefined;
     level: number;
     hp: number;
     hpMax: number;
@@ -36,7 +37,7 @@
   <p class="mt-0 mb-1">{fainted ? t("swap.fainted") : t("swap.title")}</p>
   {#each members as m, i (i)}
     <button type="button" class="text-left" disabled={m.hp === 0 || i === active} onclick={() => onPick(i)}>
-      {t("swap.member", { name: speciesName(m.species), level: m.level, hp: m.hp, hpMax: m.hpMax })}{i === active ? t("swap.out") : ""}{m.hp === 0 ? t("swap.faintedTag") : ""}
+      {t("swap.member", { name: m.nickname ?? speciesName(m.species), level: m.level, hp: m.hp, hpMax: m.hpMax })}{i === active ? t("swap.out") : ""}{m.hp === 0 ? t("swap.faintedTag") : ""}
     </button>
   {/each}
   <button type="button" class="text-left" onclick={onRecall}>{t("swap.recall")}</button>

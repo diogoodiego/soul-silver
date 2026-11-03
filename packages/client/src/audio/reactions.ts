@@ -55,12 +55,14 @@ export function createAudioReactions(options: AudioReactionsOptions) {
   let victory = false;
   /** The class music of this player's trainer battle (spec 022), until its fanfare ends. */
   let trainer: TrainerMusic | undefined;
+  /** What a script plays until ResetBGM or the next map (spec 024). */
+  let scriptMusic: number | null | undefined;
   /** Last seen data per entity: hp for faints, `used` for moves, `alert` for wild cries. */
   const seen = new Map<number, { hp: number; used: number; alert: boolean }>();
 
   async function updateMusic(): Promise<void> {
     const t = await themes;
-    const state = { screen: "game" as const, musicDay: header?.musicDay ?? 0, musicNight: header?.musicNight ?? 0, night, inCombat, victory, trainer };
+    const state = { screen: "game" as const, musicDay: header?.musicDay ?? 0, musicNight: header?.musicNight ?? 0, night, inCombat, victory, trainer, scriptMusic };
     const onEnded = () => {
       victory = false;
       trainer = undefined;
@@ -70,6 +72,16 @@ export function createAudioReactions(options: AudioReactionsOptions) {
   }
 
   return {
+    /** A script's music; undefined gives the map's music back. */
+    scriptMusic(id: number | null | undefined): void {
+      scriptMusic = id;
+      if (id) void audio.preload([id]);
+      void updateMusic();
+    },
+    /** shortcut: a stop ends with its script, as nothing asks for the music back after the healing fanfare (229:35); a scene that wants silence past its end loses it, keep the stop when one appears. */
+    scriptEnded(): void {
+      if (scriptMusic === null) this.scriptMusic(undefined);
+    },
     frame(view: { self: Entity | undefined; others: Entity[] }, events: HitEvent[], combat: boolean, listener: Listener): void {
       audio.setListener(listener);
       const all = view.self ? [view.self, ...view.others] : view.others;
@@ -88,6 +100,7 @@ export function createAudioReactions(options: AudioReactionsOptions) {
           header = h;
           night = timeOfDay(new Date().getHours()) === "night";
           victory = false;
+          scriptMusic = undefined;
           void audio.preload([h?.musicDay ?? 0, h?.musicNight ?? 0].filter((n) => n > 0));
           void updateMusic();
         });

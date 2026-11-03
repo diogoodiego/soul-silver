@@ -19,7 +19,7 @@
   }: {
     bag: { item: number; count: number }[];
     items: Map<number, ItemRecord>;
-    party: { species: number; level: number; hp: number; hpMax: number }[];
+    party: { species: number; nickname?: string | undefined; level: number; hp: number; hpMax: number }[];
     itemName: (id: number) => string;
     speciesName: (id: number) => string;
     onUse: (item: number, partyIndex: number) => void;
@@ -88,7 +88,7 @@
             }}
           >
             <PokemonIcon species={m.species} />
-            <span>{speciesName(m.species)}</span>
+            <span>{m.nickname ?? speciesName(m.species)}</span>
             <span>{m.hp}/{m.hpMax}</span>
           </button>
         </li>

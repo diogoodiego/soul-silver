@@ -1,6 +1,7 @@
 <script lang="ts">
   // The script debugger (spec 020, US4): where this player's script is, their flags and variables,
-  // and a flag switch the server only honours in development builds.
+  // and a flag switch the server only honours in development builds. Spec 024 (US5): the map's objects,
+  // its scripts and triggers with their conditions, and the latest flag and variable changes.
   import type { ServerMessage } from "@soulsilver/shared/game";
   import { t } from "../i18n";
 
@@ -21,6 +22,24 @@
   {/if}
   <p class="m-0 mt-1">{t("scriptDebug.flags")}: {view?.flags.join(", ") || "—"}</p>
   <p class="m-0">{t("scriptDebug.vars")}: {Object.entries(view?.vars ?? {}).map(([k, v]) => `0x${Number(k).toString(16)}=${v}`).join(", ") || "—"}</p>
+  <h3 class="m-0 mt-1 text-[12px]">{t("scriptDebug.objects")}</h3>
+  {#each view?.objects ?? [] as o (o.id)}
+    <p class="m-0" class:opacity-50={!o.visible}>#{o.id} · sprite {o.sprite} · {o.hideFlag === null ? t("scriptDebug.noHideFlag") : t("scriptDebug.hideFlag", { flag: o.hideFlag })} · {o.visible ? t("scriptDebug.shown") : t("scriptDebug.hidden")}</p>
+  {:else}
+    <p class="m-0">—</p>
+  {/each}
+  <h3 class="m-0 mt-1 text-[12px]">{t("scriptDebug.conditions")}</h3>
+  {#each view?.triggers ?? [] as c, i (i)}
+    <p class="m-0">{c.met ? "✓" : "✗"} {c.kind === "mapScript" ? t("scriptDebug.mapScript") : t("scriptDebug.trigger")} {c.script} · {c.condition}</p>
+  {:else}
+    <p class="m-0">—</p>
+  {/each}
+  <h3 class="m-0 mt-1 text-[12px]">{t("scriptDebug.changes")}</h3>
+  {#each [...(view?.changes ?? [])].reverse() as c, i (i)}
+    <p class="m-0">{c.tick} · {c.kind === "flag" ? t("scriptDebug.flag") : t("scriptDebug.var")} {c.kind === "flag" ? c.id : `0x${c.id.toString(16)}`} = {c.value} · {c.script}</p>
+  {:else}
+    <p class="m-0">—</p>
+  {/each}
   <form class="flex gap-1 mt-1" onsubmit={(e) => e.preventDefault()}>
     <label class="sr-only" for="script-debug-flag">{t("scriptDebug.flag")}</label>
     <input id="script-debug-flag" class="w-20 bg-white/10 text-white px-1" inputmode="numeric" placeholder={t("scriptDebug.flag")} bind:value={flag} />

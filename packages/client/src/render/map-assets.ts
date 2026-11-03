@@ -60,15 +60,19 @@ export interface MapMesh {
 }
 
 /** The map's 3D scene (shared/maps/mesh.ts), or undefined when it was not extracted. */
-export async function loadMapMesh(mapId: string): Promise<MapMesh | undefined> {
-  const file = await fetchMap("map-mesh", `${mapDir(mapId)}/mesh.json`);
+export const loadMapMesh = (mapId: string) => loadMesh(mapDir(mapId));
+/** A building model a script places (spec 024), drawn from its own origin. */
+export const loadPropMesh = (model: number) => loadMesh(`${STAGES}/maps/maps/props/${padded(model)}`);
+
+async function loadMesh(dir: string): Promise<MapMesh | undefined> {
+  const file = await fetchMap("map-mesh", `${dir}/mesh.json`);
   if (!file) return undefined;
-  const response = await fetch(`${mapDir(mapId)}/mesh.bin`);
+  const response = await fetch(`${dir}/mesh.bin`);
   if (!response.ok) throw new Error(`mesh.bin: ${response.status}`);
   const vertices = new Float32Array(await response.arrayBuffer());
   const needed = file.groups.reduce((most, g) => Math.max(most, g.first + g.count), 0) * MESH_VERTEX_FLOATS;
   if (vertices.length < needed) throw new Error(`mesh.bin: ${vertices.length} floats, the groups need ${needed}`);
-  const textures = await Promise.all(Array.from({ length: file.textures }, (_, i) => loadBitmap(`${mapDir(mapId)}/textures/${i}.png`)));
+  const textures = await Promise.all(Array.from({ length: file.textures }, (_, i) => loadBitmap(`${dir}/textures/${i}.png`)));
   return { file, vertices, textures };
 }
 

@@ -57,6 +57,13 @@ export function createDialogQueue() {
     ask: (pages: string[]): Promise<boolean> => push(pages, YES_NO).then((i) => i === 0),
     /** Resolves to the index picked; cancel answers -1. */
     choose: (pages: string[], options: string[]): Promise<number> => push(pages, options),
+    /** Drops everything queued; what waited on it never resolves, as the script it belonged to is gone. */
+    clear(): void {
+      queue.length = 0;
+      page = 0;
+      typed = 0;
+      cursor = 0;
+    },
     /** Types for `elapsedMs` at `speed`, `boost` times faster (cutscene text, spec 021). */
     step(elapsedMs: number, speed: TextSpeed, boost = 1): void {
       if (head()) typed = Math.min(text().length, typed + (elapsedMs * boost) / FRAME_MS / TEXT_FRAMES_PER_CHAR[speed]);

@@ -18,7 +18,7 @@ import {
   WebGLRenderer,
 } from "three";
 import { clampCamera, fillView, OBLIQUE, obliqueProjection, VIEW_H, VIEW_W, type Bounds } from "./camera";
-import { loadBitmap, loadMapMesh, spriteUrl, type ClientWorld, type MapMesh } from "./map-assets";
+import { loadBitmap, loadMapMesh, loadPropMesh, spriteUrl, type ClientWorld, type MapMesh } from "./map-assets";
 import { CLEARING_RADIUS_PX, clearings } from "./grass-clearing";
 import { buildMapObject, groundAt, setGrassClearings, type MapObject } from "./map-scene";
 import { createParticles, effectsOf } from "./particles";
@@ -324,6 +324,18 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   };
   const markerMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide });
 
+  // Script props (spec 024): models placed by the map's scripts, cleared when the player changes map.
+  const propMeshes = new Map<number, Promise<MapMesh | undefined>>();
+  let props: { area: string; objects: ReturnType<typeof buildMapObject>[] } | undefined;
+  let propsVersion = 0;
+  function clearProps(): void {
+    for (const o of props?.objects ?? []) {
+      o.root.removeFromParent();
+      o.dispose();
+    }
+    props = undefined;
+  }
+
   // Map streaming.
   const visuals = new Map<string, MapVisual | "loading">();
   let currentArea: string | undefined;
@@ -521,6 +533,31 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   }
 
   return {
+    /** Replaces the props on `area`; positions in the map's pixels, height included. */
+    setProps(area: string, list: readonly { model: number; x: number; y: number; z: number }[]): void {
+      clearProps();
+      const version = ++propsVersion;
+      props = { area, objects: [] };
+      for (const p of list) {
+        let mesh = propMeshes.get(p.model);
+        if (!mesh) {
+          mesh = loadPropMesh(p.model).catch((error: unknown) => {
+            log(`Prop ${p.model} mesh: ${(error as Error).message}`);
+            return undefined;
+          });
+          propMeshes.set(p.model, mesh);
+        }
+        void mesh.then((m) => {
+          if (!m || version !== propsVersion || !props) return;
+          const object = buildMapObject(m);
+          // shortcut: map units are pixels indoors only; outdoor props need the matrix origin taken off when one appears.
+          object.root.position.set(p.x, p.y, p.z);
+          object.root.visible = area === currentArea;
+          scene.add(object.root);
+          props.objects.push(object);
+        });
+      }
+    },
     /** Once per animation frame. `running` is the local player's run button. */
     draw(view: DrawView, running: boolean, now: number): void {
       const self = view.self;
@@ -534,6 +571,8 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
           for (const [id, visual] of visuals) if (visual !== "loading") place(id, visual);
         }
         currentArea = self.area;
+        if (props && props.area !== self.area) clearProps();
+        for (const o of props?.objects ?? []) o.root.visible = true;
         void enterArea(self.area);
       }
       const seen = new Set<number>();

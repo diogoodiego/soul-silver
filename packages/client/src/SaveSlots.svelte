@@ -18,6 +18,8 @@
 
   let message = $state<string | undefined>();
   let asking = $state<{ question: string; then: () => void } | undefined>();
+  /** The outdated slot whose choice is open (spec 024, US7). */
+  let stale = $state<number | undefined>();
   let list: HTMLUListElement;
 
   const playTime = (ms: number) => `${Math.floor(ms / 3_600_000)}h${String(Math.floor(ms / 60_000) % 60).padStart(2, "0")}`;
@@ -47,6 +49,17 @@
     confirmThen(t("saves.confirmDelete", { name: label, slot: s.index }), () => void run(window.soulSilver.deleteSave(s.index), t("saves.deleted")));
   }
 
+  /** Spec 024: the story starts again in the slot; name, character and play time stay, the old save becomes the backup. */
+  function restart(slot: number): void {
+    confirmThen(t("saves.confirmRestartStory", { slot }), () => {
+      void window.soulSilver.restartStory(slot).then((result) => {
+        if (result.ok) onPick(slot);
+        else message = result.reason;
+        onChanged();
+      });
+    });
+  }
+
   function importInto(s: SlotSummary): void {
     const occupied = s.status !== "empty";
     const go = () => void run(window.soulSilver.importSave(s.index, occupied), t("saves.imported"));
@@ -61,10 +74,18 @@
     {#each slots as s (s.index)}
       <li class="grid gap-[0.4rem]">
         {#if s.status === "ok"}
-          <button type="button" class="grid gap-[0.2rem] text-left px-4 py-3" data-slot={s.index} onclick={() => onPick(s.index)}>
+          <button type="button" class="grid gap-[0.2rem] text-left px-4 py-3" data-slot={s.index} onclick={() => (s.staleStory ? (stale = s.index) : onPick(s.index))}>
             <strong>{s.name}</strong>
             <span>{t("saves.summary", { slot: s.index, time: playTime(s.playTimeMs), badges: s.badges })}</span>
+            {#if s.staleStory}<span class="text-danger">{t("saves.staleStory")}</span>{/if}
           </button>
+          {#if stale === s.index}
+            <p class="m-0">{t("saves.staleStoryExplain")}</p>
+            <div class="flex gap-2">
+              <SmallButton onclick={() => restart(s.index)}>{t("saves.restartStory")}</SmallButton>
+              <SmallButton onclick={() => onPick(s.index)}>{t("saves.continueStale")}</SmallButton>
+            </div>
+          {/if}
           <div class="flex gap-2">
             <SmallButton onclick={() => void run(window.soulSilver.exportSave(s.index), t("saves.exported"))}>{t("saves.export")}</SmallButton>
             <SmallButton onclick={() => importInto(s)}>{t("saves.import")}</SmallButton>

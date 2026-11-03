@@ -10,7 +10,7 @@
     out,
     speciesName,
   }: {
-    party: { species: number; level: number; hp: number; hpMax: number }[];
+    party: { species: number; nickname?: string | undefined; level: number; hp: number; hpMax: number }[];
     out: number | undefined;
     speciesName: (species: number) => string;
   } = $props();
@@ -27,7 +27,7 @@
         <PokemonIcon species={m.species} />
         <div class="grid gap-1 min-w-0">
           <div class="flex gap-2 items-baseline min-w-0">
-            <strong class="overflow-hidden text-ellipsis whitespace-nowrap">{speciesName(m.species)}</strong>
+            <strong class="overflow-hidden text-ellipsis whitespace-nowrap">{m.nickname ?? speciesName(m.species)}</strong>
             <span class="ml-auto text-[0.8rem] text-muted whitespace-nowrap">{t("hud.level", { level: m.level })}</span>
           </div>
           <HpBar fraction={f} role="meter" aria-label={t("hud.hp")} aria-valuemin={0} aria-valuemax={m.hpMax} aria-valuenow={m.hp} />

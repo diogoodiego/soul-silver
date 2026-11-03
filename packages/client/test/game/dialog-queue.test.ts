@@ -97,4 +97,14 @@ describe("dialog queue", () => {
     await flush();
     expect(order).toEqual(["a", "b"]);
   });
+
+  it("clear drops what is queued without answering it", async () => {
+    const d = createDialogQueue();
+    const order: string[] = [];
+    void d.say(["a"]).then(() => order.push("a"));
+    d.clear();
+    await flush();
+    expect(d.view()).toBeUndefined();
+    expect(order).toEqual([]);
+  });
 });
