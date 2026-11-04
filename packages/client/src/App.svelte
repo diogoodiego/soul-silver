@@ -1,6 +1,6 @@
 <script lang="ts">
   // The screen flow (spec 017): first run → title → main menu → play (save → mode → match) → game.
-  import type { AssetsState, ServerInfo, UpdateState } from "@soulsilver/shared";
+  import type { AssetsState, UpdateState } from "@soulsilver/shared";
   import { onMount } from "svelte";
   import FirstRun from "./FirstRun.svelte";
   import GameSession from "./GameSession.svelte";
@@ -20,7 +20,7 @@
   type Screen = "title" | "home" | "about" | "settings" | "controls" | "play";
   let screen = $state<Screen>("title");
   let appVersion = $state<string | undefined>();
-  let info = $state<ServerInfo | undefined>();
+  let serverReady = $state(false);
   let failed = $state(false);
   let update = $state<UpdateState>({ status: "disabled" });
   let assets = $state<AssetsState>({ status: "checking" });
@@ -71,7 +71,9 @@
     const api = window.soulSilver;
     void loadSettings();
     const unsubscribeStatus = api.onServerStatus((next) => {
+      // The server starts only once the assets are ready, so readiness comes from its status, not a request at mount.
       if (next.state === "stopped") failed = true;
+      else if (next.state === "running") serverReady = true;
     });
     const unsubscribeUpdate = api.onUpdateState((next) => {
       update = next;
@@ -84,14 +86,6 @@
       update = state;
     });
     void api.getAssetsState().then(onAssets);
-    api.getServerInfo().then(
-      (result) => {
-        info = result;
-      },
-      () => {
-        failed = true;
-      },
-    );
     return () => {
       unsubscribeStatus();
       unsubscribeUpdate();
@@ -112,7 +106,7 @@
   {:else if screen === "title"}
     <Title version={appVersion} onStart={() => (screen = "home")} />
   {:else if screen === "home"}
-    <Home notice={switchError} {update} serverReady={info !== undefined} serverFailed={failed} onPlay={() => (screen = "play")} onSettings={() => (screen = "settings")} onAbout={() => (screen = "about")} />
+    <Home notice={switchError} {update} {serverReady} serverFailed={failed} onPlay={() => (screen = "play")} onSettings={() => (screen = "settings")} onAbout={() => (screen = "about")} />
   {:else if screen === "about"}
     <About version={appVersion} onBack={() => (screen = "home")} />
   {:else if screen === "settings"}
