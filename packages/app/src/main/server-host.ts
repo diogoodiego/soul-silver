@@ -2,6 +2,7 @@ import {
   isServerToHostMessage,
   PROTOCOL_VERSION,
   SERVER_UNAVAILABLE,
+  type AssetsState,
   type HostToServerMessage,
   type ServerInfo,
   type ServerStatus,
@@ -170,5 +171,15 @@ export function createServerHost(options: ServerHostOptions): ServerHost {
     stop() {
       child?.kill();
     },
+  };
+}
+
+/** The server reads the extraction once, when it starts; a first run extracts after launch, so it starts on "ready". */
+export function startWhenAssetsReady(host: Pick<ServerHost, "start">): (state: AssetsState) => void {
+  let started = false;
+  return (state) => {
+    if (state.status !== "ready" || started) return;
+    started = true;
+    host.start();
   };
 }

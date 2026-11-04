@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { PROTOCOL_VERSION, type HostToServerMessage, type ServerInfo, type ServerStatus } from "@soulsilver/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createServerHost } from "../src/main/server-host";
+import { createServerHost, startWhenAssetsReady } from "../src/main/server-host";
 
 class FakeChild extends EventEmitter {
   posted: HostToServerMessage[] = [];
@@ -176,5 +176,21 @@ describe("createServerHost", () => {
     const { child, host } = setup();
     host.unlisten();
     expect(child.posted.at(-1)).toEqual({ type: "unlisten" });
+  });
+});
+
+// Regression: the server read the extraction at launch, before a first-run extraction existed, and
+// rejected the new game's save ("o mapa 64 não existe"). It must start only once the assets are ready.
+describe("startWhenAssetsReady", () => {
+  it("starts the server once, only after the extraction is ready", () => {
+    const start = vi.fn();
+    const onState = startWhenAssetsReady({ start });
+    onState({ status: "checking" });
+    onState({ status: "needs-rom", savedRom: false, previousRomInvalid: false });
+    onState({ status: "extracting", mode: "first-run", stageTitle: "Mapas", percent: 50 });
+    expect(start).not.toHaveBeenCalled();
+    onState({ status: "ready" });
+    onState({ status: "ready" });
+    expect(start).toHaveBeenCalledTimes(1);
   });
 });

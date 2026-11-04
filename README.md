@@ -217,6 +217,13 @@ npm test            # Vitest
 
 Nenhuma task é concluída sem os três passando.
 
+Para conferir só que o servidor do jogo enxerga a extração feita na primeira execução (sem isso o
+save novo é recusado com "o mapa 64 não existe"):
+
+```powershell
+npx vitest run packages/app/test/server-host.test.ts -t startWhenAssetsReady
+```
+
 ## Proteção de assets
 
 O repositório nunca contém material da Nintendo (constituição, princípio II). Um hook de

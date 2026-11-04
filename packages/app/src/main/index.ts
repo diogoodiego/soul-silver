@@ -13,7 +13,7 @@ import { isAllowedNavigation, permissionRequestHandler, windowOpenHandler } from
 import { createDiscovery, localAddresses } from "./discovery";
 import { createRemoteClient } from "./remote-connection";
 import { createSaveStore } from "./save-store";
-import { createServerHost } from "./server-host";
+import { createServerHost, startWhenAssetsReady } from "./server-host";
 import { createSessionController, type SessionController } from "./session-controller";
 import { createSettings } from "./settings";
 import { readNewGameStart } from "../server-host/extracted";
@@ -115,6 +115,7 @@ if (!app.requestSingleInstanceLock()) {
         return new Response(null, { status: 404, headers: cors });
       }
     });
+    const startServer = startWhenAssetsReady(serverHost);
     const registry = createRegistry(defaultStages);
     const assets = createAssetsController({
       paths: assetsPaths,
@@ -144,6 +145,7 @@ if (!app.requestSingleInstanceLock()) {
         shell.showItemInFolder(path);
       },
       onState: (state) => {
+        startServer(state);
         send(IpcChannel.AssetsState, state);
       },
       log: (message) => {
@@ -291,7 +293,6 @@ if (!app.requestSingleInstanceLock()) {
       updates.restart();
     });
 
-    serverHost.start();
     // Leaving a session sends the final saves; give them a moment before the server goes.
     let quitting = false;
     app.on("before-quit", (event) => {
