@@ -3,7 +3,7 @@ import { behind, leadIndex, moneyLoss, pickReaction, placeOf, poseAt, pushPose, 
 import { BUTTON, tileAt, type Entity, type PlayerInput, type Rng, type ServerMessage, type WorldLookup } from "@soulsilver/shared/game";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { friendshipOnFaint, memberStats, natureMods } from "@soulsilver/shared/progression";
-import type { PartyMember, Save } from "@soulsilver/shared/save";
+import { badgeCount, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { canHarm, type Combat, type Owner } from "./combat";
 import type { CombatData } from "./combat-loader";
 import type { CompanionData } from "./companion-loader";
@@ -21,7 +21,7 @@ const OPPOSITE: Record<Direction, Direction> = { north: "south", south: "north",
 export interface Trainer {
   playerId: number;
   entityId: number;
-  progress: Pick<Save, "party" | "money" | "badges" | "respawn">;
+  progress: Pick<Save, "party" | "money" | "badgeSet" | "respawn">;
   send(msg: ServerMessage): void;
 }
 
@@ -214,7 +214,7 @@ export function createCompanions(options: CompanionOptions) {
   function blackout(s: State): void {
     const { progress } = s.trainer;
     // Losing to another player is like a link battle: no money changes hands.
-    const lost = s.hitByPlayer ? 0 : moneyLoss(progress.money, progress.party.map((m) => m.level), progress.badges, data.battle.moneyLossBase);
+    const lost = s.hitByPlayer ? 0 : moneyLoss(progress.money, progress.party.map((m) => m.level), badgeCount(progress.badgeSet), data.battle.moneyLossBase);
     progress.money -= lost;
     for (const m of progress.party) m.hp = hpMax(m);
     const to = progress.respawn ?? options.home();

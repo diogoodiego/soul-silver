@@ -270,6 +270,19 @@ export const stdMessagesFile = z.strictObject({
 });
 export type StdMessagesFile = z.infer<typeof stdMessagesFile>;
 
+/**
+ * The cities Fly can reach (spec 025, research R1): FLYPOINT_* ids as the original numbers them, and
+ * the map and tile the player lands on.
+ */
+export const flyPointsFile = z.strictObject({
+  kind: z.literal("fly-points"),
+  formatVersion: z.literal(EVENTS_FORMAT_VERSION),
+  points: z
+    .array(z.strictObject({ flypoint: int(0, 37), map: u16(), tx: u16(), ty: u16() }))
+    .refine((list) => new Set(list.map((p) => p.flypoint)).size === list.length, "ponto de voo repetido"),
+});
+export type FlyPointsFile = z.infer<typeof flyPointsFile>;
+
 export const SCRIPT_ARG_TYPES =["number", "text", "species", "move", "item", "trainer", "flag", "variable", "jump", "movement"] as const;
 
 /** An argument is present only when an earlier one has (or lacks) certain values. */
@@ -350,6 +363,7 @@ const codec = createGameDataCodec({
   shops: shopsFile,
   "new-game": newGameFile,
   "std-messages": stdMessagesFile,
+  "fly-points": flyPointsFile,
   "script-commands": scriptCommandsFile,
   "events-report": eventsReportFile,
 });
@@ -365,6 +379,7 @@ export type EventsFileKind =
   | "shops"
   | "new-game"
   | "std-messages"
+  | "fly-points"
   | "script-commands"
   | "events-report";
 export const parseEventsFile = codec.parseGameDataFile;

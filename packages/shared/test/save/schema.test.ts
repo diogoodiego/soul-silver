@@ -5,7 +5,7 @@ const all = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAtt
 const stats = { experience: 125, ivs: all(31), evs: all(0), nature: 0 };
 
 const valid = {
-  schemaVersion: 8,
+  schemaVersion: 9,
   name: "Gold",
   character: "male",
   area: "60",
@@ -17,7 +17,8 @@ const valid = {
   rev: 0,
   party: [{ species: 25, level: 5, moves: [84, 45], hp: 19, friendship: 70, ...stats }],
   money: 3000,
-  badges: 0,
+  badgeSet: 0,
+  flyPoints: [],
   respawn: null,
   bag: [{ item: 4, count: 10 }],
   pokedex: { seen: [16, 25], caught: [25] },
@@ -59,7 +60,7 @@ describe("saveSchema", () => {
     { schemaVersion: 0 },
     { extra: true },
     { money: -1 },
-    { badges: 17 },
+    { badgeSet: 0x10000 },
     { party: Array.from({ length: 7 }, () => valid.party[0]) },
     { party: [{ species: 0, level: 5, moves: [1], hp: 1, friendship: 0 }] },
     { party: [{ species: 1, level: 5, moves: [], hp: 1, friendship: 0 }] },

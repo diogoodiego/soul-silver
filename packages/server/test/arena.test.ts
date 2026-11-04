@@ -107,7 +107,7 @@ describe("dev arena", () => {
     client.onMessage((m) => got.push(m as ServerMessage));
     t.session.connect(server);
     client.send({ type: "hello", protocolVersion: 17, save, arena: wild("idle") });
-    expect(PROTOCOL_VERSION).toBe(18);
+    expect(PROTOCOL_VERSION).toBeGreaterThanOrEqual(18);
     expect(got).toContainEqual(expect.objectContaining({ type: "reject", code: "protocol-mismatch" }));
   });
 

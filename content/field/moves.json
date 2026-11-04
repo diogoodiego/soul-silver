@@ -1,0 +1,22 @@
+{
+  "kind": "field-moves",
+  "formatVersion": 1,
+  "value": {
+    "moves": [
+      { "name": "cut", "move": 15, "obstacle": "tree", "badge": 1 },
+      { "name": "rockSmash", "move": 249, "obstacle": "rock", "badge": 0 },
+      { "name": "strength", "move": 70, "obstacle": "boulder", "badge": 2 },
+      { "name": "surf", "move": 57, "obstacle": "water", "badge": 3 },
+      { "name": "whirlpool", "move": 250, "obstacle": "whirlpool", "badge": 6 },
+      { "name": "waterfall", "move": 127, "obstacle": "waterfall", "badge": 7 },
+      { "name": "rockClimb", "move": 431, "obstacle": "climbWall", "badge": 15 },
+      { "name": "flash", "move": 148, "obstacle": "darkCave" },
+      { "name": "fly", "move": 19, "obstacle": "none", "badge": 4 },
+      { "name": "headbutt", "move": 29, "obstacle": "headbuttTree" },
+      { "name": "dig", "move": 91, "obstacle": "none" },
+      { "name": "teleport", "move": 100, "obstacle": "none" }
+    ],
+    "bikeSpeedPx": 9,
+    "escapeRope": 78
+  }
+}

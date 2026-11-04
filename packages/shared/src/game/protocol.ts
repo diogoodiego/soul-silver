@@ -4,6 +4,7 @@ import { EMOTIONS } from "../companion/schemas.ts";
 import { TRAINER_MUSIC } from "../events/schemas.ts";
 import { stats } from "../game-data/common.ts";
 import { BOX_COUNT, BOX_NAME_MAX, BOX_SLOTS, progressionItem, saveSchema } from "../save/schema.ts";
+import { PLAYER_MODES, RODS } from "../field/schemas.ts";
 import { ENTITY_KINDS } from "./entity.ts";
 import { PLAYER_NAME_MAX } from "./limits.ts";
 
@@ -12,6 +13,8 @@ import { PLAYER_NAME_MAX } from "./limits.ts";
 const count = () => z.number().int().nonnegative();
 /** The most items a script choice menu has (spec 023). */
 const MENU_ITEMS_MAX = 32;
+/** Why a field move, ride or Fly was refused (spec 025). */
+export const FIELD_REFUSALS = ["badge", "move", "notHere", "indoors", "notVisited", "notAllowed", "busy"] as const;
 const battleStats = stats(0, 0xffff);
 const direction = z.enum(["north", "south", "east", "west"]);
 /** A text id, "bank:index". */
@@ -116,6 +119,20 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("debugWarp"), map: z.number().int().min(0).max(0xffff), tx: z.number().int().min(0), ty: z.number().int().min(0) }),
   /** Spec 024: development builds and the golden path only; every party member's HP, capped at its maximum. */
   z.strictObject({ type: z.literal("debugSetHp"), hp: z.number().int().min(1) }),
+  /** Spec 025: interact with a field obstacle; the server answers with field-prompt when a move can clear it. */
+  z.strictObject({ type: z.literal("field-interact"), objectId: count() }),
+  /** Spec 025: use a field move by its key in content/field/moves.json; `objectId` is the obstacle it acts on. */
+  z.strictObject({ type: z.literal("field-use"), move: z.string().regex(/^[a-z][A-Za-z]*$/), objectId: count().optional() }),
+  z.strictObject({ type: z.literal("field-mount"), mode: z.enum(["bike", "surf"]) }),
+  z.strictObject({ type: z.literal("field-dismount") }),
+  z.strictObject({ type: z.literal("field-fish"), rod: z.enum(RODS) }),
+  /** Reacts to a bite; only counts inside the reaction window. */
+  z.strictObject({ type: z.literal("field-reel") }),
+  z.strictObject({ type: z.literal("field-fly"), area: z.string().min(1) }),
+  /** Spec 025: development builds and the golden path only, like debugWarp. */
+  z.strictObject({ type: z.literal("debugGiveBadge"), badge: z.number().int().min(0).max(15) }),
+  z.strictObject({ type: z.literal("debugTeachMove"), slot: z.number().int().min(0).max(5), move: z.number().int().min(1).max(0xffff) }),
+  z.strictObject({ type: z.literal("debugGiveItem"), item: z.number().int().min(1).max(0xffff), count: z.number().int().min(1).max(999) }),
   /** Spec 022: the player closed the challenge line of the trainer that spotted them; the battle may start. */
   z.strictObject({ type: z.literal("trainer-ready") }),
   /** Spec 023: shop and PC requests, refused without an open session. */
@@ -386,6 +403,18 @@ export const serverMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("pcOpen"), boxes: saveSchema.shape.boxes, pcItems: saveSchema.shape.pcItems }),
   z.strictObject({ type: z.literal("pcResult"), ok: z.boolean(), reason: z.enum(PC_REFUSALS).optional(), boxes: saveSchema.shape.boxes, pcItems: saveSchema.shape.pcItems }),
   z.strictObject({ type: z.literal("pcClose") }),
+  /** Spec 025: a field move can clear the obstacle; `user` is the party index that would use it. Answered with field-use. */
+  z.strictObject({ type: z.literal("field-prompt"), move: z.string().regex(/^[a-z][A-Za-z]*$/), user: z.number().int().min(0).max(5), dialog: textId.optional() }),
+  z.strictObject({ type: z.literal("field-result"), ok: z.boolean(), reason: z.enum(FIELD_REFUSALS).optional() }),
+  /** Only to the player who cleared the obstacle (principle VII). */
+  z.strictObject({ type: z.literal("field-removed"), objectId: count() }),
+  z.strictObject({ type: z.literal("player-mode"), mode: z.enum(PLAYER_MODES) }),
+  /** `windowMs` comes with the bite: the time left to react. */
+  z.strictObject({ type: z.literal("field-fishing"), state: z.enum(["waiting", "bite", "hooked", "escaped"]), windowMs: count().optional() }),
+  z.strictObject({ type: z.literal("field-fly-map"), points: z.array(z.strictObject({ area: z.string().min(1), flypoint: z.number().int().min(0).max(37) })) }),
+  /** While surfing: which party members may be launched. */
+  z.strictObject({ type: z.literal("field-launchable"), launchable: z.array(z.boolean()).max(6) }),
+  z.strictObject({ type: z.literal("field-lit"), lit: z.boolean() }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessage>;
 export type StateMessage = Extract<ServerMessage, { type: "state" }>;

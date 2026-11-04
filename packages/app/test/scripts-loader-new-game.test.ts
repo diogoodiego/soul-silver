@@ -52,3 +52,21 @@ describe("scripts loader: new game", () => {
     expect(logs).toEqual([expect.stringMatching(/std-messages\.json: banks: /)]);
   });
 });
+
+describe("scripts loader: fly points (spec 025)", () => {
+  const flyFile = (points: unknown[]) => JSON.stringify({ kind: "fly-points", formatVersion: 1, points });
+
+  it("passes on the fly points", () => {
+    const root = stages({});
+    writeFileSync(join(root, "events", "events", "fly-points.json"), flyFile([{ flypoint: 11, map: 60, tx: 695, ty: 397 }]));
+    expect(loadScripts(root, () => undefined)!.flyPoints).toEqual([{ flypoint: 11, map: 60, tx: 695, ty: 397 }]);
+  });
+
+  it("logs a bad file and leaves it out", () => {
+    const logs: string[] = [];
+    const root = stages({});
+    writeFileSync(join(root, "events", "events", "fly-points.json"), flyFile([{ flypoint: 99, map: 60, tx: 1, ty: 1 }]));
+    expect(loadScripts(root, (m) => logs.push(m))!.flyPoints).toBeUndefined();
+    expect(logs.join("\n")).toMatch(/fly-points\.json.*points\.0\.flypoint/);
+  });
+});

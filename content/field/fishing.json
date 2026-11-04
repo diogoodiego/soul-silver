@@ -1,0 +1,12 @@
+{
+  "kind": "field-fishing",
+  "formatVersion": 1,
+  "value": {
+    "rods": {
+      "old": { "waitS": [2, 5], "windowS": 1.5, "baseBite": 0.5 },
+      "good": { "waitS": [1.5, 4], "windowS": 1.2, "baseBite": 0.65 },
+      "super": { "waitS": [1, 3], "windowS": 1, "baseBite": 0.8 }
+    },
+    "friendshipBite": 0.2
+  }
+}

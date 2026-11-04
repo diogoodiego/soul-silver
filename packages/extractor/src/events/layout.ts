@@ -41,6 +41,8 @@ export const CLASS_MUSIC = { classes: 0xfc3ca, list: 0xfc40a, classCount: 32, li
 export const NEW_GAME_LOCATION = 0xfa17c;
 export const INIT_SCRIPT = 9600;
 export const STD_MESSAGES = { overlay: 1, offset: 0x20ec8, count: 4 } as const;
+/** Fly destinations (spec 025, research R1): sSpawnMaps in ARM9, 30 records of 18 bytes. */
+export const FLY_POINTS = { offset: 0xf9e80, count: 30 } as const;
 export const SHOPS ={ normal: 0xfbf22, normalCount: 19, special: 0x10fa3c, specialCount: 30, badgeRank: [1, 2, 2, 3, 3, 4, 4, 5, 6] } as const;
 
 /** Level script types (init_script_types.h). */

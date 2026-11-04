@@ -1,7 +1,7 @@
 import { mkdir, open, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { randomSuffix, renameWithRetry, writeFileAtomic } from "@soulsilver/extractor";
-import { applyNewGame, migrate, type NewGameStart, restartStory, SAVE_SLOTS, STORY_REV, type Save, type SaveResult, type SlotSummary } from "@soulsilver/shared/save";
+import { applyNewGame, badgeCount, migrate, type NewGameStart, restartStory, SAVE_SLOTS, STORY_REV, type Save, type SaveResult, type SlotSummary } from "@soulsilver/shared/save";
 
 // The player's saves, in the player's PC (spec 012, principle VIII, contracts/save-file.md).
 
@@ -48,7 +48,7 @@ export function createSaveStore(options: SaveStoreOptions) {
     const [cur, bak] = await Promise.all([readSave(current(index)), readSave(backup(index))]);
     if (cur.state === "ok") {
       const s = cur.save;
-      return { index, status: "ok", name: s.name, character: s.character, area: s.area, playTimeMs: s.playTimeMs, savedAt: s.savedAt, backupAvailable: bak.state === "ok", badges: s.badges, staleStory: s.storyRev < STORY_REV };
+      return { index, status: "ok", name: s.name, character: s.character, area: s.area, playTimeMs: s.playTimeMs, savedAt: s.savedAt, backupAvailable: bak.state === "ok", badges: badgeCount(s.badgeSet), staleStory: s.storyRev < STORY_REV };
     }
     if (cur.state === "missing" && bak.state === "missing") return { index, status: "empty" };
     const reason = cur.state === "bad" ? cur.reason : "arquivo do save ausente";

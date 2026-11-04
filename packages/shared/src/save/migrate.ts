@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { newBoxes, newCollection, newProgress, SAVE_SCHEMA_VERSION, saveSchema, type PartyMember, type Save } from "./schema.ts";
+import { newBoxes, newCollection, SAVE_SCHEMA_VERSION, saveSchema, type PartyMember, type Save } from "./schema.ts";
 
 export type SaveFailureCode = "invalid" | "save-too-new";
 export type MigrateResult<T = Save> = { ok: true; save: T } | { ok: false; code: SaveFailureCode; message: string };
@@ -9,7 +9,7 @@ type Step = (save: Record<string, unknown>) => Record<string, unknown>;
 /** Steps from version n to n + 1; every new entry needs a test. */
 export const SAVE_MIGRATIONS: Record<number, Step> = {
   // Spec 014: party, money, badges and the blackout respawn point.
-  1: (save) => ({ ...save, ...newProgress(), schemaVersion: 2 }),
+  1: (save) => ({ ...save, party: [], money: 3000, badges: 0, respawn: null, schemaVersion: 2 }),
   // Spec 015: bag, Pokédex (the party counts as seen and caught) and temporary storage.
   2: (save) => {
     const species = [...new Set((save["party"] as { species: number }[]).map((m) => m.species))];
@@ -32,6 +32,8 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   },
   // Spec 024: no rival name yet; the story state predates the original new-game state.
   7: (save) => ({ ...save, rivalName: "", storyRev: 0, schemaVersion: 8 }),
+  // Spec 025: the badge count becomes the set of badges (the first N, the order Johto is earned in); no fly point visited yet.
+  8: ({ badges, ...save }) => ({ ...save, badgeSet: (1 << (badges as number)) - 1, flyPoints: [], schemaVersion: 9 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

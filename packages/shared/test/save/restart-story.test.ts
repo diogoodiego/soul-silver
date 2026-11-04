@@ -21,7 +21,8 @@ const played = (): Save => ({
   party: [{ species: 155, level: 7, moves: [33], hp: 20, friendship: 80, experience: 285, ivs: { hp: 1, attack: 1, defense: 1, speed: 1, specialAttack: 1, specialDefense: 1 }, evs: { hp: 0, attack: 0, defense: 0, speed: 0, specialAttack: 0, specialDefense: 0 }, nature: 2 }],
   bag: [{ item: 17, count: 5 }],
   money: 9000,
-  badges: 1,
+  badgeSet: 1,
+  flyPoints: [],
   pokedex: { seen: [155, 16], caught: [155] },
   flags: [106, 418, 960],
   vars: { [String(0x4108)]: 3 },
@@ -37,7 +38,7 @@ describe("restartStory", () => {
   it("makes the rest a new game's, at the current story revision", () => {
     const restarted = restartStory(played(), start);
     expect(restarted).toEqual({ ...applyNewGame(fresh(), start), playTimeMs: 2_078_700, rev: 99, savedAt: "2026-10-30T06:15:14.437Z" });
-    expect(restarted).toMatchObject({ area: "64", party: [], bag: [], badges: 0, flags: [...NEW_GAME_FLAGS], vars: {}, rivalName: "", storyRev: STORY_REV, boxes: newBoxes() });
+    expect(restarted).toMatchObject({ area: "64", party: [], bag: [], badgeSet: 0, flags: [...NEW_GAME_FLAGS], vars: {}, rivalName: "", storyRev: STORY_REV, boxes: newBoxes() });
   });
 });
 

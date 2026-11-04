@@ -1,3 +1,4 @@
+export * from "./badges.ts";
 export * from "./coherence.ts";
 export * from "./migrate.ts";
 export * from "./new-game.ts";

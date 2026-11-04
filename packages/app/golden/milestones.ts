@@ -1,6 +1,6 @@
 // The golden path's milestones (spec 024 US6, contracts/golden-path.md): what the player's save holds at each one.
 // The ids come from the extracted scripts, checked against pret/pokeheartgold (research R7).
-import type { Save } from "@soulsilver/shared/save";
+import { badgeCount, type Save } from "@soulsilver/shared/save";
 
 export interface Checks {
   map?: number;
@@ -47,7 +47,7 @@ export function failedCheck({ checks: c }: Milestone, { save, duplicates, traine
     if (min === 0 && now > 0) return `item ${id} fora da bolsa (tem ${now})`;
     if (now < min) return `item ${id} × ${min} na bolsa (tem ${now})`;
   }
-  if (c.badges !== undefined && save.badges < c.badges) return `insígnias ≥ ${c.badges} (tem ${save.badges})`;
+  if (c.badges !== undefined && badgeCount(save.badgeSet) < c.badges) return `insígnias ≥ ${c.badges} (tem ${badgeCount(save.badgeSet)})`;
   if (c.rivalNamed && save.rivalName === "") return "rival com nome";
   if (c.beaten && !c.beaten.some((t) => save.flags.includes(trainerFlagBase + t))) return `treinador ${c.beaten.join(", ").replace(/, (\d+)$/, " ou $1")} vencido`;
   const twice = duplicates[0];

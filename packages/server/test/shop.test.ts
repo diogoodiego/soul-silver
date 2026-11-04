@@ -48,9 +48,9 @@ function atClerk(save: Record<string, unknown> = {}, players = 1, mode: "buy" | 
 
 describe("Poké Mart (US1)", () => {
   it("opens with the stock this player's badges reach and their prices", () => {
-    const { t, c } = atClerk({ money: 3000, badges: 0 });
+    const { t, c } = atClerk({ money: 3000, badgeSet: 0 });
     expect(t.of(c, "shopOpen").at(-1)).toEqual({ type: "shopOpen", shopId: 0, mode: "buy", money: 3000, stock: [{ item: 4, price: 200 }, { item: 17, price: 300 }] });
-    const { t: t1, c: c1 } = atClerk({ badges: 1 });
+    const { t: t1, c: c1 } = atClerk({ badgeSet: 1 });
     expect(t1.of(c1, "shopOpen").at(-1)!.stock.map((s) => s.item)).toEqual([4, 17, 3]);
   });
 

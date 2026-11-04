@@ -24,6 +24,13 @@ export interface Check {
 
 const line = (m: Milestone) => `ok  ${m.n}. ${m.name}`;
 
+/** The field probe's report (spec 025): one line per obstacle, then the total. */
+export function fieldReport(checks: Check[]): string {
+  const out = checks.map((c) => (c.failed ? `FALHOU ${c.name}: ${c.failed}` : `ok  ${c.name}`));
+  out.push(`${checks.filter((c) => !c.failed).length} de ${checks.length} obstáculos`);
+  return out.join("\n");
+}
+
 /** Unhandled commands the stretch's maps use and the run never hit, sorted: optional content, reported apart. */
 export function optionalMissing(commands: { name: string; maps: number[] }[], maps: Set<number>, handled: (name: string) => boolean, hit: Set<string>): string[] {
   return commands

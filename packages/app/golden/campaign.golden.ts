@@ -8,7 +8,7 @@ import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import { BUTTON, createRng, findDuplicates, tileAt, type PcSlot, type ServerMessage } from "@soulsilver/shared/game";
 import type { Direction } from "@soulsilver/shared/maps";
 import { memberStats } from "@soulsilver/shared/progression";
-import { applyNewGame, migrate, type Save } from "@soulsilver/shared/save";
+import { applyNewGame, badgeCount, migrate, type Save } from "@soulsilver/shared/save";
 import { SCRIPT_HANDLERS } from "@soulsilver/shared/script";
 import { prize } from "@soulsilver/shared/trainer";
 import { createMemoryConnectionPair, createReferenceBot, createSession, SOLID, type Combatant, type WildData } from "@soulsilver/server";
@@ -456,7 +456,7 @@ function shop(p: Pilot): Check {
   const buying = next(n);
   if (buying?.mode !== "buy") return fail(`a loja não abriu para compra (${JSON.stringify(buying)})`);
   const record = p.data.shops?.shop(buying.shopId);
-  const expected = (record?.items ?? []).filter((i) => i.minBadges <= before.badges).map((i) => i.item);
+  const expected = (record?.items ?? []).filter((i) => i.minBadges <= badgeCount(before.badgeSet)).map((i) => i.item);
   const offered = buying.stock.map((s) => s.item);
   if (JSON.stringify(offered) !== JSON.stringify(expected)) return fail(`estoque oferecido ${offered.join(", ")}, extraído ${expected.join(", ")}`);
   const price = buying.stock.find((s) => s.item === POTION)?.price ?? 0;

@@ -5,7 +5,7 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 8;
+export const SAVE_SCHEMA_VERSION = 9;
 
 /** The story revision new saves get (spec 024); a lower one marks a save whose story state predates it. */
 export const STORY_REV = 1;
@@ -52,7 +52,7 @@ const species = () => z.number().int().min(1).max(493);
 const unique = (list: number[]) => new Set(list).size === list.length;
 
 /** What a v1 save gets on migration and a new game starts with (3000 is the HGSS starting money). */
-export const newProgress = () => ({ party: [] as PartyMember[], money: 3000, badges: 0, respawn: null });
+export const newProgress = () => ({ party: [] as PartyMember[], money: 3000, badgeSet: 0, flyPoints: [] as string[], respawn: null });
 
 /** Bag and Pokédex (spec 015): what a v2 save gets and a new game starts with. */
 export const newCollection = () => ({ bag: [] as { item: number; count: number }[], pokedex: { seen: [] as number[], caught: [] as number[] } });
@@ -83,7 +83,10 @@ export const saveSchema = z.strictObject({
   rev: z.number().int().nonnegative(),
   party: z.array(partyMember).max(6),
   money: z.number().int().min(0).max(999999),
-  badges: z.number().int().min(0).max(16),
+  /** Badges earned (spec 025): bit i is badge i, in the original numbering (0 Zephyr … 15 Earth). */
+  badgeSet: z.number().int().min(0).max(0xffff),
+  /** Fly points visited (spec 025): area ids, no repeats. */
+  flyPoints: z.array(z.string().min(1)).refine((l) => new Set(l).size === l.length, "ponto de voo repetido"),
   /** Last Pokémon Center entered: the blackout respawn point; null means home. */
   respawn: z.strictObject({ area: z.string().min(1), x: z.number().finite(), y: z.number().finite() }).nullable(),
   bag: itemList(0xffff),

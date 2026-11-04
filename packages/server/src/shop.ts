@@ -1,7 +1,7 @@
 import { buy, sell, sellPrice, stockFor, type PriceInfo, type StockEntry } from "@soulsilver/shared/economy";
 import type { ShopRecord } from "@soulsilver/shared/events";
 import type { ClientMessage, ServerMessage, ShopRefusal } from "@soulsilver/shared/game";
-import type { Save } from "@soulsilver/shared/save";
+import { badgeCount, type Save } from "@soulsilver/shared/save";
 
 // Poké Marts (spec 023): one open shop per player, opened by the clerk's script, which waits until
 // the player leaves. Every purchase and sale is checked here; a refusal changes nothing.
@@ -19,7 +19,7 @@ export function buildShopData(shops: ShopRecord[], items: PriceInfo[]): ShopData
 
 export interface Shopper {
   playerId: number;
-  progress: Pick<Save, "money" | "bag" | "badges">;
+  progress: Pick<Save, "money" | "bag" | "badgeSet">;
   send(msg: ServerMessage): void;
 }
 
@@ -58,7 +58,7 @@ export function createShops(options: ShopsOptions): Shops {
       const price = info && sellPrice(info);
       return price === undefined ? [] : [{ item, price }];
     });
-  const stock = (w: Shopper, o: Open) => (o.sell ? sellable(w) : stockFor(o.shop, w.progress.badges, data.item));
+  const stock = (w: Shopper, o: Open) => (o.sell ? sellable(w) : stockFor(o.shop, badgeCount(w.progress.badgeSet), data.item));
   const show = (w: Shopper, o: Open) => w.send({ type: "shopOpen", shopId: o.shop.id, mode: o.sell ? "sell" : "buy", money: w.progress.money, stock: stock(w, o) });
   const answer = (w: Shopper, reason: ShopRefusal | null) =>
     w.send({ type: "shopResult", ok: reason === null, ...(reason === null ? {} : { reason }), money: w.progress.money });

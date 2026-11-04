@@ -32,7 +32,7 @@ export function loadScripts(stagesDir: string, log: (message: string) => void): 
   const refs = new Map(headers.data.records.map((h) => [h.id, h.refs]));
   const files = new Map<number, ScriptFile | undefined>();
   const events = new Map<number, MapEventsFile | undefined>();
-  function read<K extends "script-file" | "map-events" | "new-game" | "std-messages">(kind: K, path: string) {
+  function read<K extends "script-file" | "map-events" | "new-game" | "std-messages" | "fly-points" | "headbutt">(kind: K, path: string) {
     if (!existsSync(path)) return undefined;
     const parsed = parseEventsJson(kind, readFileSync(path, "utf8"), path);
     if (parsed.ok) return parsed.data;
@@ -43,9 +43,15 @@ export function loadScripts(stagesDir: string, log: (message: string) => void): 
   // Spec 024: read once; an extraction from before it has neither file.
   const newGame = read("new-game", join(eventsDir, "new-game.json"));
   const std = read("std-messages", join(eventsDir, "std-messages.json"));
+  // Spec 025: Fly destinations; an extraction from before it has no file.
+  const fly = read("fly-points", join(eventsDir, "fly-points.json"));
+  // Headbutt tables and trees, by map id (spec 015's extraction; read by spec 025).
+  const headbutt = new Map(read("headbutt", join(eventsDir, "headbutt.json"))?.records.map((r) => [r.id, r]));
   return {
     newGame: newGame && { map: newGame.map, tx: newGame.tx, ty: newGame.ty, facing: newGame.facing, initScript: newGame.initScript },
     stdMessageBanks: std?.banks,
+    flyPoints: fly?.points,
+    headbutt: (map) => headbutt.get(map),
     defaultRival: readDefaultRival(stagesDir, log),
     file(id) {
       if (!files.has(id)) files.set(id, read("script-file", join(eventsDir, "scripts", `${padded(id)}.json`)));

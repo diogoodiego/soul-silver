@@ -1,3 +1,4 @@
+import { wildMoves } from "@soulsilver/shared/wild";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import {
   BUTTON,
@@ -154,7 +155,7 @@ interface Player {
   /** Asked for the AI debug overlay (spec 019). */
   debugAi: boolean;
   /** Party, money, badges and respawn point, changed in place by the companion rules; bag, Pokédex and PC boxes by capture. */
-  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems">;
+  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints">;
   /** Story flags and variables (spec 020), changed by this player's scripts only. */
   flags: Set<number>;
   vars: Map<number, number>;
@@ -295,6 +296,24 @@ export function createSession(options: SessionOptions): Session {
         battle: (playerId, trainer, partner): boolean => trainerBattles?.startScripted(playerId, trainer, partner) ?? false,
         shop: (playerId, shop, sell): boolean => shops?.open(playerId, shop, sell) ?? false,
         pc: (playerId): boolean => pcs.open(playerId),
+        fieldWild:
+          wilds && options.wild
+            ? {
+                encounter: (area) => {
+                  const table = lookup(area)?.encounters;
+                  return table === undefined ? undefined : options.wild!.encounter(table);
+                },
+                spawn(area, x, y, species, level) {
+                  try {
+                    wilds.place(area, x, y, { species, level, moves: wildMoves(options.wild!.levelUp(species), level) }, tick);
+                    return true;
+                  } catch (error) {
+                    options.log(`Wild ${species} out of a rock or tree on map ${area} not spawned: ${(error as Error).message}`);
+                    return false;
+                  }
+                },
+              }
+            : undefined,
         trainerFlagBase: options.trainers?.tuning.trainerFlagBase,
         talkTrainer: (playerId, npc): boolean => trainerBattles?.talk(playerId, npc) ?? false,
         log: (message) => options.log(message),
@@ -414,7 +433,8 @@ export function createSession(options: SessionOptions): Session {
       progress: {
         party: base.party.map((m) => ({ ...m })),
         money: base.money,
-        badges: base.badges,
+        badgeSet: base.badgeSet,
+        flyPoints: [...base.flyPoints],
         respawn: base.respawn,
         bag: base.bag.map((b) => ({ ...b })),
         pokedex: { seen: [...base.pokedex.seen], caught: [...base.pokedex.caught] },
@@ -744,6 +764,25 @@ export function createSession(options: SessionOptions): Session {
         case "debugSetHp":
           scripts?.setHp(player.id, msg.hp);
           return;
+        case "debugGiveBadge":
+          scripts?.giveBadge(player.id, msg.badge);
+          return;
+        case "debugTeachMove":
+          scripts?.teachMove(player.id, msg.slot, msg.move);
+          return;
+        case "debugGiveItem":
+          scripts?.giveItem(player.id, msg.item, msg.count);
+          return;
+        case "field-interact":
+        case "field-use":
+        case "field-mount":
+        case "field-dismount":
+        case "field-fish":
+        case "field-reel":
+        case "field-fly":
+          // Field moves arrive with spec 025's stories; until then every request is refused.
+          player.conn?.send({ type: "field-result", ok: false, reason: "notAllowed" } satisfies ServerMessage);
+          return;
         case "menu":
           if (msg.open && companions?.inCombat(player.id)) notice(player, "menu-blocked");
           else {
@@ -851,6 +890,7 @@ export function createSession(options: SessionOptions): Session {
         continue;
       }
       // Every tick, so ledge hops and warp transitions run out without input.
+      scripts?.push(p.id, input);
       const me = world.get(p.entityId)!;
       world.update(stepMovement(me, input ?? null, lookup, npcs && npcOccupied(world.all().filter((e) => scripts!.visible(p.id, e)).map((e) => scripts!.view(p.id, e)), me.area)));
     }
@@ -908,7 +948,7 @@ export function createSession(options: SessionOptions): Session {
       for (const p of players.values()) p.conn?.send(msg);
     },
     join: (name, spawn) => {
-      const base: Save = { schemaVersion: 8, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
+      const base: Save = { schemaVersion: 9, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
       return add(base, undefined, spawn, "").id;
     },
     leave(playerId) {

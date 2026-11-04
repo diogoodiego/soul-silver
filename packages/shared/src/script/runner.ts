@@ -105,8 +105,9 @@ class Abort extends Error {}
 
 const nameOf = (c: ScriptCommand) => ("raw" in c ? `raw:${c.id}` : c.name);
 
-export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Handler>, start: { file: ScriptFile; entry: number }): Runner {
-  const special = new Map<number, number>();
+export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Handler>, start: { file: ScriptFile; entry: number; special?: ReadonlyMap<number, number> | undefined }): Runner {
+  // VAR_LAST_TALKED and the like, set by whoever starts the script.
+  const special = new Map<number, number>(start.special);
   const buffers: Record<number, TextBuffer> = {};
   const menu: MenuState = { into: 0, cancel: false, std: false, items: [] };
   const phone = { call: undefined as string | undefined };

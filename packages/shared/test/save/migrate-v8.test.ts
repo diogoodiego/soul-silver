@@ -34,12 +34,12 @@ describe("save v8", () => {
   it("adds an empty rival name and a stale story, touching nothing else", () => {
     const result = migrate(structuredClone(v7));
     if (!result.ok) throw new Error(result.message);
-    expect(result.save).toEqual({ ...v7, schemaVersion: 8, rivalName: "", storyRev: 0 });
+    expect(result.save).toEqual({ ...v7, badges: undefined, schemaVersion: 9, rivalName: "", storyRev: 0, badgeSet: 0, flyPoints: [] });
   });
 
-  it("accepts a v8 save as it is", () => {
-    const save = { ...v7, schemaVersion: 8, rivalName: "Silver", storyRev: 1 };
-    expect(migrate(save)).toEqual({ ok: true, save });
+  it("hands a v8 save on to the next version", () => {
+    const save = { ...v7, badges: undefined, schemaVersion: 9, rivalName: "Silver", storyRev: 1, badgeSet: 0, flyPoints: [] };
+    expect(migrate({ ...v7, schemaVersion: 8, rivalName: "Silver", storyRev: 1 })).toEqual({ ok: true, save });
   });
 
   it.each([

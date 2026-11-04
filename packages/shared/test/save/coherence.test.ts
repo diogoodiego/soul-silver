@@ -4,7 +4,7 @@ import { checkCoherence, COHERENCE_RULES, type CoherenceRule } from "../../src/s
 import { newBoxes, type Save } from "../../src/save/schema.ts";
 
 const save: Save = {
-  schemaVersion: 8,
+  schemaVersion: 9,
   rivalName: "",
   storyRev: 1,
   flags: [],
@@ -20,7 +20,8 @@ const save: Save = {
   rev: 0,
   party: [],
   money: 0,
-  badges: 0,
+  badgeSet: 0,
+  flyPoints: [],
   respawn: null,
   bag: [],
   pokedex: { seen: [16], caught: [16] },

@@ -1,9 +1,11 @@
-import type { MapEventsFile, NewGameFile, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
+import type { EncounterRecord, EncounterSlot, MapEventsFile, FlyPointsFile, HeadbuttRecord, NewGameFile, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
+import { headbuttTree, pickUser } from "@soulsilver/shared/field";
+import { rollLevel, rollSlot } from "@soulsilver/shared/wild";
 import { createRng, stepMovement, tileAt, unstick, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
 import { isCounter, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { starterMember } from "@soulsilver/shared/progression";
 import { store } from "@soulsilver/shared/pc";
-import type { PartyMember, Save } from "@soulsilver/shared/save";
+import { hasBadgeBit, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { npcOccupied, type CutsceneActor, type CutsceneStep } from "@soulsilver/shared/npc";
 import { createRunner, SCRIPT_DIRECTIONS, SCRIPT_HANDLERS, type MissingCommand, type Runner, type ScriptHost } from "@soulsilver/shared/script";
 import { POCKET_KEYS } from "@soulsilver/shared/game-data";
@@ -25,8 +27,12 @@ export interface ScriptData {
   newGame?: Omit<NewGameFile, "kind" | "formatVersion"> | undefined;
   /** The message banks GetStdMsgNaix picks from, by index (spec 024). */
   stdMessageBanks?: readonly number[] | undefined;
+  /** Where Fly lands, by FLYPOINT id (spec 025); absent in older extractions. */
+  flyPoints?: FlyPointsFile["points"] | undefined;
   /** The rival's name when nothing is typed, from the game's text (spec 024). */
   defaultRival?: string | undefined;
+  /** Headbutt tables and trees by map (spec 025); absent in tests that do not need them. */
+  headbutt?: ((map: number) => HeadbuttRecord | undefined) | undefined;
 }
 
 /** Temporary variables and map flags the game clears on every map change (vars.h, flags.h). */
@@ -45,6 +51,22 @@ const POKEMON_CENTERS = new Set(["501", "475", "428", "434", "358", "393", "482"
 const VAR_SPRITE_FIRST = 101;
 const VAR_SPRITE_LAST = 116;
 const VAR_SPRITE_BASE = 0x4020;
+/** VAR_LAST_TALKED: the person a script was started on; field-move scripts hide it (spec 025). */
+const VAR_LAST_TALKED = 0x800d;
+/** Field-move scripts of file 146 started from the tile ahead (pokeheartgold metatile_behavior.h, spec 025). */
+const TILE_SCRIPTS: ReadonlyMap<number, number> = new Map([
+  [0x06, 10014], // headbutt tree
+  [0x4b, 10003], // rock climb, north–south
+  [0x4c, 10003], // rock climb, east–west
+  [0x13, 10005], // waterfall
+  [0x11, 10016], // whirlpool
+]);
+/** Waterfalls and whirlpools are faced from the water. */
+const FROM_WATER = new Set([0x13, 0x11]);
+/** The boulder's talk script: walking into it pushes it while Strength is on. */
+const STRENGTH_SCRIPT = 10002;
+/** shortcut: saves have no trainer id; headbutt's tree tables read its last digit as 0. Add the id to the save when a spec needs it. */
+const TRAINER_ID = 0;
 const MONEY_MAX = 999999;
 /**
  * Prof. Oak's introduction (text bank 219). In the original it is a screen of its own, not a field
@@ -90,7 +112,7 @@ export interface Storyteller {
   intro?: boolean | undefined;
   /** The story has not started (a new save, or one restarted, spec 024): _std_init runs once on joining. */
   init?: boolean | undefined;
-  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badges" | "pokedex" | "respawn">;
+  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badgeSet" | "pokedex" | "respawn">;
   /** The save's rival name (spec 024); mutated in place, the session saves it. */
   rival?: Pick<Save, "rivalName"> | undefined;
   send(msg: ServerMessage): void;
@@ -128,6 +150,8 @@ export interface ScriptsOptions {
   pc?: ((playerId: number) => boolean) | undefined;
   /** Talking to a trainer (spec 022): it challenges or says its after line; true when handled. */
   talkTrainer?: ((playerId: number, npc: Entity) => boolean) | undefined;
+  /** Spec 025: the map's encounter table, and a wild Pokémon out of a rock or a tree; false when it could not appear. */
+  fieldWild?: { encounter(area: string): EncounterRecord | undefined; spawn(area: string, x: number, y: number, species: number, level: number): boolean } | undefined;
   /** Defeated trainer t is flag trainerFlagBase + t (spec 022, content/trainer/tuning.json). */
   trainerFlagBase?: number | undefined;
   log(message: string): void;
@@ -181,6 +205,8 @@ interface State {
   inService: boolean;
   /** Result of the last trainer battle, for CheckBattleWon. */
   won: boolean;
+  /** Strength is on for this visit of the map (spec 025). */
+  strength: boolean;
   /** The latest flag and variable changes for the debugger (spec 024), kept while it is off too. */
   changes: FlagChange[];
 }
@@ -204,6 +230,13 @@ export function createScripts(options: ScriptsOptions) {
   const origin = (area: string) => lookup(area)?.origin ?? { tx: 0, ty: 0 };
   const eventsOf = (area: string) => (/^\d+$/.test(area) ? data.events(Number(area)) : undefined);
   const center = (t: number) => t * MAP_TILE_PX + MAP_TILE_PX / 2;
+  /** The state of a player allowed to use a development command (spec 024, 025); otherwise logs the refusal. */
+  function devState(playerId: number, command: string): State | undefined {
+    const s = states.get(playerId);
+    if (s?.debug && options.devTools) return s;
+    options.log(`Refused ${command} from player ${playerId}: the script debugger is off or this is not a development build`);
+    return undefined;
+  }
 
   /** The player's tile in matrix coordinates, as events and scripts count them. */
   function tileOf(e: Entity): { x: number; z: number } {
@@ -267,6 +300,13 @@ export function createScripts(options: ScriptsOptions) {
     if (s.locked === locked) return;
     s.locked = locked;
     send(s, { type: "script-lock", locked });
+  }
+
+  /** The tile n steps ahead of the entity, in map tiles, with its behavior (the permission's low byte). */
+  function ahead(e: Entity, n = 1) {
+    const x = Math.floor(e.x / MAP_TILE_PX) + STEP[e.facing][0] * n;
+    const y = Math.floor(e.y / MAP_TILE_PX) + STEP[e.facing][1] * n;
+    return { x, y, behavior: (tileAt(lookup, e.area, e.level, center(x), center(y))?.raw ?? 0) & 0xff };
   }
 
   function hostFor(s: State): ScriptHost {
@@ -349,12 +389,44 @@ export function createScripts(options: ScriptsOptions) {
         if (POKEMON_CENTERS.has(e.area)) who.progress.respawn = { area: e.area, x: e.x, y: e.y };
         options.changed(who.playerId, "party");
       },
-      // shortcut: the save keeps a badge count, not which badges; Johto's are earned in order until a spec needs the set.
       trainerFlag: (t) => who.flags.has(trainerFlagBase + t),
       setTrainerFlag: (t, on) => writeFlag(s, trainerFlagBase + t, on),
       battleWon: () => s.won,
-      hasBadge: (b) => b < who.progress.badges,
-      giveBadge: (b) => void (who.progress.badges = Math.max(who.progress.badges, Math.min(16, b + 1))),
+      hasBadge: (b) => hasBadgeBit(who.progress.badgeSet, b),
+      giveBadge: (b) => void (b >= 0 && b < 16 && (who.progress.badgeSet |= 1 << b)),
+      // The original answers PARTY_SIZE, not the party's length, and the scripts compare against 6.
+      partySlotWithMove: (move) => pickUser(who.progress.party, move, companionOf(s) ? who.progress.party.findIndex((m) => m.hp > 0) : undefined) ?? 6,
+      strength: () => s.strength,
+      setStrength: (on) => void (s.strength = on),
+      fieldEncounter(kind) {
+        const e = me();
+        const front = ahead(e);
+        let slots: readonly EncounterSlot[] | undefined;
+        if (kind === "rockSmash") {
+          const table = options.fieldWild?.encounter(e.area);
+          if (!table?.rockSmash || rng.nextInt(100) >= table.rates.rockSmash) return false;
+          slots = table.rockSmash;
+        } else {
+          const trees = data.headbutt?.(Number(e.area));
+          const o = origin(e.area);
+          const type = trees && headbuttTree(trees, front.x + o.tx, front.y + o.ty, TRAINER_ID);
+          slots = type && trees[type];
+        }
+        slots = slots?.filter((slot) => slot.species > 0);
+        if (!options.fieldWild || !slots?.length) return false;
+        const slot = rollSlot(slots, rng);
+        // Out of the rock, on its tile; a tree stays, so the Pokémon drops on the player's tile.
+        const at = kind === "rockSmash" ? front : { x: Math.floor(e.x / MAP_TILE_PX), y: Math.floor(e.y / MAP_TILE_PX) };
+        return options.fieldWild.spawn(e.area, center(at.x), center(at.y), slot.species, rollLevel(slot, rng));
+      },
+      crossing(kind) {
+        const e = me();
+        const vertical = e.facing === "north" || e.facing === "south";
+        const crosses = (b: number) => (kind === "rockClimb" ? b === (vertical ? 0x4b : 0x4c) : b === (kind === "waterfall" ? 0x13 : 0x11));
+        let n = 1;
+        while (n < 32 && crosses(ahead(e, n).behavior)) n++;
+        return n === 1 ? undefined : { dir: e.facing, count: n };
+      },
       playerPosition() {
         const e = me();
         const t = tileOf(e);
@@ -538,7 +610,8 @@ export function createScripts(options: ScriptsOptions) {
     const me = world.get(s.who.entityId);
     if (me) world.update({ ...me, x: center(Math.floor(me.x / MAP_TILE_PX)), y: center(Math.floor(me.y / MAP_TILE_PX)) });
     options.onStart?.(s.who.playerId);
-    s.runner = createRunner(hostFor(s), SCRIPT_HANDLERS, { file, entry: ref.entry });
+    const talked = s.talkedTo === undefined ? undefined : world.get(s.talkedTo)?.data["person"];
+    s.runner = createRunner(hostFor(s), SCRIPT_HANDLERS, { file, entry: ref.entry, special: typeof talked === "number" ? new Map([[VAR_LAST_TALKED, talked]]) : undefined });
     s.script = { file: ref.file, entry: ref.entry };
     s.frameRunning = frame;
     s.runner.step();
@@ -550,6 +623,7 @@ export function createScripts(options: ScriptsOptions) {
     s.area = e.area;
     s.shown.clear();
     s.moved.clear();
+    s.strength = false;
     s.framesOff = false;
     for (let v = TEMP_VARS.from; v <= TEMP_VARS.to; v++) s.who.vars.delete(v);
     for (let f = MAPTEMP_FLAGS.from; f <= MAPTEMP_FLAGS.to; f++) s.who.flags.delete(f);
@@ -618,12 +692,18 @@ export function createScripts(options: ScriptsOptions) {
     }
     const o = origin(e.area);
     const sign = events?.signs.find((g) => g.script && g.x - o.tx === front.x && g.z - o.ty === front.y);
-    return sign?.script ? start(s, sign.script) : false;
+    if (sign?.script) return start(s, sign.script);
+    // Spec 025: a headbutt tree, rock wall, waterfall or whirlpool runs its field-move script.
+    const behavior = (tileAt(lookup, e.area, e.level, center(front.x), center(front.y))?.raw ?? 0) & 0xff;
+    const id = TILE_SCRIPTS.get(behavior);
+    if (id === undefined || (FROM_WATER.has(behavior) && tileAt(lookup, e.area, e.level, e.x, e.y)?.category !== "water")) return false;
+    const ref = data.resolve(id, Number(e.area));
+    return ref ? start(s, ref) : false;
   }
 
   return {
     join(who: Storyteller): void {
-      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false, changes: [] };
+      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false, strength: false, changes: [] };
       states.set(who.playerId, s);
       // Spec 024: a story not yet started runs _std_init to its end before any map, as RunInitScript does.
       const init = who.init && data.newGame ? data.resolve(data.newGame.initScript, data.newGame.map) : undefined;
@@ -742,6 +822,27 @@ export function createScripts(options: ScriptsOptions) {
         if (frame) start(s, frame, true);
       }
     },
+    /** Strength (spec 025): walking into a boulder pushes it a tile, for this player only, when the tile beyond is free. */
+    push(playerId: number, input: PlayerInput | undefined): void {
+      const s = states.get(playerId);
+      const move = input?.move;
+      if (!s?.strength || s.runner || !move || (move.x === 0 && move.y === 0)) return;
+      const me = world.get(s.who.entityId)!;
+      const dir: Direction = Math.abs(move.x) >= Math.abs(move.y) ? (move.x > 0 ? "east" : "west") : move.y > 0 ? "south" : "north";
+      const [dx, dy] = STEP[dir];
+      const tx = Math.floor(me.x / MAP_TILE_PX) + dx;
+      const ty = Math.floor(me.y / MAP_TILE_PX) + dy;
+      // Only once the player is up against it: past their tile's center towards the boulder.
+      if ((me.x - center(tx - dx)) * dx + (me.y - center(ty - dy)) * dy < 0) return;
+      const seen = world.all().filter((n) => n.kind === "npc" && n.area === me.area && visibleTo(s, n)).map((n) => viewOf(s, n));
+      const at = (x: number, y: number) => seen.find((n) => Math.floor(n.x / MAP_TILE_PX) === x && Math.floor(n.y / MAP_TILE_PX) === y);
+      const boulder = at(tx, ty);
+      const person = boulder?.data["person"];
+      if (typeof person !== "number" || eventsOf(me.area)?.npcs.find((n) => n.id === person)?.script?.id !== STRENGTH_SCRIPT) return;
+      const beyond = tileAt(lookup, me.area, me.level, center(tx + dx), center(ty + dy));
+      if (!beyond || beyond.category === "blocked" || beyond.category === "water" || beyond.category === "ledge" || at(tx + dx, ty + dy)) return;
+      s.moved.set(person, { tx: tx + dx, ty: ty + dy, facing: boulder!.facing });
+    },
     /** Whether this player sees the entity: people follow the player's own flags (principle VII). */
     visible(playerId: number, e: Entity): boolean {
       const s = states.get(playerId);
@@ -792,6 +893,30 @@ export function createScripts(options: ScriptsOptions) {
       }
       for (const m of s.who.progress.party) m.hp = Math.min(hp, options.hpMax(m));
       options.changed(playerId, "party");
+    },
+    /** Development (spec 025): earns a badge without the gym. */
+    giveBadge(playerId: number, badge: number): void {
+      const s = devState(playerId, "debugGiveBadge");
+      if (s) s.who.progress.badgeSet |= 1 << badge;
+    },
+    /** Development (spec 025): the move joins the member's moves, or takes the last slot when it knows four. */
+    teachMove(playerId: number, slot: number, move: number): void {
+      const s = devState(playerId, "debugTeachMove");
+      const mon = s?.who.progress.party[slot];
+      if (!mon) return;
+      if (mon.moves.length < 4) mon.moves.push(move);
+      else mon.moves[3] = move;
+      options.changed(playerId, "party");
+    },
+    /** Development (spec 025): items into the bag. */
+    giveItem(playerId: number, item: number, count: number): void {
+      const s = devState(playerId, "debugGiveItem");
+      if (!s) return;
+      const bag = s.who.progress.bag;
+      const row = bag.find((b) => b.item === item);
+      if (row) row.count = Math.min(999, row.count + count);
+      else bag.push({ item, count });
+      options.changed(playerId, "bag");
     },
     /** The debugger's view, for clients that asked, only when it changed. */
     sendDebug(): void {

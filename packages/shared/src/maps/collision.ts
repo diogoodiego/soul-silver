@@ -31,6 +31,8 @@ export const isCounter = (cell: CollisionCell | undefined) => cell !== undefined
 /** A Pokémon Center or house PC: talking to it runs the PC script (spec 023). */
 const PC_BEHAVIOR = 0x83;
 export const isPc = (cell: CollisionCell | undefined) => cell !== undefined && (cell.raw & 0xff) === PC_BEHAVIOR;
+/** A rock-climb wall (spec 025): a wall to walking, crossed only by Rock Climb; the ROM leaves it without the blocked flag. */
+export const isRockClimb = (cell: CollisionCell | undefined) => cell !== undefined && ((cell.raw & 0xff) === 0x4b || (cell.raw & 0xff) === 0x4c);
 
 const BEHAVIORS: ReadonlyMap<number, Omit<CollisionCell, "raw">> = new Map([
   [0x00, { category: "free" }],

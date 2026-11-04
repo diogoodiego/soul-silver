@@ -27,6 +27,7 @@ import {
   CLASS_MUSIC,
   EVENT_ARCHIVES,
   HEADBUTT_ARCHIVE,
+  FLY_POINTS,
   INIT_SCRIPT,
   LEVEL_SCRIPT_FIELD,
   NEW_GAME_LOCATION,
@@ -38,6 +39,7 @@ import {
   TRAINER_MESSAGES,
   ZERO_SCRIPT,
 } from "./layout.ts";
+import { readFlyPoints } from "./fly-points.ts";
 import { readNewGameStart, readStdMessageBanks } from "./new-game.ts";
 import { readShops } from "./shops.ts";
 import { readTrainerClasses, readTrainerMessages } from "./trainer-classes.ts";
@@ -160,6 +162,8 @@ async function run(ctx: StageContext): Promise<void> {
   await write("new-game.json", "new-game", { kind: "new-game", formatVersion: EVENTS_FORMAT_VERSION, ...readNewGameStart(arm9, NEW_GAME_LOCATION), initScript: INIT_SCRIPT });
   const banks = readStdMessageBanks(await readOverlay(ctx, STD_MESSAGES.overlay), STD_MESSAGES);
   await write("std-messages.json", "std-messages", { kind: "std-messages", formatVersion: EVENTS_FORMAT_VERSION, banks });
+  // Fly destinations (spec 025).
+  await write("fly-points.json", "fly-points", { kind: "fly-points", formatVersion: EVENTS_FORMAT_VERSION, points: readFlyPoints(arm9, FLY_POINTS) });
   const messages = readTrainerMessages(await readNarcMember(ctx, TRAINER_MESSAGES.narc, TRAINER_MESSAGES.member));
   await write("trainer-messages.json", "trainer-messages", { kind: "trainer-messages", formatVersion: EVENTS_FORMAT_VERSION, records: messages });
   const trainerIds = new Set(trainers.map((t) => t.id));
@@ -236,7 +240,8 @@ export const eventsStage: Stage = {
   title: "Lendo eventos, scripts e encontros",
   // 3: trainer classes and trainer lines (spec 022). 4: Poké Mart stock (spec 023).
   // 5: new-game start and std message table (spec 024).
-  version: 5,
+  // 6: Fly destinations (spec 025).
+  version: 6,
   weight: 6,
   inputs: [NARC_INPUT, CODE_INPUT, MAPS_INPUT, TEXT_INPUT],
   outputs: ["events"],

@@ -91,6 +91,15 @@ export interface ScriptHost {
   battleWon(): boolean;
   hasBadge(badge: number): boolean;
   giveBadge(badge: number): void;
+  /** Spec 025: who uses a field move (the companion when it knows it); the party size when no one does. */
+  partySlotWithMove(move: number): number;
+  /** Strength is on for this visit of the map: boulders move when walked into. */
+  strength(): boolean;
+  setStrength(on: boolean): void;
+  /** Rolls the map's rock smash or headbutt table for the obstacle ahead; true when a wild Pokémon came out. */
+  fieldEncounter(kind: "rockSmash" | "headbutt"): boolean;
+  /** The walk across the rock wall, waterfall or whirlpool ahead; undefined when there is none. */
+  crossing(kind: "rockClimb" | "waterfall" | "whirlpool"): { dir: "north" | "south" | "west" | "east"; count: number } | undefined;
   /** In matrix tiles, as the scripts compare them; facing as SCRIPT_DIRECTIONS indexes. */
   playerPosition(): { x: number; z: number; facing: number };
   warp(map: number, x: number, z: number, facing: number): void;

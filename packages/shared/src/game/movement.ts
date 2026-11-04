@@ -1,5 +1,5 @@
 import type { Direction } from "../maps/areas.ts";
-import type { CollisionCell } from "../maps/collision.ts";
+import { isRockClimb, type CollisionCell } from "../maps/collision.ts";
 import { MAP_TILE_PX } from "../maps/constants.ts";
 import type { Entity, EntityData } from "./entity.ts";
 import { insideMap, neighborAt, tileAt, type WorldLookup } from "./world-map.ts";
@@ -46,7 +46,7 @@ function cellAt(world: WorldLookup, e: Entity, x: number, y: number): CollisionC
   return tileAt(world, e.area, e.level, x, y);
 }
 
-const solid = (cell: CollisionCell | undefined) => cell !== undefined && (cell.category === "blocked" || cell.category === "water" || cell.category === "ledge");
+const solid = (cell: CollisionCell | undefined) => cell !== undefined && (cell.category === "blocked" || cell.category === "water" || cell.category === "ledge" || isRockClimb(cell));
 
 interface Blocker {
   cell: CollisionCell;
