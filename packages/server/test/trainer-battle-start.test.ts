@@ -23,6 +23,13 @@ describe("starting a trainer battle", () => {
     // The arena lies toward the trainer, south of the player.
     expect(start!.arena.y).toBeGreaterThan(before.y);
     expect(t.foes()).toHaveLength(1);
+    // The trainer's sprite (its class) calls out the moves; its Pokémon enters with an empty action bar.
+    expect(t.foes()[0]!.data).toMatchObject({ trainerPic: 5, gauge: 0 });
+    // Knocked out of the arena, the trainer's Pokémon is put back on its edge.
+    t.session.world.update({ ...t.foes()[0]!, x: start!.arena.x + 500 });
+    t.step();
+    const foe = t.foes()[0]!;
+    expect(Math.hypot(foe.x - start!.arena.x, foe.y - start!.arena.y)).toBeLessThanOrEqual(start!.arena.radiusPx + 1e-9);
   });
 
   it("a script's TrainerBattle starts the same battle and waits for it", () => {

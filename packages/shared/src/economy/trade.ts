@@ -2,6 +2,7 @@ import type { ShopRecord } from "../events/schemas.ts";
 import type { ShopRefusal } from "../game/protocol.ts";
 import type { ItemRecord } from "../game-data/items.ts";
 import type { Save } from "../save/schema.ts";
+import { canAdd } from "../items/bag.ts";
 
 // Buying and selling at a Poké Mart (spec 023, data-model.md): each check runs before anything changes.
 
@@ -26,14 +27,15 @@ export function sellPrice(item: PriceInfo): number | undefined {
   return item.price > 0 && item.pocket !== "key-items" ? Math.floor(item.price / 2) : undefined;
 }
 
-export function buy(w: Wallet, stock: StockEntry[], item: number, qty: number): ShopRefusal | null {
+/** `info` (spec 027): with the item data, the bag pocket's limits hold too. */
+export function buy(w: Wallet, stock: StockEntry[], item: number, qty: number, info?: (id: number) => PriceInfo | undefined): ShopRefusal | null {
   if (!Number.isInteger(qty) || qty < 1 || qty > BUY_MAX) return "invalid";
   const entry = stock.find((s) => s.item === item);
   if (!entry) return "stock";
   const cost = entry.price * qty;
   if (cost > w.money) return "money";
   const row = w.bag.find((b) => b.item === item);
-  if ((row?.count ?? 0) + qty > BAG_ITEM_MAX) return "bag-full";
+  if ((row?.count ?? 0) + qty > BAG_ITEM_MAX || (info && !canAdd(w.bag, item, qty, (id) => info(id)?.pocket))) return "bag-full";
   w.money -= cost;
   if (row) row.count += qty;
   else w.bag.push({ item, count: qty });

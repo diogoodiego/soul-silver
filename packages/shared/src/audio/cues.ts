@@ -41,6 +41,8 @@ export const audioCuesFile = z.strictObject({
     championBattle: name(),
     trainerVictory: name(),
     leaderVictory: name(),
+    // Spec 025: while riding the bicycle.
+    bicycle: name(),
   }),
   effects: z.strictObject(Object.fromEntries(EFFECT_CUES.map((c) => [c, name()])) as Record<EffectCue, ReturnType<typeof name>>),
   archetypes: z.record(z.string(), name()),

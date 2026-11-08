@@ -141,8 +141,8 @@ export type StatusRecord = z.infer<typeof statusRecord>;
 export const combatTuning = z.strictObject({
   /** cooldownS = clamp(a + b·power/100 + c·(35/pp − 1), min, max) (research R5). */
   cooldown: z.strictObject({ a: z.number(), b: z.number(), c: z.number(), min: seconds(60), max: seconds(60), statusPower: int(0, 255) }),
-  /** Speed stat between low and high maps linearly to the move speed range and to the cooldown cut (research R6). */
-  speed: z.strictObject({ low: int(1, 999), high: int(1, 999), moveMinPx: px(), moveMaxPx: px(), cooldownMaxCut: fraction() }),
+  /** Speed stat between low and high maps linearly to the move speed range and to the action bar fill time, slow to fast. */
+  speed: z.strictObject({ low: int(1, 999), high: int(1, 999), moveMinPx: px(), moveMaxPx: px(), gaugeSlowS: seconds(60), gaugeFastS: seconds(60) }),
   /** 1/n chance of a critical hit for crit stages 0 to 4. */
   critChances: z.array(int(1, 64)).length(5),
   knockbackPx: px(),

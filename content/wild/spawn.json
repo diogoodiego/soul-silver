@@ -9,6 +9,7 @@
     "viewHalfTiles": { "x": 8, "y": 6 },
     "viewMarginTiles": 2,
     "maxTries": 16,
+    "waterInViewTiles": 3,
     "despawnRadiusTiles": 24,
     "despawnSeconds": 30,
     "faintedSeconds": 30,

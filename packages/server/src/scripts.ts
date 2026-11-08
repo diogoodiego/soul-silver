@@ -1,5 +1,5 @@
-import type { EncounterRecord, EncounterSlot, MapEventsFile, FlyPointsFile, HeadbuttRecord, NewGameFile, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
-import { headbuttTree, pickUser } from "@soulsilver/shared/field";
+import type { EncounterRecord, EncounterSlot, MapEventsFile, FieldItemsFile, FlyPointsFile, HeadbuttRecord, NewGameFile, RockSmashRecord, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
+import { headbuttTree, pickUser, type FieldMovesRules } from "@soulsilver/shared/field";
 import { rollLevel, rollSlot } from "@soulsilver/shared/wild";
 import { createRng, stepMovement, tileAt, unstick, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
 import { isCounter, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
@@ -9,6 +9,8 @@ import { hasBadgeBit, type PartyMember, type Save } from "@soulsilver/shared/sav
 import { npcOccupied, type CutsceneActor, type CutsceneStep } from "@soulsilver/shared/npc";
 import { createRunner, SCRIPT_DIRECTIONS, SCRIPT_HANDLERS, type MissingCommand, type Runner, type ScriptHost } from "@soulsilver/shared/script";
 import { POCKET_KEYS } from "@soulsilver/shared/game-data";
+import type { PhoneBook } from "@soulsilver/shared/phone";
+import { addItem, canAdd, removeItem, type PocketOf } from "@soulsilver/shared/items";
 import type { ItemsData } from "./items";
 import type { Npcs } from "./npcs";
 import type { ProgressionData } from "./progression";
@@ -33,6 +35,12 @@ export interface ScriptData {
   defaultRival?: string | undefined;
   /** Headbutt tables and trees by map (spec 025); absent in tests that do not need them. */
   headbutt?: ((map: number) => HeadbuttRecord | undefined) | undefined;
+  /** The phone book (spec 026); absent in older extractions and in tests that do not need it. */
+  phone?: PhoneBook | undefined;
+  /** Rock Smash item odds by map (spec 025); absent in older extractions and in tests that do not need them. */
+  rockSmash?: ((map: number) => RockSmashRecord | undefined) | undefined;
+  /** Spec 027: hidden items, apricorn tree colours and berry growth; absent in older extractions. */
+  fieldItems?: Omit<FieldItemsFile, "kind" | "formatVersion"> | undefined;
 }
 
 /** Temporary variables and map flags the game clears on every map change (vars.h, flags.h). */
@@ -45,6 +53,15 @@ const OPEN_ENDED = new Set(["wait", "battle", "shop", "pc"]);
 const STEP: Record<Direction, [number, number]> = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
 const OPPOSITE: Record<Direction, Direction> = { north: "south", south: "north", west: "east", east: "west" };
 const BAG_MAX = 999;
+/** Spec 027: a sign of this kind is a hidden item (bg_event type 2), its script 8000 + its index in field-items.json. */
+const HIDDEN_SIGN = 2;
+/** Item balls: map objects whose script is 7000 + n, all in this file. */
+const ITEM_BALL_FILE = 141;
+const HIDDEN_SCRIPT_BASE = 8000;
+/** The hidden-item std script reads the item, the count and the flag from these (GetHiddenItemParams). */
+const HIDDEN_VARS = [0x8000, 0x8001, 0x8002] as const;
+/** Kurt's "making balls today" flag (scr_seq_0874): a daily flag in the original, here the day of his order. */
+const KURT_DAILY_FLAG = 2722;
 /** The Pokémon Centers' ground floors, the original's sPokemonCenterMaps: only there does healing set the respawn point. */
 const POKEMON_CENTERS = new Set(["501", "475", "428", "434", "358", "393", "482", "508", "407", "69", "158", "166", "236", "185", "226", "81", "246", "293", "514", "511", "466", "169", "528", "534"]);
 /** Map sprites chosen by script variable (the field table has no entry for them). */
@@ -65,14 +82,63 @@ const TILE_SCRIPTS: ReadonlyMap<number, number> = new Map([
 const FROM_WATER = new Set([0x13, 0x11]);
 /** The boulder's talk script: walking into it pushes it while Strength is on. */
 const STRENGTH_SCRIPT = 10002;
-/** shortcut: saves have no trainer id; headbutt's tree tables read its last digit as 0. Add the id to the save when a spec needs it. */
-const TRAINER_ID = 0;
+/** Rock Smash's move id: the companion that knows it swings at the rock itself. */
+const ROCK_SMASH = 249;
+/**
+ * The original draws a 16-bit trainer id at a new game; saves have none, so it comes from the player's name
+ * (FNV-1a), the same every session. Headbutt's tree tables read its last digit.
+ * shortcut: two players with the same name share the id; store a drawn id in the save if that matters.
+ */
+export function trainerIdOf(name: string): number {
+  let h = 0x811c9dc5;
+  for (const c of name) h = Math.imul(h ^ c.codePointAt(0)!, 0x01000193);
+  return (h >>> 0) & 0xffff;
+}
 const MONEY_MAX = 999999;
 /**
  * Prof. Oak's introduction (text bank 219). In the original it is a screen of its own, not a field
  * script; here its speech runs as one, minus the gender and name questions the new-game menu asked.
  */
 const INTRO_BANK = 219;
+/** SEQ_ME_POKEGEAR_REGIST (sndseq.h): the jingle of a number registered. */
+const REGISTER_FANFARE = 1206;
+/** "Registered … in the Pokégear." (scr_seq_0953.s _0DF9). */
+const REGISTERED_TEXT = "0040:101";
+
+/**
+ * A trainer's number offer (spec 026), the original's steps in scr_seq_0953.s: _0DCF after the first win
+ * (message 1 of the contact's bank) or _0DE4 when talked to again (message 4), then _0DF9: yes plays the
+ * jingle, registers and says message 2; no says message 3 (GetPhoneContactMsgIds k is message k + 1).
+ */
+export function numberOffer(contact: number, bank: number, again: boolean): ScriptFile {
+  const msg = (n: number) => ({ name: "MsgBoxExtern", args: { arg0: bank, arg1: n } });
+  return {
+    kind: "script-file",
+    formatVersion: 1,
+    file: -2,
+    messageBank: null,
+    entries: ["L1"],
+    labels: { L1: 0, L2: 9 },
+    code: [
+      msg(again ? 4 : 1),
+      { name: "GetMenuChoice", args: { arg0: 0x8000 } },
+      { name: "CompareVarToValue", args: { var: { variable: 0x8000 }, val: 0 } },
+      { name: "GoToIf", args: { condition: 5, dest: { label: "L2" } } },
+      { name: "PlayFanfare", args: { fanfare: REGISTER_FANFARE } },
+      { name: "NPCMsg", args: { msg_id: { text: REGISTERED_TEXT } } },
+      { name: "RegisterGearNumber", args: { arg0: contact } },
+      msg(2),
+      { name: "End", args: {} },
+      msg(3),
+      { name: "CloseMsg", args: {} },
+      { name: "End", args: {} },
+    ],
+    movements: {},
+    unreachableBytes: 0,
+    partial: false,
+  };
+}
+
 export const INTRO_SCRIPT: ScriptFile = {
   kind: "script-file",
   formatVersion: 1,
@@ -103,6 +169,8 @@ const TRAINER_FLAG_BASE = 1360;
 export interface Storyteller {
   playerId: number;
   entityId: number;
+  /** The trainer's name: their trainer id comes from it (Headbutt). */
+  name?: string | undefined;
   character: Save["character"];
   flags: Set<number>;
   vars: Map<number, number>;
@@ -130,6 +198,7 @@ export interface ScriptsOptions {
   /** The bag pocket of each item (spec 024: the receive-item std script). */
   items?: ItemsData | undefined;
   weekday(): number;
+  hour(): number;
   timeoutTicks?: number | undefined;
   /** Runs Prof. Oak's introduction for saves that were just created (off in tests that do not ask for it). */
   intro?: boolean | undefined;
@@ -152,9 +221,38 @@ export interface ScriptsOptions {
   talkTrainer?: ((playerId: number, npc: Entity) => boolean) | undefined;
   /** Spec 025: the map's encounter table, and a wild Pokémon out of a rock or a tree; false when it could not appear. */
   fieldWild?: { encounter(area: string): EncounterRecord | undefined; spawn(area: string, x: number, y: number, species: number, level: number): boolean } | undefined;
+  /** Spec 025: the items of each Rock Smash list and the chance of each place (content/field/moves.json). */
+  rockSmashItems?: FieldMovesRules["rockSmashItems"] | undefined;
   /** Defeated trainer t is flag trainerFlagBase + t (spec 022, content/trainer/tuning.json). */
   trainerFlagBase?: number | undefined;
+  /** Spec 026: the player's phone (server/src/phone.ts). `call` rings a script's call; the script waits for callEnded. */
+  phone?:
+    | {
+        register(playerId: number, id: number): void;
+        registered(playerId: number, id: number): boolean;
+        rematch(playerId: number, id: number): number;
+        rematchWon(playerId: number, id: number): void;
+        scriptedCall(playerId: number, caller: number, script: number): boolean;
+      }
+    | undefined;
+  /** The PHONE_SCRIPT of a scripted call by caller and index (content/phone/scripted-calls.json). */
+  scriptedCall?: ((caller: number, index: number) => number | undefined) | undefined;
+  /** Spec 027: the move of a TM or HM item, and the player's apricorns and Kurt (server/src/items.ts). */
+  machineMove?: ((item: number) => number | undefined) | undefined;
+  apricorns?: ((playerId: number) => ApricornHost) | undefined;
   log(message: string): void;
+}
+
+/** What scripts ask about apricorns and Kurt (server/src/items.ts, Items.apricorns). */
+export interface ApricornHost {
+  tree(color: number | undefined, tree: number): { color: number; ready: boolean } | undefined;
+  pick(color: number, tree: number): boolean;
+  counts(): number[];
+  give(color: number): void;
+  kurtCount(): number;
+  kurtBall(): number;
+  kurtWaiting(): boolean;
+  clearKurt(): void;
 }
 
 /** Who was left stuck, by which script, on which tile (matrix coordinates), and whether unstick freed them. */
@@ -256,6 +354,9 @@ export function createScripts(options: ScriptsOptions) {
     }
   }
 
+  const hiddenByIndex = new Map((data.fieldItems?.hidden ?? []).map((h) => [h.index, h]));
+  const hiddenOf = (scriptId: number) => hiddenByIndex.get(scriptId - HIDDEN_SCRIPT_BASE);
+
   function personOf(area: string, person: number) {
     const id = people.get(area)?.get(person);
     return id === undefined ? undefined : world.get(id);
@@ -313,10 +414,18 @@ export function createScripts(options: ScriptsOptions) {
     const { who } = s;
     const me = () => world.get(who.entityId)!;
     const bagRow = (item: number) => who.progress.bag.find((b) => b.item === item);
+    const pocketOf: PocketOf | undefined = options.items ? (item) => options.items!.item(item)?.pocket : undefined;
+    const fits = (item: number, count: number) => (pocketOf ? canAdd(who.progress.bag, item, count, pocketOf) : item >= 1 && (bagRow(item)?.count ?? 0) + count <= BAG_MAX);
+    const apricorns = options.apricorns?.(who.playerId);
+    /** The apricorn tree talked to: its object's param 0 is the tree's index (scr_seq_0150). */
+    const treeIndex = () => {
+      const npc = s.talkedTo === undefined ? undefined : world.get(s.talkedTo);
+      return npc ? eventsOf(npc.area)?.npcs.find((n) => n.id === npc.data["person"])?.param[0] : undefined;
+    };
     return {
       character: who.character,
-      flag: (id) => who.flags.has(id),
-      setFlag: (id, on) => writeFlag(s, id, on),
+      flag: (id) => (id === KURT_DAILY_FLAG && apricorns ? apricorns.kurtWaiting() : who.flags.has(id)),
+      setFlag: (id, on) => (id === KURT_DAILY_FLAG && apricorns ? undefined : writeFlag(s, id, on)),
       getVar: (id) => who.vars.get(id) ?? 0,
       setVar(id, v) {
         if ((who.vars.get(id) ?? 0) === v) return;
@@ -327,23 +436,38 @@ export function createScripts(options: ScriptsOptions) {
       money: () => who.progress.money,
       addMoney: (n) => void (who.progress.money = Math.max(0, Math.min(MONEY_MAX, who.progress.money + n))),
       hasItem: (item, count) => (bagRow(item)?.count ?? 0) >= count,
-      hasSpaceForItem: (item, count) => (bagRow(item)?.count ?? 0) + count <= BAG_MAX,
+      hasSpaceForItem: (item, count) => fits(item, count),
       giveItem(item, count) {
-        if (item < 1 || (bagRow(item)?.count ?? 0) + count > BAG_MAX) return false;
-        const row = bagRow(item);
-        if (row) row.count += count;
-        else who.progress.bag.push({ item, count });
+        if (!fits(item, count)) return false;
+        if (pocketOf) addItem(who.progress.bag, item, count, pocketOf);
+        else {
+          const row = bagRow(item);
+          if (row) row.count += count;
+          else who.progress.bag.push({ item, count });
+        }
         options.changed(who.playerId, "bag");
         return true;
       },
       takeItem(item, count) {
-        const row = bagRow(item);
-        if (!row || row.count < count) return false;
-        row.count -= count;
-        if (row.count === 0) who.progress.bag.splice(who.progress.bag.indexOf(row), 1);
+        if (!removeItem(who.progress.bag, item, count)) return false;
         options.changed(who.playerId, "bag");
         return true;
       },
+      machineMove: (item) => options.machineMove?.(item) ?? 0,
+      apricornTree: () => {
+        const tree = treeIndex();
+        return tree === undefined ? undefined : apricorns?.tree(data.fieldItems?.apricornTrees[tree], tree);
+      },
+      pickApricorn() {
+        const tree = treeIndex();
+        const color = tree === undefined ? undefined : data.fieldItems?.apricornTrees[tree];
+        return tree !== undefined && color !== undefined && (apricorns?.pick(color, tree) ?? false);
+      },
+      apricorns: () => apricorns?.counts() ?? [0, 0, 0, 0, 0, 0, 0],
+      giveKurt: (color) => apricorns?.give(color),
+      kurtCount: () => apricorns?.kurtCount() ?? 0,
+      kurtBall: () => apricorns?.kurtBall() ?? 0,
+      clearKurt: () => apricorns?.clearKurt(),
       partyCount: () => who.progress.party.length,
       partySpecies: (slot) => who.progress.party[slot]?.species ?? 0,
       partyLeadAlive() {
@@ -409,7 +533,7 @@ export function createScripts(options: ScriptsOptions) {
         } else {
           const trees = data.headbutt?.(Number(e.area));
           const o = origin(e.area);
-          const type = trees && headbuttTree(trees, front.x + o.tx, front.y + o.ty, TRAINER_ID);
+          const type = trees && headbuttTree(trees, front.x + o.tx, front.y + o.ty, trainerIdOf(who.name ?? ""));
           slots = type && trees[type];
         }
         slots = slots?.filter((slot) => slot.species > 0);
@@ -418,6 +542,18 @@ export function createScripts(options: ScriptsOptions) {
         // Out of the rock, on its tile; a tree stays, so the Pokémon drops on the player's tile.
         const at = kind === "rockSmash" ? front : { x: Math.floor(e.x / MAP_TILE_PX), y: Math.floor(e.y / MAP_TILE_PX) };
         return options.fieldWild.spawn(e.area, center(at.x), center(at.y), slot.species, rollLevel(slot, rng));
+      },
+      rockSmashItem() {
+        const record = data.rockSmash?.(Number(me().area));
+        const lists = options.rockSmashItems;
+        if (!record || !lists) return 0;
+        // The companion swinging at the rock adds 5 (followMonUsingHm).
+        // shortcut: Suction Cups, Magnet Pull, Keen Eye (+5) and Serene Grace, Super Luck (next place) are left out, the save keeps no ability; add them with abilities.
+        const odds = Math.min(100, record.odds + (companionOf(s) && who.progress.party.find((m) => m.hp > 0)?.moves.includes(ROCK_SMASH) ? 5 : 0));
+        if (rng.nextInt(100) >= odds) return 0;
+        let roll = rng.nextInt(100);
+        const place = lists.weights.findIndex((w) => (roll -= w) < 0);
+        return lists[record.items][place === -1 ? 7 : place]!;
       },
       crossing(kind) {
         const e = me();
@@ -445,7 +581,12 @@ export function createScripts(options: ScriptsOptions) {
         const npc = s.talkedTo === undefined ? undefined : world.get(s.talkedTo);
         if (npc) world.update({ ...npc, facing: OPPOSITE[me().facing] });
       },
-      hidePerson: (id) => void s.shown.set(id, false),
+      hidePerson(id) {
+        s.shown.set(id, false);
+        // Spec 027: an item ball (scr_seq_0141) is gone for good, as the original sets the object's flag when it removes it.
+        const flag = s.script?.file === ITEM_BALL_FILE ? eventsOf(me().area)?.npcs.find((n) => n.id === id)?.hideFlag : undefined;
+        if (flag) writeFlag(s, flag, true);
+      },
       showPerson: (id) => void s.shown.set(id, true),
       personPosition(id) {
         const e = personOf(me().area, id);
@@ -460,6 +601,12 @@ export function createScripts(options: ScriptsOptions) {
         (who.placement[area] ??= {})[String(id)] = { x, z, facing: SCRIPT_DIRECTIONS[facing] ?? e.facing };
       },
       weekday: () => options.weekday(),
+      hour: () => options.hour(),
+      registerContact: (id) => options.phone?.register(who.playerId, id),
+      isRegistered: (id) => options.phone?.registered(who.playerId, id) ?? false,
+      rematch: (id) => options.phone?.rematch(who.playerId, id) ?? 0,
+      endRematch: (id) => options.phone?.rematchWon(who.playerId, id),
+      scriptedCall: (caller, index) => options.scriptedCall?.(caller, index),
       random16: () => rng.nextInt(0x10000),
       // Props go with the map they are on: a map's onResume runs before the client draws it (spec 024).
       emit: (event) => send(s, { type: "script-event", event: event.kind === "props" ? { ...event, area: s.area ?? "" } : event }),
@@ -489,6 +636,12 @@ export function createScripts(options: ScriptsOptions) {
           // The player controls their Pokémon until the battle ends.
           lock(s, false);
           return;
+        } else if (state.request.kind === "call") {
+          if (!options.phone?.scriptedCall(s.who.playerId, state.request.caller, state.request.script)) {
+            options.log(`Ended a script of player ${s.who.playerId}: call ${state.request.caller}:${state.request.script} could not ring`);
+            break;
+          }
+          s.askedAt = tick;
         } else if (state.request.kind === "shop" || state.request.kind === "pc") {
           const r = state.request;
           if (!(r.kind === "shop" ? options.shop?.(s.who.playerId, r.shop, r.sell) : options.pc?.(s.who.playerId))) {
@@ -600,7 +753,7 @@ export function createScripts(options: ScriptsOptions) {
   }
 
   /** Starts a script for this player; false when it cannot (file missing, or one already runs). */
-  function start(s: State, ref: { file: number; entry: number }, frame = false, file = data.file(ref.file)): boolean {
+  function start(s: State, ref: { file: number; entry: number }, frame = false, file = data.file(ref.file), vars?: Map<number, number>): boolean {
     if (s.runner) return false;
     if (!file) {
       options.log(`Player ${s.who.playerId}: script file ${ref.file} is not in the extraction`);
@@ -611,7 +764,9 @@ export function createScripts(options: ScriptsOptions) {
     if (me) world.update({ ...me, x: center(Math.floor(me.x / MAP_TILE_PX)), y: center(Math.floor(me.y / MAP_TILE_PX)) });
     options.onStart?.(s.who.playerId);
     const talked = s.talkedTo === undefined ? undefined : world.get(s.talkedTo)?.data["person"];
-    s.runner = createRunner(hostFor(s), SCRIPT_HANDLERS, { file, entry: ref.entry, special: typeof talked === "number" ? new Map([[VAR_LAST_TALKED, talked]]) : undefined });
+    const special = new Map(vars);
+    if (typeof talked === "number") special.set(VAR_LAST_TALKED, talked);
+    s.runner = createRunner(hostFor(s), SCRIPT_HANDLERS, { file, entry: ref.entry, special: special.size > 0 ? special : undefined });
     s.script = { file: ref.file, entry: ref.entry };
     s.frameRunning = frame;
     s.runner.step();
@@ -692,6 +847,12 @@ export function createScripts(options: ScriptsOptions) {
     }
     const o = origin(e.area);
     const sign = events?.signs.find((g) => g.script && g.x - o.tx === front.x && g.z - o.ty === front.y);
+    if (sign?.script && sign.kind === HIDDEN_SIGN) {
+      // Spec 027: a hidden item, found on its exact tile; gone for this player once its flag is set.
+      const hidden = hiddenOf(sign.script.id);
+      if (!hidden || s.who.flags.has(hidden.flag)) return false;
+      return start(s, sign.script, false, undefined, new Map([[HIDDEN_VARS[0], hidden.item], [HIDDEN_VARS[1], hidden.count], [HIDDEN_VARS[2], hidden.flag]]));
+    }
     if (sign?.script) return start(s, sign.script);
     // Spec 025: a headbutt tree, rock wall, waterfall or whirlpool runs its field-move script.
     const behavior = (tileAt(lookup, e.area, e.level, center(front.x), center(front.y))?.raw ?? 0) & 0xff;
@@ -760,6 +921,20 @@ export function createScripts(options: ScriptsOptions) {
       if (!s.inBattle) return;
       s.inBattle = false;
       s.runner!.resume();
+      settle(s);
+    },
+    /** Spec 026: a trainer offers their phone number; false when a script already runs. */
+    offerNumber(playerId: number, contact: number, bank: number, again: boolean): boolean {
+      const s = states.get(playerId);
+      if (!s || s.runner) return false;
+      const file = numberOffer(contact, bank, again);
+      return start(s, { file: file.file, entry: 0 }, false, file);
+    },
+    /** The player hung up the call a script placed (spec 026): the script goes on. */
+    callEnded(playerId: number): void {
+      const s = states.get(playerId);
+      if (s?.runner?.state.kind !== "blocked" || s.runner.state.request.kind !== "call") return;
+      s.runner.resume();
       settle(s);
     },
     /** The trainer behind a person entity, with its sight range in tiles (spec 022, research R1). */
@@ -844,6 +1019,17 @@ export function createScripts(options: ScriptsOptions) {
       s.moved.set(person, { tx: tx + dx, ty: ty + dy, facing: boulder!.facing });
     },
     /** Whether this player sees the entity: people follow the player's own flags (principle VII). */
+    /** Spec 027: the hidden items still there for this player on their map, at their tiles' centers (the Dowsing MCHN). */
+    hidden(playerId: number): { x: number; y: number }[] {
+      const s = states.get(playerId);
+      const e = s && world.get(s.who.entityId);
+      if (!s || !e) return [];
+      const o = origin(e.area);
+      return (eventsOf(e.area)?.signs ?? []).flatMap((g) => {
+        const h = g.kind === HIDDEN_SIGN && g.script ? hiddenOf(g.script.id) : undefined;
+        return h && !s.who.flags.has(h.flag) ? [{ x: center(g.x - o.tx), y: center(g.z - o.ty) }] : [];
+      });
+    },
     visible(playerId: number, e: Entity): boolean {
       const s = states.get(playerId);
       return !s || visibleTo(s, e);
@@ -895,6 +1081,8 @@ export function createScripts(options: ScriptsOptions) {
       options.changed(playerId, "party");
     },
     /** Development (spec 025): earns a badge without the gym. */
+    /** The gate of the development commands the session runs itself (spec 026, debugSetClock); logs a refusal. */
+    allowDev: (playerId: number, command: string): boolean => devState(playerId, command) !== undefined,
     giveBadge(playerId: number, badge: number): void {
       const s = devState(playerId, "debugGiveBadge");
       if (s) s.who.progress.badgeSet |= 1 << badge;
@@ -903,7 +1091,8 @@ export function createScripts(options: ScriptsOptions) {
     teachMove(playerId: number, slot: number, move: number): void {
       const s = devState(playerId, "debugTeachMove");
       const mon = s?.who.progress.party[slot];
-      if (!mon) return;
+      // A move it already knows stays where it is: the move list keys on the move id.
+      if (!mon || mon.moves.includes(move)) return;
       if (mon.moves.length < 4) mon.moves.push(move);
       else mon.moves[3] = move;
       options.changed(playerId, "party");

@@ -1,0 +1,63 @@
+{
+  "kind": "item-tuning",
+  "formatVersion": 1,
+  "value": {
+    "combat": {
+      "heal": {
+        "useS": 1.5,
+        "cooldownS": 6
+      },
+      "revive": {
+        "useS": 2.5,
+        "cooldownS": 10
+      },
+      "cure": {
+        "useS": 1,
+        "cooldownS": 4
+      },
+      "pp-ether": {
+        "useS": 1,
+        "cooldownS": 6
+      },
+      "battle-stat": {
+        "useS": 1,
+        "cooldownS": 8
+      }
+    },
+    "lockMovement": false,
+    "secondsPerPp": 0.5,
+    "ppUp": {
+      "perLevel": 0.2,
+      "max": 3
+    },
+    "repel": {
+      "steps": {
+        "68": 250,
+        "76": 200,
+        "77": 250,
+        "79": 100
+      },
+      "stepS": 0.267,
+      "density": 0.5
+    },
+    "dowsing": {
+      "radiusTiles": 12,
+      "everyMs": 200
+    },
+    "berryYield": [
+      2,
+      5
+    ],
+    "kurtDays": 1,
+    "apricornBalls": [
+      493,
+      498,
+      494,
+      497,
+      496,
+      492,
+      495
+    ],
+    "regenS": 1
+  }
+}

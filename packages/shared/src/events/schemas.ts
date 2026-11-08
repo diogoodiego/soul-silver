@@ -189,6 +189,15 @@ export type HeadbuttRecord = z.infer<typeof headbutt>;
 export const headbuttFile = fileSchema("headbutt", headbutt);
 export type HeadbuttFile = z.infer<typeof headbuttFile>;
 
+/** Rock Smash item lists in the original's order (ROCK_SMASH_TYPE_*); their items are in content/field/moves.json. */
+export const ROCK_SMASH_ITEM_LISTS = ["default", "ruinsOfAlph", "cliffCave"] as const;
+
+/** Chance (percent) that a smashed rock holds an item, and which list it draws from (spec 025, NARC a/2/5/3). */
+const rockSmash = z.strictObject({ id: id(), odds: int(1, 100), items: z.enum(ROCK_SMASH_ITEM_LISTS) });
+export type RockSmashRecord = z.infer<typeof rockSmash>;
+export const rockSmashFile = fileSchema("rock-smash", rockSmash);
+export type RockSmashFile = z.infer<typeof rockSmashFile>;
+
 const teamMember = z.strictObject({
   difficulty: int(0, 255),
   genderOverride: int(0, 15),
@@ -283,6 +292,22 @@ export const flyPointsFile = z.strictObject({
 });
 export type FlyPointsFile = z.infer<typeof flyPointsFile>;
 
+/**
+ * Items the field holds (spec 027, research "Resultados da sondagem"): the hidden items (sHiddenItemParam,
+ * by script id − 8000, flag = script − 7200), the colour of each apricorn tree (0 red … 6 black, by the tree
+ * object's param 0) and the hours each Berry Pot stage takes per berry (NARC a/0/6/6, Cheri first).
+ */
+export const fieldItemsFile = z.strictObject({
+  kind: z.literal("field-items"),
+  formatVersion: z.literal(EVENTS_FORMAT_VERSION),
+  hidden: z
+    .array(z.strictObject({ index: u16(), item: int(1, 0xffff), count: int(1, 99), flag: int(1, 0xffff) }))
+    .refine((list) => new Set(list.map((h) => h.index)).size === list.length, "item escondido repetido"),
+  apricornTrees: z.array(int(0, 6)).max(64),
+  berries: z.array(z.strictObject({ item: int(149, 212), hoursPerStage: int(1, 255) })).max(64),
+});
+export type FieldItemsFile = z.infer<typeof fieldItemsFile>;
+
 export const SCRIPT_ARG_TYPES =["number", "text", "species", "move", "item", "trainer", "flag", "variable", "jump", "movement"] as const;
 
 /** An argument is present only when an earlier one has (or lacks) certain values. */
@@ -357,6 +382,7 @@ const codec = createGameDataCodec({
   "script-file": scriptFile,
   encounters: encountersFile,
   headbutt: headbuttFile,
+  "rock-smash": rockSmashFile,
   trainers: trainersFile,
   "trainer-classes": trainerClassesFile,
   "trainer-messages": trainerMessagesFile,
@@ -364,6 +390,7 @@ const codec = createGameDataCodec({
   "new-game": newGameFile,
   "std-messages": stdMessagesFile,
   "fly-points": flyPointsFile,
+  "field-items": fieldItemsFile,
   "script-commands": scriptCommandsFile,
   "events-report": eventsReportFile,
 });
@@ -373,6 +400,7 @@ export type EventsFileKind =
   | "script-file"
   | "encounters"
   | "headbutt"
+  | "rock-smash"
   | "trainers"
   | "trainer-classes"
   | "trainer-messages"
@@ -380,6 +408,7 @@ export type EventsFileKind =
   | "new-game"
   | "std-messages"
   | "fly-points"
+  | "field-items"
   | "script-commands"
   | "events-report";
 export const parseEventsFile = codec.parseGameDataFile;

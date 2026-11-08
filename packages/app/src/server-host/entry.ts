@@ -14,8 +14,8 @@ const log = (message: string) => {
 };
 /** The extraction's stages folder, passed by the main process. */
 const stagesDir = process.argv.at(-1);
-/** Set by the main process in unpackaged (development) runs. */
-const devArena = process.argv.includes("--dev-arena");
+/** Set by the main process in unpackaged (development) runs: debug commands and the test kit. */
+const devTools = process.argv.includes("--dev-arena");
 /** Development: SOULSILVER_AI_LOG=<file> appends every combat AI decision as one JSON line (spec 019, FR-034). */
 const aiLog = process.env["SOULSILVER_AI_LOG"] ? createWriteStream(process.env["SOULSILVER_AI_LOG"], { flags: "a" }) : undefined;
 /** Development: SOULSILVER_SCRIPT_LOG=<file> appends every missing script command as one JSON line (spec 020, FR-008). */
@@ -68,7 +68,9 @@ const server = createGameServer({
   },
   log,
   ...loadServerData(stagesDir, log),
-  devArena,
+  // The test arena ships in every build; the debug commands stay in development.
+  devArena: true,
+  devTools,
   onDecision: aiLog && ((d) => aiLog.write(`${JSON.stringify(d)}\n`)),
   onMissingCommand: scriptLog && ((m) => scriptLog.write(`${JSON.stringify({ time: new Date().toISOString(), ...m })}\n`)),
   onStuck: scriptLog && ((s) => scriptLog.write(`${JSON.stringify({ time: new Date().toISOString(), stuck: true, ...s })}\n`)),

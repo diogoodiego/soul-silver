@@ -11,7 +11,7 @@ const run = (lines: Parameters<typeof makeScript>[0], host = fakeHost()) => {
   return host;
 };
 
-const tracks: MusicTracks = { title: 1, wildBattle: 2, victory: 3, trainerBattle: 4, rivalBattle: 5, leaderBattle: 6, rocketBattle: 7, championBattle: 8, trainerVictory: 9, leaderVictory: 10 };
+const tracks: MusicTracks = { title: 1, wildBattle: 2, victory: 3, trainerBattle: 4, rivalBattle: 5, leaderBattle: 6, rocketBattle: 7, championBattle: 8, trainerVictory: 9, leaderVictory: 10, bicycle: 12 };
 const state = (over: Partial<MusicState> = {}): MusicState => ({ screen: "game", musicDay: 20, musicNight: 21, night: false, inCombat: false, victory: false, ...over });
 
 describe("TempBGM", () => {

@@ -1,0 +1,788 @@
+{
+  "kind": "item-effects",
+  "formatVersion": 1,
+  "value": {
+    "use": {
+      "68": {
+        "archetype": "repel",
+        "levelFilter": false
+      },
+      "76": {
+        "archetype": "repel",
+        "levelFilter": true
+      },
+      "77": {
+        "archetype": "repel",
+        "levelFilter": true
+      },
+      "78": {
+        "archetype": "escape-rope"
+      },
+      "79": {
+        "archetype": "repel",
+        "levelFilter": true
+      },
+      "86": {
+        "archetype": "none",
+        "reason": "sell"
+      },
+      "87": {
+        "archetype": "none",
+        "reason": "sell"
+      },
+      "88": {
+        "archetype": "none",
+        "reason": "sell"
+      },
+      "89": {
+        "archetype": "none",
+        "reason": "sell"
+      },
+      "90": {
+        "archetype": "none",
+        "reason": "sell"
+      },
+      "91": {
+        "archetype": "none",
+        "reason": "sell"
+      },
+      "92": {
+        "archetype": "none",
+        "reason": "sell"
+      },
+      "93": {
+        "archetype": "none",
+        "reason": "sell"
+      },
+      "99": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "100": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "101": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "102": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "103": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "104": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "105": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "106": {
+        "archetype": "none",
+        "reason": "sell"
+      },
+      "137": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "138": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "139": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "140": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "141": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "142": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "143": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "144": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "145": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "146": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "147": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "148": {
+        "archetype": "none",
+        "reason": "mail"
+      },
+      "485": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "486": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "487": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "488": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "489": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "490": {
+        "archetype": "none",
+        "reason": "key"
+      },
+      "491": {
+        "archetype": "none",
+        "reason": "key"
+      }
+    },
+    "held": {
+      "1": {
+        "trigger": "hp-threshold",
+        "below": 0.5,
+        "amount": "flat"
+      },
+      "2": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "3": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "4": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "5": {
+        "trigger": "cure",
+        "statuses": [
+          "paralysis"
+        ]
+      },
+      "6": {
+        "trigger": "cure",
+        "statuses": [
+          "sleep"
+        ]
+      },
+      "7": {
+        "trigger": "cure",
+        "statuses": [
+          "poison",
+          "toxic"
+        ]
+      },
+      "8": {
+        "trigger": "cure",
+        "statuses": [
+          "burn"
+        ]
+      },
+      "9": {
+        "trigger": "cure",
+        "statuses": [
+          "freeze"
+        ]
+      },
+      "10": {
+        "trigger": "cooldown-restore",
+        "seconds": 10
+      },
+      "11": {
+        "trigger": "cure",
+        "statuses": [
+          "confusion"
+        ]
+      },
+      "12": {
+        "trigger": "cure",
+        "statuses": [
+          "burn",
+          "poison",
+          "toxic",
+          "paralysis",
+          "sleep",
+          "freeze",
+          "confusion"
+        ]
+      },
+      "13": {
+        "trigger": "hp-threshold",
+        "below": 0.5,
+        "amount": "percent"
+      },
+      "14": {
+        "trigger": "hp-threshold",
+        "below": 0.5,
+        "amount": "fraction"
+      },
+      "15": {
+        "trigger": "hp-threshold",
+        "below": 0.5,
+        "amount": "fraction"
+      },
+      "16": {
+        "trigger": "hp-threshold",
+        "below": 0.5,
+        "amount": "fraction"
+      },
+      "17": {
+        "trigger": "hp-threshold",
+        "below": 0.5,
+        "amount": "fraction"
+      },
+      "18": {
+        "trigger": "hp-threshold",
+        "below": 0.5,
+        "amount": "fraction"
+      },
+      "19": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "20": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "21": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "22": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "23": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "24": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "25": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "26": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "27": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "28": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "29": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "30": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "31": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "32": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "33": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "34": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "35": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "36": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "37": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "38": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "39": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "40": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "41": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "42": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "43": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "44": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "45": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "46": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "47": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "48": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "49": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "50": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "51": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "52": {
+        "trigger": "quick"
+      },
+      "53": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "54": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "55": {
+        "trigger": "damage-mul",
+        "mul": 1.5,
+        "category": "physical"
+      },
+      "56": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "57": {
+        "trigger": "type-boost",
+        "type": 6
+      },
+      "58": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "59": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "60": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "61": {
+        "trigger": "none",
+        "reason": "evolution"
+      },
+      "62": {
+        "trigger": "none",
+        "reason": "evolution"
+      },
+      "63": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "64": {
+        "trigger": "none",
+        "reason": "evolution"
+      },
+      "65": {
+        "trigger": "survive",
+        "fullHpOnly": false,
+        "consumed": false
+      },
+      "66": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "67": {
+        "trigger": "crit",
+        "stages": 1
+      },
+      "68": {
+        "trigger": "type-boost",
+        "type": 8
+      },
+      "69": {
+        "trigger": "regen",
+        "fraction": 0.0625
+      },
+      "70": {
+        "trigger": "none",
+        "reason": "evolution"
+      },
+      "71": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "72": {
+        "trigger": "type-boost",
+        "type": 4
+      },
+      "73": {
+        "trigger": "type-boost",
+        "type": 5
+      },
+      "74": {
+        "trigger": "type-boost",
+        "type": 12
+      },
+      "75": {
+        "trigger": "type-boost",
+        "type": 17
+      },
+      "76": {
+        "trigger": "type-boost",
+        "type": 1
+      },
+      "77": {
+        "trigger": "type-boost",
+        "type": 13
+      },
+      "78": {
+        "trigger": "type-boost",
+        "type": 11
+      },
+      "79": {
+        "trigger": "type-boost",
+        "type": 2
+      },
+      "80": {
+        "trigger": "type-boost",
+        "type": 3
+      },
+      "81": {
+        "trigger": "type-boost",
+        "type": 15
+      },
+      "82": {
+        "trigger": "type-boost",
+        "type": 7
+      },
+      "83": {
+        "trigger": "type-boost",
+        "type": 14
+      },
+      "84": {
+        "trigger": "type-boost",
+        "type": 10
+      },
+      "85": {
+        "trigger": "type-boost",
+        "type": 16
+      },
+      "86": {
+        "trigger": "type-boost",
+        "type": 0
+      },
+      "87": {
+        "trigger": "none",
+        "reason": "evolution"
+      },
+      "88": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "89": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "90": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "91": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "92": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "93": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "94": {
+        "trigger": "damage-mul",
+        "mul": 1.1,
+        "category": "physical"
+      },
+      "95": {
+        "trigger": "damage-mul",
+        "mul": 1.1,
+        "category": "special"
+      },
+      "96": {
+        "trigger": "damage-mul",
+        "mul": 1.2,
+        "superEffectiveOnly": true
+      },
+      "97": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "98": {
+        "trigger": "damage-mul",
+        "mul": 1.3,
+        "recoil": 0.1
+      },
+      "99": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "100": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "101": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "102": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "103": {
+        "trigger": "survive",
+        "fullHpOnly": true,
+        "consumed": true
+      },
+      "104": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "105": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "106": {
+        "trigger": "speed-mul",
+        "mul": 0.5
+      },
+      "107": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "108": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "109": {
+        "trigger": "regen",
+        "fraction": 0.0625
+      },
+      "110": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "111": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "112": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "113": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "114": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "115": {
+        "trigger": "speed-mul",
+        "mul": 1.5
+      },
+      "116": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "117": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "118": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "119": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "120": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "121": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "122": {
+        "trigger": "none",
+        "reason": "outside-combat"
+      },
+      "123": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "124": {
+        "trigger": "none",
+        "reason": "out-of-scope"
+      },
+      "125": {
+        "trigger": "damage-mul",
+        "mul": 1.5,
+        "category": "special"
+      },
+      "126": {
+        "trigger": "type-boost",
+        "type": 10
+      },
+      "127": {
+        "trigger": "type-boost",
+        "type": 11
+      },
+      "128": {
+        "trigger": "type-boost",
+        "type": 13
+      },
+      "129": {
+        "trigger": "type-boost",
+        "type": 12
+      },
+      "130": {
+        "trigger": "type-boost",
+        "type": 15
+      },
+      "131": {
+        "trigger": "type-boost",
+        "type": 1
+      },
+      "132": {
+        "trigger": "type-boost",
+        "type": 3
+      },
+      "133": {
+        "trigger": "type-boost",
+        "type": 4
+      },
+      "134": {
+        "trigger": "type-boost",
+        "type": 2
+      },
+      "135": {
+        "trigger": "type-boost",
+        "type": 14
+      },
+      "136": {
+        "trigger": "type-boost",
+        "type": 6
+      },
+      "137": {
+        "trigger": "type-boost",
+        "type": 5
+      },
+      "138": {
+        "trigger": "type-boost",
+        "type": 7
+      },
+      "139": {
+        "trigger": "type-boost",
+        "type": 16
+      },
+      "140": {
+        "trigger": "type-boost",
+        "type": 17
+      },
+      "141": {
+        "trigger": "type-boost",
+        "type": 8
+      },
+      "142": {
+        "trigger": "none",
+        "reason": "evolution"
+      },
+      "143": {
+        "trigger": "none",
+        "reason": "evolution"
+      },
+      "144": {
+        "trigger": "none",
+        "reason": "evolution"
+      },
+      "145": {
+        "trigger": "none",
+        "reason": "evolution"
+      },
+      "146": {
+        "trigger": "none",
+        "reason": "evolution"
+      }
+    }
+  }
+}

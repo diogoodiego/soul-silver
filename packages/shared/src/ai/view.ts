@@ -20,7 +20,7 @@ export interface MoveView {
   hitbox: Hitbox | undefined;
   /** Projectile and dash speed, px per second. */
   speedPx: number;
-  /** Off cooldown. */
+  /** The action bar is full. */
   ready: boolean;
   damages: boolean;
   /** Inflicts a status on the target. */

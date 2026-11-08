@@ -21,10 +21,10 @@
       "16": { "mult": 1 },
       "492": { "mult": 4, "when": "fast" },
       "493": { "mult": 1, "when": "level" },
-      "494": { "mult": 1 },
+      "494": { "mult": 3, "when": "lure" },
       "495": { "mult": 1 },
       "496": { "mult": 1 },
-      "497": { "mult": 1 },
+      "497": { "mult": 1, "friendship": 200 },
       "498": { "mult": 4, "when": "moon" },
       "499": { "mult": 1.5 },
       "500": { "always": true }

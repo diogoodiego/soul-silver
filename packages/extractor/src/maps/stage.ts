@@ -255,8 +255,9 @@ async function run(ctx: StageContext): Promise<void> {
 export const mapsStage: Stage = {
   id: "maps",
   title: "Desenhando os mapas",
-  // 7: script props (spec 024).
-  version: 7,
+  // 7: script props (spec 024). 8: weather without the region bit, and the bike, escape rope and fly bits (spec 025).
+  // 9: the incoming-calls bit (spec 026).
+  version: 9,
   weight: 20,
   inputs: [NARC_INPUT, CODE_INPUT],
   outputs: ["maps"],

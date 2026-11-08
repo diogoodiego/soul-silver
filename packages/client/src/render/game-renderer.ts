@@ -40,6 +40,9 @@ const EFFECT_SET = "field-effect.json";
 const BATTLE_FX_SET = "battle-fx.json";
 /** Pixels of the sprite bottom hidden in tall grass. */
 const GRASS_COVER_PX = 8;
+/** Sight in a dark cave without Flash: radius around the player's eyes, in game pixels. */
+const DARK_RADIUS_PX = 36;
+const DARK_EYE_PX = 12;
 const WALK_FRAME_MS = 150;
 const RUN_FRAME_MS = 90;
 /** Overworld Pokémon have 2 walk frames per step: a faster swap keeps pace with the trainer's 4. */
@@ -132,7 +135,17 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   fade.style.background = "#000";
   fade.style.opacity = "0";
   fade.style.pointerEvents = "none";
-  host.append(canvas, fade);
+  // A dark cave without Flash (spec 025, FR-016): black but for a circle around the player.
+  const gloom = document.createElement("div");
+  gloom.style.position = "absolute";
+  gloom.style.pointerEvents = "none";
+  let dark = false;
+  // The day tint of outdoor maps (spec 026): the colour multiplies the scene under it; below the gloom.
+  const tint = document.createElement("div");
+  tint.style.position = "absolute";
+  tint.style.pointerEvents = "none";
+  tint.style.mixBlendMode = "multiply";
+  host.append(canvas, tint, fade, gloom);
 
   const scene = new Scene();
   const camera = new Camera();
@@ -141,10 +154,12 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   // Host size -> whole-number scale, and a view as large as the host at that scale: no bars (FR-012).
   let screen = fillView(VIEW_W, VIEW_H);
   let viewTopLeft = { x: 0, y: 0 };
+  /** The map and level drawn last: projected points stand on its ground, as the camera does. */
+  let viewOf: { area: string; level: number } | undefined;
   const fit = () => {
     screen = fillView(host.clientWidth, host.clientHeight);
     renderer.setSize(screen.w, screen.h, false);
-    for (const element of [canvas, fade]) {
+    for (const element of [canvas, tint, fade, gloom]) {
       element.style.width = `${screen.w * screen.scale}px`;
       element.style.height = `${screen.h * screen.scale}px`;
       element.style.left = "0";
@@ -474,8 +489,13 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       const dir = FACING[e.facing];
       return frames.get(`${base}/unisex/walk/${dir}/${step}`) ?? frames.get(`${base}/male/walk/${dir}/${step}`);
     }
-    const gait = running ? "run" : "walk";
-    const step = moving ? Math.floor(now / (running ? RUN_FRAME_MS : WALK_FRAME_MS)) % 4 : 0;
+    // shortcut: a surfer rides still on the walk frame, bobbing (drawEntity); use the ROM's surf pose and mount once they are extracted.
+    // shortcut: an angler stands on the walk frame, the "…" and "!" over it are the whole cast (GameSession); draw the ROM's fishing pose and line once extracted.
+    // shortcut: a cyclist pedals on the run frames, the extracted set has no bicycle; swap them in once it does.
+    const surfing = e.data["mode"] === "surf";
+    const fast = running || e.data["mode"] === "bike";
+    const gait = fast && !surfing ? "run" : "walk";
+    const step = moving && !surfing ? Math.floor(now / (fast ? RUN_FRAME_MS : WALK_FRAME_MS)) % 4 : 0;
     const variant = e.data["character"] === "female" ? 1 : 0;
     return frames.get(`overworld-player/${variant}/${gait}/${FACING[e.facing]}/${step}`);
   }
@@ -520,7 +540,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     const particlesOnly = e.kind === "projectile" && battleFx.has(`move/${String(e.data["move"])}`);
     const blinking = e.data["flash"] === true || (blinkUntil.get(e.id) ?? 0) > now;
     actor.sprite.visible = !particlesOnly && (!blinking || Math.floor(now / FLASH_MS) % 2 === 0);
-    const bounce = e.kind === "pokemon" && !actor.moving && Math.floor(now / (IDLE_BOUNCE_MS / 2)) % 2 === 0 ? IDLE_BOUNCE_PX : 0;
+    const bounce = ((e.kind === "pokemon" && !actor.moving) || e.data["mode"] === "surf") && Math.floor(now / (IDLE_BOUNCE_MS / 2)) % 2 === 0 ? IDLE_BOUNCE_PX : 0;
     const hop = e.data["hop"];
     // shortcut: the arc steps once per server tick (the counter is not interpolated); smooth it if it reads choppy.
     const lift = typeof hop === "number" ? Math.round(Math.sin((Math.PI * (HOP_TICKS - hop + 0.5)) / HOP_TICKS) * HOP_ARC_PX) : 0;
@@ -602,12 +622,15 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       // The view follows the player's feet as drawn: raised ground draws higher.
       const view2d = view.focus ? clampCamera(view.focus.x, view.focus.y - OBLIQUE * groundOf(self), bounds, screen) : clampCamera(self.x, self.y - OBLIQUE * groundOf(self), bounds, screen);
       viewTopLeft = view2d;
+      viewOf = { area: self.area, level: self.level };
       camera.projectionMatrix.set(...(obliqueProjection(view2d.x, view2d.y, screen) as Parameters<typeof camera.projectionMatrix.set>));
       camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
       renderer.render(scene, camera);
       // Black at the map swap, half way through the warp (data-model.md).
       const warping = typeof self.data["warping"] === "number" ? self.data["warping"] : 0;
       fade.style.opacity = String(warping > 0 ? 1 - Math.abs(warping - WARP_TICKS / 2) / (WARP_TICKS / 2) : 0);
+      const eye = { x: (self.x - view2d.x) * screen.scale, y: (self.y - OBLIQUE * groundOf(self) - DARK_EYE_PX - view2d.y) * screen.scale };
+      gloom.style.background = dark ? `radial-gradient(circle at ${eye.x}px ${eye.y}px, transparent ${DARK_RADIUS_PX * screen.scale}px, #000 ${DARK_RADIUS_PX * 1.4 * screen.scale}px)` : "none";
     },
     /** Plays the move's ROM particles on each hit target. */
     /** A ball caught this wild Pokémon: show the ball and its shakes in its place. */
@@ -618,9 +641,20 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       // Damage, statuses and stat changes on a foe: the emitters the script places on the target.
       for (const e of events) if (e.move > 0 && e.target !== e.attacker && e.kind !== "failed") particles.play(emittersAt(e.move, "target"), anchorOf(e.target), now);
     },
-    /** Where a ground point of the current map is on the page, in CSS pixels relative to the host. */
-    project(x: number, y: number): { x: number; y: number } {
-      return { x: (x - viewTopLeft.x) * screen.scale, y: (y - viewTopLeft.y) * screen.scale };
+    /** The day tint over the map (spec 026), channels 0–1; null for none (indoors and caves). */
+    setTint(rgb: { r: number; g: number; b: number } | null): void {
+      const css = rgb ? `rgb(${[rgb.r, rgb.g, rgb.b].map((c) => Math.round(Math.min(1, c) * 255)).join(",")})` : "transparent";
+      if (tint.style.background !== css) tint.style.background = css;
+    },
+    /** Reduced sight in a dark cave until Flash lights it. */
+    setDark(on: boolean): void {
+      dark = on;
+    },
+    /** Where a ground point of the current map is on the page, in CSS pixels relative to the host; `lift` game pixels above it. */
+    project(x: number, y: number, lift = 0): { x: number; y: number } {
+      const visual = viewOf && visuals.get(viewOf.area);
+      const ground = visual && visual !== "loading" ? groundAt(visual.mesh.file, viewOf!.level, x, y) : 0;
+      return { x: (x - viewTopLeft.x) * screen.scale, y: (y - OBLIQUE * ground - lift - viewTopLeft.y) * screen.scale };
     },
     destroy(): void {
       observer.disconnect();
@@ -638,6 +672,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       renderer.dispose();
       canvas.remove();
       fade.remove();
+      gloom.remove();
     },
   };
 }

@@ -1,12 +1,5 @@
 import type { Emotion, Place, ReactionRules, TimeOfDay } from "./schemas.ts";
 
-/** Gen 4 clock bands: morning 4–9, day 10–19, night 20–3. */
-export function timeOfDay(hour: number): TimeOfDay {
-  if (hour >= 4 && hour < 10) return "morning";
-  if (hour >= 10 && hour < 20) return "day";
-  return "night";
-}
-
 /** Caves and interiors from the map header; outdoor maps are towns when their mapsec is listed, else routes. */
 export function placeOf(areaType: "outdoor" | "indoor" | "cave" | undefined, mapsec: number | undefined, towns: readonly number[]): Place {
   if (areaType === "cave" || areaType === "indoor") return areaType;

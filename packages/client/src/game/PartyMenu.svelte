@@ -14,6 +14,7 @@
     moveName,
     natureName,
     abilityName,
+    itemName,
     onReorder,
     onBack,
   }: {
@@ -22,6 +23,8 @@
     moveName: (id: number) => string;
     natureName: (id: number) => string;
     abilityName: (id: number) => string;
+    /** Spec 027: the held item's name. */
+    itemName?: ((id: number) => string) | undefined;
     onReorder: (from: number, to: number) => void;
     onBack: () => void;
   } = $props();
@@ -72,6 +75,7 @@
       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-[0.15rem] mt-0 mx-0 mb-2">
         {#if member.nature !== undefined}<dt>{t("party.nature")}</dt><dd class="m-0">{natureName(member.nature)}</dd>{/if}
         {#if member.ability !== undefined}<dt>{t("party.ability")}</dt><dd class="m-0">{abilityName(member.ability)}</dd>{/if}
+        {#if member.held !== undefined && itemName}<dt>{t("party.held")}</dt><dd class="m-0">{itemName(member.held)}</dd>{/if}
         {#if member.exp !== undefined}
           <dt>{t("party.exp")}</dt>
           <dd class="m-0">{member.exp}{#if member.expNext !== undefined && member.expNext > member.exp}&nbsp;({t("party.toNext", { n: member.expNext - member.exp })}){/if}</dd>
@@ -80,7 +84,7 @@
       {#if member.moves}
         <h4>{t("party.moves")}</h4>
         <ul>
-          {#each member.moves as move (move)}<li>{moveName(move)}</li>{/each}
+          {#each member.moves as move, i (move)}<li>{moveName(move)}{#if member.ppUps?.[i]}&nbsp;+{member.ppUps[i]}{/if}</li>{/each}
         </ul>
       {/if}
     </article>

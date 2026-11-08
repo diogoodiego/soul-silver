@@ -1,5 +1,4 @@
 import { desiredMusic, type Listener, moveSound } from "@soulsilver/shared/audio";
-import { timeOfDay } from "@soulsilver/shared/companion";
 import type { TrainerMusic } from "@soulsilver/shared/events";
 import type { Entity, HitEvent, WorldLookup } from "@soulsilver/shared/game";
 import type { MapHeader } from "@soulsilver/shared/maps";
@@ -19,6 +18,8 @@ export interface AudioReactionsOptions {
   /** Owner string of this player's Pokémon and balls. */
   playerId: () => number | undefined;
   header: (area: string) => Promise<MapHeader | undefined>;
+  /** Night on the session's clock (spec 026), not the PC's: every player hears the same. */
+  night: () => boolean;
   world: WorldLookup;
 }
 
@@ -38,6 +39,7 @@ export function createAudioReactions(options: AudioReactionsOptions) {
       championBattle: id(m?.championBattle),
       trainerVictory: id(m?.trainerVictory),
       leaderVictory: id(m?.leaderVictory),
+      bicycle: id(m?.bicycle),
     };
   })();
   let hasTrack = (_name: string) => false;
@@ -57,12 +59,14 @@ export function createAudioReactions(options: AudioReactionsOptions) {
   let trainer: TrainerMusic | undefined;
   /** What a script plays until ResetBGM or the next map (spec 024). */
   let scriptMusic: number | null | undefined;
+  /** On the bicycle (spec 025). */
+  let bike = false;
   /** Last seen data per entity: hp for faints, `used` for moves, `alert` for wild cries. */
   const seen = new Map<number, { hp: number; used: number; alert: boolean }>();
 
   async function updateMusic(): Promise<void> {
     const t = await themes;
-    const state = { screen: "game" as const, musicDay: header?.musicDay ?? 0, musicNight: header?.musicNight ?? 0, night, inCombat, victory, trainer, scriptMusic };
+    const state = { screen: "game" as const, musicDay: header?.musicDay ?? 0, musicNight: header?.musicNight ?? 0, night, inCombat, victory, trainer, scriptMusic, bike };
     const onEnded = () => {
       victory = false;
       trainer = undefined;
@@ -98,7 +102,7 @@ export function createAudioReactions(options: AudioReactionsOptions) {
         void options.header(self.area).then((h) => {
           if (from !== undefined && !walked) void audio.play(h?.areaType === "indoor" || header?.areaType === "indoor" ? "door" : "warp", { source: "ui", kind: "effect" });
           header = h;
-          night = timeOfDay(new Date().getHours()) === "night";
+          night = options.night();
           victory = false;
           scriptMusic = undefined;
           void audio.preload([h?.musicDay ?? 0, h?.musicNight ?? 0].filter((n) => n > 0));
@@ -150,6 +154,10 @@ export function createAudioReactions(options: AudioReactionsOptions) {
 
     companion(ev: CompanionEvent): void {
       if (ev.type === "exp-gain" && inCombat) won = true;
+      else if (ev.type === "player-mode" && (ev.mode === "bike") !== bike) {
+        bike = ev.mode === "bike";
+        void updateMusic();
+      }
       else if (ev.type === "trainerBattleStart" && ev.player === options.playerId()) {
         trainer = ev.music;
         void updateMusic();

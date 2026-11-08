@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { baseCooldownS, speedScale } from "../../src/combat/cooldown.ts";
 
 const COOLDOWN = { a: 0.6, b: 1.2, c: 0.4, min: 0.4, max: 8, statusPower: 40 };
-const SPEED = { low: 20, high: 120, moveMinPx: 60, moveMaxPx: 120, cooldownMaxCut: 0.3 };
+const SPEED = { low: 20, high: 120, moveMinPx: 60, moveMaxPx: 120, gaugeSlowS: 3, gaugeFastS: 1 };
 
 describe("baseCooldownS", () => {
   it("is a + b·power/100 + c·(35/pp − 1), clamped", () => {
@@ -25,9 +25,9 @@ describe("baseCooldownS", () => {
 
 describe("speedScale", () => {
   it("maps speed linearly inside the limits", () => {
-    expect(speedScale(SPEED, 20)).toEqual({ movePx: 60, cooldownMul: 1 });
-    expect(speedScale(SPEED, 70)).toEqual({ movePx: 90, cooldownMul: 0.85 });
-    expect(speedScale(SPEED, 120)).toEqual({ movePx: 120, cooldownMul: 0.7 });
+    expect(speedScale(SPEED, 20)).toEqual({ movePx: 60, gaugeS: 3 });
+    expect(speedScale(SPEED, 70)).toEqual({ movePx: 90, gaugeS: 2 });
+    expect(speedScale(SPEED, 120)).toEqual({ movePx: 120, gaugeS: 1 });
   });
 
   it("never goes past the limits", () => {

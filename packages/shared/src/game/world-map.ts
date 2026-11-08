@@ -32,6 +32,14 @@ export interface WorldMap {
   heightPx: number;
   /** From the map header (feature 006), when the world was loaded from an extraction. */
   areaType?: "outdoor" | "indoor" | "cave" | undefined;
+  /** Map header weather: it marks the caves Flash lights (spec 025). */
+  weather?: number | undefined;
+  /** Map header permissions (spec 025); undefined without a header, where the area type decides. */
+  bikeAllowed?: boolean | undefined;
+  flyAllowed?: boolean | undefined;
+  /** Where the Pokégear rings (spec 026); absent in older extractions, where every map rings. */
+  incomingCalls?: boolean | undefined;
+  escapeRopeAllowed?: boolean | undefined;
   mapsec?: number | undefined;
   /** Encounter table id (feature 008); undefined when the map has no wild Pokémon. */
   encounters?: number | undefined;

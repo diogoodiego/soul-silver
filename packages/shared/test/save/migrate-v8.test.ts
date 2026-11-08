@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PLAYER_NAME_MAX } from "../../src/game/limits.ts";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes } from "../../src/save/schema.ts";
+import { newBoxes, newItemState } from "../../src/save/schema.ts";
 
 // Spec 024: the rival's name and the story revision; saves from before are marked stale.
 
@@ -34,11 +34,11 @@ describe("save v8", () => {
   it("adds an empty rival name and a stale story, touching nothing else", () => {
     const result = migrate(structuredClone(v7));
     if (!result.ok) throw new Error(result.message);
-    expect(result.save).toEqual({ ...v7, badges: undefined, schemaVersion: 9, rivalName: "", storyRev: 0, badgeSet: 0, flyPoints: [] });
+    expect(result.save).toEqual({ ...v7, badges: undefined, schemaVersion: 11, rivalName: "", storyRev: 0, badgeSet: 0, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() });
   });
 
   it("hands a v8 save on to the next version", () => {
-    const save = { ...v7, badges: undefined, schemaVersion: 9, rivalName: "Silver", storyRev: 1, badgeSet: 0, flyPoints: [] };
+    const save = { ...v7, badges: undefined, schemaVersion: 11, rivalName: "Silver", storyRev: 1, badgeSet: 0, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() };
     expect(migrate({ ...v7, schemaVersion: 8, rivalName: "Silver", storyRev: 1 })).toEqual({ ok: true, save });
   });
 

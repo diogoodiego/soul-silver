@@ -6,7 +6,7 @@ Fonte: pret/pokeheartgold (clone raso fora do repositório): `src/field_move.c`,
 
 - **As insígnias não estão numa tabela de dados.** Cada `FieldMove_Check*` testa a insígnia direto no código: Rock Smash = Zephyr (0), Cut = Hive (1), Strength = Plain (2), Surf = Fog (3), Fly = Storm (4), Whirlpool = Glacier (6), Waterfall = Rising (7), Rock Climb = Earth (15). **Flash, Headbutt, Dig e Teleport não exigem insígnia.** Há restrições além da insígnia: Fly exige `flyAllowed` no cabeçalho, sem seguidor e sem fantasia da Rocket; Flash exige o objeto/flag `FIELD_MOVE_CHECK_FLASH`; Teleport exige `flyAllowed` e mapa que não seja cidade; Dig/Escape Rope exigem `escapeRopeAllowed`.
 - **Decisão (muda o plano):** `badgeFor` e as demais condições ficam em `content/field/moves.json`, escrito à mão com a origem citada (arquivo e símbolo da decomp), e não num `field-moves.json` extraído. É a única fonte que existe para FR-002 ("dados originais"); o valor é conferido contra a decomp, não lido da ROM. O extrator deixa de ler insígnias.
-- **Escuridão:** o cabeçalho de mapa guarda `weather`; `WEATHER_FLASH = 11` (e `12`) marca caverna escura, e a flag de sistema de Flash desliga esse clima. `map-headers.json` já traz `weather` e `areaType` (`indoor|outdoor|cave`), então não há nada novo a extrair para Flash nem para "bicicleta proibida em interior" (usa `areaType`; o bit `bikeAllowed` do cabeçalho só entra se `areaType` não bastar).
+- **Escuridão:** o cabeçalho de mapa guarda `weather`; `WEATHER_FLASH = 11` (e `12`) marca caverna escura, e a flag de sistema de Flash desliga esse clima. A lista fica em `content/field/moves.json` → `darkWeather: [11, 12]`. Atenção: o `weather` divide um byte com a região (bit 0, Kanto), e até o estágio `maps` versão 8 o extrator gravava o byte inteiro (22 e 23 em vez de 11); o leitor agora separa os campos e também extrai `bikeAllowed`, `escapeRopeAllowed` e `flyAllowed` (bits 25, 27 e 28 do u32 no deslocamento 20, `map_header.h`). Sem esses bits (mapas de teste e a arena), vale o `areaType` (`indoor|outdoor|cave`).
 - **Pontos de voo:** `FLYPOINT_*` (0 a 37) são bits de flag do save; a tabela mapa → flypoint → posição no mapa do Pokégear está no overlay 101. O tile de pouso vem de warps por cidade. **Único dado novo da extração (T011–T012):** ler essa tabela do overlay 101 e o warp de pouso de cada cidade; os offsets ainda não foram descobertos.
 - **Alternativas descartadas:** ler a insígnia dos scripts (não cobre o menu); fixar sem citar a origem (viola I).
 
@@ -41,7 +41,7 @@ Fonte: pret/pokeheartgold (clone raso fora do repositório): `src/field_move.c`,
 
 ## R7. Flash e visão reduzida
 
-- **Decisão**: atributo `dark` por mapa (extraído) e estado `lit` por jogador; o cliente reduz o raio de visão com `dark && !lit`. Nada no tick.
+- **Decisão**: o mapa é escuro quando o `weather` do cabeçalho está em `darkWeather` (11 e 12, R1), e cada jogador tem um estado `lit`; o cliente reduz o raio de visão com `dark && !lit`. Nada no tick.
 - **Racional**: é visual; o servidor só decide o estado e o replica ao próprio jogador.
 
 ## R9. Onde o servidor decide colisão, visibilidade e recolhimento (T002)
@@ -52,3 +52,9 @@ Fonte: pret/pokeheartgold (clone raso fora do repositório): `src/field_move.c`,
 
 - **Decisão**: reusar o gate `devTools` + depurador ligado do spec 024. O teleporte é o `debugWarp` existente; entram `debugGiveBadge`, `debugTeachMove` e `debugGiveItem`. Fora do gate, nada muda e o log registra.
 - **Racional**: a sonda e as capturas precisam preparar estado sem jogar a história; o IPC do Electron não participa (IX).
+
+## R10. Botão da vara e teclas novas nas configurações (US3)
+
+- **Decisão**: a pesca começa por uma ação de entrada própria, **Vara de pesca** (`rod`): `C` no teclado e o botão 11 (R3) no gamepad. Ela lança a melhor vara da mochila na água à frente; a mesma ação, ou interagir, puxa. Nas configurações salvas, cada ação que falta pega a tecla padrão (`packages/shared/src/settings.ts`, `keys.default(...)` por ação), em vez de o objeto inteiro de teclas voltar ao padrão.
+- **Racional**: na margem, "interagir" já pergunta pelo Surf; o original usa o botão de item registrado (Y) para a vara. Sem o padrão por ação, toda ação nova apagaria as teclas que o jogador já tinha trocado.
+- **Alternativas**: interagir na água escolher entre Surf e pesca (uma pergunta a mais a cada margem); usar a vara pela mochila (a mochila só usa itens num membro da equipe).

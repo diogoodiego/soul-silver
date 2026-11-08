@@ -1,10 +1,10 @@
 import { toTicks, type Point } from "@soulsilver/shared/combat";
-import { behind, leadIndex, moneyLoss, pickReaction, placeOf, poseAt, pushPose, timeOfDay, type Pose } from "@soulsilver/shared/companion";
+import { behind, leadIndex, moneyLoss, pickReaction, placeOf, poseAt, pushPose, type Pose, type TimeOfDay } from "@soulsilver/shared/companion";
 import { BUTTON, tileAt, type Entity, type PlayerInput, type Rng, type ServerMessage, type WorldLookup } from "@soulsilver/shared/game";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { friendshipOnFaint, memberStats, natureMods } from "@soulsilver/shared/progression";
 import { badgeCount, type PartyMember, type Save } from "@soulsilver/shared/save";
-import { canHarm, type Combat, type Owner } from "./combat";
+import { canHarm, playerPic, type Combat, type CombatantSpec, type Owner } from "./combat";
 import type { CombatData } from "./combat-loader";
 import type { CompanionData } from "./companion-loader";
 import type { World } from "./world";
@@ -45,6 +45,8 @@ interface State {
   hitByPlayer: boolean;
   /** In a trainer battle (spec 022): kept inside the arena, no recall, no disengage. */
   arena: Arena | undefined;
+  /** Wild Pokémon that came inside this fight's circle: kept there until the fight ends. */
+  pinned: Set<number>;
 }
 
 /** A trainer battle's arena as the companion rules see it. */
@@ -65,14 +67,22 @@ export interface CompanionOptions {
   lookup: WorldLookup;
   world: World;
   rng: Rng;
-  /** Hour of the host's clock (0–23), for reactions. */
-  hour: () => number;
+  /** The band of the session's clock (spec 026), for reactions. */
+  time: () => TimeOfDay;
   /** Home: the blackout respawn point before any Pokémon Center. */
   home: () => { area: string; x: number; y: number };
   /** True while the player has progression decisions waiting (spec 016): the combat button does nothing. */
   busy?(playerId: number): boolean;
   /** Stats, moves and experience for the party screen (spec 017). */
   detail?(m: PartyMember): Omit<Extract<ServerMessage, { type: "party" }>["members"][number], "species" | "level" | "hp" | "hpMax"> | undefined;
+  /** Riding (spec 025): the companion stays in its ball. */
+  stowed?(playerId: number): boolean;
+  /** Whether this species may be sent out now (spec 025, FR-008); always when omitted. */
+  launchable?(playerId: number, species: number): boolean;
+  /** Spec 027: what a member brings into combat besides its stats: its held item and its PP Ups. */
+  extras?(m: PartyMember): Pick<CombatantSpec, "held" | "cooldownMul">;
+  /** A wild Pokémon now fights inside this circle: its AI makes it home, so it does not walk off to its spawn. */
+  pin?(entityId: number, center: Point, radiusPx: number): void;
   log(message: string): void;
 }
 
@@ -91,9 +101,9 @@ export function createCompanions(options: CompanionOptions) {
     const species = combatData?.species(m.species);
     return species ? memberStats(species.baseStats, m).hp : m.hp;
   };
-  const inBall = (species: number, area: string) => {
+  const inBall = (s: State, species: number, area: string) => {
     const map = lookup(area);
-    return data.follow.restrictedMaps.includes(Number(area)) || (map?.areaType === "indoor" && data.large.has(species));
+    return !!options.stowed?.(s.trainer.playerId) || data.follow.restrictedMaps.includes(Number(area)) || (map?.areaType === "indoor" && data.large.has(species));
   };
 
   function sendParty(s: State): void {
@@ -133,7 +143,7 @@ export function createCompanions(options: CompanionOptions) {
     const party = s.trainer.progress.party;
     const lead = leadIndex(party);
     s.lastArea = t.area;
-    if (lead === undefined || inBall(party[lead]!.species, t.area)) {
+    if (lead === undefined || inBall(s, party[lead]!.species, t.area)) {
       removeCompanion(s);
       s.trail = [];
       return;
@@ -165,7 +175,7 @@ export function createCompanions(options: CompanionOptions) {
     if (s.companionId === undefined) stepForward(s, member.species);
     try {
       const stats = { ivs: member.ivs, evs: member.evs, nature: natureMods(member.nature) };
-      const c = combat!.spawn(world, s.companionId!, { species: member.species, level: member.level, moves: member.moves, stats }, s.trainer.playerId);
+      const c = combat!.spawn(world, s.companionId!, { species: member.species, level: member.level, moves: member.moves, stats, trainerPic: playerPic(world.get(s.trainer.entityId)?.data["character"]), ...options.extras?.(member) }, s.trainer.playerId);
       c.hp = Math.min(member.hp, c.stats.hp);
       c.battle = s.arena?.battle;
     } catch (error) {
@@ -178,16 +188,24 @@ export function createCompanions(options: CompanionOptions) {
     return true;
   }
 
+  const mayLaunch = (s: State, index: number) => options.launchable?.(s.trainer.playerId, s.trainer.progress.party[index]!.species) ?? true;
+  /** The first member able to fight that may be sent out here: while surfing, not a terrestrial lead (spec 025). */
+  function launchLead(s: State): number | undefined {
+    const i = s.trainer.progress.party.findIndex((m, i) => m.hp > 0 && mayLaunch(s, i));
+    return i === -1 ? undefined : i;
+  }
+
   /** `forced`: a trainer battle starts even with progression decisions waiting. */
   function startCombat(s: State, tick: number, forced = false): void {
     const t = trainerOf(s);
-    const lead = leadIndex(s.trainer.progress.party);
+    const lead = launchLead(s);
     if (!combat || lead === undefined || busy(t) || (!forced && options.busy?.(s.trainer.playerId))) return;
     // Out of the ball, or one step forward from behind the trainer; no Poké Ball throw.
     stepForward(s, s.trainer.progress.party[lead]!.species);
     if (!sendOut(s, lead)) return;
     s.mode = "combat";
     s.anchor = { x: t.x, y: t.y };
+    s.pinned.clear();
     s.lastThreatTick = tick;
     world.update({ ...t, data: { ...t.data, inCombat: true } });
     sendParty(s);
@@ -205,7 +223,7 @@ export function createCompanions(options: CompanionOptions) {
     delete rest["inCombat"];
     world.update({ ...t, data: rest });
     const lead = leadIndex(s.trainer.progress.party);
-    if (lead !== undefined && !inBall(s.trainer.progress.party[lead]!.species, t.area)) reseed(s, trainerOf(s), s.trainer.progress.party[lead]!.species);
+    if (lead !== undefined && !inBall(s, s.trainer.progress.party[lead]!.species, t.area)) reseed(s, trainerOf(s), s.trainer.progress.party[lead]!.species);
     else removeCompanion(s);
     s.trainer.send({ type: "control", entityId: s.trainer.entityId });
     sendParty(s);
@@ -236,24 +254,38 @@ export function createCompanions(options: CompanionOptions) {
         party[fainted]!.friendship = friendshipOnFaint(party[fainted]!.friendship);
         removeCompanion(s);
         s.active = undefined;
-        const canContinue = leadIndex(party) !== undefined;
+        const canContinue = launchLead(s) !== undefined;
         s.trainer.send({ type: "fainted", partyIndex: fainted, canContinue });
         if (!canContinue) {
-          blackout(s);
+          // Only Pokémon that cannot fight on the water are left: back on the water, no blackout.
+          if (leadIndex(party) !== undefined && !s.arena) endCombat(s);
+          else blackout(s);
           return;
         }
         sendParty(s);
       }
     }
     const e = s.companionId === undefined ? undefined : world.get(s.companionId);
-    if (e) {
-      // Never past the combat radius around the trainer (FR-015), or out of a trainer battle's arena (spec 022).
-      const anchor = s.arena ?? s.anchor;
-      const radius = s.arena?.radiusPx ?? radiusPx;
-      const dx = e.x - anchor.x;
-      const dy = e.y - anchor.y;
+    // Never past the combat radius around the trainer (FR-015), or out of a trainer battle's arena (spec 022).
+    const anchor = s.arena ?? s.anchor;
+    const radius = s.arena?.radiusPx ?? radiusPx;
+    const keepInside = (w: Entity) => {
+      const dx = w.x - anchor.x;
+      const dy = w.y - anchor.y;
       const d = Math.hypot(dx, dy);
-      if (d > radius) world.update({ ...e, x: anchor.x + (dx / d) * radius, y: anchor.y + (dy / d) * radius });
+      if (d > radius) world.update({ ...w, x: anchor.x + (dx / d) * radius, y: anchor.y + (dy / d) * radius });
+    };
+    if (e) keepInside(e);
+    // The foes share that space: a trainer battle's Pokémon, and every wild one that came inside the circle.
+    for (const w of world.all()) {
+      const foe = w.kind === "pokemon" && w.area === trainerOf(s).area ? combat!.get(w.id) : undefined;
+      if (!foe || foe.hp === 0 || (foe.owner !== "wild" && foe.owner !== "trainer") || foe.battle !== s.arena?.battle) continue;
+      if (!s.arena && !s.pinned.has(w.id)) {
+        if (Math.hypot(w.x - anchor.x, w.y - anchor.y) > radius) continue;
+        s.pinned.add(w.id);
+        options.pin?.(w.id, anchor, radius);
+      }
+      keepInside(w);
     }
     // A trainer battle ends only by its own rules.
     if (s.arena) return;
@@ -287,7 +319,7 @@ export function createCompanions(options: CompanionOptions) {
     world.update({ ...c, facing: OPPOSITE[facing] });
     const member = s.trainer.progress.party[lead]!;
     const map = lookup(t.area);
-    const ctx = { place: placeOf(map?.areaType, map?.mapsec, data.reactions.towns), time: timeOfDay(options.hour()), friendship: member.friendship };
+    const ctx = { place: placeOf(map?.areaType, map?.mapsec, data.reactions.towns), time: options.time(), friendship: member.friendship };
     const pick = pickReaction(data.reactions, ctx, (n) => rng.nextInt(n));
     s.trainer.send({ type: "reaction", companionId: c.id, species: member.species, emotion: pick.emotion, bank: data.reactions.bank, text: pick.text });
   }
@@ -297,7 +329,7 @@ export function createCompanions(options: CompanionOptions) {
       // HP from a save is a trust boundary: never above the maximum for the level.
       for (const m of trainer.progress.party) m.hp = Math.min(m.hp, hpMax(m));
       const t = world.get(trainer.entityId)!;
-      const s: State = { trainer, trail: [], companionId: undefined, mode: "walk", active: undefined, anchor: { x: 0, y: 0 }, swapReadyTick: 0, swapUntil: 0, lastThreatTick: 0, buttons: 0, lastArea: t.area, hitByPlayer: false, arena: undefined };
+      const s: State = { trainer, trail: [], companionId: undefined, mode: "walk", active: undefined, anchor: { x: 0, y: 0 }, swapReadyTick: 0, swapUntil: 0, lastThreatTick: 0, buttons: 0, lastArea: t.area, hitByPlayer: false, arena: undefined, pinned: new Set() };
       states.set(trainer.playerId, s);
       sendParty(s);
     },
@@ -336,6 +368,7 @@ export function createCompanions(options: CompanionOptions) {
       s.buttons = buttons;
       if (s.mode === "walk") {
         if (pressed & BUTTON.combat || touchingWild(s)) startCombat(s, tick);
+        if (pressed & BUTTON.combat && s.mode === "walk" && leadIndex(s.trainer.progress.party) !== undefined && launchLead(s) === undefined) s.trainer.send({ type: "notice", code: "launch-refused" });
         else if (pressed & BUTTON.interact) interact(s);
         // startCombat() may have changed the mode; TS cannot see that through the call.
         return (s.mode as State["mode"]) === "combat";
@@ -354,6 +387,7 @@ export function createCompanions(options: CompanionOptions) {
       const s = states.get(playerId);
       const member = s?.trainer.progress.party[index];
       if (!s || s.mode !== "combat" || !member || member.hp === 0 || index === s.active || index === s.arena?.ally || tick < s.swapReadyTick) return;
+      if (!mayLaunch(s, index)) return s.trainer.send({ type: "notice", code: "launch-refused" });
       keepHp(s);
       if (s.companionId !== undefined) combat!.remove(world, s.companionId);
       if (!sendOut(s, index)) return;

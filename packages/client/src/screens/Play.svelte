@@ -94,9 +94,7 @@
       <button type="button" disabled={busy} onclick={() => void begin((s) => api.startSolo(s))}>{t("play.solo")}</button>
       <button type="button" disabled={busy} onclick={() => void host()}>{t("play.host")}</button>
       <button type="button" disabled={busy} onclick={() => ((error = undefined), (step = "join"))}>{t("play.join")}</button>
-      {#if import.meta.env.MODE === "development"}
-        <button type="button" disabled={busy} onclick={() => ((error = undefined), (step = "arena"))}>{t("play.arena")}</button>
-      {/if}
+      <button type="button" disabled={busy} onclick={() => ((error = undefined), (step = "arena"))}>{t("play.arena")}</button>
       <button type="button" onclick={() => (step = "save")}>{t("common.back")}</button>
     </nav>
     {#if busy}<p role="status">{t("play.starting")}</p>{/if}

@@ -40,10 +40,14 @@ export interface AiOptions {
   rng: Rng;
   /** Every decision, for the session log (FR-034). */
   onDecision?: ((d: Decision) => void) | undefined;
+  /** Spec 027: wild Pokémon below this level keep away from this body (a Repel); 0 or omitted for none. */
+  repel?: ((body: Entity) => number) | undefined;
 }
 
 /** Bodies an AI may fight: those of its own trainer battle with another owner, or, outside one, anyone outside one (spec 022). */
-function fights(me: Combatant, body: Entity, combat: Combat): boolean {
+function fights(me: Combatant, body: Entity, combat: Combat, repel = 0): boolean {
+  // Spec 027: a Repel keeps wild Pokémon of a lower level than the player's companion away.
+  if (me.owner === "wild" && me.level < repel) return false;
   const other = combat.get(body.id);
   if (me.battle === undefined) return other?.battle === undefined;
   return other !== undefined && other.battle === me.battle && other.owner !== me.owner;
@@ -66,7 +70,7 @@ export function createAi(options: AiOptions) {
   let tick = 0;
   let frame: { bodies: Entity[]; noises: Map<string, NoiseEvent[]>; hits: HitEvent[] } = { bodies: [], noises: new Map(), hits: [] };
 
-  function moveView(c: Combatant, m: CombatMove, slot: number): MoveView {
+  function moveView(c: Combatant, m: CombatMove): MoveView {
     const has = (kind: string) => m.effects.some((e) => e.kind === kind);
     return {
       id: m.id,
@@ -77,7 +81,7 @@ export function createAi(options: AiOptions) {
       rangePx: m.rangePx,
       hitbox: m.hitbox,
       speedPx: m.speedPx,
-      ready: tick >= c.readyAt[slot]!,
+      ready: c.gauge >= 1,
       damages: has("damage"),
       status: has("status"),
       buff: m.effects.some((e) => e.kind === "stages" && e.target === "self" && e.delta > 0),
@@ -89,7 +93,7 @@ export function createAi(options: AiOptions) {
   function opponentView(e: Entity): OpponentView {
     const c = combat.get(e.id);
     if (!c) return { id: e.id, kind: "trainer", x: e.x, y: e.y, types: [], defense: 1, specialDefense: 1, hp: 1, hpMax: 1, hasStatus: false, casting: undefined };
-    const cast = c.casting && { dir: c.casting.dir, reachPx: reachPx(moveView(c, c.moves[c.casting.slot]!, c.casting.slot)), elapsedTicks: tick - c.casting.startTick };
+    const cast = c.casting && { dir: c.casting.dir, reachPx: reachPx(moveView(c, c.moves[c.casting.slot]!)), elapsedTicks: tick - c.casting.startTick };
     return { id: e.id, kind: "pokemon", x: e.x, y: e.y, types: c.types, defense: c.stats.defense, specialDefense: c.stats.specialDefense, hp: c.hp, hpMax: c.stats.hp, hasStatus: c.major !== undefined, casting: cast };
   }
 
@@ -173,14 +177,15 @@ export function createAi(options: AiOptions) {
         immobile: major?.immobile === true,
         stunned: frame.hits.some((h) => h.kind === "failed" && h.attacker === id && h.target === id),
         casting: me.casting !== undefined,
-        moves: me.moves.map((m, slot) => moveView(me, m, slot)),
+        moves: me.moves.map((m) => moveView(me, m)),
       };
       const hurtBy = new Map<number, number>();
       for (const h of frame.hits) if (h.kind === "hit" && h.target === id && h.attacker !== id) hurtBy.set(h.attacker, (hurtBy.get(h.attacker) ?? 0) + h.amount);
       const t: AiTick = {
         tick,
         self,
-        opponents: here.filter((b) => fights(me, b, combat)).map(opponentView),
+        // A Repel does not stop a fight already under way (spec 027, edge case): only wild Pokémon not yet fighting.
+        opponents: here.filter((b) => fights(me, b, combat, c.fightStart !== undefined ? 0 : options.repel?.(b))).map(opponentView),
         noises: frame.noises.get(e.area) ?? [],
         hurtBy: [...hurtBy].map(([attacker, amount]) => ({ id: attacker, amount })),
       };

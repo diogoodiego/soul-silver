@@ -35,14 +35,14 @@ describe("the AI in real combat (US2, SC-005)", () => {
     expect(uses).toBeGreaterThan(200);
   });
 
-  it("never presses a slot whose cooldown is running", () => {
+  it("never presses a move while its action bar fills", () => {
     for (let seed = 1; seed <= 50; seed++) {
       const f = startFight({ seed, wild: { species: "sentret", level: 3, moves: [MOVES.tackle.id, MOVES.scratch.id] }, starter: { species: "cyndaquil", level: 5, moves: [MOVES.tackle.id] }, maxTicks: 20 * 20 });
       const drive = f.ai.drive.bind(f.ai);
       f.ai.drive = (id: number) => {
         const out = drive(id);
         const c = f.combat.get(id)!;
-        for (let slot = 0; slot < 4; slot++) if (out && out.input.buttons & (1 << slot)) expect(f.tick, `seed ${seed} slot ${slot}`).toBeGreaterThanOrEqual(c.readyAt[slot]!);
+        if (out && out.input.buttons & 0b1111) expect(c.gauge, `seed ${seed} tick ${f.tick}`).toBe(1);
         return out;
       };
       f.run();

@@ -39,6 +39,10 @@ describe("development commands (spec 025)", () => {
     expect(c.saves().at(-1)!.save.party[0]!.moves).toEqual([1, 2, 3, 15]);
   });
 
+  it("debugTeachMove leaves a move the member already knows alone", () => {
+    expect(result("dev", (c) => c.conn.send({ type: "debugTeachMove", slot: 0, move: 84 })).save.party[0]!.moves).toEqual([84]);
+  });
+
   it("debugTeachMove into an empty slot changes nothing", () => {
     expect(result("dev", (c) => c.conn.send({ type: "debugTeachMove", slot: 3, move: 15 })).save.party[0]!.moves).toEqual([84]);
   });

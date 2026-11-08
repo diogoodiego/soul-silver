@@ -1,6 +1,6 @@
 import { parseEventsFile } from "@soulsilver/shared/events";
 import { buildWorldMap, type WorldLookup, type WorldMap } from "@soulsilver/shared/game";
-import { MESH_VERTEX_FLOATS, parseMapFile, type MapArea, type MapFileKind, type MapHeader, type MapMeshFile } from "@soulsilver/shared/maps";
+import { MESH_VERTEX_FLOATS, mapCells, parseMapFile, type MapArea, type MapFileKind, type MapHeader, type MapMeshFile } from "@soulsilver/shared/maps";
 
 // The extraction as the renderer sees it, through the read-only assets:// protocol (spec 011, T010).
 // Mirrors packages/server/src/world-loader.ts so prediction simulates the same maps and warps.
@@ -112,6 +112,17 @@ export function createClientWorld(log: (message: string) => void) {
     /** The map header (music, area type), once the index is loaded. */
     async header(mapId: string): Promise<MapHeader | undefined> {
       return (await index).headers.get(Number(mapId));
+    },
+    /** Spec 026: the map's matrix and its rectangle of matrix cells, for the Pokégear's region map. */
+    async extent(mapId: string): Promise<{ matrix: number; x: number; z: number; w: number; h: number } | undefined> {
+      const { headers, areas } = await index;
+      const header = headers.get(Number(mapId));
+      const area = header && areas.get(header.matrix);
+      const cells = area ? mapCells(area, Number(mapId)) : [];
+      if (!header || !cells.length) return undefined;
+      const xs = cells.map((c) => c.x);
+      const zs = cells.map((c) => c.z);
+      return { matrix: header.matrix, x: Math.min(...xs), z: Math.min(...zs), w: Math.max(...xs) - Math.min(...xs) + 1, h: Math.max(...zs) - Math.min(...zs) + 1 };
     },
     ensure(mapId: string): Promise<WorldMap | undefined> {
       if (!loading.has(mapId)) {

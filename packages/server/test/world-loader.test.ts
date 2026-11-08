@@ -18,6 +18,9 @@ const header = (id: number, matrix: number): MapHeader => ({
   musicDay: 0,
   musicNight: 0,
   weather: 0,
+  bikeAllowed: true,
+  escapeRopeAllowed: false,
+  flyAllowed: true,
   refs: { events: id, scripts: 0, messages: 0, encounters: null },
 });
 const areas: MapArea[] = [

@@ -4,7 +4,7 @@
 
 export const DIRECTIONS = ["up", "down", "left", "right"] as const;
 const MENU_ACTIONS = ["confirm", "cancel", "tabPrev", "tabNext"] as const;
-const MAP_ACTIONS = ["menu", "run", "dash", "move1", "move2", "move3", "move4", "combat", "recall", "interact", "picker", "throw", "nextBall"] as const;
+const MAP_ACTIONS = ["menu", "run", "dash", "move1", "move2", "move3", "move4", "combat", "recall", "interact", "picker", "throw", "nextBall", "rod", "items"] as const;
 
 export const ACTIONS = [...DIRECTIONS, ...MENU_ACTIONS, ...MAP_ACTIONS] as const;
 export type Action = (typeof ACTIONS)[number];
@@ -40,6 +40,8 @@ export const DEFAULT_KEYS: Readonly<Bindings> = {
   picker: ["KeyQ"],
   throw: ["KeyG"],
   nextBall: ["KeyB"],
+  rod: ["KeyC"],
+  items: ["KeyI"],
 };
 
 export const PAD_BUTTONS: Readonly<Record<Action, number>> = {
@@ -64,6 +66,9 @@ export const PAD_BUTTONS: Readonly<Record<Action, number>> = {
   picker: 8,
   throw: 10,
   nextBall: 15,
+  rod: 11,
+  /** Spec 027: the quick item selector in combat, on the D-pad like nextBall; tap cycles, hold uses. */
+  items: 14,
 };
 
 /** Keys the OS or the app keeps for itself (fullscreen, close window, Start menu). */

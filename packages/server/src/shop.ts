@@ -95,7 +95,7 @@ export function createShops(options: ShopsOptions): Shops {
         options.onClose(playerId);
         return;
       }
-      const refused = msg.type === "shop-buy" ? (o.sell ? "invalid" : buy(w.progress, stock(w, o), msg.item, msg.qty)) : o.sell ? sell(w.progress, data.item, msg.item, msg.qty) : "invalid";
+      const refused = msg.type === "shop-buy" ? (o.sell ? "invalid" : buy(w.progress, stock(w, o), msg.item, msg.qty, data.item)) : o.sell ? sell(w.progress, data.item, msg.item, msg.qty) : "invalid";
       answer(w, refused);
       if (refused) return;
       options.changed(playerId);

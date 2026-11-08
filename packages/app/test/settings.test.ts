@@ -42,7 +42,8 @@ describe("settings", () => {
     expect(s.textSpeed).toBe("mid");
     expect(s.uiScale).toBe(1.25);
     expect(s.window).toEqual({ width: 1280, height: 720 });
-    expect(s.bindings).toEqual(DEFAULT_SETTINGS.bindings);
+    // A partial bindings object keeps its keys; the missing actions take their defaults.
+    expect(s.bindings).toEqual({ ...DEFAULT_SETTINGS.bindings, up: ["KeyW"] });
   });
 
   it("applies a valid patch and persists it", async () => {

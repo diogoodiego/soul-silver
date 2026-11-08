@@ -5,7 +5,7 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 9;
+export const SAVE_SCHEMA_VERSION = 11;
 
 /** The story revision new saves get (spec 024); a lower one marks a save whose story state predates it. */
 export const STORY_REV = 1;
@@ -35,6 +35,10 @@ export const partyMember = z.strictObject({
   evs: stats(0, 255).refine((evs) => Object.values(evs).reduce((a, b) => a + b, 0) <= 510, "mais de 510 EVs"),
   /** Gen 4 nature id: 0 Hardy … 24 Quirky. */
   nature: z.number().int().min(0).max(24),
+  /** Spec 027: the item it holds; absent holds nothing. */
+  held: z.number().int().min(1).max(0xffff).optional(),
+  /** Spec 027: PP Ups used on each move slot (0 to 3); absent is none. */
+  ppUps: z.array(z.number().int().min(0).max(3)).max(4).optional(),
 });
 export type PartyMember = z.infer<typeof partyMember>;
 
@@ -52,7 +56,45 @@ const species = () => z.number().int().min(1).max(493);
 const unique = (list: number[]) => new Set(list).size === list.length;
 
 /** What a v1 save gets on migration and a new game starts with (3000 is the HGSS starting money). */
-export const newProgress = () => ({ party: [] as PartyMember[], money: 3000, badgeSet: 0, flyPoints: [] as string[], respawn: null });
+export const newProgress = () => ({ party: [] as PartyMember[], money: 3000, badgeSet: 0, flyPoints: [] as string[], respawn: null, phone: newPhone(), ...newItemState() });
+
+/** Spec 027: an empty Apricorn Box, no tree picked, empty Berry Pots, nothing with Kurt, no Repel. */
+export const newItemState = (): ItemState => ({ apricorns: [0, 0, 0, 0, 0, 0, 0], apricornTrees: { day: "", trees: [] }, berryPots: [null, null, null, null], kurt: null, repel: null });
+
+const dayKey = () => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "dia fora do formato AAAA-MM-DD");
+export const itemState = z.strictObject({
+  /** Apricorn Box (item 468): how many of each colour, 0 red … 6 black. */
+  apricorns: z.array(z.number().int().min(0).max(99)).length(7),
+  /** Apricorn trees picked on `day` (AnimApricornTree); a new day empties the list. */
+  apricornTrees: z.strictObject({ day: z.union([dayKey(), z.literal("")]), trees: z.array(z.number().int().min(0).max(63)).refine(unique, "árvore repetida") }),
+  /** Berry Pots (item 470): four pots, each empty or growing a berry since `plantedAt`. */
+  berryPots: z.array(z.strictObject({ berry: z.number().int().min(149).max(212), plantedAt: z.iso.datetime() }).nullable()).length(4),
+  /** Apricorns Kurt took to make into balls, and the day he took them. */
+  kurt: z.strictObject({ apricorn: z.number().int().min(0).max(6), count: z.number().int().min(1).max(99), given: dayKey() }).nullable(),
+  /** The Repel (or Black Flute) in effect, until `endsAt` on the session clock. */
+  repel: z.strictObject({ item: z.number().int().min(1).max(0xffff), endsAt: z.iso.datetime() }).nullable(),
+});
+export type ItemState = z.infer<typeof itemState>;
+
+/** The Pokégear phone (spec 026): no number registered, no rematch sought, no call waiting. */
+export const newPhone = (): PhoneSave => ({ contacts: [], seeking: [], called: [], pending: [], log: [] });
+
+const contactId = () => z.number().int().min(0).max(74);
+const phoneSave = z
+  .strictObject({
+    /** Registered numbers, in the order they were registered. */
+    contacts: z.array(contactId()).refine(unique, "contato repetido"),
+    /** Contacts that asked for a rematch (PhoneRematch.seeking): the next battle with them is the rematch team. */
+    seeking: z.array(contactId()).refine(unique, "contato repetido"),
+    /** Who already made a random call this round; the round ends when all of a tier have (save_misc.c). */
+    called: z.array(contactId()).refine(unique, "contato repetido"),
+    /** Story calls still to be delivered (SetPhoneCall); random calls are never saved. */
+    pending: z.array(z.strictObject({ caller: contactId(), call: z.number().int().min(0).max(0xffff) })).max(8),
+    /** The last calls, oldest first, for the phone screen. */
+    log: z.array(z.strictObject({ contact: contactId(), direction: z.enum(["in", "out"]), at: z.iso.datetime() })).max(20),
+  })
+  .refine((p) => p.seeking.every((id) => p.contacts.includes(id)), { path: ["seeking"], message: "revanche de número não registrado" });
+export type PhoneSave = z.infer<typeof phoneSave>;
 
 /** Bag and Pokédex (spec 015): what a v2 save gets and a new game starts with. */
 export const newCollection = () => ({ bag: [] as { item: number; count: number }[], pokedex: { seen: [] as number[], caught: [] as number[] } });
@@ -89,6 +131,11 @@ export const saveSchema = z.strictObject({
   flyPoints: z.array(z.string().min(1)).refine((l) => new Set(l).size === l.length, "ponto de voo repetido"),
   /** Last Pokémon Center entered: the blackout respawn point; null means home. */
   respawn: z.strictObject({ area: z.string().min(1), x: z.number().finite(), y: z.number().finite() }).nullable(),
+  /** The way out of a cave (spec 025): the last spot outdoors, where Dig and the Escape Rope lead; absent in older v9 saves. */
+  escape: z
+    .strictObject({ area: z.string().min(1), x: z.number().finite(), y: z.number().finite(), facing: z.enum(["north", "south", "east", "west"]) })
+    .nullable()
+    .optional(),
   bag: itemList(0xffff),
   pokedex: z.strictObject({
     seen: z.array(species()).refine(unique, "espécie repetida"),
@@ -114,5 +161,8 @@ export const saveSchema = z.strictObject({
   rivalName: z.string().max(PLAYER_NAME_MAX),
   /** Below STORY_REV the save's story state predates the original new-game state (spec 024). */
   storyRev: z.number().int().nonnegative(),
+  /** The Pokégear phone (spec 026). */
+  phone: phoneSave,
+  ...itemState.shape,
 });
 export type Save = z.infer<typeof saveSchema>;

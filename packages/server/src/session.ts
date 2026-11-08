@@ -1,4 +1,4 @@
-import { wildMoves } from "@soulsilver/shared/wild";
+import { timeOfDay, wildMoves } from "@soulsilver/shared/wild";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import {
   BUTTON,
@@ -21,6 +21,7 @@ import type { Decision } from "@soulsilver/shared/ai";
 import { TICKS_PER_S } from "@soulsilver/shared/combat";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { npcOccupied } from "@soulsilver/shared/npc";
+import { leadIndex } from "@soulsilver/shared/companion";
 import { expForLevel, memberStats } from "@soulsilver/shared/progression";
 import { migrate, newBoxes, newCollection, newProgress, STORY_REV, storyUnstarted, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { buildAiData, BUNDLED_AI_CONTENT, type AiData } from "./ai-loader";
@@ -31,7 +32,9 @@ import { createCaptures, type Catcher } from "./capture";
 import { createCompanions, type Trainer } from "./companion";
 import type { CompanionData } from "./companion-loader";
 import type { Connection } from "./connection";
-import { reorderParty, useItem, type ItemsData } from "./items";
+import { bundledItemRules, createItems, itemStateOf, reorderParty, type ItemRules, type ItemsData } from "./items";
+import { placeOf } from "@soulsilver/shared/companion";
+import type { ItemState } from "@soulsilver/shared/save";
 import { createProgression, type Learner, type Progression, type ProgressionData } from "./progression";
 import { createReplica, replicate, type Replica } from "./replication";
 import { createNpcs } from "./npcs";
@@ -42,8 +45,14 @@ import { createPcs } from "./pc";
 import { createShops, type ShopData, type Shops } from "./shop";
 import { createTrainerBattles, type TrainerBattles } from "./trainer-battle";
 import type { TrainerData } from "./trainer-loader";
+import { bundledFieldData, createField, type FieldData } from "./field";
+import { createFishing } from "./fishing";
 import { createWilds } from "./wild";
-import type { WildData } from "./wild-loader";
+import { createSessionClock, SUNDAY_NOON } from "./clock";
+import { createPhone, scriptedCallOf } from "./phone";
+import { createRadio, GB_SOUNDS } from "./radio";
+import { capFor } from "@soulsilver/shared/radio";
+import { BUNDLED_TIME_BANDS, type WildData } from "./wild-loader";
 import { createWorld, type World } from "./world";
 
 // One match of 1 to 4 players (spec 010, 012). Pure: time only advances through step().
@@ -53,6 +62,9 @@ const MAX_QUEUED_INPUTS = 10;
 const TICK_MS = 50;
 /** 10 s at 20 Hz. */
 const DEFAULT_TIMEOUT_TICKS = 200;
+/** The clock goes out every 5 s of real time (spec 026); the clients run it on in between. */
+const GEAR_MAP_EVERY_TICKS = TICKS_PER_S;
+const CLOCK_EVERY_TICKS = 5 * TICKS_PER_S;
 /** A save goes to each player every 30 s of play (FR-006 allows up to 60 s). */
 const SAVE_INTERVAL_TICKS = 600;
 /** A dropped guest keeps the seat for 2 minutes (FR-020). */
@@ -89,8 +101,8 @@ export interface SessionOptions {
   devArena?: boolean | undefined;
   /** Companion rules (spec 014); without them nobody follows and the combat button does nothing. */
   companion?: CompanionData | undefined;
-  /** Hour of the host clock (0–23) for companion reactions; noon when omitted. */
-  hour?: (() => number) | undefined;
+  /** The host's clock (spec 026): the session's time for every player; a Sunday noon when omitted, so tests never depend on the hour. */
+  now?: (() => Date) | undefined;
   /** Development builds: the party a save with none starts with, so the companion can be tried before the starter event exists. */
   devParty?: PartyMember[] | undefined;
   /** Wild Pokémon and capture (spec 015); they need combat too. */
@@ -119,10 +131,12 @@ export interface SessionOptions {
   onStuck?: ((s: StuckPlayer) => void) | undefined;
   /** Development builds: the script debugger may change flags. */
   devTools?: boolean | undefined;
-  /** Day of the week on the host clock (0 Sunday); Sunday when omitted. */
-  weekday?: (() => number) | undefined;
   /** Trainer battles (spec 022); they need combat, the companion rules and scripts too. */
   trainers?: TrainerData | undefined;
+  /** Field-move rules and locomotion classes (spec 025); the bundled content when omitted. */
+  field?: FieldData | undefined;
+  /** Item effects and tuning (spec 027); the bundled content/items when omitted. */
+  itemRules?: ItemRules | undefined;
 }
 
 /** A save but the parts snapshot() fills at save time. */
@@ -155,7 +169,7 @@ interface Player {
   /** Asked for the AI debug overlay (spec 019). */
   debugAi: boolean;
   /** Party, money, badges and respawn point, changed in place by the companion rules; bag, Pokédex and PC boxes by capture. */
-  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints">;
+  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints" | "escape" | "phone"> & ItemState;
   /** Story flags and variables (spec 020), changed by this player's scripts only. */
   flags: Set<number>;
   vars: Map<number, number>;
@@ -163,6 +177,8 @@ interface Player {
   buttons: number;
   /** The full menu is open (spec 017); with a running script, it shows the player as busy. */
   menuOpen: boolean;
+  /** The Pokégear is open (spec 026): busy as the menu, and its map is kept fresh. */
+  gearOpen: boolean;
 }
 
 interface Reserved {
@@ -201,7 +217,10 @@ export function createSession(options: SessionOptions): Session {
   const rng = createRng(options.seed);
   const timeoutTicks = options.timeoutTicks ?? DEFAULT_TIMEOUT_TICKS;
   const { clock } = options;
-  const combat = options.combat ? createCombat({ data: options.combat, rng, lookup: lookup }) : undefined;
+  const time = createSessionClock(options.now ?? SUNDAY_NOON);
+  const bands = options.wild?.spawn.timeBands ?? BUNDLED_TIME_BANDS;
+  const fieldData = options.field ?? bundledFieldData();
+  const combat = options.combat ? createCombat({ data: options.combat, rng, lookup: lookup, crossesWater: (species) => fieldData.locomotion(species) !== "terrestrial" }) : undefined;
   const companions = options.companion
     ? createCompanions({
         data: options.companion,
@@ -210,10 +229,17 @@ export function createSession(options: SessionOptions): Session {
         lookup: lookup,
         world,
         rng,
-        hour: options.hour ?? (() => 12),
+        time: () => timeOfDay(time.hour(), bands),
         home: () => startPosition(lookup),
         busy: (id): boolean => progression?.busy(id) ?? false,
         detail: (m) => memberDetail(m),
+        stowed: (id) => field.riding(id),
+        extras: (m) => ({ held: items.heldFor(m), cooldownMul: items.cooldownMulFor(m) }),
+        launchable: (id, species) => field.launchable(id, species),
+        pin: (id, center, radiusPx) => {
+          const c = wilds?.ai.get(id);
+          if (c) Object.assign(c, { home: { x: center.x, y: center.y }, leashPx: radiusPx });
+        },
         log: (message) => options.log(message),
       })
     : undefined;
@@ -229,12 +255,23 @@ export function createSession(options: SessionOptions): Session {
       ? createWilds({
           data: options.wild,
           ai,
+          // A player's trainer or Pokémon: its owner's Repel (spec 027).
+          repel: (body) => {
+            const owner = body.kind === "player" ? [...players.values()].find((p) => p.entityId === body.id)?.id : Number(body.data["owner"]);
+            return owner === undefined || Number.isNaN(owner) ? 0 : items.repelLevel(owner);
+          },
           combat,
           combatData: options.combat,
           lookup: lookup,
           world,
           rng,
-          hour: options.hour ?? (() => 12),
+          hour: time.hour,
+          // The radio of the players standing in the area (spec 026), thinned by a Repel or the Black Flute (spec 027).
+          cap: (area, base) => {
+            const here = [...players.values()].filter((p) => world.get(p.entityId)?.area === area);
+            const radioCap = capFor(base, here.map((p) => radio.factor(p.id, area, { gbSounds: p.progress.bag.some((b) => b.item === GB_SOUNDS), nationalDex: false })));
+            return Math.round(radioCap * Math.min(1, ...here.map((p) => items.density(p.id))));
+          },
           onDecision: options.onDecision,
           onFaint: (id, species, level) => progression?.faint(id, species, level),
           onRemove: (id) => progression?.forget(id),
@@ -243,7 +280,7 @@ export function createSession(options: SessionOptions): Session {
       : undefined;
   const captures =
     wilds && options.wild && combat && options.combat
-      ? createCaptures({ data: options.wild, wilds, combat, combatData: options.combat, world, lookup: lookup, rng, hour: options.hour ?? (() => 12), controlled: (id) => companions?.controlled(id) })
+      ? createCaptures({ data: options.wild, wilds, combat, combatData: options.combat, world, lookup: lookup, rng, hour: time.hour, controlled: (id) => companions?.controlled(id) })
       : undefined;
   const hpMax = (m: PartyMember) => {
     const species = options.combat?.species(m.species);
@@ -262,12 +299,48 @@ export function createSession(options: SessionOptions): Session {
       exp: m.experience,
       ...(rate ? { expNext: expForLevel(rate, Math.min(100, m.level + 1)) } : {}),
       ...(growth?.abilities ? { ability: growth.abilities[0] } : {}),
+      ...(m.held !== undefined ? { held: m.held } : {}),
+      ...(m.ppUps ? { ppUps: [...m.ppUps] } : {}),
     };
   }
+  // shortcut: no National Pokédex yet, so Pokémon Music never plays the Hoenn and Sinnoh tunes; read it when the Pokédex has one.
+  const radio = createRadio({ hour: time.hour, weekday: time.weekday });
+  /** In a script, a menu, a fight or a decision: field actions and calls wait (spec 025, spec 026). */
+  const busyOf = (id: number): boolean => {
+    const p = players.get(id);
+    return !p || p.menuOpen || p.gearOpen || (scripts?.busy(id) ?? false) || (companions?.inCombat(id) ?? false) || (trainerBattles?.locked(id) ?? false) || (progression?.busy(id) ?? false);
+  };
+  // Its own generator, so calls never shift the rolls of the simulation (replays, principle IV).
+  const phone = createPhone({
+    book: options.scripts?.phone,
+    world,
+    rng: createRng((options.seed ^ 0x026) >>> 0),
+    weekday: time.weekday,
+    hour: time.hour,
+    bands,
+    rings: (area) => lookup(area)?.incomingCalls ?? true,
+    busy: busyOf,
+    now: clock,
+    trainerFlag: (t) => (options.trainers?.tuning.trainerFlagBase ?? 0) + t,
+    onScriptedEnd: (id) => scripts?.callEnded(id),
+    mapsec: (area) => lookup(area)?.mapsec,
+    team: (trainer) => options.trainers?.trainer(trainer)?.team.map((m) => m.species) ?? [],
+    // getRandomEncounterSlot: the grass of the band, or a Fisherman's Good Rod (its 4th slot the night fish at night).
+    wild: (map, band, fisherman) => {
+      const index = lookup(String(map))?.encounters;
+      const e = index === undefined ? undefined : options.wild?.encounter(index);
+      if (!e) return [];
+      if (!fisherman) return (e.grass?.[(["morning", "day", "night"] as const)[band]!] ?? []).map((x) => x.species);
+      const rod = (e.goodRod ?? []).map((x) => x.species);
+      if (band === 2 && e.nightFish !== undefined && rod.length > 3) rod[3] = e.nightFish;
+      return rod;
+    },
+  });
   const npcs = options.scripts ? createNpcs({ world, lookup: lookup, seed: options.seed, log: options.log }) : undefined;
   const scripts: Scripts | undefined = options.scripts
     ? createScripts({
         data: options.scripts,
+        rockSmashItems: fieldData.rules.rockSmashItems,
         world,
         lookup: lookup,
         npcs,
@@ -275,7 +348,12 @@ export function createSession(options: SessionOptions): Session {
         items: options.items,
         seed: options.seed,
         hpMax,
-        weekday: options.weekday ?? (() => 0),
+        weekday: time.weekday,
+        hour: time.hour,
+        phone,
+        scriptedCall: scriptedCallOf,
+        machineMove: (item) => progression?.machineMove(item),
+        apricorns: (id) => items.apricorns(id),
         timeoutTicks: options.scriptTimeoutTicks,
         intro: options.intro,
         devTools: options.devTools,
@@ -336,7 +414,7 @@ export function createSession(options: SessionOptions): Session {
       if (what === "party") companions?.refresh(playerId);
       else if (captures) captures.refresh(playerId);
       else p?.conn?.send({ type: "bag", items: p.progress.bag.map((b) => ({ ...b })) } satisfies ServerMessage);
-    }, onClose: (playerId) => scripts?.serviceClosed(playerId) });
+    }, onClose: (playerId) => scripts?.serviceClosed(playerId), pocketOf: options.items && ((item) => options.items!.item(item)?.pocket) });
   const trainerBattles: TrainerBattles | undefined =
     options.trainers && combat && options.combat && companions && scripts
       ? createTrainerBattles({
@@ -349,6 +427,8 @@ export function createSession(options: SessionOptions): Session {
           lookup: lookup,
           rng,
           items: options.items,
+          held: (item) => items.heldItem(item),
+          extras: (m) => ({ held: items.heldFor(m), cooldownMul: items.cooldownMulFor(m) }),
           progression,
           trainerOf: (e) => scripts.trainerOf(e),
           visible: (playerId, e) => scripts.visible(playerId, e),
@@ -361,11 +441,95 @@ export function createSession(options: SessionOptions): Session {
             for (const p of players.values()) if (p.id !== except && world.get(p.entityId)?.area === area) p.conn?.send(msg);
           },
           onEnd: (playerId, won) => scripts.battleEnded(playerId, won),
+          rematch: (playerId, trainer) => phone.rematchOfTrainer(playerId, trainer),
+          rematchWon: (playerId, contact) => phone.rematchWon(playerId, contact),
+          offerNumber: (playerId, trainer, again) => {
+            const c = phone.contactOfTrainer(trainer);
+            return !!c && !phone.registered(playerId, c.id) && scripts.offerNumber(playerId, c.id, c.bank, again);
+          },
           onDecision: options.onDecision,
           log: (message) => options.log(message),
         })
       : undefined;
+  const field = createField({
+    data: fieldData,
+    world,
+    lookup,
+    busy: busyOf,
+    flyPoints: options.scripts?.flyPoints ?? [],
+    home: (id) => players.get(id)?.progress.respawn ?? startPosition(lookup),
+  });
+  const fishing = createFishing({
+    rules: fieldData.fishing,
+    world,
+    lookup,
+    rng,
+    busy: (id) => field.busy(id),
+    friendship(id) {
+      const party = players.get(id)?.progress.party ?? [];
+      const out = world.all().some((e) => e.kind === "pokemon" && e.data["owner"] === String(id) && !companions?.inCombat(id));
+      return out ? (party[leadIndex(party) ?? -1]?.friendship ?? 0) : 0;
+    },
+    mode: (id) => field.mode(id),
+    setMode: (id, mode) => field.setMode(id, mode),
+    canFish: (area, rod) => wilds?.canFish(area, rod) ?? false,
+    hook: (area, rod, x, y, tick) => void wilds?.hook(area, rod, x, y, tick),
+  });
   const notice = (p: Player, code: NoticeCode) => p.conn?.send({ type: "notice", code } satisfies ServerMessage);
+  const sendBag = (p: Player) => {
+    if (captures) captures.refresh(p.id);
+    else p.conn?.send({ type: "bag", items: p.progress.bag.map((b) => ({ ...b })) } satisfies ServerMessage);
+  };
+  const berryHours = new Map((options.scripts?.fieldItems?.berries ?? []).map((b) => [b.item, b.hoursPerStage]));
+  const items = createItems({
+    data: options.items,
+    rules: options.itemRules ?? bundledItemRules(),
+    combat,
+    world,
+    rng: createRng((options.seed ^ 0x027) >>> 0),
+    now: () => time.now(),
+    hpMax,
+    controlled: (id) => companions?.controlled(id),
+    active: (id) => companions?.active(id),
+    inCombat: (id) => companions?.inCombat(id) ?? false,
+    changed(id, what) {
+      const p = players.get(id);
+      if (!p) return;
+      if (what === "party") companions?.refresh(id);
+      else sendBag(p);
+    },
+    progression,
+    escapeRope: (id) => field.escapeRope(id),
+    escapeRopeItem: fieldData.rules.escapeRope,
+    hidden: (id) => scripts?.hidden(id) ?? [],
+    companionPlace(id) {
+      const p = players.get(id);
+      const e = p && world.get(p.entityId);
+      const out = world.all().some((w) => w.kind === "pokemon" && w.data["owner"] === String(id));
+      const map = e && lookup(e.area);
+      return e && out ? placeOf(map?.areaType, map?.mapsec, options.companion?.reactions.towns ?? []) : undefined;
+    },
+    berryHours: (berry) => berryHours.get(berry),
+    log: (message) => options.log(message),
+  });
+  /** The session's clock (spec 026): one time for every player. */
+  function clockMessage() {
+    return { type: "clock", minuteOfDay: time.minuteOfDay(), weekday: time.weekday(), fixed: time.fixed() } satisfies ServerMessage;
+  }
+  /** The Pokégear map (spec 026): this player's visited places and where the others stand, nothing else of theirs. */
+  function sendGear(p: Player): void {
+    const others = [...players.values()].filter((q) => q.id !== p.id && q.arenaFoes === undefined).flatMap((q) => {
+      const e = world.get(q.entityId);
+      return e ? [{ name: q.base.name, area: e.area, x: e.x, y: e.y }] : [];
+    });
+    p.conn?.send({ type: "gear-map", visited: [...p.progress.flyPoints], others: others.slice(0, 3) } satisfies ServerMessage);
+  }
+
+  function sendClock(): void {
+    const msg = clockMessage();
+    for (const p of players.values()) p.conn?.send(msg);
+  }
+
   /** The menu does not pause anything; it only shows the player as busy to the others (spec 017, FR-012). */
   function setBusy(p: Player, busy: boolean): void {
     const e = world.get(p.entityId);
@@ -436,26 +600,34 @@ export function createSession(options: SessionOptions): Session {
         badgeSet: base.badgeSet,
         flyPoints: [...base.flyPoints],
         respawn: base.respawn,
+        escape: base.escape ?? null,
         bag: base.bag.map((b) => ({ ...b })),
         pokedex: { seen: [...base.pokedex.seen], caught: [...base.pokedex.caught] },
         boxes: structuredClone(base.boxes),
         pcItems: base.pcItems.map((b) => ({ ...b })),
         pending: base.pending.map((i) => ({ ...i })),
+        phone: structuredClone(base.phone),
+        ...itemStateOf(base),
       },
       flags: new Set(base.flags),
       vars: new Map(Object.entries(base.vars).map(([k, v]) => [Number(k), v])),
       buttons: 0,
       menuOpen: false,
+      gearOpen: false,
     };
     players.set(id, player);
     const send = (msg: ServerMessage) => player.conn?.send(msg);
     companions?.join({ playerId: id, entityId, progress: player.progress, send });
     captures?.join({ playerId: id, entityId, progress: player.progress, send });
     progression?.join({ playerId: id, progress: player.progress, send });
+    field.join({ playerId: id, entityId, progress: player.progress, send });
+    fishing.join({ playerId: id, entityId, progress: player.progress, send });
     trainerBattles?.join({ playerId: id, entityId, flags: player.flags, progress: player.progress, send });
+    items.join({ playerId: id, entityId, progress: player.progress, send });
     // The arena has no story, shops or PC.
     if (!arena) {
-      scripts?.join({ playerId: id, entityId, character: base.character, flags: player.flags, vars: player.vars, placement: player.base.npcPlacement, rival: player.base, intro: base.rev === 0 && base.playTimeMs === 0, init: (base.rev === 0 && base.playTimeMs === 0) || storyUnstarted(base), progress: player.progress, send });
+      scripts?.join({ playerId: id, entityId, name: base.name, character: base.character, flags: player.flags, vars: player.vars, placement: player.base.npcPlacement, rival: player.base, intro: base.rev === 0 && base.playTimeMs === 0, init: (base.rev === 0 && base.playTimeMs === 0) || storyUnstarted(base), progress: player.progress, send });
+      phone.join({ playerId: id, entityId, character: base.character, phone: player.progress.phone, flags: player.flags, send });
       shops?.join({ playerId: id, progress: player.progress, send });
       pcs.join({ playerId: id, progress: player.progress, send });
     }
@@ -494,6 +666,8 @@ export function createSession(options: SessionOptions): Session {
       bag: p.progress.bag.map((b) => ({ ...b })),
       pokedex: { seen: [...p.progress.pokedex.seen], caught: [...p.progress.pokedex.caught] },
       pending: p.progress.pending.map((i) => ({ ...i })),
+      phone: structuredClone(p.progress.phone),
+      ...itemStateOf(p.progress),
       flags: [...p.flags].sort((a, b) => a - b),
       vars: Object.fromEntries([...p.vars].map(([k, v]) => [String(k), v])),
       area: e.area,
@@ -517,7 +691,12 @@ export function createSession(options: SessionOptions): Session {
     companions?.leave(p.id);
     captures?.leave(p.id);
     progression?.leave(p.id);
+    field.leave(p.id);
+    fishing.leave(p.id);
+    items.leave(p.id);
     scripts?.leave(p.id);
+    phone.leave(p.id);
+    radio.leave(p.id);
     shops?.leave(p.id);
     pcs.leave(p.id);
     for (const id of [p.entityId, ...(p.arenaFoes ?? [])]) {
@@ -597,7 +776,7 @@ export function createSession(options: SessionOptions): Session {
   /** Handles a hello; returns the new player or undefined when it was refused. */
   /** Why this arena cannot be built, checked before anything enters the world; undefined when it can. */
   function arenaProblem(spec: ArenaSpec): string | undefined {
-    if (!combat || !options.combat || !options.devArena) return "A arena de teste só existe em builds de desenvolvimento.";
+    if (!combat || !options.combat || !options.devArena) return "A arena de teste está desligada neste servidor.";
     if (spec.foe.kind === "trainer" && !trainerBattles) return "Arena inválida: lutas de treinador precisam dos dados de treinadores e de scripts";
     if (spec.foe.kind === "trainer" && !options.trainers?.trainer(spec.foe.trainer)) return `Arena inválida: treinador ${spec.foe.trainer} não existe na extração`;
     if (spec.foe.kind === "wild" && spec.foe.behavior === "ai" && !wilds) return "Arena inválida: selvagens com IA precisam dos dados de selvagens";
@@ -711,6 +890,8 @@ export function createSession(options: SessionOptions): Session {
           resumeToken: player.token,
           resumed: admitted.resumed,
         } satisfies ServerMessage);
+        conn.send(clockMessage());
+        phone.sync(player.id);
         return;
       }
       switch (msg.type) {
@@ -773,13 +954,71 @@ export function createSession(options: SessionOptions): Session {
         case "debugGiveItem":
           scripts?.giveItem(player.id, msg.item, msg.count);
           return;
-        case "field-interact":
-        case "field-use":
+        case "debugSetStatus": {
+          const id = companions?.controlled(player.id);
+          if (scripts?.allowDev(player.id, "debugSetStatus") && id !== undefined && combat?.has(id)) combat.inflict(id, msg.status, tick);
+          return;
+        }
+        case "debugSetClock": {
+          // The session's clock is the host's (FR-001): a guest never sets it (FR-016).
+          if (player.id !== hostId) {
+            options.log(`Refused debugSetClock from player ${player.id}: not the host`);
+            return;
+          }
+          if (!scripts?.allowDev(player.id, "debugSetClock")) {
+            if (!scripts) options.log(`Refused debugSetClock from player ${player.id}: there is no script debugger`);
+            return;
+          }
+          const c = msg.clock;
+          if (c.mode === "host") time.set({ kind: "host" });
+          else if (c.mode === "advance") time.advance(c.minutes);
+          else time.setTime(c);
+          sendClock();
+          return;
+        }
+        case "phoneDial":
+          if ((scripts?.busy(player.id) ?? false) || (companions?.inCombat(player.id) ?? false) || !phone.dial(player.id, msg.contact)) notice(player, "action-refused");
+          return;
+        case "phoneAnswer":
+          if (!phone.answer(player.id, msg.callId, msg.choice)) notice(player, "action-refused");
+          return;
+        case "radioTune":
+          if (!radio.tune(player.id, msg.channel, world.get(player.entityId)?.area ?? "")) notice(player, "action-refused");
+          else player.conn?.send(radio.state(player.id, world.get(player.entityId)?.area ?? ""));
+          return;
+        case "gearOpen":
+          if (companions?.inCombat(player.id)) notice(player, "menu-blocked");
+          else {
+            player.gearOpen = true;
+            setBusy(player, true);
+            sendGear(player);
+            phone.sync(player.id);
+            player.conn?.send(radio.state(player.id, world.get(player.entityId)?.area ?? ""));
+          }
+          return;
+        case "gearClose":
+          player.gearOpen = false;
+          setBusy(player, player.menuOpen || (scripts?.busy(player.id) ?? false));
+          return;
         case "field-mount":
+          field.mount(player.id, msg.mode);
+          return;
         case "field-dismount":
+          field.dismount(player.id);
+          return;
         case "field-fish":
+          fishing.fish(player.id, msg.rod, tick);
+          return;
         case "field-reel":
+          fishing.reel(player.id, tick);
+          return;
+        case "field-use":
+          field.use(player.id, msg.move);
+          return;
         case "field-fly":
+          field.fly(player.id, msg.area);
+          return;
+        case "field-interact":
           // Field moves arrive with spec 025's stories; until then every request is refused.
           player.conn?.send({ type: "field-result", ok: false, reason: "notAllowed" } satisfies ServerMessage);
           return;
@@ -798,14 +1037,25 @@ export function createSession(options: SessionOptions): Session {
           else companions?.refresh(player.id);
           return;
         case "use-item": {
-          const refused = companions?.inCombat(player.id) ? "action-refused" : useItem(player.progress, msg.item, msg.partyIndex, options.items, hpMax);
-          if (refused) {
-            notice(player, refused);
-            return;
-          }
-          companions?.refresh(player.id);
-          if (captures) captures.refresh(player.id);
-          else player.conn?.send({ type: "bag", items: player.progress.bag.map((b) => ({ ...b })) } satisfies ServerMessage);
+          // Spec 027: every item through the item rules; the progression queue is busy with something else first.
+          const refused = progression?.busy(player.id) ? "action-refused" : items.use(player.id, msg.item, msg.partyIndex, msg.moveIndex);
+          if (refused) notice(player, refused);
+          return;
+        }
+        case "use-item-combat": {
+          const refused = items.useInCombat(player.id, msg.item, tick);
+          if (refused) notice(player, refused);
+          return;
+        }
+        case "set-held": {
+          const refused = items.setHeld(player.id, msg.partyIndex, msg.item);
+          if (refused) notice(player, refused);
+          return;
+        }
+        case "berry-plant":
+        case "berry-harvest": {
+          const refused = msg.type === "berry-plant" ? items.plant(player.id, msg.pot, msg.item) : items.harvest(player.id, msg.pot);
+          if (refused) notice(player, refused);
           return;
         }
         case "progression-ack":
@@ -859,6 +1109,9 @@ export function createSession(options: SessionOptions): Session {
       for (const p of players.values()) p.conn?.send({ type: "players", players: list } satisfies ServerMessage);
     }
     tick++;
+    // The clients run the clock on between these (spec 026); a change made with debugSetClock goes at once.
+    if (tick % CLOCK_EVERY_TICKS === 0) sendClock();
+    if (tick % GEAR_MAP_EVERY_TICKS === 0) for (const p of players.values()) if (p.gearOpen) sendGear(p);
     for (const p of players.values()) {
       const input = p.queue.shift();
       if (input) {
@@ -883,9 +1136,11 @@ export function createSession(options: SessionOptions): Session {
         if (pressed & BUTTON.throw) for (const text of options.trainers!.tuning.ballRefusal) p.conn?.send({ type: "trainerSay", text } satisfies ServerMessage);
       } else captures?.input(p.id, input);
       // In combat the input moves the Pokémon and the trainer stands still.
-      if (companions?.input(p.id, input, tick)) {
+      // Spec 027: with lockMovement on, the Pokémon stands still while its trainer uses an item.
+      if (companions?.input(p.id, input && items.locked(p.id) ? { ...input, move: { x: 0, y: 0 } } : input, tick)) {
         // A fight that starts with the menu open closes it (spec 017, FR-013).
         p.menuOpen = false;
+        p.gearOpen = false;
         setBusy(p, false);
         continue;
       }
@@ -903,12 +1158,17 @@ export function createSession(options: SessionOptions): Session {
       if (b === "wild" && typeof a === "number") progression?.engage(a, h.target);
       if (typeof b === "number" && a !== undefined && a !== b) companions?.hitBy(b, a);
     }
+    field.step();
+    fishing.step(tick);
     companions?.step(tick);
     trainerBattles?.step(tick, hits);
     wilds?.step(tick, hits);
     captures?.step(tick);
+    items.step(tick, hits);
     progression?.step();
     scripts?.step(tick);
+    phone.step();
+    for (const p of players.values()) radio.at(p.id, world.get(p.entityId)?.area ?? "");
     scripts?.sendDebug();
     // Others see a player in a script as busy (principle VII), as with the menu.
     if (scripts) for (const p of players.values()) if (p.arenaFoes === undefined) {
@@ -948,7 +1208,7 @@ export function createSession(options: SessionOptions): Session {
       for (const p of players.values()) p.conn?.send(msg);
     },
     join: (name, spawn) => {
-      const base: Save = { schemaVersion: 9, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
+      const base: Save = { schemaVersion: 11, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
       return add(base, undefined, spawn, "").id;
     },
     leave(playerId) {

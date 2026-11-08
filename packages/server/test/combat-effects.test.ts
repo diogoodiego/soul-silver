@@ -106,7 +106,7 @@ describe("stat stages", () => {
       t.spawn("sentret", [], { x: 20, y: 0 }, "wild", 30);
       if (dance) {
         t.press(a, 1, east);
-        t.step(20);
+        t.step(80);
       }
       t.press(a, 2, east);
       t.step(5);
@@ -130,7 +130,7 @@ describe("stat stages", () => {
   it("Haze clears everyone's stages", () => {
     const { t, a, b } = setup([MOVES.swordsDance.id, MOVES.haze.id]);
     t.press(a, 1, east);
-    t.step(20);
+    t.step(80);
     t.combat.get(b)!.stages.defense = -2;
     t.press(a, 2, east);
     t.step(20);
@@ -173,7 +173,7 @@ describe("other effects", () => {
       t.spawn("sentret", [], { x: 20, y: 0 }, "wild", 40);
       if (sun) {
         t.press(a, 1, east);
-        t.step(20);
+        t.step(80);
       }
       t.press(a, 2, east);
       t.step(20);

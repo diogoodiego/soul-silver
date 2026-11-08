@@ -383,8 +383,9 @@ describe("scripted phone calls (spec 024)", () => {
       ["End"],
     ] as Lines;
 
-  it("Elm's call on Route 30 after Mr. Pokémon (caller 1, call 2) says his line, with the player's name", () => {
-    expect(start(call(1, 2, 0)).state).toEqual({ kind: "blocked", request: { kind: "say", text: "0716:33", buffers: { 0: { kind: "player" } } } });
+  // Spec 026: on the Pokégear (PHONE_SCRIPT_002, sPhoneCallData_ProfElm_MapScripts[0]), not in a text box.
+  it("Elm's call on Route 30 after Mr. Pokémon (caller 1, call 2) rings his PHONE_SCRIPT_002", () => {
+    expect(start(call(1, 2, 0)).state).toEqual({ kind: "blocked", request: { kind: "call", caller: 1, script: 2 } });
   });
 
   it("a call not mapped yet stays a missing command", () => {

@@ -18,6 +18,8 @@ export const BANK = {
   dexCategories: 823,
   /** "Would you like to play with {trainer-name:0} again?": the dev dialog test (SC-004). */
   dialogTest: 18,
+  /** Place names by mapsec (Fly, spec 025). */
+  mapNames: 279,
 } as const;
 
 const banks = new Map<number, Promise<Map<number, string>>>();
@@ -61,7 +63,7 @@ export const moveTypes = () => records("moves").then((list) => new Map(list.map(
 export const speciesTypes = () => records("species").then((list) => new Map(list.map((r) => [r.id, r.types.map((t) => TYPE_KEYS[t] ?? "unknown")])));
 
 const ICONS = "assets://stages/sprites/sprites";
-type Frame = { url: string; x: number; y: number; w: number; h: number };
+export type Frame = { url: string; x: number; y: number; w: number; h: number };
 let fronts: Promise<Map<number, Frame>> | undefined;
 
 /** The battle front sprite of each species (form 0), as a page URL and a frame (spec 024). */
@@ -80,6 +82,25 @@ export function pokemonFronts() {
     .catch(() => new Map<number, Frame>());
   return fronts;
 }
+let trainers: Promise<Map<number, Frame>> | undefined;
+
+/** The battle sprite of each trainer class (a/0/5/8), as a page URL and a frame. */
+export function trainerSprites() {
+  trainers ??= fetch(`${ICONS}/trainer.json`)
+    .then((r) => r.json() as Promise<{ pages: { file: string }[]; frames: { name: string; page: number; x: number; y: number; w: number; h: number }[] }>)
+    .then((set) => {
+      const out = new Map<number, Frame>();
+      for (const f of set.frames) {
+        const m = /^trainer\/(\d+)$/.exec(f.name);
+        const page = set.pages[f.page];
+        if (m && page) out.set(Number(m[1]), { url: `${ICONS}/${page.file}`, x: f.x, y: f.y, w: f.w, h: f.h });
+      }
+      return out;
+    })
+    .catch(() => new Map<number, Frame>());
+  return trainers;
+}
+
 let icons: Promise<Map<number, { url: string; x: number; y: number; w: number; h: number }>> | undefined;
 
 /** The party icon of each species (form 0), as a page URL and a frame. */

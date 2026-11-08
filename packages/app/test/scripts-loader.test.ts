@@ -47,7 +47,7 @@ describe.skipIf(!existsSync(join(stages, "events", "events", "scripts")))("scrip
     client.onMessage((m) => got.push(m as ServerMessage));
     session.connect(server);
     // Standing just north of them, facing south.
-    const save = { schemaVersion: 9, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], name: "Gold", character: "male", area: "34", x: (person.x - o.tx) * 16 + 8, y: (person.z - 1 - o.ty) * 16 + 8, facing: "south", playTimeMs: 0, savedAt: "2026-10-26T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), pending: [], flags: [], vars: {}, npcPlacement: {} };
+    const save = { schemaVersion: 11, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], name: "Gold", character: "male", area: "34", x: (person.x - o.tx) * 16 + 8, y: (person.z - 1 - o.ty) * 16 + 8, facing: "south", playTimeMs: 0, savedAt: "2026-10-26T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), pending: [], flags: [], vars: {}, npcPlacement: {} };
     client.send({ type: "hello", protocolVersion: PROTOCOL_VERSION, save });
     session.step();
     client.send({ type: "input", seq: 1, move: { x: 0, y: 0 }, run: false, buttons: BUTTON.interact });
@@ -59,5 +59,32 @@ describe.skipIf(!existsSync(join(stages, "events", "events", "scripts")))("scrip
   it("resolves global script ids without the map and the map's own ids through it", () => {
     expect(data.resolve(2000, 60)).toBeDefined();
     expect(data.resolve(1, 60)).toMatchObject({ entry: 0 });
+  });
+});
+
+describe.skipIf(!existsSync(join(stages, "events", "events", "phone.json")))("phone book (spec 026, local extraction)", () => {
+  it("reads Joey's contact, his rematch call and his rematch set", () => {
+    const logs: string[] = [];
+    const phone = loadScripts(stages, (m) => logs.push(m))!.phone!;
+    expect(logs).toEqual([]);
+    expect(phone.contacts.find((c) => c.id === 10)).toMatchObject({ trainer: 8, map: 34, rematchWeekday: 1, rematchTime: 1, tier: 1, bank: 675 });
+    expect(phone.scripts.find((s) => s.id === 33)).toEqual({ id: 33, lines: [10, 10], type: 3, param0: 1, param1: 0 });
+    expect(phone.rematchSets.find((r) => r.base === 8)?.sequence).toEqual([8, 279, 280, 510, 0]);
+  });
+});
+
+describe("phone book (spec 026)", () => {
+  it("logs an invalid phone.json and leaves the phone out", async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const root = mkdtempSync(join(tmpdir(), "phone-"));
+    mkdirSync(join(root, "events", "events", "scripts"), { recursive: true });
+    mkdirSync(join(root, "maps", "maps"), { recursive: true });
+    writeFileSync(join(root, "maps", "maps", "map-headers.json"), JSON.stringify({ kind: "map-headers", formatVersion: 1, records: [] }));
+    writeFileSync(join(root, "events", "events", "phone.json"), JSON.stringify({ kind: "phone", formatVersion: 1, value: { contacts: [{ id: 99 }], scripts: [], rematchSets: [] } }));
+    const logs: string[] = [];
+    const data = loadScripts(root, (m) => logs.push(m))!;
+    expect(data.phone).toBeUndefined();
+    expect(logs.join()).toMatch(/phone\.json.*contacts/);
   });
 });

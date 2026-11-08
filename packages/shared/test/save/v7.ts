@@ -1,4 +1,4 @@
-import { newBoxes, type PartyMember } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, type PartyMember } from "../../src/save/schema.ts";
 
 /**
  * What 6 → 7, 7 → 8 and 8 → 9 make of a v6 save: storage into box 1, an empty PC item storage, no
@@ -7,5 +7,5 @@ import { newBoxes, type PartyMember } from "../../src/save/schema.ts";
 export function v7<S extends { storage: unknown[]; badges: number }>({ storage, badges, ...save }: S) {
   const boxes = newBoxes();
   storage.forEach((m, i) => (boxes[0]!.slots[i] = m as PartyMember));
-  return { ...save, schemaVersion: 9, boxes, pcItems: [], rivalName: "", storyRev: 0, badgeSet: (1 << badges) - 1, flyPoints: [] };
+  return { ...save, schemaVersion: 11, boxes, pcItems: [], rivalName: "", storyRev: 0, badgeSet: (1 << badges) - 1, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() };
 }

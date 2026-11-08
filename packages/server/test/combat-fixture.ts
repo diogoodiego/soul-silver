@@ -84,6 +84,8 @@ export function combatSetup(seed = 1) {
   function spawn(species: keyof typeof SPECIES, moves: number[], at: { x: number; y: number }, owner: Owner = "wild", level = 10) {
     const entity = world.add({ kind: "pokemon", area: "arena", x: at.x, y: at.y, level: 0, facing: "east", data: {} });
     combat.spawn(world, entity.id, { species: SPECIES[species].id, level, moves }, owner);
+    // Ready to act at once, so move tests need not wait for the action bar (tested on its own in combat.test.ts).
+    combat.get(entity.id)!.gauge = 1;
     return entity.id;
   }
 

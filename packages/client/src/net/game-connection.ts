@@ -2,6 +2,7 @@ import { applyDelta, serverMessage, type AiDebugRow, type ArenaSpec, type CloseR
 import { createInterpolator } from "./interpolation";
 import { createPredictor } from "./prediction";
 import { npcOccupied } from "@soulsilver/shared/npc";
+import { runClock } from "@soulsilver/shared/time";
 
 // The renderer's side of the game protocol (spec 010): handshake, inputs, state, prediction and interpolation.
 
@@ -20,7 +21,7 @@ export interface GameConnectionOptions {
 export type GameStatus = "connecting" | "playing" | "rejected" | "closed";
 
 /** Companion and fight messages (spec 014), bag, Pokédex and capture ones (spec 015), and scripts (spec 020), for the screen. */
-export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "rescued" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" | "trainerSpotted" | "trainerSay" | "trainerBattleStart" | "trainerSendOut" | "trainerItem" | "trainerBattleEnd" | "shopOpen" | "shopResult" | "shopClose" | "pcOpen" | "pcResult" | "pcClose" }>;
+export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "rescued" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" | "trainerSpotted" | "trainerSay" | "trainerBattleStart" | "trainerSendOut" | "trainerItem" | "trainerBattleEnd" | "shopOpen" | "shopResult" | "shopClose" | "pcOpen" | "pcResult" | "pcClose" | "field-result" | "player-mode" | "field-launchable" | "field-fishing" | "field-fly-map" | "field-lit" | "phone-call" | "phone-state" | "radio-state" | "gear-map" | "items-state" | "dowse" | "berry-pots" | "apricorn-box" | "item-found" }>;
 
 export function createGameConnection(options: GameConnectionOptions) {
   const entities = new Map<number, Entity>();
@@ -38,6 +39,8 @@ export function createGameConnection(options: GameConnectionOptions) {
   let seq = 0;
   let combatEvents: HitEvent[] = [];
   let companionEvents: CompanionEvent[] = [];
+  /** The session's clock as last sent (spec 026), and when it arrived. */
+  let clock: { sample: Extract<ServerMessage, { type: "clock" }>; at: number } | undefined;
   /** Only the trainer walks the tile-based step; a Pokémon in combat is shown as the server has it. */
   const predicting = () => entityId === undefined || entities.get(entityId)?.kind === "player";
 
@@ -49,6 +52,9 @@ export function createGameConnection(options: GameConnectionOptions) {
     }
     const msg = parsed.data;
     switch (msg.type) {
+      case "clock":
+        clock = { sample: msg, at: now };
+        return;
       case "welcome":
         entityId = msg.entityId;
         playerId = msg.playerId;
@@ -106,6 +112,21 @@ export function createGameConnection(options: GameConnectionOptions) {
       case "pcOpen":
       case "pcResult":
       case "pcClose":
+      case "field-result":
+      case "player-mode":
+      case "field-launchable":
+      case "field-fishing":
+      case "field-fly-map":
+      case "field-lit":
+      case "phone-call":
+      case "phone-state":
+      case "radio-state":
+      case "gear-map":
+      case "items-state":
+      case "dowse":
+      case "berry-pots":
+      case "apricorn-box":
+      case "item-found":
         companionEvents.push(msg);
         return;
       case "state": {
@@ -162,6 +183,10 @@ export function createGameConnection(options: GameConnectionOptions) {
       if (status !== "connecting" && status !== "playing") return;
       status = "closed";
       closeReason = "disconnected";
+    },
+    /** The session's time at `now` (spec 026), run on from the last message; undefined before the first. */
+    clockAt(now: number) {
+      return clock && runClock(clock.sample, now - clock.at);
     },
     get status() {
       return status;

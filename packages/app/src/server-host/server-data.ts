@@ -58,7 +58,7 @@ function wildOrNothing(dir: string, log: Log): WildData | undefined {
 /** Progression (spec 016): base experience, EV yields, curves, learnsets and evolutions from the extraction. */
 function progressionOrNothing(dir: string, log: Log): ProgressionData | undefined {
   try {
-    return buildProgressionData({ species: readExtracted(dir, "species"), learnsets: readExtracted(dir, "learnsets"), evolutions: readExtracted(dir, "evolutions") });
+    return buildProgressionData({ species: readExtracted(dir, "species"), learnsets: readExtracted(dir, "learnsets"), evolutions: readExtracted(dir, "evolutions"), machines: readExtracted(dir, "machines") });
   } catch (error) {
     log(`Progressão desativada: ${(error as Error).message}`);
     return undefined;

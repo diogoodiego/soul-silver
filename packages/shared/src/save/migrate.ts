@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { newBoxes, newCollection, SAVE_SCHEMA_VERSION, saveSchema, type PartyMember, type Save } from "./schema.ts";
+import { newBoxes, newCollection, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, type PartyMember, type Save } from "./schema.ts";
 
 export type SaveFailureCode = "invalid" | "save-too-new";
 export type MigrateResult<T = Save> = { ok: true; save: T } | { ok: false; code: SaveFailureCode; message: string };
@@ -34,6 +34,10 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   7: (save) => ({ ...save, rivalName: "", storyRev: 0, schemaVersion: 8 }),
   // Spec 025: the badge count becomes the set of badges (the first N, the order Johto is earned in); no fly point visited yet.
   8: ({ badges, ...save }) => ({ ...save, badgeSet: (1 << (badges as number)) - 1, flyPoints: [], schemaVersion: 9 }),
+  // Spec 026: no number registered yet; the story registers them again as the player goes on.
+  9: (save) => ({ ...save, phone: newPhone(), schemaVersion: 10 }),
+  // Spec 027: an empty Apricorn Box and Berry Pots; members hold nothing and have no PP Ups (both optional).
+  10: (save) => ({ ...save, ...newItemState(), schemaVersion: 11 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

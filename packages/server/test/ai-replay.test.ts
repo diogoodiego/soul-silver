@@ -16,7 +16,7 @@ const options = () => ({
   combat: combatData(),
   wild: wildData({ spawn: { defaultCap: 3, viewHalfTiles: { x: 0, y: 0 }, viewMarginTiles: 0 }, temperaments: { default: "aggressive", species: {} } }),
   ai: aiData({ profiles: { sightTiles: 16, sightAngleDeg: 360 } }),
-  hour: () => 12,
+  now: () => new Date(2026, 10, 1, 12),
   timeoutTicks: 1e9,
 });
 

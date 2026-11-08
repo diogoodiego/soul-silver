@@ -80,7 +80,7 @@
 {/snippet}
 
 <section>
-  <h2>Arena de teste (dev)</h2>
+  <h2>Arena de teste</h2>
   <p>Seu treinador entra no campo com o time abaixo; F manda o primeiro Pokémon lutar (teclas 1–4 para os golpes). Nada é salvo.</p>
   <fieldset class="grid gap-1 max-w-[30rem] mb-2">
     <legend>Seu treinador</legend>

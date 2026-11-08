@@ -34,11 +34,23 @@ export const fieldMovesRules = z.strictObject({
   bikeSpeedPx: z.number().positive().max(32),
   /** Item that leaves a cave. */
   escapeRope: int(1, 0xffff),
+  bicycle: int(1, 0xffff),
+  /** Map header weathers of a cave Flash lights (WEATHER_FLASH and the one after it, research R1). */
+  darkWeather: z.array(int(0, 255)).min(1),
+  /** Rock Smash items (rock_smash_item.c, SoulSilver's lists): eight items per list and the percent each place is drawn. */
+  rockSmashItems: z.strictObject({
+    weights: z.array(int(1, 100)).length(8),
+    default: z.array(int(1, 0xffff)).length(8),
+    ruinsOfAlph: z.array(int(1, 0xffff)).length(8),
+    cliffCave: z.array(int(1, 0xffff)).length(8),
+  }),
 });
 export type FieldMovesRules = z.infer<typeof fieldMovesRules>;
 export type FieldMoveRule = z.infer<typeof fieldMove>;
 
 const rod = z.strictObject({
+  /** The rod's item id in the bag. */
+  item: int(1, 0xffff),
   /** Wait before a bite, in seconds. */
   waitS: z
     .tuple([seconds(), seconds()])

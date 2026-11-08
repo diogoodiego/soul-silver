@@ -3,7 +3,7 @@ import { desiredMusic, type MusicState } from "../../src/audio/director.ts";
 
 // Spec 018, research R3 and R4.
 
-const MUSIC = { title: 1, wildBattle: 2, victory: 3, trainerBattle: 4, rivalBattle: 5, leaderBattle: 6, rocketBattle: 7, championBattle: 8, trainerVictory: 9, leaderVictory: 10 };
+const MUSIC = { title: 1, wildBattle: 2, victory: 3, trainerBattle: 4, rivalBattle: 5, leaderBattle: 6, rocketBattle: 7, championBattle: 8, trainerVictory: 9, leaderVictory: 10, bicycle: 12 };
 
 describe("desiredMusic (spec 022)", () => {
   it("plays the trainer class's battle music", () => {
@@ -53,5 +53,13 @@ describe("desiredMusic (US2)", () => {
 
   it("puts the title above everything", () => {
     expect(desiredMusic(game({ screen: "title", inCombat: true, victory: true }), MUSIC)).toBe(1);
+  });
+});
+
+describe("desiredMusic (spec 025)", () => {
+  it("plays the bicycle music over the map's, never over a fight or a script", () => {
+    expect(desiredMusic(game({ bike: true }), MUSIC)).toBe(12);
+    expect(desiredMusic(game({ bike: true, inCombat: true }), MUSIC)).toBe(2);
+    expect(desiredMusic(game({ bike: true, scriptMusic: 40 }), MUSIC)).toBe(40);
   });
 });

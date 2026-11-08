@@ -11,6 +11,9 @@ const header = (extra: Record<string, unknown> = {}) => ({
   musicDay: 1000,
   musicNight: 1000,
   weather: 0,
+  bikeAllowed: true,
+  escapeRopeAllowed: false,
+  flyAllowed: true,
   refs: { events: 1, scripts: 2, messages: 3, encounters: null },
   ...extra,
 });

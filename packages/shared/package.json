@@ -23,9 +23,13 @@
     "./script": "./src/script/index.ts",
       "./npc": "./src/npc/index.ts",
     "./field": "./src/field/index.ts",
+    "./time": "./src/time/index.ts",
+    "./phone": "./src/phone/index.ts",
+    "./radio": "./src/radio/index.ts",
     "./trainer": "./src/trainer/index.ts",
     "./pc": "./src/pc/index.ts",
-    "./economy": "./src/economy/index.ts"
+    "./economy": "./src/economy/index.ts",
+    "./items": "./src/items/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

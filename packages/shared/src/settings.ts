@@ -20,7 +20,8 @@ export const UI_SCALES = [0.75, 1, 1.25, 1.5] as const;
 const windowSize = z.strictObject({ width: z.number(), height: z.number() }).refine((w) => WINDOW_SIZES.some((s) => s.width === w.width && s.height === w.height), "tamanho de janela fora da lista");
 const keys = z.array(z.string().min(1).refine((k) => !RESERVED_KEYS.has(k), "tecla reservada")).min(1);
 const volume = z.number().int().min(0).max(100).multipleOf(5);
-const bindings = z.strictObject(Object.fromEntries(ACTIONS.map((a) => [a, keys])) as Record<keyof Bindings, typeof keys>);
+// An action added later takes its default key, so older settings keep their bindings.
+const bindings = z.strictObject(Object.fromEntries(ACTIONS.map((a) => [a, keys.default(() => [...DEFAULT_KEYS[a]])])) as Record<keyof Bindings, z.ZodDefault<typeof keys>>);
 
 const fields = {
   firewallNoticeSeen: z.boolean(),

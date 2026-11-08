@@ -16,7 +16,7 @@ function game() {
     combat: combatData(),
     wild: wildData({ spawn: { defaultCap: 2, viewHalfTiles: { x: 0, y: 0 }, viewMarginTiles: 0 } }),
     ai: aiData(),
-    hour: () => 12,
+    now: () => new Date(2026, 10, 1, 12),
     spawn: () => ({ area: "route", x: px(5), y: px(5) }),
   });
   const p = t.connect();

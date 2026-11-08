@@ -1,0 +1,10 @@
+{
+  "kind": "time-tint",
+  "formatVersion": 1,
+  "value": {
+    "morning": { "r": 1, "g": 0.92, "b": 0.85 },
+    "day": { "r": 1, "g": 1, "b": 1 },
+    "night": { "r": 0.45, "g": 0.5, "b": 0.75 },
+    "transitionMinutes": 60
+  }
+}

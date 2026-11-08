@@ -47,6 +47,12 @@ function cellAt(world: WorldLookup, e: Entity, x: number, y: number): CollisionC
 }
 
 const solid = (cell: CollisionCell | undefined) => cell !== undefined && (cell.category === "blocked" || cell.category === "water" || cell.category === "ledge" || isRockClimb(cell));
+/** Whirlpools and waterfalls stop a surfer until Whirlpool or Waterfall carries them across (spec 025). */
+const CURRENT = new Set([0x11, 0x13]);
+/** Water a surfer moves on. */
+export const surfable = (cell: CollisionCell | undefined) => cell?.category === "water" && !CURRENT.has(cell.raw & 0xff);
+/** Surfing (spec 025): the water is the ground and everything else a wall. */
+const solidFor = (e: Entity) => (e.data["mode"] === "surf" ? (cell: CollisionCell | undefined) => cell !== undefined && !surfable(cell) : solid);
 
 interface Blocker {
   cell: CollisionCell;
@@ -65,7 +71,7 @@ function blockers(world: WorldLookup, e: Entity, x: number, y: number, occupied?
   for (let ty = tileOf(y - HALF_BOX); ty <= lastTileOf(y + HALF_BOX); ty++) {
     for (let tx = tileOf(x - HALF_BOX); tx <= lastTileOf(x + HALF_BOX); tx++) {
       const cell = cellAt(world, e, tx * MAP_TILE_PX, ty * MAP_TILE_PX);
-      if (solid(cell)) found.push({ cell: cell!, tx, ty });
+      if (solidFor(e)(cell)) found.push({ cell: cell!, tx, ty });
       else if (occupied?.(tx, ty)) found.push({ cell: held, tx, ty });
     }
   }
@@ -109,7 +115,7 @@ function dominant(x: number, y: number): Direction {
 
 /** Feet position flush against the blocker row/column ahead, or undefined if this is no clean hop. */
 function hopStart(world: WorldLookup, e: Entity, x: number, y: number, dir: Direction, hit: Blocker[]): [number, number] | undefined {
-  if (hit.length === 0 || !hit.every((b) => b.cell.category === "ledge" && b.cell.direction === dir)) return undefined;
+  if (hit.length === 0 || e.data["mode"] === "surf" || !hit.every((b) => b.cell.category === "ledge" && b.cell.direction === dir)) return undefined;
   const [sx, sy] = STEP[dir];
   // The tile edge just ahead of the footprint (the ledge side), then the feet flush against it.
   const ahead = (feet: number, s: number) => (s > 0 ? Math.ceil((feet + HALF_BOX) / MAP_TILE_PX) : Math.floor((feet - HALF_BOX) / MAP_TILE_PX)) * MAP_TILE_PX;
@@ -199,7 +205,8 @@ export function stepMovement(entity: Entity, input: MoveInput | null, world: Wor
     return afterMove(world, moved, entity.x, entity.y);
   }
 
-  if (!input) return entity;
+  // The line is in the water (spec 025): the angler stands still until it comes out.
+  if (!input || entity.data["mode"] === "fish") return entity;
   let { x: mx, y: my } = input.move;
   const length = Math.hypot(mx, my);
   if (!(length > 0)) return entity;
@@ -207,7 +214,8 @@ export function stepMovement(entity: Entity, input: MoveInput | null, world: Wor
     mx /= length;
     my /= length;
   }
-  const speed = input.run ? RUN_SPEED_PX : MOVE_SPEED_PX;
+  // The bicycle's speed rides on the entity (spec 025), so prediction matches the server.
+  const speed = typeof entity.data["speed"] === "number" ? entity.data["speed"] : input.run ? RUN_SPEED_PX : MOVE_SPEED_PX;
   const dir = dominant(mx, my);
   const [sx, sy] = STEP[dir];
   // Only the dominant axis moves: the other component of the input vector is dropped entirely.

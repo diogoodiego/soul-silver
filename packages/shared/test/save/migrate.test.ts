@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
 import { v7 } from "./v7.ts";
-import { newBoxes, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, saveSchema } from "../../src/save/schema.ts";
 
 const v1 = {
   schemaVersion: 1,
@@ -56,11 +56,11 @@ describe("migrate", () => {
   });
 
   it("applies the chain up to the current version", () => {
-    expect(migrate({ ...v1, party: [], money: 0, badgeSet: 0, flyPoints: [], respawn: null, bag: [], pokedex: { seen: [], caught: [] }, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, rivalName: "", storyRev: 0 }, fake)).toMatchObject({ ok: true, save: { schemaVersion: 2, map: "60" } });
+    expect(migrate({ ...v1, party: [], money: 0, badgeSet: 0, flyPoints: [], respawn: null, bag: [], pokedex: { seen: [], caught: [] }, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, rivalName: "", storyRev: 0, phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() }, fake)).toMatchObject({ ok: true, save: { schemaVersion: 2, map: "60" } });
   });
 
   it("refuses a save newer than the app", () => {
-    expect(migrate({ ...v1, schemaVersion: 10 })).toMatchObject({ ok: false, code: "save-too-new" });
+    expect(migrate({ ...v1, schemaVersion: 12 })).toMatchObject({ ok: false, code: "save-too-new" });
   });
 
   it("fails when a step is missing", () => {

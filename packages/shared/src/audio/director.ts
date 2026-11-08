@@ -17,6 +17,8 @@ export interface MusicState {
   trainer?: TrainerMusic | undefined;
   /** What a script plays over the map's music (spec 024); null when it stopped it, undefined for none. */
   scriptMusic?: number | null | undefined;
+  /** On the bicycle (spec 025). */
+  bike?: boolean | undefined;
 }
 
 export interface MusicTracks {
@@ -30,6 +32,7 @@ export interface MusicTracks {
   championBattle: number;
   trainerVictory: number;
   leaderVictory: number;
+  bicycle: number;
 }
 
 /** Track id to play; null for silence. */
@@ -38,5 +41,6 @@ export function desiredMusic(state: MusicState, music: MusicTracks): number | nu
   if (state.victory) return state.trainer === undefined ? music.victory : state.trainer === "leader" ? music.leaderVictory : music.trainerVictory;
   if (state.inCombat) return state.trainer === undefined ? music.wildBattle : music[`${state.trainer}Battle`];
   if (state.scriptMusic !== undefined) return state.scriptMusic;
+  if (state.bike && music.bicycle) return music.bicycle;
   return (state.night ? state.musicNight : state.musicDay) || null;
 }

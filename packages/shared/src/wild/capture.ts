@@ -39,6 +39,8 @@ export interface BallContext {
   caughtBefore: boolean;
   /** Level of the thrower's Pokémon out, or of the party lead. */
   userLevel: number;
+  /** Spec 027: hooked with a rod (Lure Ball). */
+  fished?: boolean | undefined;
 }
 
 /** The ball's modifier in this situation; 1 when its condition does not hold. Master Ball (`always`) is handled by the caller. */
@@ -65,5 +67,7 @@ export function ballMultiplier(ball: Ball, ctx: BallContext): number {
       return ctx.baseSpeed >= 100 ? mult : 1;
     case "moon":
       return ctx.moonEvolver ? mult : 1;
+    case "lure":
+      return ctx.fished ? mult : 1;
   }
 }

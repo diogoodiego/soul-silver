@@ -4,8 +4,10 @@ import { EMOTIONS } from "../companion/schemas.ts";
 import { TRAINER_MUSIC } from "../events/schemas.ts";
 import { stats } from "../game-data/common.ts";
 import { BOX_COUNT, BOX_NAME_MAX, BOX_SLOTS, progressionItem, saveSchema } from "../save/schema.ts";
+import { BERRY_STAGES } from "../items/world.ts";
 import { PLAYER_MODES, RODS } from "../field/schemas.ts";
 import { ENTITY_KINDS } from "./entity.ts";
+import { STATUS_IDS } from "../combat/schemas.ts";
 import { PLAYER_NAME_MAX } from "./limits.ts";
 
 // Client <-> game server messages (spec 010, contracts/game-protocol.md). Validated on arrival on both sides.
@@ -19,6 +21,9 @@ const battleStats = stats(0, 0xffff);
 const direction = z.enum(["north", "south", "east", "west"]);
 /** A text id, "bank:index". */
 const textId = z.string().regex(/^\d{4}:\d+$/);
+/** PHONE_CONTACT_* (spec 026). */
+const phoneContact = z.number().int().min(0).max(74);
+const phoneLog = z.array(z.strictObject({ contact: phoneContact, direction: z.enum(["in", "out"]), at: z.iso.datetime() })).max(20);
 
 export const playerInput = z.strictObject({
   seq: count(),
@@ -100,8 +105,15 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("rescue") }),
   /** Moves a party member to another slot (spec 017); refused in combat or with a bad index. */
   z.strictObject({ type: z.literal("reorder-party"), from: z.number().int().min(0).max(5), to: z.number().int().min(0).max(5) }),
-  /** Uses a bag item on a party member outside combat (spec 017); only potions for now. */
-  z.strictObject({ type: z.literal("use-item"), item: count(), partyIndex: z.number().int().min(0).max(5) }),
+  /** Uses a bag item on a party member outside combat (spec 017); `moveIndex` is the move an Ether, PP Up or PP Max acts on (spec 027). */
+  z.strictObject({ type: z.literal("use-item"), item: count(), partyIndex: z.number().int().min(0).max(5), moveIndex: z.number().int().min(0).max(3).optional() }),
+  /** Spec 027: the trainer uses an item on the Pokémon out, in combat; it takes a while and then cools down. */
+  z.strictObject({ type: z.literal("use-item-combat"), item: count() }),
+  /** Spec 027: gives a party member a bag item to hold, or takes its item back to the bag with null. */
+  z.strictObject({ type: z.literal("set-held"), partyIndex: z.number().int().min(0).max(5), item: count().nullable() }),
+  /** Spec 027: the Berry Pots (item 470). */
+  z.strictObject({ type: z.literal("berry-plant"), pot: z.number().int().min(0).max(3), item: count() }),
+  z.strictObject({ type: z.literal("berry-harvest"), pot: z.number().int().min(0).max(3) }),
   /** Turns the AI debug overlay's data on or off for this client (spec 019); off on every connection. */
   z.strictObject({ type: z.literal("debugAi"), on: z.boolean() }),
   /** Answers the script request `id` (spec 020): 0 yes / 1 no, or the index picked; nothing for a plain confirm. */
@@ -133,6 +145,25 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("debugGiveBadge"), badge: z.number().int().min(0).max(15) }),
   z.strictObject({ type: z.literal("debugTeachMove"), slot: z.number().int().min(0).max(5), move: z.number().int().min(1).max(0xffff) }),
   z.strictObject({ type: z.literal("debugGiveItem"), item: z.number().int().min(1).max(0xffff), count: z.number().int().min(1).max(999) }),
+  /** Spec 027: development builds and the golden path only; a status on the Pokémon the player controls in combat. */
+  z.strictObject({ type: z.literal("debugSetStatus"), status: z.enum(STATUS_IDS) }),
+  /** Spec 026: development builds and the golden path only; changes the session's clock for every player. */
+  z.strictObject({
+    type: z.literal("debugSetClock"),
+    clock: z.discriminatedUnion("mode", [
+      z.strictObject({ mode: z.literal("host") }),
+      z.strictObject({ mode: z.literal("fixed"), hour: z.number().int().min(0).max(23), minute: z.number().int().min(0).max(59).optional(), weekday: z.number().int().min(0).max(6).optional() }),
+      z.strictObject({ mode: z.literal("advance"), minutes: z.number().int().min(1).max(7 * 24 * 60) }),
+    ]),
+  }),
+  /** Spec 026: the Pokégear. A call to a registered number; answering a ringing call, `choice` for its question. */
+  z.strictObject({ type: z.literal("phoneDial"), contact: phoneContact }),
+  z.strictObject({ type: z.literal("phoneAnswer"), callId: count(), choice: z.number().int().min(0).max(3).optional() }),
+  /** A radio show by its key in content/radio/channels.json; null turns the radio off. */
+  z.strictObject({ type: z.literal("radioTune"), channel: z.string().regex(/^[a-z][A-Za-z]*$/).nullable() }),
+  /** The player counts as in a menu while the Pokégear is open. */
+  z.strictObject({ type: z.literal("gearOpen") }),
+  z.strictObject({ type: z.literal("gearClose") }),
   /** Spec 022: the player closed the challenge line of the trainer that spotted them; the battle may start. */
   z.strictObject({ type: z.literal("trainer-ready") }),
   /** Spec 023: shop and PC requests, refused without an open session. */
@@ -171,13 +202,14 @@ export const REJECT_CODES = ["protocol-mismatch", "session-full", "session-close
 export type RejectCode = (typeof REJECT_CODES)[number];
 
 /** `no-escape` is the original's refusal in a trainer battle (spec 022). */
-export const NOTICE_CODES = ["no-balls", "storage-full", "ball-returned", "menu-blocked", "action-refused", "item-unavailable", "no-escape"] as const;
+export const NOTICE_CODES = ["no-balls", "storage-full", "ball-returned", "menu-blocked", "action-refused", "item-unavailable", "no-escape", "launch-refused", "item-busy", "item-not-compatible", "bag-full", "not-ready", "repel-ended"] as const;
 export type NoticeCode = (typeof NOTICE_CODES)[number];
 
 export const CLOSE_REASONS =["host-left", "closed-by-host"] as const;
 export type CloseReason = (typeof CLOSE_REASONS)[number];
 
-export const HIT_KINDS = ["hit", "immune", "tick", "heal", "status", "stages", "failed"] as const;
+/** "held" (spec 027): a held item acted; `item` says which, `amount` is the HP it gave back. */
+export const HIT_KINDS = ["hit", "immune", "tick", "heal", "status", "stages", "failed", "held"] as const;
 export type HitKind = (typeof HIT_KINDS)[number];
 
 /** Something combat did, for the feedback (spec 013, data-model.md). */
@@ -197,6 +229,8 @@ export const hitEvent = z.strictObject({
   push: z.strictObject({ x: z.number(), y: z.number() }),
   /** Status applied, or ticking. */
   status: z.string().optional(),
+  /** Spec 027: the held item that acted. */
+  item: count().optional(),
 });
 export type HitEvent = z.infer<typeof hitEvent>;
 
@@ -226,6 +260,11 @@ const textBuffer = z.discriminatedUnion("kind", [
   /** Spec 024: the receive-item std script's item and pocket (POCKET_KEYS index). */
   z.strictObject({ kind: z.literal("item"), id: count() }),
   z.strictObject({ kind: z.literal("pocket"), id: z.number().int().min(0).max(7) }),
+  /** Spec 026: a place by its MAPSEC (the map names bank), and a text by id (a phone contact's name). */
+  z.strictObject({ kind: z.literal("place"), mapsec: z.number().int().min(0).max(0xffff) }),
+  z.strictObject({ kind: z.literal("text"), text: textId }),
+  /** Spec 027: a move by id (the move a TM teaches). */
+  z.strictObject({ kind: z.literal("move"), id: count() }),
 ]);
 const scriptSound = z.enum(["se", "fanfare", "cry"]);
 
@@ -259,6 +298,8 @@ export const scriptRequest = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("wait-sound"), sound: scriptSound }),
   /** Spec 021: the client stages these steps and answers when they end; actors it controls stop following the server. */
   z.strictObject({ kind: z.literal("cutscene"), actors: z.array(cutsceneActor).max(16), steps: z.array(cutsceneStep).max(512) }),
+  /** Spec 027: Kurt asks which apricorn colour to make into balls (ScrCmd_739); answered with the colour, 7 to cancel. */
+  z.strictObject({ kind: z.literal("apricorn"), counts: z.array(count()).length(7) }),
 ]);
 export type ScriptRequestMessage = z.infer<typeof scriptRequest>;
 
@@ -327,6 +368,9 @@ export const serverMessage = z.discriminatedUnion("type", [
           exp: count().optional(),
           /** Experience at the next level; equal to exp at level 100. */
           expNext: count().optional(),
+          /** Spec 027: the item it holds, and the PP Ups on each move. */
+          held: count().optional(),
+          ppUps: z.array(z.number().int().min(0).max(3)).max(4).optional(),
         }),
       )
       .max(6),
@@ -415,6 +459,43 @@ export const serverMessage = z.discriminatedUnion("type", [
   /** While surfing: which party members may be launched. */
   z.strictObject({ type: z.literal("field-launchable"), launchable: z.array(z.boolean()).max(6) }),
   z.strictObject({ type: z.literal("field-lit"), lit: z.boolean() }),
+  /** Spec 027: this player's item use in combat (ticks of the server) and the Repel in effect; absent fields are none. */
+  z.strictObject({ type: z.literal("items-state"), useEndsTick: count().optional(), cooldownUntilTick: count().optional(), repelEndsAt: z.iso.datetime().optional() }),
+  /** Spec 027: the Dowsing MCHN, while it is on: bearing (0 north, clockwise) and closeness of the nearest hidden item; none in range without fields. */
+  z.strictObject({ type: z.literal("dowse"), dir: z.number().int().min(0).max(359).optional(), near: z.number().min(0).max(1).optional() }),
+  z.strictObject({ type: z.literal("berry-pots"), pots: z.array(z.strictObject({ berry: count(), stage: z.enum(BERRY_STAGES) }).nullable()).length(4) }),
+  z.strictObject({ type: z.literal("apricorn-box"), counts: z.array(count()).length(7) }),
+  /** Spec 027: an item that came to the bag without a script: the companion found it, or a Berry Pot gave it. */
+  z.strictObject({ type: z.literal("item-found"), item: count(), count: z.number().int().min(1).max(999), source: z.enum(["companion", "berry"]) }),
+  /** Spec 026: the session's clock, the same for every player; the client runs it on between messages. */
+  z.strictObject({ type: z.literal("clock"), minuteOfDay: z.number().int().min(0).max(1439), weekday: z.number().int().min(0).max(6), fixed: z.boolean() }),
+  /** Spec 026: a call, never while the player is busy; `choices` asks a question, answered with phoneAnswer. */
+  z.strictObject({
+    type: z.literal("phone-call"),
+    callId: count(),
+    contact: phoneContact,
+    /** Message 0 of the contact's bank (GetPhoneBookEntryName). */
+    name: textId,
+    direction: z.enum(["in", "out"]),
+    lines: z.array(textId).min(1).max(16),
+    choices: z.array(textId).min(2).max(4).optional(),
+    buffers: z.record(z.string(), textBuffer).optional(),
+  }),
+  /** `name`: message 0 of the contact's bank. */
+  z.strictObject({ type: z.literal("phone-state"), contacts: z.array(z.strictObject({ id: phoneContact, name: textId, seeking: z.boolean() })).max(75), log: phoneLog }),
+  /** The shows this place receives; `lines` is what the tuned one says now. */
+  z.strictObject({
+    type: z.literal("radio-state"),
+    shows: z.array(z.strictObject({ id: z.string().regex(/^[a-z][A-Za-z]*$/), bank: count() })),
+    tuned: z.string().regex(/^[a-z][A-Za-z]*$/).nullable(),
+    lines: z.array(textId).max(64).optional(),
+  }),
+  /** The Pokégear map: places this player visited and where the others of the session are. */
+  z.strictObject({
+    type: z.literal("gear-map"),
+    visited: z.array(z.string().min(1)),
+    others: z.array(z.strictObject({ name: z.string().min(1).max(PLAYER_NAME_MAX), area: z.string().min(1), x: z.number().finite(), y: z.number().finite() })).max(3),
+  }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessage>;
 export type StateMessage = Extract<ServerMessage, { type: "state" }>;

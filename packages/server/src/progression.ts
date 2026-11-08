@@ -1,6 +1,6 @@
 import type { Stats } from "@soulsilver/shared/combat";
 import type { ClientMessage, ServerMessage } from "@soulsilver/shared/game";
-import type { EvolutionRecord, LearnsetRecord, SpeciesRecord } from "@soulsilver/shared/game-data";
+import type { EvolutionRecord, LearnsetRecord, MachineRecord, SpeciesRecord } from "@soulsilver/shared/game-data";
 import { addEvs, expForLevel, expGain, friendshipOnLevelUp, levelFor, levelUpItems, memberStats } from "@soulsilver/shared/progression";
 import type { PartyMember, ProgressionItem, Save } from "@soulsilver/shared/save";
 import { markCaught } from "@soulsilver/shared/wild";
@@ -12,21 +12,34 @@ import { markCaught } from "@soulsilver/shared/wild";
 export interface ExtractedForProgression {
   /** `abilities` only feeds the party screen (spec 017). */
   species: (Pick<SpeciesRecord, "id" | "baseStats" | "baseExperience" | "evYield" | "growthRate" | "baseFriendship"> & Partial<Pick<SpeciesRecord, "abilities">>)[];
-  learnsets: Pick<LearnsetRecord, "id" | "levelUp">[];
+  learnsets: (Pick<LearnsetRecord, "id" | "levelUp"> & Partial<Pick<LearnsetRecord, "machines">>)[];
   evolutions: Pick<EvolutionRecord, "id" | "evolutions">[];
+  /** Spec 027: TMs and HMs; without them no machine teaches anything. */
+  machines?: MachineRecord[] | undefined;
 }
 
 export interface ProgressionData {
   species(id: number): ExtractedForProgression["species"][number] | undefined;
   levelUp(species: number): LearnsetRecord["levelUp"];
   evolutions(species: number): EvolutionRecord["evolutions"];
+  /** Spec 027: the machines (1–100) a species can learn from, and what each teaches. */
+  machines(species: number): number[];
+  machine(id: number): MachineRecord | undefined;
 }
 
 export function buildProgressionData(extracted: ExtractedForProgression): ProgressionData {
   const species = new Map(extracted.species.map((s) => [s.id, s]));
   const learnsets = new Map(extracted.learnsets.map((l) => [l.id, l.levelUp]));
   const evolutions = new Map(extracted.evolutions.map((e) => [e.id, e.evolutions]));
-  return { species: (id) => species.get(id), levelUp: (id) => learnsets.get(id) ?? [], evolutions: (id) => evolutions.get(id) ?? [] };
+  const compatible = new Map(extracted.learnsets.map((l) => [l.id, l.machines ?? []]));
+  const machines = new Map((extracted.machines ?? []).map((m) => [m.id, m]));
+  return {
+    species: (id) => species.get(id),
+    levelUp: (id) => learnsets.get(id) ?? [],
+    evolutions: (id) => evolutions.get(id) ?? [],
+    machines: (id) => compatible.get(id) ?? [],
+    machine: (id) => machines.get(id),
+  };
 }
 
 /** A player as progression sees them; the progress fields are the player's own and change in place. */
@@ -44,6 +57,12 @@ export interface ProgressionOptions {
   /** Sends the party again after a level or a species changed. */
   refresh(playerId: number): void;
 }
+
+/** Spec 027: what an item used from the bag asks of progression. */
+export type ItemGrowth = { kind: "level" } | { kind: "evolve"; item: number } | { kind: "learn"; machine: number };
+/** TM01 is item 328 and machine 1; HM08 is item 427 and machine 100. */
+const FIRST_MACHINE_ITEM = 328;
+const USE_ITEM_METHODS = new Set(["use-item", "use-item-male", "use-item-female"]);
 
 type Answer = Extract<ClientMessage, { type: "progression-ack" | "learn-answer" | "evolve-answer" }>;
 
@@ -217,6 +236,38 @@ export function createProgression(options: ProgressionOptions) {
       options.refresh(playerId);
       const next = head(s);
       if (next) send(s, next);
+    },
+    /** The move a TM or HM item teaches; undefined for any other item. */
+    machineMove: (item: number) => data.machine(item - FIRST_MACHINE_ITEM + 1)?.move,
+    /**
+     * Spec 027: a Rare Candy, an evolution stone or a machine used on party member `index`; it queues the same
+     * items a level or an evolution would. False, with nothing queued, when it does nothing for that Pokémon.
+     */
+    useItem(playerId: number, index: number, use: ItemGrowth): boolean {
+      const s = states.get(playerId);
+      const m = s?.learner.progress.party[index];
+      if (!s || !m) return false;
+      const { pending } = s.learner.progress;
+      if (use.kind === "level") {
+        const rate = data.species(m.species)?.growthRate;
+        const from = queuedLevel(s, index);
+        if (!rate || from >= 100) return false;
+        m.experience = Math.max(m.experience, expForLevel(rate, from + 1));
+        const rest = pending.filter((i) => !(i.kind === "evolve" && i.member === index));
+        s.learner.progress.pending = [...rest, ...levelUpItems({ member: index, from, to: from + 1, moves: m.moves, learnset: data.levelUp(m.species), evolutions: data.evolutions(m.species) })];
+        return true;
+      }
+      if (use.kind === "evolve") {
+        // The gendered stones (Dawn Stone) count for either sex until the party has a gender (shortcut: no gender in the save yet).
+        const to = data.evolutions(m.species).find((e) => USE_ITEM_METHODS.has(e.method) && e.condition.kind === "item" && e.condition.item === use.item);
+        if (!to) return false;
+        pending.push({ kind: "evolve", member: index, into: to.into });
+        return true;
+      }
+      const move = data.machine(use.machine)?.move;
+      if (move === undefined || m.moves.includes(move) || !data.machines(m.species).includes(use.machine)) return false;
+      pending.push({ kind: "learn", member: index, move });
+      return true;
     },
     /** True while the player still has decisions waiting: no new combat until they are done. */
     busy: (playerId: number) => (states.get(playerId)?.learner.progress.pending.length ?? 0) > 0,

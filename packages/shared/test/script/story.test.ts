@@ -74,6 +74,7 @@ describe("story commands (spec 024)", () => {
     ];
     const { state, host } = run(lines);
     expect(state).toEqual({ kind: "done" });
-    expect([host.vars.get(0x4001), host.vars.get(0x4002), host.vars.get(0x4003)]).toEqual([0, 0, 0]);
+    // The number registered just before (spec 026); no rematch sought.
+    expect([host.vars.get(0x4001), host.vars.get(0x4002), host.vars.get(0x4003)]).toEqual([1, 0, 0]);
   });
 });

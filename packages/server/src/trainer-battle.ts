@@ -4,12 +4,13 @@ import { leadIndex } from "@soulsilver/shared/companion";
 import type { TrainerMusic, TrainerRecord } from "@soulsilver/shared/events";
 import { hpRestore, tileAt, type Entity, type HitEvent, type Rng, type ServerMessage, type WorldLookup } from "@soulsilver/shared/game";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
-import type { Save } from "@soulsilver/shared/save";
+import type { PartyMember, Save } from "@soulsilver/shared/save";
+import type { HeldItem } from "@soulsilver/shared/items";
 import { chooseItem, chooseSwitch, prize, trainerProfile, type TrainerProfile } from "@soulsilver/shared/trainer";
 import { wildMoves } from "@soulsilver/shared/wild";
 import { createAi } from "./ai";
 import type { AiData } from "./ai-loader";
-import type { Combat } from "./combat";
+import { playerPic, type Combat, type CombatantSpec } from "./combat";
 import type { CombatData } from "./combat-loader";
 import { SOLID, type Companions } from "./companion";
 import type { ItemsData } from "./items";
@@ -41,6 +42,9 @@ export interface TrainerBattleOptions {
   rng: Rng;
   /** Healing items the trainer may use; without them the trainer uses none. */
   items?: ItemsData | undefined;
+  /** Spec 027: what an item does when held, and what a party member brings into combat (held item, PP Ups). */
+  held?: ((item: number) => HeldItem | undefined) | undefined;
+  extras?: ((m: PartyMember) => Pick<CombatantSpec, "held" | "cooldownMul">) | undefined;
   progression?: Progression | undefined;
   /** The trainer behind a person entity, if any. */
   trainerOf(e: Entity): { trainer: number; sightTiles: number } | undefined;
@@ -52,6 +56,14 @@ export interface TrainerBattleOptions {
   broadcast(area: string, msg: ServerMessage, except?: number): void;
   /** The battle is over; scripts waiting on it go on. */
   onEnd?(playerId: number, won: boolean): void;
+  /**
+   * Spec 026: a beaten trainer who seeks a rematch on this player's phone (LoadPhoneDat, GetPhoneBookRematch in
+   * scr_seq_0953.s): the trainer to fight and the contact; undefined for none. Winning it calls rematchWon (ScrCmd_462).
+   */
+  rematch?(playerId: number, trainer: number): { contact: number; trainer: number } | undefined;
+  rematchWon?(playerId: number, contact: number): void;
+  /** Spec 026: a trainer with an unregistered number offers it (scr_seq_0953.s _0D9F): after the first win, or `again` when talked to. True when it does. */
+  offerNumber?(playerId: number, trainer: number, again: boolean): boolean;
   onDecision?: Parameters<typeof createAi>[0]["onDecision"];
   log(message: string): void;
 }
@@ -64,6 +76,7 @@ interface Member {
   types: number[];
   hp: number;
   hpMax: number;
+  held: HeldItem | undefined;
 }
 
 interface Battle {
@@ -127,7 +140,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     const iv = Math.floor((m.difficulty * 31) / 255);
     const stats: StatOptions = { ivs: { hp: iv, attack: iv, defense: iv, speed: iv, specialAttack: iv, specialDefense: iv } };
     const hpMax = computeStats(species.baseStats, m.level, stats).hp;
-    return { species: m.species, level: m.level, moves, stats, types: [...species.types], hp: hpMax, hpMax };
+    return { species: m.species, level: m.level, moves, stats, types: [...species.types], hp: hpMax, hpMax, held: m.item === null ? undefined : options.held?.(m.item) };
   }
 
   function hooksFor(b: Battle, entityId: number): AiHooks {
@@ -161,7 +174,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
   function sendOut(b: Battle, index: number): void {
     const m = b.team[index]!;
     const e = world.add({ kind: "pokemon", area: b.arena.area, x: b.side.x, y: b.side.y, level: 0, facing: facingOf({ x: b.arena.x - b.side.x, y: b.arena.y - b.side.y }), data: {} });
-    const c = combat.spawn(world, e.id, { species: m.species, level: m.level, moves: m.moves, stats: m.stats }, "trainer");
+    const c = combat.spawn(world, e.id, { species: m.species, level: m.level, moves: m.moves, stats: m.stats, held: m.held, trainerPic: b.trainer.class.id }, "trainer");
     c.hp = m.hp;
     combat.setBattle(e.id, b.id);
     ai.add(e.id, { home: { x: b.arena.x, y: b.arena.y }, level: m.level, temperament: "aggressive", leashPx: b.arena.radiusPx, profile: b.skill, hooks: hooksFor(b, e.id) });
@@ -205,7 +218,14 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     b.ally = undefined;
   }
 
+  /** The contact of each player's rematch now fought. */
+  const rematches = new Map<number, number>();
+
   function end(b: Battle, result: "won" | "lost" | "aborted"): void {
+    const contact = rematches.get(b.fighter.playerId);
+    rematches.delete(b.fighter.playerId);
+    if (result === "won" && contact !== undefined) options.rematchWon?.(b.fighter.playerId, contact);
+    const offer = result === "won" && contact === undefined;
     for (const id of [...b.out.keys()]) recall(b, id);
     removeAlly(b);
     battles.delete(b.fighter.playerId);
@@ -222,6 +242,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     fighter.send({ type: "trainerBattleEnd", battleId: b.id, result, ...(money !== undefined ? { prize: money } : {}), ...(defeat ? { defeat } : {}) });
     options.broadcast(b.arena.area, { type: "trainerBattleEnd", battleId: b.id, result }, fighter.playerId);
     options.onEnd?.(fighter.playerId, result === "won");
+    if (offer) options.offerNumber?.(fighter.playerId, b.trainer.id, false);
   }
 
   function begin(b: Battle): void {
@@ -247,7 +268,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
       const me = world.get(b.fighter.entityId)!;
       const e = world.add({ kind: "pokemon", area: me.area, x: b.arena.x, y: b.arena.y, level: me.level, facing: me.facing, data: { owner: String(b.fighter.playerId), role: "ally", species: member.species } });
       try {
-        const c = combat.spawn(world, e.id, { species: member.species, level: member.level, moves: member.moves }, b.fighter.playerId);
+        const c = combat.spawn(world, e.id, { species: member.species, level: member.level, moves: member.moves, trainerPic: playerPic(me.data["character"]), ...options.extras?.(member) }, b.fighter.playerId);
         c.hp = member.hp;
         combat.setBattle(e.id, b.id);
         ai.add(e.id, { home: { x: b.arena.x, y: b.arena.y }, level: member.level, temperament: "aggressive", leashPx: b.arena.radiusPx, profile: skillOf(data.classes.default.combat) });
@@ -428,6 +449,12 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
       const info = options.trainerOf(npc);
       if (!f || !info) return false;
       if (f.flags.has(flagOf(info.trainer))) {
+        const again = options.rematch?.(playerId, info.trainer);
+        if (again && start(playerId, again.trainer, npc, 0)) {
+          rematches.set(playerId, again.contact);
+          return true;
+        }
+        if (options.offerNumber?.(playerId, info.trainer, true)) return true;
         const { after } = data.lines(info.trainer);
         if (after) f.send({ type: "trainerSay", text: after });
         return true;

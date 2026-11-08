@@ -7,7 +7,8 @@ import { createGameDataCodec } from "../game-data/parse.ts";
 
 export const TEMPERAMENTS = ["passive", "skittish", "aggressive", "territorial"] as const;
 export type Temperament = (typeof TEMPERAMENTS)[number];
-export const BALL_CONDITIONS = ["night-or-cave", "first-turn", "timer", "types", "nest", "repeat", "level", "fast", "moon"] as const;
+/** "lure" (spec 027): a Pokémon hooked with a rod. */
+export const BALL_CONDITIONS = ["night-or-cave", "first-turn", "timer", "types", "nest", "repeat", "level", "fast", "moon", "lure"] as const;
 export type BallCondition = (typeof BALL_CONDITIONS)[number];
 
 const tiles = () => z.number().min(0).max(64);
@@ -27,6 +28,8 @@ export const spawnRules = z.strictObject({
   viewHalfTiles: z.strictObject({ x: tiles(), y: tiles() }),
   viewMarginTiles: tiles(),
   maxTries: int(1, 256),
+  /** Water in view (spec 025): a pond smaller than the screen gets its wild Pokémon at least this far from every player. */
+  waterInViewTiles: tiles(),
   despawnRadiusTiles: tiles(),
   despawnSeconds: seconds(),
   /** A knocked-out one stays this long where it fell, catchable, then goes. */
@@ -61,6 +64,8 @@ const ball = z
     when: z.enum(BALL_CONDITIONS).optional(),
     /** Type ids for when: "types". */
     types: z.array(int(0, 17)).optional(),
+    /** Spec 027: the friendship a Pokémon caught in it starts with (Friend Ball, 200). */
+    friendship: int(0, 255).optional(),
   })
   .superRefine((b, ctx) => {
     if (b.when === "types" && !b.types?.length) ctx.addIssue({ code: "custom", path: ["types"], message: "types é obrigatório com when: types" });

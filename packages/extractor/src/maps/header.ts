@@ -62,7 +62,13 @@ export function readMapHeaders(arm9: Uint8Array, areas: Uint8Array[], counts: Ar
       matrix: fields.matrix,
       musicDay: readU16(arm9, o + 12),
       musicNight: readU16(arm9, o + 14),
-      weather: arm9[o + 20]!,
+      // The u32 at 20 packs region (bit 0), weather (bits 1–7) and the permissions (bike 25, escape rope 27, fly 28; map_header.h).
+      weather: arm9[o + 20]! >> 1,
+      bikeAllowed: (arm9[o + 23]! & 0b10) !== 0,
+      escapeRopeAllowed: (arm9[o + 23]! & 0b1000) !== 0,
+      flyAllowed: (arm9[o + 23]! & 0b10000) !== 0,
+      // Bit 30 of the u32 (incomingCalls, map_header.h; outgoingCalls is bit 29): random calls ring only here (spec 026).
+      incomingCalls: (arm9[o + 23]! & 0b1000000) !== 0,
       refs: {
         events: fields.events,
         scripts: fields.scripts,

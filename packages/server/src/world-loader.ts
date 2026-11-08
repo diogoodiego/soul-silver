@@ -63,7 +63,7 @@ export function loadWorld(stagesDir: string, log: (message: string) => void): Wo
       const count = warpCount(w.destMap);
       if (count === undefined || w.destAnchor >= count) log(`Map ${id}: warp ${i} to map ${w.destMap} anchor ${w.destAnchor} has no destination; ignored`);
     });
-    return { ...buildWorldMap(area, id, levels, warps), areaType: header.areaType, mapsec: header.mapsec, encounters: header.refs.encounters ?? undefined };
+    return { ...buildWorldMap(area, id, levels, warps), areaType: header.areaType, weather: header.weather, bikeAllowed: header.bikeAllowed, flyAllowed: header.flyAllowed, incomingCalls: header.incomingCalls, escapeRopeAllowed: header.escapeRopeAllowed, mapsec: header.mapsec, encounters: header.refs.encounters ?? undefined };
   }
 
   return (mapId) => {

@@ -1,0 +1,64 @@
+{
+  "kind": "phone-callers",
+  "formatVersion": 1,
+  "value": {
+    "callers": [
+      {
+        "caller": 1,
+        "outgoing": [
+          {
+            "local": true,
+            "scripts": [1]
+          },
+          {
+            "unless": 238,
+            "scripts": [8]
+          },
+          {
+            "unless": 121,
+            "scripts": [9]
+          },
+          {
+            "unless": 159,
+            "scripts": [10]
+          },
+          {
+            "unless": 112,
+            "scripts": [11]
+          },
+          {
+            "unless": 2435,
+            "scripts": [12]
+          },
+          {
+            "if": 282,
+            "scripts": [14, 15]
+          },
+          {
+            "scripts": [13]
+          }
+        ]
+      },
+      {
+        "caller": 0,
+        "outgoing": [
+          {
+            "local": true,
+            "scripts": [23]
+          },
+          {
+            "unless": 121,
+            "scripts": [25]
+          },
+          {
+            "unless": 167,
+            "scripts": [26]
+          },
+          {
+            "scripts": [0]
+          }
+        ]
+      }
+    ]
+  }
+}

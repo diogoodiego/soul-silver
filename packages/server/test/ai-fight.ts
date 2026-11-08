@@ -24,6 +24,10 @@ export interface FightOptions {
   maxTicks?: number;
   /** Called after every tick, to check invariants. */
   watch?(f: Fight, tick: number, hits: HitEvent[]): void;
+  /** Spec 027: the Repel level of each body (the player's side). */
+  repel?: (body: { id: number; kind: string }) => number;
+  /** The player's side stands still instead of the reference bot. */
+  idle?: boolean;
 }
 
 export type Fight = ReturnType<typeof startFight>;
@@ -35,7 +39,7 @@ export function startFight(o: FightOptions) {
   const data = combatData();
   const ai = o.ai ?? buildAiData(BUNDLED_AI_CONTENT);
   const combat = createCombat({ data, rng, lookup });
-  const runner = createAi({ data: ai, combat, combatData: data, world, lookup, rng });
+  const runner = createAi({ data: ai, combat, combatData: data, world, lookup, rng, repel: o.repel });
   // The trainer stands back, close enough to keep the wild one awake.
   world.add({ kind: "player", area: "field", x: px(10), y: px(20), level: 0, facing: "east", data: {} });
   const starter = world.add({ kind: "pokemon", area: "field", x: px(12), y: px(20), level: 0, facing: "east", data: {} }).id;
@@ -47,7 +51,7 @@ export function startFight(o: FightOptions) {
   let tick = 0;
   const reference = createReferenceBot(botRng);
   const side = (id: number) => ({ x: world.get(id)!.x, y: world.get(id)!.y, c: combat.get(id)! });
-  const bot = () => combat.input(starter, reference(side(starter), side(wild), tick));
+  const bot = () => combat.input(starter, o.idle ? { move: { x: 0, y: 0 }, buttons: 0 } : reference(side(starter), side(wild), tick));
 
   const f = {
     world,

@@ -8,12 +8,14 @@ describe("combat performance", () => {
       t.spawn(i % 2 ? "sentret" : "cyndaquil", [MOVES.ember.id, MOVES.toxicSpikes.id, MOVES.quickAttack.id, MOVES.tackle.id], { x: (i % 4) * 60, y: Math.floor(i / 4) * 60 }, i % 2 ? "wild" : 1, 60),
     );
     // Keep the projectiles flying a long way so many stay active at once.
-    Object.assign(t.data.move(MOVES.ember.id)!, { rangePx: 2000, speedPx: 40, cooldownTicks: 1 });
+    Object.assign(t.data.move(MOVES.ember.id)!, { rangePx: 2000, speedPx: 40 });
     let peak = 0;
     const started = performance.now();
     const TICKS = 600;
     for (let i = 0; i < TICKS; i++) {
       for (const id of ids) {
+        // A full action bar every tick, so moves keep coming.
+        t.combat.get(id)!.gauge = 1;
         if (i % 2 === 0) t.press(id, 1 + (i % 4 === 0 ? 0 : 1), { x: Math.cos(i + id), y: Math.sin(i + id) });
         else t.walk(id, { x: Math.cos(i), y: Math.sin(i) });
       }

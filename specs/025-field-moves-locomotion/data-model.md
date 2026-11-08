@@ -10,7 +10,7 @@
 | `bikeSpeed` | número | velocidade da bicicleta, acima da corrida |
 | `escapeRope` | item id | item que sai da caverna |
 
-Escuridão: mapa com `weather` 11 em `map-headers.json` (já extraído). Interior: `areaType` `indoor`.
+Escuridão: mapa com `weather` em `darkWeather` (11 ou 12) em `map-headers.json`. Bicicleta, Fly e Escape Rope (e Dig) seguem os bits `bikeAllowed`, `flyAllowed` e `escapeRopeAllowed` do mesmo cabeçalho (estágio `maps` versão 8).
 
 ## FlyPoints (extraído; `fly-points.json`)
 
@@ -39,7 +39,7 @@ Escuridão: mapa com `weather` 11 em `map-headers.json` (já extraído). Interio
 | `badgeSet` | int 0..0xFFFF | substitui `badges`; bit i = insígnia i |
 | `flyPoints` | `string[]` sem repetição | áreas de voo visitadas |
 
-Migração 8→9: `badgeSet = (1 << badges) - 1`; `flyPoints = [área atual se for ponto de voo]`.
+Migração 8→9: `badgeSet = (1 << badges) - 1`; `flyPoints = []`. A migração não conhece `fly-points.json` (dado extraído); a área atual entra no primeiro tick depois de o jogador entrar na sessão (`field.step`), o mesmo efeito.
 
 ## Estado de sessão (não persistido)
 

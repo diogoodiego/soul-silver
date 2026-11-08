@@ -40,25 +40,25 @@ describe("using a move", () => {
     expect(t.hp(b)).toBe(def.hp - hit.amount);
   });
 
-  it("starts on the press only, and waits for the cooldown", () => {
+  it("starts on the press only, and waits for the action bar", () => {
     const t = combatSetup();
     const a = t.spawn("cyndaquil", [tackle.id], { x: 0, y: 0 }, 1);
     t.spawn("sentret", [], { x: 20, y: 0 });
-    const cooldown = t.data.move(tackle.id)!.cooldownTicks;
-    // Held for the whole cooldown: one use.
-    for (let i = 0; i < cooldown + 5; i++) {
+    const fill = Math.ceil(t.combat.gaugeTicks(a));
+    // Held while the bar fills again: one use.
+    for (let i = 0; i < fill + 5; i++) {
       t.press(a, 1, east);
       t.step();
     }
     expect(t.events.filter((e) => e.kind === "hit")).toHaveLength(1);
-    // Released, then pressed again after the cooldown: a second use.
+    // Released, then pressed again with the bar full: a second use.
     t.step();
     t.press(a, 1, east);
     t.step(5);
     expect(t.events.filter((e) => e.kind === "hit")).toHaveLength(2);
   });
 
-  it("ignores a press during the cooldown", () => {
+  it("ignores a press while the action bar fills", () => {
     const t = combatSetup();
     const a = t.spawn("cyndaquil", [tackle.id], { x: 0, y: 0 }, 1);
     t.spawn("sentret", [], { x: 20, y: 0 });
@@ -67,7 +67,25 @@ describe("using a move", () => {
     t.press(a, 1, east);
     t.step(3);
     expect(t.events.filter((e) => e.kind === "hit")).toHaveLength(1);
-    expect(t.world.get(a)!.data.cd1).toBeGreaterThan(0);
+    expect(t.world.get(a)!.data.gauge).toBeLessThan(100);
+  });
+
+  it("enters combat with an empty action bar that fills, then lets any move go", () => {
+    const t = combatSetup();
+    const a = t.spawn("cyndaquil", [tackle.id, MOVES.ember.id], { x: 0, y: 0 }, 1);
+    t.spawn("sentret", [], { x: 20, y: 0 });
+    const c = t.combat.get(a)!;
+    c.gauge = 0;
+    t.press(a, 2, east);
+    t.step(3);
+    expect(c.used.count).toBe(0);
+    t.step(Math.ceil(t.combat.gaugeTicks(a)));
+    expect(c.gauge).toBe(1);
+    expect(t.world.get(a)!.data.gauge).toBe(100);
+    t.press(a, 2, east);
+    t.step(5);
+    expect(c.used.move).toBe(MOVES.ember.id);
+    expect(c.gauge).toBeLessThan(0.5);
   });
 
   it("aims itself at the nearest foe", () => {
@@ -168,7 +186,7 @@ describe("movement", () => {
     const fast = t.spawn("rattata", [tackle.id], { x: 0, y: 0 }, 1, 40);
     const slow = t.spawn("hoothoot", [tackle.id], { x: 0, y: 100 }, 1, 40);
     expect(t.combat.movePx(fast)).toBeGreaterThan(t.combat.movePx(slow));
-    expect(t.combat.cooldownTicks(fast, 0)).toBeLessThan(t.combat.cooldownTicks(slow, 0));
+    expect(t.combat.gaugeTicks(fast)).toBeLessThan(t.combat.gaugeTicks(slow));
     const { moveMinPx, moveMaxPx } = t.data.tuning.speed;
     for (const id of [fast, slow]) {
       expect(t.combat.movePx(id)).toBeGreaterThanOrEqual(moveMinPx / 20);
@@ -176,9 +194,4 @@ describe("movement", () => {
     }
   });
 
-  it("a heavier move has a longer cooldown", () => {
-    const t = combatSetup();
-    const a = t.spawn("rattata", [MOVES.tackle.id, MOVES.hyperBeam.id], { x: 0, y: 0 }, 1);
-    expect(t.combat.cooldownTicks(a, 1)).toBeGreaterThan(t.combat.cooldownTicks(a, 0));
-  });
 });

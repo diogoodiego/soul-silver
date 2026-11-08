@@ -43,6 +43,13 @@ export const INIT_SCRIPT = 9600;
 export const STD_MESSAGES = { overlay: 1, offset: 0x20ec8, count: 4 } as const;
 /** Fly destinations (spec 025, research R1): sSpawnMaps in ARM9, 30 records of 18 bytes. */
 export const FLY_POINTS = { offset: 0xf9e80, count: 30 } as const;
+/**
+ * The phone book (spec 026, research R7): tel/pmtel_book.dat, sPhoneMessageGmm (75 u16, ARM9),
+ * gPhoneCallScriptDef (PHONE_SCRIPT_000 to 455, overlay 101), sGenericPhoneCallHeaders (75 × 16, overlay 101, after
+ * the 96 bytes of sGreetingMsgIDs) and sTrainerRematchSets (63 rows, overlay 26).
+ * Found by signature in the US ROM and checked against Joey (contact 10, script 33, row 6).
+ */
+export const PHONE = { book: "tel/pmtel_book.dat", banks: { offset: 1082492 }, scripts: { overlay: 101, offset: 70716, count: 456 }, headers: { offset: 73548 }, greetings: { offset: 73452 }, rematch: { overlay: 26, offset: 524, count: 63 } } as const;
 export const SHOPS ={ normal: 0xfbf22, normalCount: 19, special: 0x10fa3c, specialCount: 30, badgeRank: [1, 2, 2, 3, 3, 4, 4, 5, 6] } as const;
 
 /** Level script types (init_script_types.h). */
@@ -66,3 +73,12 @@ export const SLOT_CHANCES = {
 
 /** Headbutt tables: one member per map id. */
 export const HEADBUTT_ARCHIVE = "a/2/5/2";
+/** Rock Smash items per map (spec 025): u16 odds and u16 item list, rock_smash_item.c. */
+export const ROCK_SMASH_ARCHIVE = "a/2/5/3";
+
+/** Spec 027: sHiddenItemParam (8-byte records: u16 item, u8 count, 3 zero bytes, u16 script − 8000), found in the US ROM. */
+export const HIDDEN_ITEMS = { offset: 0xfa558, count: 231 } as const;
+/** Spec 027: the colour of each apricorn tree (one byte, 0 red … 6 black), read by ApricornTreeGetApricorn. */
+export const APRICORN_TREES = { offset: 0x108413, count: 31 } as const;
+/** Spec 027: berry data, 64 records of 12 bytes; byte 4 is the hours each growth stage takes. */
+export const BERRY_DATA = "a/0/6/6";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickReaction, placeOf, timeOfDay } from "../../src/companion/reactions.ts";
+import { pickReaction, placeOf } from "../../src/companion/reactions.ts";
 import type { ReactionRules } from "../../src/companion/schemas.ts";
 
 const RULES: ReactionRules = {
@@ -16,12 +16,6 @@ const RULES: ReactionRules = {
   fallback: { emotion: "note", text: 99 },
 };
 const first = () => 0;
-
-describe("timeOfDay (Gen 4 bands)", () => {
-  it("is morning 4–9, day 10–19, night 20–3", () => {
-    expect([4, 9, 10, 19, 20, 23, 0, 3].map(timeOfDay)).toEqual(["morning", "morning", "day", "day", "night", "night", "night", "night"]);
-  });
-});
 
 describe("placeOf", () => {
   it("reads caves and interiors from the area type and towns from the mapsec list", () => {

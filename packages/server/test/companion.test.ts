@@ -165,6 +165,21 @@ describe("combat (US2)", () => {
     }
   });
 
+  it("keeps a wild foe that came inside the circle there too, and leaves one outside alone", () => {
+    const g = game([member("cyndaquil")]);
+    const foe = withFoe(g);
+    const far = withFoe(g);
+    const t = g.trainer();
+    const farAt = { ...g.entity(far)!, x: t.x + 300 };
+    g.session.world.update(farAt);
+    g.tick({ x: 0, y: 0 }, BUTTON.combat);
+    // Knocked far out of the circle: back on its edge on the next tick.
+    g.session.world.update({ ...g.entity(foe)!, x: t.x + 400 });
+    g.tick();
+    expect(Math.hypot(g.entity(foe)!.x - t.x, g.entity(foe)!.y - t.y)).toBeCloseTo(6 * 16);
+    expect(g.entity(far)!.x).toBe(farAt.x);
+  });
+
   it("recall brings the Pokémon back behind the trainer and control back to the trainer", () => {
     const g = game([member("cyndaquil")]);
     g.tick({ x: 0, y: 0 }, BUTTON.combat);

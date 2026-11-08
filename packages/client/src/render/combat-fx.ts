@@ -42,7 +42,9 @@ export function feedbackLines(e: HitEvent, texts: FeedbackTexts, targetSpecies: 
     case "tick":
       add(String(e.amount), "damage");
       break;
+    // Spec 027: a held berry that healed ("held") shows its HP like any heal.
     case "heal":
+    case "held":
       if (e.amount > 0) add(`+${e.amount}`, "heal");
       break;
     default:

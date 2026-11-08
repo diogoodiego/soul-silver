@@ -8,8 +8,10 @@
   import Controls from "../screens/Controls.svelte";
   import Settings from "../screens/Settings.svelte";
   import Bag from "./Bag.svelte";
+  import FieldMenu from "./FieldMenu.svelte";
   import PartyMenu from "./PartyMenu.svelte";
   import Pokedex from "./Pokedex.svelte";
+  import Gear from "../gear/Gear.svelte";
 
   type Member = Extract<ServerMessage, { type: "party" }>["members"][number];
   import type { MenuPage } from "./menu-page";
@@ -21,6 +23,11 @@
     items,
     dex,
     names,
+    riding,
+    pots,
+    apricorns,
+    gear,
+    onField,
     onPage,
   }: {
     page: MenuPage;
@@ -29,6 +36,15 @@
     items: Map<number, ItemRecord>;
     dex: { seen: number[]; caught: number[] };
     names: { species: (id: number) => string; move: (id: number) => string; item: (id: number) => string; nature: (id: number) => string; ability: (id: number) => string };
+    /** On the bicycle (spec 025). */
+    riding: boolean;
+    /** Spec 027: the Berry Pots and the Apricorn Box, as the server last sent them. */
+    pots: Extract<ServerMessage, { type: "berry-pots" }>["pots"] | undefined;
+    apricorns: number[] | undefined;
+    /** The Pokégear's tabs, already in text (spec 026). */
+    gear: Omit<import("svelte").ComponentProps<typeof Gear>, "onBack">;
+    /** A field move or item: the menu closes before it is sent. */
+    onField: (msg: object) => void;
     /** Another page, or undefined back to the button panel. */
     onPage: (page: MenuPage | undefined) => void;
   } = $props();
@@ -48,13 +64,32 @@
         moveName={names.move}
         natureName={names.nature}
         abilityName={names.ability}
+        itemName={names.item}
         onReorder={(from: number, to: number) => send({ type: "reorder-party", from, to })}
         onBack={back}
       />
     {:else if page === "bag"}
-      <Bag {bag} {items} {party} itemName={names.item} speciesName={names.species} onUse={(item: number, partyIndex: number) => send({ type: "use-item", item, partyIndex })} onBack={back} />
+      <Bag
+        {bag}
+        {items}
+        {party}
+        {pots}
+        {apricorns}
+        itemName={names.item}
+        speciesName={names.species}
+        moveName={names.move}
+        onUse={(item: number, partyIndex: number, moveIndex?: number) => send({ type: "use-item", item, partyIndex, ...(moveIndex === undefined ? {} : { moveIndex }) })}
+        onHold={(partyIndex: number, item: number | null) => send({ type: "set-held", partyIndex, item })}
+        onPlant={(pot: number, item: number) => send({ type: "berry-plant", pot, item })}
+        onHarvest={(pot: number) => send({ type: "berry-harvest", pot })}
+        onBack={back}
+      />
     {:else if page === "dex"}
       <Pokedex seen={dex.seen} caught={dex.caught} speciesName={names.species} onBack={back} />
+    {:else if page === "gear"}
+      <Gear {...gear} onBack={back} />
+    {:else if page === "field"}
+      <FieldMenu {party} {bag} {riding} {onField} onBack={back} />
     {:else if page === "settings"}
       <Settings onControls={() => onPage("controls")} onRescue={() => send({ type: "rescue" })} onBack={back} />
     {:else}

@@ -55,7 +55,7 @@ export interface CommandContext {
   /** The choice menu being built (MenuInit… MenuExec, spec 023). */
   menu: MenuState;
   /** The scripted Pokégear call SetPhoneCall picked, as "caller:call:arg", for RunPhoneCall (spec 024). */
-  phone: { call: string | undefined };
+  phone: { call: { caller: number; script: number } | undefined };
   /** The file's message bank as a text id prefix; numbers stay numbers when the file has none. */
   text(index: number): string;
   /** Blocks the script; `then` runs on resume with the client's answer. */
@@ -110,7 +110,7 @@ export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Han
   const special = new Map<number, number>(start.special);
   const buffers: Record<number, TextBuffer> = {};
   const menu: MenuState = { into: 0, cancel: false, std: false, items: [] };
-  const phone = { call: undefined as string | undefined };
+  const phone = { call: undefined as { caller: number; script: number } | undefined };
   const contexts: Context[] = [];
   let state: RunState = { kind: "running" };
   let then: ((answer: number, text?: string) => void) | undefined;

@@ -4,7 +4,7 @@ import type { ScriptFile } from "../events/schemas.ts";
 import type { CutsceneActor, CutsceneStep } from "../game/protocol.ts";
 
 /** A text buffer the next message fills in; the client turns ids into names. */
-export type TextBuffer = { kind: "player" } | { kind: "species"; id: number } | { kind: "number"; value: number } | { kind: "name"; name: string } | { kind: "rival"; name: string } | { kind: "item"; id: number } | { kind: "pocket"; id: number };
+export type TextBuffer = { kind: "player" } | { kind: "species"; id: number } | { kind: "number"; value: number } | { kind: "name"; name: string } | { kind: "rival"; name: string } | { kind: "item"; id: number } | { kind: "pocket"; id: number } | { kind: "place"; mapsec: number } | { kind: "text"; text: string } | { kind: "move"; id: number };
 
 /** What a blocked script waits for. `answer` on resume: 0 yes / 1 no, or the index picked. */
 export type ScriptRequest =
@@ -29,7 +29,11 @@ export type ScriptRequest =
   /** Spec 023: a Poké Mart run by the server; `shop` is a shops.json id. */
   | { kind: "shop"; shop: number; sell: boolean }
   /** Spec 021: the triggering client stages these steps and answers when they end. */
-  | { kind: "cutscene"; actors: CutsceneActor[]; steps: CutsceneStep[] };
+  | { kind: "cutscene"; actors: CutsceneActor[]; steps: CutsceneStep[] }
+  /** Spec 026: a call the script places rings on the Pokégear; answered once the player hangs up. */
+  | { kind: "call"; caller: number; script: number }
+  /** Spec 027: Kurt asks for an apricorn colour from the box (ScrCmd_739); answered with the colour, 7 to cancel. */
+  | { kind: "apricorn"; counts: number[] };
 
 /** Things a script shows without waiting. */
 export type ScriptEvent =
@@ -98,6 +102,8 @@ export interface ScriptHost {
   setStrength(on: boolean): void;
   /** Rolls the map's rock smash or headbutt table for the obstacle ahead; true when a wild Pokémon came out. */
   fieldEncounter(kind: "rockSmash" | "headbutt"): boolean;
+  /** An item in the smashed rock (rock_smash_item.c): its id, or 0 for none. */
+  rockSmashItem(): number;
   /** The walk across the rock wall, waterfall or whirlpool ahead; undefined when there is none. */
   crossing(kind: "rockClimb" | "waterfall" | "whirlpool"): { dir: "north" | "south" | "west" | "east"; count: number } | undefined;
   /** In matrix tiles, as the scripts compare them; facing as SCRIPT_DIRECTIONS indexes. */
@@ -112,6 +118,31 @@ export interface ScriptHost {
   movePerson(id: number, x: number, z: number, facing: number): void;
   /** 0 Sunday to 6 Saturday. */
   weekday(): number;
+  /** The session hour, 0 to 23. */
+  hour(): number;
+  /** Spec 026: this player's phone book (RegisterGearNumber, CheckRegisteredPhoneNumber). */
+  registerContact(id: number): void;
+  isRegistered(id: number): boolean;
+  /** GetPhoneBookRematch: the rematch trainer while the contact seeks one, else 0. */
+  rematch(id: number): number;
+  /** ScrCmd_462: the rematch was fought; the contact stops seeking it. */
+  endRematch(id: number): void;
+  /** The PHONE_SCRIPT of a scripted call (SetPhoneCall with isScriptedCall 2), by caller and index; undefined when unknown. */
+  scriptedCall(caller: number, index: number): number | undefined;
+  /** Spec 027: the move a TM or HM item teaches; 0 for any other item. */
+  machineMove?(item: number): number;
+  /** Spec 027: the apricorn tree talked to (its object's param 0): its colour and whether it bears one today. */
+  apricornTree?(): { color: number; ready: boolean } | undefined;
+  /** Picks the tree talked to into the Apricorn Box; false when there is nothing to pick or the box is full. */
+  pickApricorn?(): boolean;
+  /** The Apricorn Box: how many of each colour. */
+  apricorns?(): number[];
+  /** Kurt takes every apricorn of `color` from the box, to make into balls by tomorrow (ScrCmd_739). */
+  giveKurt?(color: number): void;
+  /** What Kurt holds: how many apricorns (ScrCmd_735) and the ball they make (ScrCmd_737); 0 for none. */
+  kurtCount?(): number;
+  kurtBall?(): number;
+  clearKurt?(): void;
   /** A uniform u16 from the simulation's seeded generator (LCRandom in the original). */
   random16(): number;
   emit(event: ScriptEvent): void;

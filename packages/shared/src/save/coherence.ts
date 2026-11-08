@@ -35,3 +35,11 @@ export function checkCoherence<S extends Save = Save>(
   }
   return { ok: true };
 }
+
+/** Spec 025 (contracts/save-v9.md): every visited fly point is one of the extracted ones. */
+export const flyPointsRule =
+  (points: readonly { map: number }[]): CoherenceRule =>
+  (save) => {
+    const unknown = save.flyPoints.find((area) => !points.some((p) => String(p.map) === area));
+    return unknown === undefined ? undefined : `flyPoints: "${unknown}" não é um ponto de voo`;
+  };

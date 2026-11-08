@@ -3,7 +3,7 @@
   // the companion's reactions, the quick swap and the fight notices (spec 014); progression after a fight (spec 016);
   // the combat HUD, the dialog box, the full menu that never pauses the world and the busy mark (spec 017).
   import { CUTSCENE_TEXT_BOOST, PROTOCOL_VERSION } from "@soulsilver/shared";
-  import { BUTTON, PLAYER_NAME_MAX, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
+  import { BUTTON, PLAYER_NAME_MAX, surfable, tileAt, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
   import { POCKET_KEYS, type ItemRecord } from "@soulsilver/shared/game-data";
   import { formatText, parseTextId, screenText, textVariables } from "@soulsilver/shared/text";
   import { onMount, untrack } from "svelte";
@@ -16,6 +16,8 @@
   import PartyPanel from "./game/PartyPanel.svelte";
   import { createDialogQueue } from "./game/dialog-queue";
   import DialogBox from "./game/DialogBox.svelte";
+  import CallScreen from "./gear/CallScreen.svelte";
+  import { regionView } from "./gear/region";
   import ScriptDebug from "./game/ScriptDebug.svelte";
   import Shop from "./game/Shop.svelte";
   import StarterChoice from "./game/StarterChoice.svelte";
@@ -32,6 +34,15 @@
   import { TICK_MS } from "./net/prediction";
   import { MAP_TILE_PX } from "@soulsilver/shared/maps";
   import trainerTuning from "../../../content/trainer/tuning.json";
+  import fishingJson from "../../../content/field/fishing.json";
+  import movesJson from "../../../content/field/moves.json";
+  import spawnJson from "../../../content/wild/spawn.json";
+  import tintJson from "../../../content/time/tint.json";
+  import radioJson from "../../../content/radio/channels.json";
+  import { pokemonMusicLines } from "@soulsilver/shared/radio";
+  import { tintAt } from "@soulsilver/shared/time";
+  import { timeOfDay } from "@soulsilver/shared/wild";
+  import FlyMap from "./FlyMap.svelte";
   import { overlayShapes, type OverlayShape } from "./render/ai-overlay";
   import { VIEW_W } from "./render/camera";
   import { createCombatFx } from "./render/combat-fx";
@@ -40,6 +51,9 @@
   import { createClientWorld } from "./render/map-assets";
   import { currentSettings, saveSettings, settings } from "./settings";
   import SwapPicker from "./SwapPicker.svelte";
+  import ItemWheel from "./game/ItemWheel.svelte";
+  import { useEffectOf, type ItemEffects } from "@soulsilver/shared/items";
+  import itemEffectsJson from "../../../content/items/effects.json";
   import DexButton from "./ui/DexButton.svelte";
   import Glyph from "./Glyph.svelte";
 
@@ -96,8 +110,62 @@
   let party = $state<Member[]>([]);
   let activeMember = $state<number | undefined>();
   let picker = $state<"closed" | "open" | "fainted">("closed");
+  /** While surfing (spec 025): which members may be sent out; undefined on land. */
+  let launchable = $state<boolean[] | undefined>();
+  let surfing = false;
+  /** On the bicycle; Fly's destinations while its map is open; Flash in this map (spec 025). */
+  let riding = $state(false);
+  let flyMap = $state<{ area: string; name: string }[] | undefined>();
+  /** Escape is cancel on the Fly map and menu on the field, emitted one after the other: closing after both keeps the menu shut. */
+  function closeFlyMap(): void {
+    queueMicrotask(() => {
+      flyMap = undefined;
+    });
+  }
+  let lit = false;
+  /** The map whose header said whether it is dark. */
+  let darkArea: string | undefined;
+  let darkMap = false;
+  /** Only outdoor maps take the day tint (spec 026, FR-004); interiors and caves keep their colours. */
+  let outdoorMap = false;
   let reaction = $state<string | undefined>();
   let notice = $state<string | undefined>();
+  /** The Pokégear's tabs in text (spec 026), from the server's gear-map, phone-state and radio-state. */
+  let gear = $state<{ map: { here: string; visited: string[]; others: { name: string; place: string }[]; region: ReturnType<typeof regionView> }; phone: { contacts: { id: number; name: string; seeking: boolean }[]; log: { name: string; direction: "in" | "out"; at: string }[] }; radio: { stations: { id: string; title: string }[]; tuned: string | null; lines: string[] } }>({
+    map: { here: "", visited: [], others: [], region: regionView([], []) },
+    phone: { contacts: [], log: [] },
+    radio: { stations: [], tuned: null, lines: [] },
+  });
+  /** The player's own area and position, as last drawn. */
+  let selfArea = "";
+  let selfAt = { x: 0, y: 0 };
+  let gearClock = $state<{ minuteOfDay: number; weekday: number } | undefined>();
+  const textOf = async (id: string) => (await scriptPages(id, {})).join(" ");
+  /** Every line of a radio show's bank, in order: the show's original text (spec 026, FR-013). */
+  async function showLines(bank: number): Promise<string[]> {
+    const texts = await bankTexts(bank);
+    return [...texts.keys()].sort((a, b) => a - b).map((i) => screenText((texts.get(i) ?? "").replace(/{[^}]*}/g, " ")).trim()).filter((l) => l !== "");
+  }
+  /** A Pokégear call on screen (spec 026): who, and whether they called or were called. */
+  let call = $state<{ name: string; direction: "in" | "out" } | undefined>();
+  async function phoneCall(ev: Extract<ServerMessage, { type: "phone-call" }>): Promise<void> {
+    const buffers = ev.buffers ?? {};
+    call = { name: (await scriptPages(ev.name, buffers)).join(" "), direction: ev.direction };
+    let last: string[] = [];
+    for (const line of ev.lines) {
+      last = await scriptPages(line, buffers);
+      await dialog.say(last);
+    }
+    // A question (Mom's savings, spec 026): the choices come up under the last line; backing out picks the last one.
+    let choice: number | undefined;
+    if (ev.choices) {
+      const labels = await Promise.all(ev.choices.map(async (id) => (await scriptPages(id, buffers)).join(" ")));
+      const picked = await dialog.choose(last.slice(-1), labels);
+      choice = picked < 0 ? labels.length - 1 : picked;
+    }
+    call = undefined;
+    window.soulSilver.sendGame({ type: "phoneAnswer", callId: ev.callId, ...(choice === undefined ? {} : { choice }) });
+  }
   /** Marks over entities: who is in a fight or busy in a menu, and the companion's emotion bubble. */
   /** `capture`: a knocked-out wild one, with the button that throws a ball under its mark. */
   let marks = $state<{ key: string; x: number; y: number; text: string; capture?: boolean }[]>([]);
@@ -108,8 +176,13 @@
   let arenaRings = $state<{ key: number; cx: number; cy: number; rx: number; ry: number }[]>([]);
   /** A trainer line (bank 728); trainer lines may name the player through buffer 0. */
   const trainerLine = async (text: string) => dialog.say(await scriptPages(text, { 0: { kind: "player" } }));
-  /** HP bars over the foes while fighting: wild ones and other players' Pokémon (spec 017, PvP). */
-  let bars = $state<{ key: string; x: number; y: number; fraction: number }[]>([]);
+  /** HP and action bars over the foes while fighting: wild ones and other players' Pokémon (spec 017, PvP). */
+  let bars = $state<{ key: string; x: number; y: number; fraction: number; gauge: number }[]>([]);
+  /** A trainer calling out the last move seen in the fight (bottom-left), until `until`. */
+  let moveCall = $state<{ key: number; pic: number; move: string; until: number } | undefined>();
+  /** Each combatant's move use count last seen, to notice a new use. */
+  let usesSeen: Record<number, number> = {};
+  const CALL_MS = 1500;
   /** The Pokémon under the player's control, for the HUD. */
   let hudSelf = $state<Entity | undefined>();
   /** The player controls a Pokémon: a fight is on. */
@@ -134,6 +207,19 @@
   let dex = $state(untrack(() => ({ seen: [...play.save.pokedex.seen], caught: [...play.save.pokedex.caught] })));
   let captureLine = $state<string | undefined>();
   const balls = $derived(bag.filter((b) => items.get(b.item)?.pocket === "balls"));
+  // Spec 027: the quick item selector, the trainer's item in use, the Dowsing MCHN, the Berry Pots and the Apricorn Box.
+  const ITEM_EFFECTS = (itemEffectsJson as { value: ItemEffects }).value;
+  const COMBAT_USES = new Set(["heal", "revive", "cure", "pp-ether", "battle-stat"]);
+  const combatChoices = $derived(bag.filter((b) => {
+    const record = items.get(b.item);
+    return record !== undefined && COMBAT_USES.has(useEffectOf(record, ITEM_EFFECTS)?.archetype ?? "");
+  }));
+  let wheel = $state<{ open: boolean; index: number; idleAt: number }>({ open: false, index: 0, idleAt: 0 });
+  let itemUse = $state<{ item: number | undefined; endsTick?: number | undefined; cooldownTick?: number | undefined; cooldownFrom: number }>({ item: undefined, cooldownFrom: 0 });
+  let dowsing = $state<{ dir: number; near: number } | undefined>();
+  let berryPots = $state<Extract<ServerMessage, { type: "berry-pots" }>["pots"] | undefined>();
+  let apricornBox = $state<number[] | undefined>(untrack(() => [...(play.save.apricorns ?? [0, 0, 0, 0, 0, 0, 0])]));
+  const RED_APRICORN = 485;
   // Spec 016: the head of the progression queue, sent only out of combat.
   let progression = $state<Extract<ServerMessage, { type: "progression" }> | undefined>();
   /** The Poké Mart a clerk opened (spec 023), and the last refusal shown in it. */
@@ -169,9 +255,31 @@
     const raw = (await bankTexts(bank)).get(index);
     if (raw === undefined) return [text];
     const values: Record<string, string | number> = {};
+    // Spec 026: places by MAPSEC and texts by id (a phone contact's name) are looked up first.
+    const places = Object.values(buffers).some((b) => b.kind === "place") ? await bankTexts(BANK.mapNames) : undefined;
+    const texts = new Map<string, string>();
+    for (const b of Object.values(buffers)) if (b.kind === "text" && !texts.has(b.text)) texts.set(b.text, (await scriptPages(b.text, {})).join(" "));
     for (const key of textVariables(raw)) {
       const b = buffers[key.split(":")[1] ?? ""];
-      values[key] = !b ? "" : b.kind === "player" ? play.save.name : b.kind === "species" ? speciesName(b.id) : b.kind === "rival" || b.kind === "name" ? b.name : b.kind === "item" ? itemName(b.id) : b.kind === "pocket" ? t(`pocket.${POCKET_KEYS[b.id] ?? "items"}`) : b.value;
+      values[key] = !b
+        ? ""
+        : b.kind === "player"
+          ? play.save.name
+          : b.kind === "species"
+            ? speciesName(b.id)
+            : b.kind === "rival" || b.kind === "name"
+              ? b.name
+              : b.kind === "item"
+                ? itemName(b.id)
+                : b.kind === "move"
+                  ? moveName(b.id)
+                : b.kind === "pocket"
+                  ? t(`pocket.${POCKET_KEYS[b.id] ?? "items"}`)
+                  : b.kind === "place"
+                    ? screenText(places?.get(b.mapsec) ?? "")
+                    : b.kind === "text"
+                      ? (texts.get(b.text) ?? "")
+                      : b.value;
     }
     try {
       // Original messages end with a page break; the empty page after it would wait for one more confirm.
@@ -277,6 +385,13 @@
       case "name":
         naming = { id: ev.id, max: r.purpose === "rival" ? PLAYER_NAME_MAX : 10, title: r.purpose === "rival" ? t("name.rival") : t("name.nickname", { name: speciesName(r.species ?? 0) }), keep: t(r.purpose === "rival" ? "name.default" : "name.keep") };
         return;
+      case "apricorn": {
+        // Kurt (spec 027): the colours in the box, with their count; a cancel answers 7.
+        const colours = r.counts.flatMap((n, i) => (n > 0 ? [i] : []));
+        const picked = await dialog.choose([t("kurt.choose")], colours.map((i) => `${itemName(RED_APRICORN + i)} ×${r.counts[i]}`));
+        answerScript(ev.id, picked < 0 ? 7 : colours[picked]!);
+        return;
+      }
       case "wait-fade":
       case "wait-sound":
         // shortcut: script fades and sounds are not drawn or played yet, so their waits end at once; answer when they finish once the audio and fade layers take script cues.
@@ -298,7 +413,11 @@
       showNotice(t("notice.menu-blocked"));
       return;
     }
+    const wasGear = page === "gear";
     page = open ? to : undefined;
+    // The Pokégear counts as a menu on the server and brings its tabs (spec 026).
+    if (page === "gear" && !wasGear) window.soulSilver.sendGame({ type: "gearOpen" });
+    else if (wasGear && page !== "gear") window.soulSilver.sendGame({ type: "gearClose" });
     if (open === menuOpen) return;
     menuOpen = open;
     window.soulSilver.sendGame({ type: "menu", open });
@@ -328,7 +447,11 @@
     let running = false;
     const renderer = createGameRenderer(host, world, log);
     const fx = createCombatFx(host, (x, y) => renderer.project(x, y), log);
-    const sounds = createAudioReactions({ playerId: () => game.playerId, header: (area) => world.header(area), world: world.lookup });
+    const night = () => {
+      const c = game.clockAt(performance.now());
+      return c !== undefined && timeOfDay(Math.floor(c.minuteOfDay / 60), spawnJson.value.timeBands) === "night";
+    };
+    const sounds = createAudioReactions({ playerId: () => game.playerId, header: (area) => world.header(area), world: world.lookup, night });
     let shown: Entity[] = [];
     for (const bank of ["species", "items", "moves", "natures", "abilities"] as const) void bankTexts(BANK[bank]).then((m) => (texts = { ...texts, [bank]: m }));
     void itemRecords().then((m) => (items = m));
@@ -344,8 +467,27 @@
     let reactionTimer: ReturnType<typeof setTimeout> | undefined;
     let pickerHeld = false;
     let nextBallHeld = false;
+    let interactHeld = false;
+    let rodHeld = false;
+    /** The items action (spec 027): when it went down, to tell a tap (next item) from a hold (use it). */
+    let itemsDownAt: number | undefined;
+    const ITEMS_HOLD_MS = 400;
+    const WHEEL_IDLE_MS = 4000;
+    /** The line in the water (spec 025): the server says when it bites. */
+    let fishing: "waiting" | "bite" | undefined;
+    /** The best rod in the bag. */
+    const bestRod = () => (["super", "good", "old"] as const).find((rod) => bag.some((b) => b.item === fishingJson.value.rods[rod].item));
+    /** Interact at the water's edge asks to surf, and on the water facing land to get off (spec 025); the server decides. */
+    function fieldEdge(): void {
+      const self = game.view(performance.now()).self;
+      if (!self) return;
+      const [dx, dy] = ({ north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] } as const)[self.facing];
+      const ahead = tileAt(world.lookup, self.area, self.level, self.x + dx * MAP_TILE_PX, self.y + dy * MAP_TILE_PX);
+      if (!surfing && surfable(ahead)) api.sendGame({ type: "field-mount", mode: "surf" });
+      else if (surfing && ahead && !["water", "blocked", "ledge"].includes(ahead.category)) api.sendGame({ type: "field-dismount" });
+    }
     /** Screen point above a standing sprite: 40 px north of its feet on the ground. */
-    const over = (e: Entity) => renderer.project(e.x, e.y - 40);
+    const over = (e: Entity) => renderer.project(e.x, e.y, 40);
 
     function companionEvents(now: number): void {
       for (const ev of game.takeCompanionEvents()) {
@@ -372,6 +514,8 @@
           });
         } else if (ev.type === "script") {
           void scriptRequest(ev);
+        } else if (ev.type === "phone-call") {
+          void phoneCall(ev);
         } else if (ev.type === "script-lock") {
           scriptLocked = ev.locked;
           if (!ev.locked) sounds.scriptEnded();
@@ -387,6 +531,18 @@
         } else if (ev.type === "bag") {
           bag = ev.items;
           selectedBall = ev.selected;
+        } else if (ev.type === "items-state") {
+          if (ev.useEndsTick === undefined && itemUse.endsTick !== undefined) itemUse = { ...itemUse, item: undefined };
+          itemUse = { ...itemUse, endsTick: ev.useEndsTick, cooldownTick: ev.cooldownUntilTick, cooldownFrom: ev.cooldownUntilTick !== itemUse.cooldownTick ? tick : itemUse.cooldownFrom };
+        } else if (ev.type === "dowse") {
+          dowsing = ev.dir === undefined ? undefined : { dir: ev.dir, near: ev.near ?? 0 };
+        } else if (ev.type === "berry-pots") {
+          berryPots = ev.pots;
+        } else if (ev.type === "apricorn-box") {
+          apricornBox = ev.counts;
+        } else if (ev.type === "item-found") {
+          const lead = party[leadIndex(party) ?? -1];
+          captureLines([ev.source === "companion" ? t("found.companion", { name: lead ? (lead.nickname ?? speciesName(lead.species)) : t("capture.yourPokemon"), item: itemName(ev.item) }) : t("found.berry", { count: ev.count, item: itemName(ev.item) })]);
         } else if (ev.type === "pokedex") {
           dex = { seen: ev.seen, caught: ev.caught };
         } else if (ev.type === "capture") {
@@ -451,6 +607,62 @@
           showNotice(t("game.rescued"));
         } else if (ev.type === "trainerSendOut") {
           // Drawn from the entities in the state messages.
+        } else if (ev.type === "player-mode") {
+          surfing = ev.mode === "surf";
+          riding = ev.mode === "bike";
+          if (!surfing) launchable = undefined;
+        } else if (ev.type === "field-launchable") {
+          launchable = ev.launchable;
+        } else if (ev.type === "field-fly-map") {
+          const points = ev.points;
+          void Promise.all(points.map((p) => world.header(p.area))).then(async (headers) => {
+            const names = await bankTexts(BANK.mapNames);
+            flyMap = points.map((p, i) => ({ area: p.area, name: screenText(names.get(headers[i]?.mapsec ?? -1) ?? p.area) }));
+          });
+        } else if (ev.type === "gear-map") {
+          const place = async (area: string) => {
+            const h = await world.header(area);
+            return screenText((await bankTexts(BANK.mapNames)).get(h?.mapsec ?? -1) ?? area);
+          };
+          // The region map draws the overworld (matrix 0) maps; a player indoors is listed but not drawn.
+          const OVERWORLD = 0;
+          const on = async (area: string) => {
+            const e = await world.extent(area);
+            return e?.matrix === OVERWORLD ? e : undefined;
+          };
+          const areas = [...new Set([selfArea, ...ev.visited, ...ev.others.map((o) => o.area)])];
+          const at = { area: selfArea, ...selfAt };
+          void Promise.all([place(selfArea), Promise.all(ev.visited.map(place)), Promise.all(ev.others.map(async (o) => ({ name: o.name, place: await place(o.area) }))), Promise.all(areas.map(async (a) => ({ area: a, name: await place(a), extent: await on(a) })))]).then(([here, visited, others, maps]) => {
+            const extentOf = (area: string) => maps.find((m) => m.area === area)?.extent;
+            const placesOn = maps.flatMap((m) => (m.extent ? [{ name: m.name, extent: m.extent, here: m.area === at.area }] : []));
+            const players = [{ name: play.save.name, area: at.area, x: at.x, y: at.y, self: true }, ...ev.others.map((o) => ({ name: o.name, area: o.area, x: o.x, y: o.y, self: false }))].flatMap((p) => {
+              const extent = extentOf(p.area);
+              return extent ? [{ name: p.name, extent, x: p.x, y: p.y, self: p.self }] : [];
+            });
+            gear.map = { here, visited: [...new Set(visited)], others, region: regionView(placesOn, players) };
+          });
+        } else if (ev.type === "phone-state") {
+          void Promise.all(ev.contacts.map(async (c) => ({ id: c.id, name: await textOf(c.name), seeking: c.seeking }))).then((contacts) => {
+            gear.phone = { contacts, log: ev.log.map((l) => ({ name: contacts.find((c) => c.id === l.contact)?.name ?? String(l.contact), direction: l.direction, at: l.at })) };
+          });
+        } else if (ev.type === "radio-state") {
+          const showOf = (bank: number) => radioJson.value.shows.find((x) => x.bank === bank)?.id ?? "";
+          const stations = ev.shows.map((st) => ({ id: st.id, title: t(`radio.show.${showOf(st.bank)}` as MessageKey) }));
+          const bank = ev.shows.find((st) => st.id === ev.tuned)?.bank;
+          // Pokémon Music says the day's line (pokemon_music.c); the other shows are listed in their bank's order.
+          const now = game.clockAt(performance.now());
+          const music = bank !== undefined && showOf(bank) === "pokemonMusic" && now ? pokemonMusicLines(now.weekday, { gbSounds: bag.some((b) => b.item === 502), nationalDex: false }) : undefined;
+          const read = bank === undefined ? Promise.resolve([]) : music ? Promise.all(music.map((i) => textOf(`${String(bank).padStart(4, "0")}:${i}`))) : showLines(bank);
+          void read.then((lines) => {
+            gear.radio = { stations, tuned: ev.tuned, lines };
+          });
+        } else if (ev.type === "field-lit") {
+          lit = ev.lit;
+        } else if (ev.type === "field-fishing") {
+          fishing = ev.state === "waiting" || ev.state === "bite" ? ev.state : undefined;
+          if (ev.state !== "waiting") captureLines([t(`fishing.${ev.state}`)]);
+        } else if (ev.type === "field-result") {
+          if (!ev.ok) captureLines([t(`field.refused.${ev.reason ?? "notAllowed"}` as MessageKey)]);
         } else {
           picker = "closed";
           showNotice(t("game.blackout", { money: ev.moneyLost }), 5000);
@@ -477,7 +689,7 @@
 
     // The menu action opens the full menu; once open, the menu screens take the input.
     const offAction = input.onAction((action) => {
-      if (action === "menu" && !menuOpen && (!dialogOpen || scriptLocked) && picker === "closed" && !progression && status === "playing") setMenu(true);
+      if (action === "menu" && !menuOpen && (!dialogOpen || scriptLocked) && picker === "closed" && flyMap === undefined && !progression && status === "playing") setMenu(true);
     });
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "F3") {
@@ -501,7 +713,7 @@
 
     const inputTimer = setInterval(() => {
       // Menus, the text box and a running script take the input; the world keeps going without it (FR-012).
-      const blocked = menuOpen || dialogOpen || scriptLocked;
+      const blocked = menuOpen || dialogOpen || scriptLocked || flyMap !== undefined;
       const read = input.read();
       const move = blocked ? { x: 0, y: 0 } : read.move;
       const run = !blocked && read.run;
@@ -509,6 +721,20 @@
       let buttons = blocked ? 0 : input.buttons();
       // Interacting needs no menu, swap picker or dialog open (FR-011); cutscenes do not exist yet.
       if (picker !== "closed" || reaction || progression) buttons &= ~BUTTON.interact;
+      const interactNow = (buttons & BUTTON.interact) !== 0;
+      const rodNow = !blocked && input.held("rod");
+      // Interact or the rod button reels in; the rod button casts the best rod at the water ahead.
+      if (((interactNow && !interactHeld) || (rodNow && !rodHeld)) && fishing) api.sendGame({ type: "field-reel" });
+      else if (interactNow && !interactHeld && !inCombat) fieldEdge();
+      else if (rodNow && !rodHeld && !inCombat) {
+        const rod = bestRod();
+        if (rod) api.sendGame({ type: "field-fish", rod });
+        else captureLines([t("fishing.noRod")]);
+      }
+      interactHeld = interactNow;
+      rodHeld = rodNow;
+      // The press that reels in talks to nobody.
+      if (fishing) buttons &= ~BUTTON.interact;
       if (recallOnce) {
         buttons |= BUTTON.recall;
         recallOnce = false;
@@ -522,6 +748,23 @@
         api.sendGame({ type: "select-ball", item: balls[(at + 1) % balls.length]!.item });
       }
       nextBallHeld = nextBallNow;
+      const itemsNow = !blocked && inCombat && input.held("items");
+      const clock = performance.now();
+      if (itemsNow && itemsDownAt === undefined) itemsDownAt = clock;
+      if (itemsNow && itemsDownAt !== undefined && wheel.open && clock - itemsDownAt >= ITEMS_HOLD_MS) {
+        const choice = combatChoices[wheel.index];
+        if (choice) {
+          api.sendGame({ type: "use-item-combat", item: choice.item });
+          itemUse = { ...itemUse, item: choice.item };
+        }
+        itemsDownAt = Number.POSITIVE_INFINITY;
+        wheel = { ...wheel, idleAt: clock };
+      }
+      if (!itemsNow && itemsDownAt !== undefined) {
+        if (Number.isFinite(itemsDownAt)) wheel = wheel.open ? { ...wheel, index: (wheel.index + 1) % Math.max(1, combatChoices.length), idleAt: clock } : { open: true, index: 0, idleAt: clock };
+        itemsDownAt = undefined;
+      }
+      if (wheel.open && (!inCombat || (itemsDownAt === undefined && clock - wheel.idleAt > WHEEL_IDLE_MS))) wheel = { ...wheel, open: false };
       if (picker !== "closed" || progression) buttons &= ~(BUTTON.throw | BUTTON.combat);
       // No aim: the server aims every move and ball at the nearest foe.
       game.sendInput(move, run, performance.now(), buttons);
@@ -560,9 +803,18 @@
       hudSelf = view.self?.kind === "pokemon" ? view.self : undefined;
       const fighting = hudSelf !== undefined;
       const nextBars = fighting
-        ? shown.filter((e) => e.kind === "pokemon" && e.data["owner"] !== hudSelf!.data["owner"] && Number(e.data["hpMax"] ?? 0) > 0).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]) }))
+        ? shown.filter((e) => e.kind === "pokemon" && e.data["owner"] !== hudSelf!.data["owner"] && Number(e.data["hpMax"] ?? 0) > 0).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]), gauge: Number(e.data["gauge"] ?? 0) / 100 }))
         : [];
       if (nextBars.length > 0 || bars.length > 0) bars = nextBars;
+      // A trainer's Pokémon (the player's or an NPC trainer's) used a move: the trainer calls it out.
+      const fighters = fighting ? shown.filter((e) => e.kind === "pokemon" && typeof e.data["trainerPic"] === "number") : [];
+      for (const e of fighters) {
+        const used = Number(e.data["used"] ?? 0);
+        const before = usesSeen[e.id];
+        if (before !== undefined && used > before) moveCall = { key: now, pic: Number(e.data["trainerPic"]), move: moveName(Number(e.data["usedMove"])), until: now + CALL_MS };
+      }
+      usesSeen = Object.fromEntries(fighters.map((e) => [e.id, Number(e.data["used"] ?? 0)]));
+      if (moveCall && (now > moveCall.until || !fighting)) moveCall = undefined;
       const nextMarks: typeof marks = shown.filter((e) => e.data["inCombat"] === true).map((e) => ({ key: `fight-${e.id}`, ...over(e), text: "⚔" }));
       for (const e of shown) if (e.data["busy"] === true && e.id !== game.entityId) nextMarks.push({ key: `busy-${e.id}`, ...over(e), text: t("game.busy") });
       // A wild Pokémon that just noticed someone (spec 019, Alert state), or a trainer that spotted this player (spec 022).
@@ -581,10 +833,29 @@
       for (const e of shown) if (e.data["owner"] === "wild" && e.data["hp"] === 0) nextMarks.push({ key: `ko-${e.id}`, ...over(e), text: t("game.knockedOut"), capture: balls.length > 0 });
       const bubbleOver = emotion && now < emotion.until ? shown.find((e) => e.id === emotion!.id) : undefined;
       if (bubbleOver && emotion) nextMarks.push({ key: "emotion", ...over(bubbleOver), text: emotion.text });
+      if (fishing && view.self) nextMarks.push({ key: "fishing", ...over(view.self), text: fishing === "bite" ? "!" : "…" });
       if (nextMarks.length > 0 || marks.length > 0) marks = nextMarks;
       const nextBusy = shown.filter((e) => e.kind === "player" && e.data["busy"] === true).map((e) => String(e.data["name"]));
       if (nextBusy.join() !== busyNames.join()) busyNames = nextBusy;
+      if (view.self && view.self.area !== darkArea) {
+        const area = (darkArea = view.self.area);
+        darkMap = false;
+        outdoorMap = false;
+        void world.header(area).then((h) => {
+          if (darkArea !== area) return;
+          darkMap = movesJson.value.darkWeather.includes(h?.weather ?? -1);
+          outdoorMap = h?.areaType === "outdoor";
+        });
+      }
+      renderer.setDark(darkMap && !lit);
+      const clock = game.clockAt(now);
+      if (page === "gear" && clock) gearClock = { minuteOfDay: Math.floor(clock.minuteOfDay), weekday: clock.weekday };
+      renderer.setTint(outdoorMap && clock ? tintAt(clock.minuteOfDay, spawnJson.value.timeBands, tintJson.value) : null);
       const self = view.self;
+      if (self) {
+        selfArea = self.area;
+        selfAt = { x: self.x, y: self.y };
+      }
       position = self ? t("debug.position", { area: self.area, x: Math.round(self.x), y: Math.round(self.y), level: self.level }) : "—";
       status = game.status;
       rejectMessage = game.rejectMessage;
@@ -674,6 +945,8 @@
     ["pause.party", "party"],
     ["pause.bag", "bag"],
     ["pause.dex", "dex"],
+    ["pause.gear", "gear"],
+    ["pause.field", "field"],
     ["pause.settings", "settings"],
   ];
   const NAV_CLASS = "grid grid-cols-2 gap-3";
@@ -723,7 +996,8 @@
   {/if}
 
   {#each marks as m (m.key)}
-    <span class="absolute -translate-x-1/2 -translate-y-full text-white font-bold text-[1.1rem] [text-shadow:0_1px_2px_#000] pointer-events-none z-1 grid justify-items-center" style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">
+    <!-- A lone glyph ("!", "…", "⚔", an emotion) is drawn large: in the screen's pixel font it is otherwise a few pixels tall. -->
+    <span style:font-size={[...m.text].length <= 2 ? "2rem" : undefined} class="absolute -translate-x-1/2 -translate-y-full text-white font-bold text-[1.1rem] [text-shadow:0_1px_2px_#000] pointer-events-none z-1 grid justify-items-center" style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">
       {m.text}
       {#if m.capture}<span class="text-[0.75em]"><Glyph action="throw" /> {t("game.captureHint")}</span>{/if}
     </span>
@@ -752,12 +1026,35 @@
   {#if captureLine}<p class={DIALOG} role="status">{captureLine}</p>{/if}
 
   {#if status === "playing" && (hudSelf || play.arena)}
-    <CombatHud self={hudSelf} {bars} {speciesName} />
+    <CombatHud self={hudSelf} {bars} call={moveCall} {speciesName} />
+  {/if}
+  {#if status === "playing" && hudSelf && (wheel.open || itemUse.endsTick !== undefined)}
+    <ItemWheel
+      choices={combatChoices}
+      selected={Math.min(wheel.index, Math.max(0, combatChoices.length - 1))}
+      using={itemUse.endsTick !== undefined ? itemUse.item : undefined}
+      cooling={itemUse.cooldownTick !== undefined && itemUse.cooldownTick > tick ? (itemUse.cooldownTick - tick) / Math.max(1, itemUse.cooldownTick - itemUse.cooldownFrom) : 0}
+      {itemName}
+    />
+  {/if}
+  {#if status === "playing" && dowsing}
+    <!-- The Dowsing MCHN (spec 027): a needle toward the nearest hidden item, brighter as it gets close. -->
+    <div class="absolute right-3 top-3 z-2 grid justify-items-center gap-1 px-2 py-1 bg-panel rounded-[6px] text-white text-[0.8rem] pointer-events-none" role="img" aria-label={t("dowse.label")}>
+      <svg class="size-8 text-accent" viewBox="-16 -16 32 32" style:opacity={0.35 + 0.65 * dowsing.near} aria-hidden="true">
+        <circle r="14" fill="none" stroke="currentColor" stroke-width="2" />
+        <line x2="0" y2="-11" stroke="currentColor" stroke-width="3" stroke-linecap="round" transform="rotate({dowsing.dir})" />
+      </svg>
+      {t("dowse.label")}
+    </div>
   {/if}
 
+  {#if flyMap}
+    <FlyMap points={flyMap} onFly={(area: string) => { flyMap = undefined; window.soulSilver.sendGame({ type: "field-fly", area }); }} onBack={closeFlyMap} />
+  {/if}
   {#if picker !== "closed"}
     <SwapPicker
       members={party}
+      {launchable}
       active={activeMember}
       fainted={picker === "fainted"}
       {speciesName}
@@ -816,6 +1113,7 @@
     <Shop {shop} {bag} refused={shopRefused} {itemName} onConfirm={(item: number, qty: number) => window.soulSilver.sendGame({ type: shop!.mode === "sell" ? "shop-sell" : "shop-buy", item, qty })} onLeave={() => window.soulSilver.sendGame({ type: "shop-leave" })} />
   {/if}
 
+  {#if call}<CallScreen name={call.name} direction={call.direction} />{/if}
   <DialogBox queue={dialog} boost={scriptLocked && $settings.fastCutsceneText ? CUTSCENE_TEXT_BOOST : 1} />
 
   {#if menuOpen && !page && status === "playing"}
@@ -827,7 +1125,7 @@
     </div>
   {/if}
   {#if menuOpen && page && status === "playing"}
-    <PauseMenu {page} {party} {bag} {items} {dex} {names} onPage={(next) => setMenu(true, next)} />
+    <PauseMenu {page} {party} {bag} {items} {dex} {names} {riding} pots={berryPots} apricorns={apricornBox} gear={{ ...gear, clock: gearClock, onDial: (contact: number) => window.soulSilver.sendGame({ type: "phoneDial", contact }), onTune: (channel: string | null) => window.soulSilver.sendGame({ type: "radioTune", channel }) }} onField={(msg) => { setMenu(false); window.soulSilver.sendGame(msg); }} onPage={(next: MenuPage | undefined) => setMenu(true, next)} />
   {/if}
 
   {#if saveNote}<p class="absolute left-2 top-2 m-0 text-white text-[0.85rem] opacity-80 z-1" role="status">{saveNote}</p>{/if}

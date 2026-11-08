@@ -17,6 +17,7 @@ import { readNewGameStart } from "../src/server-host/extracted";
 import { loadServerData } from "../src/server-host/server-data";
 import { failedCheck, MILESTONES, type Milestone } from "./milestones";
 import { optionalMissing, report, type Check } from "./report";
+import { itemProbe } from "./item-scenarios";
 
 const stages = process.env["SOULSILVER_DATA"] ?? join(process.env["APPDATA"] ?? "", "SoulSilver Desktop", "extraction", "stages");
 const VECTORS: Record<Direction, { x: number; y: number }> = { north: { x: 0, y: -1 }, south: { x: 0, y: 1 }, east: { x: 1, y: 0 }, west: { x: -1, y: 0 } };
@@ -32,7 +33,8 @@ const SECOND = { map: 60, tx: 690, ty: 402 };
 
 type Got<T extends ServerMessage["type"]> = Extract<ServerMessage, { type: T }>;
 
-function pilot() {
+/** `from`: a save to start from instead of a new game (the rematch probe of spec 026). */
+function pilot(from?: Save) {
   if (!existsSync(join(stages, "events", "events", "new-game.json"))) {
     throw new Error(`Sem extração em ${stages}. Extraia a ROM pelo app (ou npm run extract) e aponte SOULSILVER_DATA para a pasta stages.`);
   }
@@ -87,7 +89,7 @@ function pilot() {
     if (!welcome) throw new Error(`O servidor recusou o save: ${JSON.stringify(got.at(-1))}`);
     return { client, got, welcome, read: 0, seq: 0, save: undefined as Save | undefined, debug: undefined as Got<"script-debug"> | undefined, seen: new Map<number, Got<"state">["spawned"][number]>() };
   };
-  const one = join_(newGame("Gold"));
+  const one = join_(from ?? newGame("Gold"));
   // The second player starts their own story where it begins, then waits in New Bark Town (spec 020 isolation).
   const second = newGame("Kris");
   const o = data.world!(String(SECOND.map))?.origin ?? { tx: 0, ty: 0 };
@@ -107,6 +109,9 @@ function pilot() {
   /** Answers to the next menus and yes/no questions (CANCEL backs out of a menu); 0 once they run out. */
   const answers: number[] = [];
   const services: ServerMessage[] = [];
+  /** Spec 026: the first player's Pokégear calls and the texts their scripts said, in order. */
+  const calls: Got<"phone-call">[] = [];
+  const says: string[] = [];
   const visited = new Set<number>();
   let lastScript: string | null = null;
   const me = () => session.world.get(welcome.entityId)!;
@@ -123,10 +128,16 @@ function pilot() {
       const m = c.got[c.read]!;
       if (m.type === "script") {
         const r = m.request;
+        if (first && r.kind === "say") says.push(r.text);
         const queued = first && (r.kind === "menu" || r.kind === "yes-no") ? (answers.shift() ?? 0) : 0;
         // -1 cancels a menu: one past its last entry.
         const answer = r.kind === "starter" ? STARTER_PICK : queued === CANCEL && r.kind === "menu" ? r.items.length : queued;
         c.client.send({ type: "script-answer", id: m.id, answer, ...(r.kind === "name" && r.purpose === "rival" ? { text: first ? RIVAL : "Kris" } : {}) });
+      } else if (m.type === "phone-call") {
+        // A player reads the call and hangs up.
+        if (first) calls.push(m);
+        // A question (Mom's savings) gets the first choice.
+        c.client.send({ type: "phoneAnswer", callId: m.callId, ...(m.choices ? { choice: 0 } : {}) });
       } else if (m.type === "progression") {
         if (m.item.kind === "evolve") c.client.send({ type: "evolve-answer", accept: true });
         else if (m.item.kind === "learn" && (m.moves?.length ?? 0) >= 4) {
@@ -291,6 +302,19 @@ function pilot() {
     return battle(name, [person.trainer], money, pass);
   }
 
+  /** Spec 026: beside person `npc` of `map`, facing them, and talks (a beaten trainer does not spot). */
+  function talkTo(map: number, npc: number): boolean {
+    const person = data.scripts?.events(map)?.npcs.find((n) => n.id === npc);
+    if (!person) return false;
+    const o = data.world!(String(map))?.origin ?? { tx: 0, ty: 0 };
+    const free = (tx: number, ty: number) => !SOLID.has(tileAt(data.world!, String(map), 0, (tx - o.tx) * 16 + 8, (ty - o.ty) * 16 + 8)?.category ?? "blocked");
+    const side = (Object.keys(VECTORS) as Direction[]).find((dir) => free(person.x + VECTORS[dir].x, person.z + VECTORS[dir].y));
+    if (!side) return false;
+    warp(map, person.x + VECTORS[side].x, person.z + VECTORS[side].y);
+    talk((Object.keys(VECTORS) as Direction[]).find((x) => VECTORS[x].x === -VECTORS[side].x && VECTORS[x].y === -VECTORS[side].y)!);
+    return true;
+  }
+
   const wilds = () => session.world.all().filter((e) => e.kind === "pokemon" && session.combat?.get(e.id)?.owner === "wild" && e.area === me().area);
   /** The wild Pokémon nearest the player, once one shows within `max` ticks. */
   function nearestWild(max = 400, from = me()) {
@@ -388,6 +412,9 @@ function pilot() {
     talk,
     battle,
     routeTrainer,
+    talkTo,
+    calls,
+    says,
     train,
     nearestWild,
     approach,
@@ -476,6 +503,79 @@ function shop(p: Pilot): Check {
   const after = p.fresh();
   if (!sold?.ok || after.money !== mid.money + sale || p.count(after, POTION) !== p.count(before, POTION)) return fail(`venda: ${JSON.stringify(sold)}, dinheiro ${after.money}, Potions ${p.count(after, POTION)}`);
   return { name: `${name}: loja ${buying.shopId}, ${offered.length} itens; Potion comprada por ${price} e vendida por ${sale}` };
+}
+
+/** Joey (PHONE_CONTACT_JOEY) and Elm (PHONE_CONTACT_PROF__ELM), and the story flags that open a rematch (flags.h). */
+const JOEY = 10;
+const ELM = 1;
+const FLAG_BEAT_RADIO_TOWER_ROCKETS = 0xc6;
+const FLAG_REMATCH_GROUP_2 = 0x97b + 2;
+
+/** Spec 026 (T041): Elm's call after Mr. Pokémon rings on the Pokégear with PHONE_SCRIPT_002's text, never as a text box. */
+function elmCall(p: Pilot): Check {
+  const name = "ligação do Elm depois do Mr. Pokémon pelo telefone (spec 026)";
+  const line = "0716:33";
+  const call = p.calls.find((c) => c.contact === ELM);
+  if (!call) return { name, failed: "nenhuma ligação do Elm chegou pelo telefone" };
+  if (call.lines.at(-1) !== line) return { name, failed: `texto ${call.lines.join(", ")}, esperado ${line}` };
+  if (p.says.includes(line)) return { name, failed: "a fala da ligação também saiu numa caixa de texto" };
+  return { name: `${name}: ${call.lines.at(-1)}` };
+}
+
+/** Spec 026 (T065): Mom's call on Route 30 asks about saving money on the phone, and the scene sets FLAG_TALKED_TO_MOM_AFTER_NAMING_RIVAL. */
+function momCall(p: Pilot): Check {
+  const name = "ligação da mãe na Rota 30 pelo telefone (spec 026)";
+  const ask = p.calls.find((c) => c.contact === 0 && c.choices);
+  if (!ask) return { name, failed: "a mãe não ligou pelo telefone" };
+  if (ask.lines.at(-1) !== "0664:22") return { name, failed: `texto ${ask.lines.join(", ")}, esperado 0664:22` };
+  const save = p.fresh();
+  if (!save.flags.includes(0xa7)) return { name, failed: "a cena não ligou FLAG_TALKED_TO_MOM_AFTER_NAMING_RIVAL" };
+  return { name: `${name}: ${ask.lines.at(-1)}, escolha guardar, FLAG_SYS_MOMS_SAVINGS ${save.flags.includes(0x986) ? "ligada" : "desligada"}` };
+}
+
+/** Spec 026: after his first defeat Joey offers his number (scr_seq_0953.s _0DCF) and the pilot says yes. */
+function joeyNumber(p: Pilot): Check {
+  const name = "Joey oferece o número depois da luta (spec 026)";
+  const bank = p.data.scripts?.phone?.contacts.find((c) => c.id === JOEY)?.bank;
+  if (bank === undefined) return { name, failed: "phone.json sem o contato do Joey" };
+  if (!p.says.includes(`${String(bank).padStart(4, "0")}:1`)) return { name, failed: "a oferta do número não apareceu" };
+  return p.fresh().phone.contacts.includes(JOEY) ? { name: `${name}: contato ${JOEY} registrado` } : { name, failed: "o número não ficou no save" };
+}
+
+/**
+ * Spec 026 (T041): Joey's rematch on the real data, in a second session from the save after his number. The
+ * original asks for rematches only after the Radio Tower (FLAG_BEAT_RADIO_TOWER_ROCKETS, phone_scripts_generic.c)
+ * and fights JOEY_2 once rematch group 2 is open (FLAG_UNK_97B + 2): the probe sets both flags, standing in for
+ * that later story, and the party is raised to level 50, since JOEY_2 fields a level 34 Raticate. Away from
+ * Route 30 (a contact never rings from their own map) the pilot walks until Joey asks, then talks to him.
+ */
+function joeyRematch(after: Save, hpMax: (m: Save["party"][number]) => number): Check {
+  const name = "revanche do Joey pelo telefone (spec 026)";
+  const strong = after.party.map((m) => ({ ...m, level: 50 }));
+  const q = pilot({ ...after, flags: [...new Set([...after.flags, FLAG_BEAT_RADIO_TOWER_ROCKETS, FLAG_REMATCH_GROUP_2])], party: strong.map((m) => ({ ...m, hp: hpMax(m) })) });
+  const book = q.data.scripts?.phone;
+  const joey = book?.contacts.find((c) => c.id === JOEY);
+  const set = joey && book!.rematchSets.find((r) => r.base === joey.trainer);
+  if (!joey || !set) return { name, failed: "phone.json sem o Joey ou sem a linha de revanche dele" };
+  const rematchLine = `${String(joey.bank).padStart(4, "0")}:${book!.scripts.find((s) => s.id === 33)?.lines[0]}`;
+  q.send({ type: "debugSetClock", clock: { mode: "fixed", hour: 12, weekday: 1 } });
+  q.warp(67, 567, 398);
+  const asked = () => q.calls.some((c) => c.contact === JOEY && c.lines.at(-1) === rematchLine);
+  for (let i = 0; i < 300 && !asked(); i++) q.walk(i % 2 ? "east" : "west", 1);
+  if (!asked()) return { name, failed: `Joey não ligou pedindo revanche (${q.calls.length} ligações)` };
+  if (!q.fresh().phone.seeking.includes(JOEY)) return { name, failed: "a ligação não ligou o seeking do Joey" };
+  const person = q.data.scripts?.events(34)?.npcs.find((n) => n.trainer === joey.trainer);
+  if (!person || !q.talkTo(34, person.id)) return { name, failed: "não achou o Joey na Rota 30" };
+  q.settle();
+  const fight = [...q.battles.values()].at(-1);
+  const want = set.sequence[1];
+  if (fight?.trainer !== want) return { name, failed: `lutou com ${fight?.trainer ?? "ninguém"}, esperado o time de revanche ${want}` };
+  if (fight.result !== "won") return { name, failed: `revanche ${fight.result ?? "sem fim"}` };
+  const save = q.fresh();
+  const flag = (q.data.trainers?.tuning.trainerFlagBase ?? 0) + want;
+  if (!save.flags.includes(flag)) return { name, failed: `flag ${flag} da revanche desligada` };
+  if (save.phone.seeking.includes(JOEY)) return { name, failed: "o seeking do Joey continuou ligado depois da vitória" };
+  return { name: `${name}: ligação ${rematchLine}, revanche contra o treinador ${want} vencida, seeking desligado` };
 }
 
 /** The Cherrygrove Center (spec 023): HP lowered by the development command, then the nurse. */
@@ -621,6 +721,8 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     p.warp(143, 4, 9);
   },
   6: (p) => {
+    // Out of Mr. Pokémon's house onto Route 30: Elm's call from the frame table (227:1, scr_seq_R30_001), on the phone (spec 026).
+    p.warp(34, 558, 355);
     // Back in Cherrygrove from Route 30: the rival (850:3), then the officer in the lab (843:2).
     const money = p.fresh().money;
     p.warp(67, 576, 399);
@@ -634,8 +736,11 @@ const STEPS: Record<number, (p: Pilot) => void> = {
       }),
     );
   },
-  // The same scene goes on to take the egg.
-  7: (p) => p.settle(),
+  // The same scene goes on to take the egg; by now Elm called from Route 30 (spec 026).
+  7: (p) => {
+    p.settle();
+    checks.push(elmCall(p));
+  },
   // Route 29 heading east: the friend's catching tutorial (225:1).
   8: (p) => {
     p.warp(33, 665, 398);
@@ -645,7 +750,13 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     // After the tutorial's Poké Balls: a catch and the PC.
     checks.push(pc(p));
     // North to Violet: Route 30 (Youngster Joey and Mikey show once the egg is delivered; Bug Catcher Don), then Route 31 (Bug Catcher Wade).
-    checks.push(p.routeTrainer("luta Joey (Rota 30)", 34, 4), p.routeTrainer("luta Mikey (Rota 30)", 34, 5), p.routeTrainer("luta Don (Rota 30)", 34, 3));
+    // Route 30 after the officer: Mom's call from the trigger at (553, 292) (227:4, VAR_SCENE_ROUTE_30_PHONE_CALL), on the phone.
+    p.warp(34, 553, 293);
+    p.walk("north", 1);
+    checks.push(momCall(p));
+    checks.push(p.routeTrainer("luta Joey (Rota 30)", 34, 4), joeyNumber(p));
+    checks.push(joeyRematch(p.fresh(), p.hpMax));
+    checks.push(p.routeTrainer("luta Mikey (Rota 30)", 34, 5), p.routeTrainer("luta Don (Rota 30)", 34, 3));
     checks.push(p.routeTrainer("luta Wade (Rota 31)", 35, 5));
     ready(p, 290);
     keep(p, "antes-li");
@@ -692,6 +803,10 @@ it("goes from the bedroom to the Zephyr Badge", () => {
     }
     reached.push(m);
   }
+  // Spec 027 (layer 3): every item in the bag at the end of the golden path has a use that works, from that save.
+  const end = p.fresh();
+  const probe = itemProbe(p.data, readNewGameStart(stages, () => undefined)!);
+  for (const b of end.bag) checks.push({ name: `item ${b.item} (${probe.kind(b.item)}) da mochila no fim do caminho`, failed: probe.scenario(b.item, end) });
   if (!isolation.length) isolation.push({ name: `isolamento (spec 020): em ${MILESTONES.length} marcos o segundo jogador viu New Bark pelas próprias flags; até ${shared} flags de esconder diferentes das do primeiro` });
   const text = report(reached, MILESTONES.length, undefined, extra());
   console.log(text);

@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eventsStage } from "../../src/events/stage.ts";
-import { CLASS_MUSIC, FLY_POINTS, NEW_GAME_LOCATION, PRIZE_TABLE, SHOPS, STD_MESSAGES, TRAINER_CLASS_COUNT } from "../../src/events/layout.ts";
+import { APRICORN_TREES, BERRY_DATA, CLASS_MUSIC, FLY_POINTS, HIDDEN_ITEMS, NEW_GAME_LOCATION, PHONE, PRIZE_TABLE, SHOPS, STD_MESSAGES, TRAINER_CLASS_COUNT } from "../../src/events/layout.ts";
 import { SEQ } from "../../src/events/trainer-classes.ts";
 import { MAP_HEADER_OFFSET, MAP_HEADER_SIZE } from "../../src/maps/header.ts";
 import type { StageContext } from "../../src/pipeline/stage.ts";
@@ -37,6 +37,9 @@ const header = (id: number, refs: { events: number; scripts: number; messages: n
   musicDay: 0,
   musicNight: 0,
   weather: 0,
+  bikeAllowed: true,
+  escapeRopeAllowed: false,
+  flyAllowed: true,
   refs,
 });
 
@@ -65,11 +68,14 @@ async function fakeRom(options: Options = {}): Promise<StageContext> {
   await narc("a/0/5/5", [buildTrainerData({ type: 0, class: 0, count: 0 }), buildTrainerData({ type: 0, class: 3, count: 1 }), buildTrainerData({ type: 2, class: 4, count: 2, aiFlags: 7 })]);
   await narc("a/0/5/6", [new Uint8Array(8), buildTrainerTeam(0, [{ level: 5, species: 16 }]), buildTrainerTeam(2, [{ level: 8, species: 19, item: 4 }, { level: 9, species: 20 }])]);
   await narc("a/2/5/2", [buildHeadbutt({}), buildHeadbutt({ common: [{ species: 163, minLevel: 2, maxLevel: 3 }], regular: [[[4, 5]]] })]);
+  await narc("a/2/5/3", [new Uint8Array([0, 0, 0, 0]), new Uint8Array([20, 0, 1, 0])]);
+  // Spec 027: two berries' growth data (Cheri 3 h a stage, Chesto 4 h).
+  await narc(BERRY_DATA, [Uint8Array.from([20, 0, 2, 1, 3, 15, 10, 0, 0, 0, 0, 25]), Uint8Array.from([80, 0, 5, 1, 4, 15, 0, 10, 0, 0, 0, 25])]);
 
   // Two trainer lines for trainer 1: the challenge and the one when it loses.
   await narc("a/0/5/7", [new Uint8Array([1, 0, 0, 0, 1, 0, 1, 0])]);
 
-  const arm9 = new Uint8Array(Math.max(MAP_HEADER_OFFSET + 2 * MAP_HEADER_SIZE + 16, CLASS_MUSIC.list + CLASS_MUSIC.listCount * 4, SHOPS.special + SHOPS.specialCount * 4 + 4, NEW_GAME_LOCATION + 20, FLY_POINTS.offset + FLY_POINTS.count * 18));
+  const arm9 = new Uint8Array(Math.max(MAP_HEADER_OFFSET + 2 * MAP_HEADER_SIZE + 16, CLASS_MUSIC.list + CLASS_MUSIC.listCount * 4, SHOPS.special + SHOPS.specialCount * 4 + 4, NEW_GAME_LOCATION + 20, FLY_POINTS.offset + FLY_POINTS.count * 18, HIDDEN_ITEMS.offset + HIDDEN_ITEMS.count * 8, APRICORN_TREES.offset + APRICORN_TREES.count));
   const arm9View = new DataView(arm9.buffer);
   arm9View.setUint16(MAP_HEADER_OFFSET + 8, 6, true); // map 0 level script file
   arm9View.setUint16(MAP_HEADER_OFFSET + MAP_HEADER_SIZE + 8, 7, true); // map 1: a stub
@@ -86,6 +92,12 @@ async function fakeRom(options: Options = {}): Promise<StageContext> {
   // Two spawn records: New Bark is a fly point (bit 9), the second is only a blackout spawn.
   [[0x30b, 1, 0x0806, 60, 0x2b7, 0x18d, 60, 0x2b7, 0x18d], [0x123, 1, 0x0806, 9, 5, 6, 9, 5, 6]].forEach((r, i) => r.forEach((n, k) => arm9View.setUint16(FLY_POINTS.offset + i * 18 + k * 2, n, true)));
   await mkdir(join(root, "code-decompress", "code", "overlay9"), { recursive: true });
+  // Spec 027: every hidden item a Potion, index i; every apricorn tree red.
+  for (let i = 0; i < HIDDEN_ITEMS.count; i++) {
+    arm9View.setUint16(HIDDEN_ITEMS.offset + i * 8, 17, true);
+    arm9[HIDDEN_ITEMS.offset + i * 8 + 2] = 1;
+    arm9View.setUint16(HIDDEN_ITEMS.offset + i * 8 + 6, i, true);
+  }
   await writeFile(join(root, "code-decompress", "code", "arm9.bin"), arm9);
   // The prize table: class i pays i.
   const overlay12 = new Uint8Array(PRIZE_TABLE.offset + TRAINER_CLASS_COUNT * 4);
@@ -97,6 +109,11 @@ async function fakeRom(options: Options = {}): Promise<StageContext> {
   const overlay1 = new Uint8Array(STD_MESSAGES.offset + STD_MESSAGES.count * 2);
   [752, 211, 30, 435].forEach((n, i) => new DataView(overlay1.buffer).setUint16(STD_MESSAGES.offset + i * 2, n, true));
   await writeFile(join(root, "code-decompress", "code", "overlay9", name(STD_MESSAGES.overlay)), overlay1);
+  // An empty phone book with empty script and rematch tables (spec 026).
+  await mkdir(join(root, "rom-unpack", "filesystem", "tel"), { recursive: true });
+  await writeFile(join(root, "rom-unpack", "filesystem", "tel", "pmtel_book.dat"), new Uint8Array(4));
+  await writeFile(join(root, "code-decompress", "code", "overlay9", name(PHONE.scripts.overlay)), new Uint8Array(PHONE.headers.offset + 75 * 16 * 6));
+  await writeFile(join(root, "code-decompress", "code", "overlay9", name(PHONE.rematch.overlay)), new Uint8Array(PHONE.rematch.offset + PHONE.rematch.count * 12));
 
   await mkdir(join(root, "maps", "maps"), { recursive: true });
   await writeFile(
@@ -153,13 +170,15 @@ describe("events stage", () => {
     expect(script.code[0]).toEqual({ name: "NPCMsg", args: { msg_id: { text: "0005:3" } } });
   });
 
-  it("writes encounters, headbutt tables and trainers", async () => {
+  it("writes encounters, headbutt tables, rock smash items and trainers", async () => {
     await eventsStage.run(await fakeRom());
     const encounters = await read("encounters", "encounters.json");
     expect(encounters.records).toHaveLength(1);
     expect(encounters.records[0]!.grass!.night[0]).toMatchObject({ species: 19, minLevel: 3, maxLevel: 3, chance: 20 });
     const headbutt = await read("headbutt", "headbutt.json");
     expect(headbutt.records.map((r) => r.id)).toEqual([1]);
+    const rockSmash = await read("rock-smash", "rock-smash.json");
+    expect(rockSmash.records).toEqual([{ id: 1, odds: 20, items: "ruinsOfAlph" }]);
     const trainers = await read("trainers", "trainers.json");
     expect(trainers.records.map((r) => r.id)).toEqual([1, 2]);
     expect(trainers.records[1]).toMatchObject({ aiFlags: 7, class: { id: 4, text: "0730:4" }, name: "0729:2" });
@@ -209,6 +228,6 @@ describe("events stage", () => {
 
   it("declares the inputs it reads", () => {
     const inputs = eventsStage.inputs.map((i) => (i.kind === "stage" ? `${i.stage}/${i.output}` : i.kind));
-    expect(inputs).toEqual(["rom-unpack/narc", "code-decompress/code", "maps/maps", "text-catalog/catalog"]);
+    expect(inputs).toEqual(["rom-unpack/narc", "code-decompress/code", "rom-unpack/filesystem", "maps/maps", "text-catalog/catalog"]);
   });
 });

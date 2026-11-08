@@ -17,7 +17,7 @@ const member = (species = SPECIES.chikorita.id): PartyMember => ({ species, leve
 
 function game(opts: { catchRate?: number; tiles?: number[]; saves?: Partial<Save>[] } = {}) {
   const tiles = opts.tiles ?? [7];
-  const t = setup({ world: (id) => WORLD[id], timeoutTicks: 1e9, combat: combatData(), wild: wildData(NEAR, opts.catchRate ?? 255), ai: STILL_AI(), hour: () => 12, spawn: (n) => ({ area: "route", x: px(tiles[n - 1]!), y: px(5) }) });
+  const t = setup({ world: (id) => WORLD[id], timeoutTicks: 1e9, combat: combatData(), wild: wildData(NEAR, opts.catchRate ?? 255), ai: STILL_AI(), now: () => new Date(2026, 10, 1, 12), spawn: (n) => ({ area: "route", x: px(tiles[n - 1]!), y: px(5) }) });
   const ps = tiles.map((_, i) => t.connect(undefined, undefined, { save: { bag: [{ item: POKE, count: 5 }], ...opts.saves?.[i] } }));
   const seqs = ps.map(() => 0);
   const wild = () => t.session.world.all().find((e) => e.kind === "pokemon" && e.data["owner"] === "wild");

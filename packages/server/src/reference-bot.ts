@@ -25,7 +25,7 @@ export function createReferenceBot(rng: Rng) {
         move = { x: -dir.y, y: dir.x };
       }
     }
-    const ready = me.c.moves.map((m, slot) => ({ m, slot })).filter(({ slot }) => tick >= me.c.readyAt[slot]!);
+    const ready = me.c.gauge >= 1 ? me.c.moves.map((m, slot) => ({ m, slot })) : [];
     const best = ready.sort((a, b) => b.m.power - a.m.power)[0];
     if (best && !me.c.casting && tick % 2 === 0 && d <= reachPx(best.m as unknown as MoveView) + 8) buttons |= 1 << best.slot;
     return { move, buttons, aim: dir };

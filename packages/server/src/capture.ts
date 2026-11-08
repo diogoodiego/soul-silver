@@ -158,6 +158,7 @@ export function createCaptures(options: CaptureOptions) {
       moonEvolver: data.moonEvolvers.has(w.species),
       caughtBefore: s.catcher.progress.pokedex.caught.includes(w.species),
       userLevel: (user !== undefined ? combat.get(user)?.level : undefined) ?? lead?.level ?? 1,
+      fished: w.fished === true,
     });
     const a = ball.always ? 255 : catchValue({ hpMax: c.stats.hp, hp: c.hp, catchRate: data.catchRate(w.species) ?? 255, ball: mult, status: c.major?.id });
     const { shakes, caught } = rollShakes(a, rng);
@@ -186,7 +187,7 @@ export function createCaptures(options: CaptureOptions) {
       level: c.level,
       moves: c.moves.map((m) => m.id),
       hp: c.hp,
-      friendship: info?.baseFriendship ?? CATCH_FRIENDSHIP,
+      friendship: data.balls.balls[String(a.ball)]?.friendship ?? info?.baseFriendship ?? CATCH_FRIENDSHIP,
       experience: expForLevel(info?.growthRate ?? "medium-fast", c.level),
       ivs: { hp: iv(), attack: iv(), defense: iv(), speed: iv(), specialAttack: iv(), specialDefense: iv() },
       evs: { hp: 0, attack: 0, defense: 0, speed: 0, specialAttack: 0, specialDefense: 0 },

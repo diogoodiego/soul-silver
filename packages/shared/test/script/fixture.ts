@@ -44,6 +44,9 @@ export interface FakeHost extends ScriptHost {
   /** Result of the last trainer battle. */
   won: boolean;
   rival: string;
+  /** Registered phone numbers and each contact's rematch trainer (spec 026). */
+  contacts: number[];
+  rematches: Map<number, number>;
 }
 
 export function fakeHost(over: Partial<FakeHost> = {}): FakeHost {
@@ -51,6 +54,8 @@ export function fakeHost(over: Partial<FakeHost> = {}): FakeHost {
     flags: new Set(),
     vars: new Map(),
     rival: "",
+    contacts: [],
+    rematches: new Map(),
     events: [],
     bag: new Map(),
     party: [],
@@ -125,6 +130,7 @@ export function fakeHost(over: Partial<FakeHost> = {}): FakeHost {
     strength: () => false,
     setStrength: () => undefined,
     fieldEncounter: () => false,
+    rockSmashItem: () => 0,
     crossing: () => undefined,
     playerPosition: () => host.position,
     warp: (map, x, z, facing) => void host.warps.push({ map, x, z, facing }),
@@ -134,6 +140,13 @@ export function fakeHost(over: Partial<FakeHost> = {}): FakeHost {
     personPosition: (id) => (id === 1 ? { x: 3, z: 4 } : undefined),
     movePerson: () => undefined,
     weekday: () => 2,
+    hour: () => 12,
+    registerContact: (id) => void (host.contacts.includes(id) || host.contacts.push(id)),
+    isRegistered: (id) => host.contacts.includes(id),
+    rematch: (id) => host.rematches.get(id) ?? 0,
+    endRematch: (id) => void host.rematches.delete(id),
+    // Elm's scripted calls (content/phone/scripted-calls.json).
+    scriptedCall: (caller, index) => (caller === 1 ? [2, 3, 4, 5, 6][index] : undefined),
     random16: () => 0x1234,
     emit: (e) => void host.events.push(e),
     bridge(command) {

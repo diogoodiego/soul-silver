@@ -7,6 +7,7 @@ import {
   type EncounterRecord,
   type EventsFileKind,
   type HeadbuttRecord,
+  type RockSmashRecord,
   type MapEventsFile,
   type ScriptFile,
   type ScriptRef,
@@ -17,17 +18,23 @@ import { parseTextFile, parseTextId } from "@soulsilver/shared/text";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { readU16 } from "../binary.ts";
-import { CODE_INPUT, listNarcIndices, NARC_INPUT, readArm9, readNarcMember, readOverlay } from "../data/inputs.ts";
+import { CODE_INPUT, FILESYSTEM_INPUT, listNarcIndices, NARC_INPUT, readArm9, readFileSystemFile, readNarcMember, readOverlay } from "../data/inputs.ts";
 import { SOULSILVER_US_LAYOUT } from "../data/layout.ts";
 import { MAP_HEADER_OFFSET, MAP_HEADER_SIZE } from "../maps/header.ts";
 import type { Stage, StageContext } from "../pipeline/stage.ts";
 import { readScriptTable } from "./command-table.ts";
 import { readEncounter, readHeadbutt } from "./encounter.ts";
+import { readRockSmash } from "./rock-smash.ts";
 import {
   CLASS_MUSIC,
   EVENT_ARCHIVES,
   HEADBUTT_ARCHIVE,
+  ROCK_SMASH_ARCHIVE,
   FLY_POINTS,
+  HIDDEN_ITEMS,
+  APRICORN_TREES,
+  BERRY_DATA,
+  PHONE,
   INIT_SCRIPT,
   LEVEL_SCRIPT_FIELD,
   NEW_GAME_LOCATION,
@@ -40,6 +47,9 @@ import {
   ZERO_SCRIPT,
 } from "./layout.ts";
 import { readFlyPoints } from "./fly-points.ts";
+import { readApricornTrees, readBerryGrowth, readHiddenItems } from "./field-items.ts";
+import { readPhoneBook } from "./phone.ts";
+import { PHONE_FORMAT_VERSION, serializePhoneFile } from "@soulsilver/shared/phone";
 import { readNewGameStart, readStdMessageBanks } from "./new-game.ts";
 import { readShops } from "./shops.ts";
 import { readTrainerClasses, readTrainerMessages } from "./trainer-classes.ts";
@@ -164,9 +174,21 @@ async function run(ctx: StageContext): Promise<void> {
   await write("std-messages.json", "std-messages", { kind: "std-messages", formatVersion: EVENTS_FORMAT_VERSION, banks });
   // Fly destinations (spec 025).
   await write("fly-points.json", "fly-points", { kind: "fly-points", formatVersion: EVENTS_FORMAT_VERSION, points: readFlyPoints(arm9, FLY_POINTS) });
+  // Hidden items, apricorn trees and Berry Pot growth (spec 027).
+  const berryData = await Promise.all((await listNarcIndices(ctx, BERRY_DATA)).map((id) => readNarcMember(ctx, BERRY_DATA, id)));
+  await write("field-items.json", "field-items", {
+    kind: "field-items",
+    formatVersion: EVENTS_FORMAT_VERSION,
+    hidden: readHiddenItems(arm9, HIDDEN_ITEMS),
+    apricornTrees: readApricornTrees(arm9, APRICORN_TREES),
+    berries: readBerryGrowth(berryData),
+  });
   const messages = readTrainerMessages(await readNarcMember(ctx, TRAINER_MESSAGES.narc, TRAINER_MESSAGES.member));
   await write("trainer-messages.json", "trainer-messages", { kind: "trainer-messages", formatVersion: EVENTS_FORMAT_VERSION, records: messages });
   const trainerIds = new Set(trainers.map((t) => t.id));
+  // The phone book (spec 026).
+  const phoneInput = { book: await readFileSystemFile(ctx, PHONE.book), arm9, overlay101: await readOverlay(ctx, PHONE.scripts.overlay), overlay26: await readOverlay(ctx, PHONE.rematch.overlay) };
+  await writeFile(join(out, "phone.json"), serializePhoneFile("phone", { kind: "phone", formatVersion: PHONE_FORMAT_VERSION, value: readPhoneBook(phoneInput, PHONE, trainerIds) }));
   ctx.progress(0.6);
 
   // Maps.
@@ -225,6 +247,12 @@ async function run(ctx: StageContext): Promise<void> {
     if (record) headbutt.push(record);
   }
   await write("headbutt.json", "headbutt", { kind: "headbutt", formatVersion: EVENTS_FORMAT_VERSION, records: headbutt });
+  const rockSmash: RockSmashRecord[] = [];
+  for (const id of await listNarcIndices(ctx, ROCK_SMASH_ARCHIVE)) {
+    const record = readRockSmash(await readNarcMember(ctx, ROCK_SMASH_ARCHIVE, id), id);
+    if (record) rockSmash.push(record);
+  }
+  await write("rock-smash.json", "rock-smash", { kind: "rock-smash", formatVersion: EVENTS_FORMAT_VERSION, records: rockSmash });
 
   // Report.
   const report = buildEventsReportFile({ counts: { ...counts, encounterBanks: encounters.length, trainers: trainers.length }, files: results, unresolved });
@@ -240,10 +268,10 @@ export const eventsStage: Stage = {
   title: "Lendo eventos, scripts e encontros",
   // 3: trainer classes and trainer lines (spec 022). 4: Poké Mart stock (spec 023).
   // 5: new-game start and std message table (spec 024).
-  // 6: Fly destinations (spec 025).
-  version: 6,
+  // 6: Fly destinations (spec 025). 7: Rock Smash item odds (spec 025). 8: the phone book (spec 026). 9: its greetings.
+  version: 9,
   weight: 6,
-  inputs: [NARC_INPUT, CODE_INPUT, MAPS_INPUT, TEXT_INPUT],
+  inputs: [NARC_INPUT, CODE_INPUT, FILESYSTEM_INPUT, MAPS_INPUT, TEXT_INPUT],
   outputs: ["events"],
   estimateBytes: () => 100 * MIB,
   run,

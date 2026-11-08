@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ACTIONS, DEFAULT_KEYS, DIRECTIONS, PAD_BUTTONS, rebind, sameContext } from "../../src/input";
+import { readSettings } from "../../src/settings.ts";
 
 describe("defaults", () => {
   it("binds every action to at least one key and one pad button", () => {
@@ -67,5 +68,15 @@ describe("rebind", () => {
     const before = structuredClone(DEFAULT_KEYS);
     rebind(DEFAULT_KEYS, "combat", "KeyR");
     expect(DEFAULT_KEYS).toEqual(before);
+  });
+});
+
+describe("saved bindings", () => {
+  it("keep the player's keys when a later action is missing from them", () => {
+    const older: Record<string, readonly string[]> = { ...DEFAULT_KEYS, combat: ["KeyZ"] };
+    delete older["rod"];
+    const settings = readSettings({ bindings: older });
+    expect(settings.bindings.combat).toEqual(["KeyZ"]);
+    expect(settings.bindings.rod).toEqual(DEFAULT_KEYS.rod);
   });
 });

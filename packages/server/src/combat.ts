@@ -26,6 +26,7 @@ import {
 } from "@soulsilver/shared/combat";
 import { tileAt, type EntityData, type HitEvent, type Rng, type WorldLookup } from "@soulsilver/shared/game";
 import type { Direction } from "@soulsilver/shared/maps";
+import { damageMul, restoreCooldown, thresholdHeal, type HeldItem } from "@soulsilver/shared/items";
 import type { CombatData, CombatMove } from "./combat-loader";
 import type { World } from "./world";
 
@@ -41,7 +42,16 @@ export interface CombatantSpec {
   moves: number[];
   /** IVs, EVs and nature of a party member (spec 016); the dev arena defaults otherwise. */
   stats?: StatOptions | undefined;
+  /** Spec 027: the item it holds, resolved from the item data. */
+  held?: HeldItem | undefined;
+  /** Spec 027: each slot's cooldown multiplier (PP Ups); 1 when omitted. A move used leaves 1 − mul of the action bar. */
+  cooldownMul?: number[] | undefined;
+  /** Trainer sprite (a trainer class) shown calling out its moves; none for wild Pokémon. */
+  trainerPic?: number | undefined;
 }
+
+/** Trainer classes 0 and 1 are the player characters, Ethan and Lyra. */
+export const playerPic = (character: unknown): number => (character === "female" ? 1 : 0);
 
 export interface CombatInput {
   move: Point;
@@ -66,8 +76,8 @@ export interface Combatant {
   stages: Record<StageKey, number>;
   major: StatusState | undefined;
   confusion: StatusState | undefined;
-  /** Tick at which each slot can be used again. */
-  readyAt: number[];
+  /** Action bar, 0 to 1: it fills at a rate set by Speed and, once full, lets one move go. */
+  gauge: number;
   casting: { slot: number; dir: Point; startTick: number; readyTick: number } | undefined;
   /** Last move used (executed), so clients can play its animation even when it hits nothing. */
   used: { count: number; move: number; dir: Point; arc?: { radiusPx: number; angleDeg: number } | undefined };
@@ -77,6 +87,12 @@ export interface Combatant {
   flashUntil: number;
   /** Buttons held on the previous tick: a move starts on the press. */
   buttons: number;
+  /** Spec 027: the held item, until a consumable one acts. */
+  held: HeldItem | undefined;
+  cooldownMul: number[];
+  trainerPic: number | undefined;
+  /** Tick of the next Leftovers heal. */
+  regenAt: number;
 }
 
 interface Active {
@@ -97,6 +113,10 @@ export interface CombatOptions {
   data: CombatData;
   rng: Rng;
   lookup: WorldLookup;
+  /** Aquatic, flying and levitating species cross water (spec 025, FR-007); nobody when omitted. */
+  crossesWater?(species: number): boolean;
+  /** Spec 027: seconds between two Leftovers heals (content/items/tuning.json); 1 when omitted. */
+  regenS?: number | undefined;
 }
 
 const SOLID = new Set(["blocked", "water", "ledge"]);
@@ -155,10 +175,25 @@ export function createCombat(options: CombatOptions) {
   }
 
   function speedOf(c: Combatant): number {
-    return Math.floor(c.stats.speed * stageMultiplier(c.stages.speed) * (majorDef(c)?.speedMul ?? 1));
+    const held = c.held?.effect.trigger === "speed-mul" ? c.held.effect.mul : 1;
+    return Math.floor(c.stats.speed * stageMultiplier(c.stages.speed) * (majorDef(c)?.speedMul ?? 1) * held);
   }
   const movePx = (c: Combatant) => speedScale(tuning.speed, speedOf(c)).movePx / TICKS_PER_S;
-  const cooldownTicks = (c: Combatant, slot: number) => Math.round(c.moves[slot]!.cooldownTicks * speedScale(tuning.speed, speedOf(c)).cooldownMul);
+  /** Ticks for an empty action bar to fill at the combatant's current Speed. */
+  const gaugeTicks = (c: Combatant) => speedScale(tuning.speed, speedOf(c)).gaugeS * TICKS_PER_S;
+  const regenTicks = toTicks(options.regenS ?? 1);
+
+  /** A held item acted: shown on screen; a consumable one is gone. */
+  function useHeld(c: Combatant, amount = 0): void {
+    const item = c.held!.item;
+    if (c.held!.consumable) c.held = undefined;
+    emit({ kind: "held", attacker: c.entityId, target: c.entityId, move: 0, amount, item });
+  }
+  function restoreHp(c: Combatant, amount: number): number {
+    const done = Math.max(0, Math.min(c.stats.hp - c.hp, amount));
+    c.hp += done;
+    return done;
+  }
 
   function emit(e: Omit<HitEvent, "effectiveness" | "crit" | "push" | "amount"> & Partial<HitEvent>): void {
     events.push({ amount: 0, effectiveness: 1, crit: false, push: { x: 0, y: 0 }, ...e });
@@ -167,16 +202,27 @@ export function createCombat(options: CombatOptions) {
   /** Moves the entity by (dx, dy), axis by axis, stopping at solid tiles. */
   function shift(entityId: number, dx: number, dy: number, facing?: Direction): void {
     const e = world.get(entityId)!;
+    const c = combatants.get(entityId);
+    const wet = c !== undefined && (options.crossesWater?.(c.species) ?? false);
+    const solid = (category = "") => SOLID.has(category) && !(wet && category === "water");
     let { x, y } = e;
-    if (!SOLID.has(tileAt(lookup, e.area, e.level, x + dx, y)?.category ?? "")) x += dx;
-    if (!SOLID.has(tileAt(lookup, e.area, e.level, x, y + dy)?.category ?? "")) y += dy;
+    if (!solid(tileAt(lookup, e.area, e.level, x + dx, y)?.category)) x += dx;
+    if (!solid(tileAt(lookup, e.area, e.level, x, y + dy)?.category)) y += dy;
     world.update({ ...e, x, y, facing: facing ?? e.facing });
   }
 
   function hurt(t: Combatant, amount: number): void {
+    const e = t.held?.effect;
+    // Focus Sash at full HP, Focus Band by its chance: a blow that would faint leaves 1 HP.
+    if (e?.trigger === "survive" && amount >= t.hp && t.hp > 0 && (e.fullHpOnly ? t.hp === t.stats.hp : roll(t.held!.parameter))) {
+      amount = t.hp - 1;
+      useHeld(t);
+    }
     t.hp = Math.max(0, t.hp - amount);
     t.flashUntil = tick + toTicks(tuning.flashS);
     if (t.hp === 0) t.casting = undefined;
+    const heal = t.held ? thresholdHeal(t.held, t.hp, t.stats.hp) : 0;
+    if (heal > 0) useHeld(t, restoreHp(t, heal));
   }
 
   function inflict(t: Combatant, id: StatusId): boolean {
@@ -186,6 +232,12 @@ export function createCombat(options: CombatOptions) {
     if (def.major) t.major = state;
     else t.confusion = state;
     if (def.immobile) t.casting = undefined;
+    const e = t.held?.effect;
+    if (e?.trigger === "cure" && e.statuses.includes(id)) {
+      if (def.major) t.major = undefined;
+      else t.confusion = undefined;
+      useHeld(t);
+    }
     return true;
   }
 
@@ -196,13 +248,14 @@ export function createCombat(options: CombatOptions) {
     return 1;
   }
 
-  function damageOf(c: Combatant, t: Combatant, move: CombatMove, e: Extract<Effect, { kind: "damage" }>): { amount: number; crit: boolean } {
+  function damageOf(c: Combatant, t: Combatant, move: CombatMove, e: Extract<Effect, { kind: "damage" }>, eff = 1): { amount: number; crit: boolean } {
     if (e.fixed) return { amount: e.fixed, crit: false };
     if (e.level) return { amount: c.level, crit: false };
     if (e.targetHpFraction) return { amount: Math.max(1, Math.floor(t.hp * e.targetHpFraction)), crit: false };
     const physical = move.category === "physical";
     const row = data.typeChart.find((r) => r.id === move.type);
-    const crit = rollCrit(rng, move.critStage + c.stages.crit, tuning.critChances);
+    const critHeld = c.held?.effect.trigger === "crit" ? c.held.effect.stages : 0;
+    const crit = rollCrit(rng, move.critStage + c.stages.crit + critHeld, tuning.critChances);
     const amount = computeDamage({
       level: c.level,
       power: move.power,
@@ -217,7 +270,8 @@ export function createCombat(options: CombatOptions) {
       crit,
       random: rollRandom(rng),
     });
-    return { amount, crit };
+    const mul = damageMul(c.held, move.type, move.category, eff);
+    return { amount: mul === 1 ? amount : Math.max(1, Math.floor(amount * mul)), crit };
   }
 
   /** Pushes `t` away from `from` (or along `dir` when they overlap). */
@@ -244,7 +298,7 @@ export function createCombat(options: CombatOptions) {
       }
       let dealt = 0;
       for (let h = 0; h < move.hits && t.hp > 0; h++) {
-        const { amount, crit } = damageOf(c, t, move, damage);
+        const { amount, crit } = damageOf(c, t, move, damage, eff);
         const done = Math.min(amount, t.hp);
         hurt(t, amount);
         dealt += done;
@@ -252,6 +306,9 @@ export function createCombat(options: CombatOptions) {
         emit({ kind: "hit", attacker: c.entityId, target: t.entityId, move: move.id, amount: done, effectiveness: eff, crit, push: v });
       }
       if (move.type === FIRE && t.major?.id === "freeze") t.major = undefined;
+      // Life Orb: a share of max HP for every hit that dealt damage.
+      const orb = c.held?.effect;
+      if (orb?.trigger === "damage-mul" && orb.recoil && dealt > 0) hurt(c, Math.max(1, Math.floor(c.stats.hp * orb.recoil)));
       for (const e of move.effects) {
         if (e.kind === "recoil" && dealt > 0) {
           const amount = Math.max(1, Math.floor(dealt * e.fraction));
@@ -315,7 +372,9 @@ export function createCombat(options: CombatOptions) {
     const { slot, dir } = c.casting!;
     c.casting = undefined;
     const move = c.moves[slot]!;
-    c.readyAt[slot] = tick + cooldownTicks(c, slot);
+    // PP Up leaves part of the bar; Quick Claw, by its chance, leaves half of it.
+    c.gauge = 1 - (c.cooldownMul[slot] ?? 1);
+    if (c.held?.effect.trigger === "quick" && roll(c.held.parameter)) c.gauge = Math.max(c.gauge, 0.5);
     const arc = move.behavior === "melee" && move.hitbox?.shape === "arc" ? move.hitbox : undefined;
     c.used = { count: c.used.count + 1, move: move.id, dir, arc };
     selfEffects(c, move);
@@ -342,7 +401,7 @@ export function createCombat(options: CombatOptions) {
   }
 
   function begin(c: Combatant, slot: number, aim: Point | undefined, minCastTicks = 0): void {
-    if (tick < c.readyAt[slot]!) return;
+    if (c.gauge < 1) return;
     const self = pos(c);
     const len = aim ? Math.hypot(aim.x, aim.y) : 0;
     let dir = len > 0.01 ? { x: aim!.x / len, y: aim!.y / len } : VECTORS[self.facing];
@@ -358,7 +417,7 @@ export function createCombat(options: CombatOptions) {
     if (c.stages.accuracy < 0) dir = rotate(dir, (rng.nextFloat() * 2 - 1) * -c.stages.accuracy * tuning.accuracyDeviationDeg);
     const skip = majorDef(c)?.skipMove;
     if (skip && rng.nextInt(100) < skip) {
-      c.readyAt[slot] = tick + cooldownTicks(c, slot);
+      c.gauge = 0;
       emit({ kind: "failed", attacker: c.entityId, target: c.entityId, move: c.moves[slot]!.id });
       return;
     }
@@ -428,15 +487,14 @@ export function createCombat(options: CombatOptions) {
       // Melee arcs: the client draws the reach the hit used.
       ...(c.used.arc ? { usedReach: c.used.arc.radiusPx, usedArc: c.used.arc.angleDeg } : {}),
       flash: tick < c.flashUntil,
+      gauge: Math.floor(c.gauge * 100),
+      ...(c.trainerPic !== undefined ? { trainerPic: c.trainerPic } : {}),
       // Shiny wild Pokémon (spec 015) keep their palette.
       ...(e.data["shiny"] === true ? { shiny: true } : {}),
       // Out of reach during its trainer's cutscene (spec 021); the session sets and clears it.
       ...(e.data["cutscene"] === true ? { cutscene: true } : {}),
     };
-    c.moves.forEach((m, i) => {
-      data[`move${i + 1}`] = m.id;
-      data[`cd${i + 1}`] = Math.max(0, c.readyAt[i]! - tick);
-    });
+    c.moves.forEach((m, i) => (data[`move${i + 1}`] = m.id));
     for (const k of STAGE_KEYS) if (c.stages[k] !== 0) data[`stg_${k}`] = c.stages[k];
     world.update({ ...e, data });
   }
@@ -471,13 +529,17 @@ export function createCombat(options: CombatOptions) {
         stages: zeroStages(),
         major: undefined,
         confusion: undefined,
-        readyAt: moves.map(() => 0),
+        gauge: 0,
         casting: undefined,
         used: { count: 0, move: 0, dir: { x: 0, y: 0 } },
         dashing: false,
         evade: { dir: { x: 0, y: 0 }, left: 0, readyAt: 0 },
         flashUntil: 0,
         buttons: 0,
+        held: spec.held,
+        cooldownMul: spec.cooldownMul ?? [],
+        trainerPic: spec.trainerPic,
+        regenAt: 0,
       };
       combatants.set(entityId, c);
       sync(c);
@@ -507,9 +569,52 @@ export function createCombat(options: CombatOptions) {
     resetStages(id: number): void {
       get(id).stages = zeroStages();
     },
+    /** Spec 027, a trainer's item: HP given back (never past the maximum), as a heal event; the amount healed. */
+    heal(id: number, amount: number): number {
+      const c = get(id);
+      if (c.hp === 0) return 0;
+      const done = restoreHp(c, amount);
+      if (done > 0) emit({ kind: "heal", attacker: c.entityId, target: c.entityId, move: 0, amount: done });
+      return done;
+    },
+    /** Cures these statuses; false when it had none of them. */
+    cure(id: number, statuses: readonly StatusId[]): boolean {
+      const c = get(id);
+      const major = !!c.major && statuses.includes(c.major.id);
+      const confused = !!c.confusion && statuses.includes("confusion");
+      if (major) c.major = undefined;
+      if (confused) c.confusion = undefined;
+      return major || confused;
+    },
+    hasStatus(id: number, statuses: readonly StatusId[]): boolean {
+      const c = get(id);
+      return (!!c.major && statuses.includes(c.major.id)) || (!!c.confusion && statuses.includes("confusion"));
+    },
+    /** An Ether or Elixir (research R4): `pp` worth of the action bar; false when it was already full. */
+    restore(id: number, pp: number | "full", secondsPerPp: number): boolean {
+      const c = get(id);
+      if (c.gauge >= 1) return false;
+      const total = gaugeTicks(c);
+      c.gauge = 1 - restoreCooldown((1 - c.gauge) * total, pp, secondsPerPp, TICKS_PER_S) / total;
+      return true;
+    },
+    /** X items and Dire Hit: stat stages up, as a self-buff would; false when none moved. */
+    raise(id: number, stages: Partial<Record<StageKey, number>>): boolean {
+      const c = get(id);
+      let moved = false;
+      for (const [k, delta] of Object.entries(stages) as [StageKey, number][]) {
+        const { stage, applied } = applyStage(c.stages[k], delta);
+        c.stages[k] = k === "crit" ? Math.min(Math.max(stage, 0), 4) : stage;
+        if (applied !== 0) {
+          moved = true;
+          emit({ kind: "stages", attacker: c.entityId, target: c.entityId, move: 0, status: k });
+        }
+      }
+      return moved;
+    },
     /** Pixels per tick for the combatant's current Speed. */
     movePx: (id: number) => movePx(get(id)),
-    cooldownTicks: (id: number, slot: number) => cooldownTicks(get(id), slot),
+    gaugeTicks: (id: number) => gaugeTicks(get(id)),
     /** One tick: statuses, inputs and movement, casts, moves in flight; returns what happened. */
     step(now: number, w: World): HitEvent[] {
       world = w;
@@ -528,6 +633,18 @@ export function createCombat(options: CombatOptions) {
           }
           if (ended) c[key] = undefined;
         }
+        if (c.held?.effect.trigger === "regen" && c.hp > 0 && tick >= c.regenAt) {
+          if (c.regenAt > 0 && c.hp < c.stats.hp) useHeld(c, restoreHp(c, Math.max(1, Math.floor(c.stats.hp * c.held.effect.fraction))));
+          c.regenAt = tick + regenTicks;
+        }
+        // Leppa Berry: an empty action bar gets `seconds` of it back at once.
+        const leppa = c.held?.effect;
+        if (leppa?.trigger === "cooldown-restore" && c.gauge === 0 && c.used.count > 0) {
+          const total = gaugeTicks(c);
+          c.gauge = 1 - restoreCooldown(total, leppa.seconds, 1, TICKS_PER_S) / total;
+          useHeld(c);
+        }
+        if (!c.casting) c.gauge = Math.min(1, c.gauge + 1 / gaugeTicks(c));
       }
       for (const c of all) {
         const input = inputs.get(c.entityId);

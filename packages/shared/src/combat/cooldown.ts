@@ -7,8 +7,8 @@ export function baseCooldownS(c: CombatTuning["cooldown"], power: number, pp: nu
   return Math.max(c.min, Math.min(c.max, raw));
 }
 
-/** Move speed (px per second) and cooldown multiplier for a Speed stat (research R6). */
-export function speedScale(s: CombatTuning["speed"], speed: number): { movePx: number; cooldownMul: number } {
+/** Move speed (px per second) and action bar fill time (seconds) for a Speed stat (research R6). */
+export function speedScale(s: CombatTuning["speed"], speed: number): { movePx: number; gaugeS: number } {
   const t = Math.max(0, Math.min(1, (speed - s.low) / (s.high - s.low)));
-  return { movePx: s.moveMinPx + t * (s.moveMaxPx - s.moveMinPx), cooldownMul: 1 - t * s.cooldownMaxCut };
+  return { movePx: s.moveMinPx + t * (s.moveMaxPx - s.moveMinPx), gaugeS: s.gaugeSlowS + t * (s.gaugeFastS - s.gaugeSlowS) };
 }

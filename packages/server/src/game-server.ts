@@ -16,7 +16,7 @@ import type { ScriptData, StuckPlayer } from "./scripts";
 import type { TrainerData } from "./trainer-loader";
 import type { MissingCommand } from "@soulsilver/shared/script";
 import type { Connection } from "./connection";
-import { checkCoherence } from "@soulsilver/shared/save";
+import { checkCoherence, COHERENCE_RULES, flyPointsRule } from "@soulsilver/shared/save";
 import { createSession, MAX_PLAYERS, type Session } from "./session";
 import { createTickLoop, type Scheduler, type TickLoop } from "./tick-loop";
 import { createTickMetrics } from "./tick-metrics";
@@ -50,8 +50,10 @@ export interface GameServerOptions extends Scheduler {
   world?: WorldLookup | undefined;
   /** Combat data (spec 013); no combat when omitted. */
   combat?: CombatData | undefined;
-  /** Development builds: accept the dev arena, and give saves with no party a test party (spec 014) and an empty bag 20 Poké Balls (spec 015). */
+  /** Accept the test arena (spec 024), in every build. */
   devArena?: boolean | undefined;
+  /** Development builds: the debug commands, and saves with no party get a test party (spec 014) and an empty bag 20 Poké Balls (spec 015). */
+  devTools?: boolean | undefined;
   /** Wild Pokémon and capture (spec 015); none when omitted. */
   wild?: WildData | undefined;
   /** Companion rules (spec 014); nobody follows when omitted. */
@@ -116,15 +118,15 @@ export function createGameServer(options: GameServerOptions): GameServer {
       trainers: options.trainers,
       shops: options.shops,
       // Development builds may change story flags from the script debugger.
-      devTools: options.devArena,
-      hour: () => new Date().getHours(),
-      weekday: () => new Date().getDay(),
-      ...(options.devArena ? { devParty: DEV_PARTY, devBag: DEV_BAG } : {}),
+      devTools: options.devTools,
+      now: () => new Date(),
+      ...(options.devTools ? { devParty: DEV_PARTY, devBag: DEV_BAG } : {}),
       // Without an extracted world there is nothing to check a save against.
       ...(options.world
         ? {
             validateSave: (save) => {
-              const result = checkCoherence(save, world);
+              const fly = options.scripts?.flyPoints;
+              const result = checkCoherence(save, world, fly ? [...COHERENCE_RULES, flyPointsRule(fly)] : COHERENCE_RULES);
               return result.ok ? undefined : result.message;
             },
           }

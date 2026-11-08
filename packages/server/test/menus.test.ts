@@ -149,10 +149,10 @@ describe("item use (US5)", () => {
     expect(g.lastSave().bag).toEqual([{ item: POTION, count: 2 }]);
   });
 
-  it("answers item-unavailable for anything that is not a potion yet", () => {
+  it("answers item-unavailable for an item with no field use, and refuses a Revive on a conscious Pokémon (spec 027)", () => {
     const g = game([member("cyndaquil", 5)], [{ item: REVIVE, count: 1 }, { item: POKE_BALL, count: 1 }]);
     g.send({ type: "use-item", item: REVIVE, partyIndex: 0 });
-    expect(g.notice()).toBe("item-unavailable");
+    expect(g.notice()).toBe("action-refused");
     g.send({ type: "use-item", item: POKE_BALL, partyIndex: 0 });
     expect(g.notice()).toBe("item-unavailable");
     expect(g.lastSave().bag).toHaveLength(2);

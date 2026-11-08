@@ -4,6 +4,8 @@ import type { Handler } from "../runner.ts";
 // player's avatar or the healing machine; those do nothing here.
 
 const nothing: Handler = () => undefined;
+// gf_rtc.c sTimeOfDayByHour; include/gf_rtc.h: MORN 0, DAY 1, EVE 2, NITE 3, LATE 4.
+const RTC_TIME_OF_DAY = [4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3];
 
 export const CENTER: Record<string, Handler> = {
   // shortcut: trainer card stars are not earned yet, so the nurse never greets a star trainer; count them with the spec that adds the card.
@@ -15,8 +17,8 @@ export const CENTER: Record<string, Handler> = {
   PartyLegalCheck: (c) => c.writeVar(c.ptr("arg0"), 0),
   // 0 is on foot; biking and surfing states are not told apart yet.
   GetPlayerState: (c) => c.writeVar(c.ptr("var"), 0),
-  // shortcut: the time-of-day greeting is not chosen; 2 makes the script use its plain greeting. Read the clock when a spec needs it.
-  ScrCmd_379: (c) => c.writeVar(c.ptr("arg0"), 2),
+  // GetTimeOfDay (Field_GetTimeOfDay): the RTC band of the session hour (spec 026).
+  ScrCmd_379: (c) => c.writeVar(c.ptr("arg0"), RTC_TIME_OF_DAY[c.host.hour()] ?? 1),
   // No nicknames: the species name stands in.
   BufferPartyMonNick: (c) => {
     const slot = c.get("party_pos");

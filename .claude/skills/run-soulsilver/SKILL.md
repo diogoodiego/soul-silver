@@ -42,7 +42,7 @@ Steps, run in order:
 | `shot:<name>` | screenshot to `<outDir>/<name>.png` |
 | `eval:<js>` | evaluate in the page (promises awaited), prints the value |
 
-Keys: `ArrowUp ArrowDown ArrowLeft ArrowRight ShiftLeft Space Enter Escape Tab Backspace F3 F4 F11`, `Digit1`–`Digit4` and `KeyB KeyE KeyF KeyG KeyQ KeyR`.
+Keys: `ArrowUp ArrowDown ArrowLeft ArrowRight ShiftLeft Space Enter Escape Tab Backspace F3 F4 F11`, `Digit1`–`Digit4` and `KeyB KeyC KeyE KeyF KeyG KeyQ KeyR`.
 
 **The app opens on the title screen (spec 017).** From there, `press:Enter` four times (title → Jogar → the
 last saved slot, already focused → Sozinho) reaches the map; add `wait:600` between presses and

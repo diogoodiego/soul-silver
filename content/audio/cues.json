@@ -11,7 +11,8 @@
     "rocketBattle": "SEQ_GS_VS_ROCKET",
     "championBattle": "SEQ_GS_VS_CHAMP",
     "trainerVictory": "SEQ_GS_WIN1",
-    "leaderVictory": "SEQ_GS_WIN3"
+    "leaderVictory": "SEQ_GS_WIN3",
+    "bicycle": "SEQ_GS_BICYCLE"
   },
   "effects": {
     "hit": "SEQ_SE_DP_KOUKA_M",

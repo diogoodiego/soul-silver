@@ -19,7 +19,13 @@ const mapHeader = z.strictObject({
   matrix: id(),
   musicDay: u16(),
   musicNight: u16(),
-  weather: id(),
+  weather: int(0, 127),
+  /** Where the bicycle, the Escape Rope (and Dig) and Fly work (spec 025). */
+  bikeAllowed: z.boolean(),
+  escapeRopeAllowed: z.boolean(),
+  flyAllowed: z.boolean(),
+  /** Where the Pokégear rings (spec 026); absent in extractions from before it. */
+  incomingCalls: z.boolean().optional(),
   /** Indices of the ROM archives each header points to; null when the map has none. */
   refs: z.strictObject({
     events: id(),

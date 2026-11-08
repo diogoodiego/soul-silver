@@ -1,5 +1,6 @@
 // Trainer battles for the session tests (spec 022). Synthetic: made-up trainers on a 16x16 map, no ROM data (principle II).
 import type { TrainerRecord } from "@soulsilver/shared/events";
+import type { PhoneBook } from "@soulsilver/shared/phone";
 import { BUTTON, type CollisionMap, type ServerMessage } from "@soulsilver/shared/game";
 import type { PartyMember, Save } from "@soulsilver/shared/save";
 import { buildAiData, BUNDLED_AI_CONTENT } from "../src/ai-loader";
@@ -13,7 +14,11 @@ import { mapEvents, scriptData, scriptFile } from "./scripts-fixture";
 export const POTION = 17;
 /** A medicine that restores 20 HP (hpRestore reads byte 5 bit 2 and the amount in byte 13). */
 const potionParams = Array.from({ length: 20 }, (_, i) => (i === 5 ? "04" : i === 13 ? "14" : "00")).join("");
-export const ITEMS = buildItemsData([{ id: POTION, pocket: "medicine", partyUse: { kind: 0, params: potionParams } }]);
+export const ORAN = 155;
+export const ITEMS = buildItemsData([
+  { id: POTION, pocket: "medicine", partyUse: { kind: 0, params: potionParams } },
+  { id: ORAN, pocket: "berries", partyUse: { kind: 0, params: "0".repeat(40) }, holdEffect: { id: 1, parameter: 10 } },
+]);
 
 export const FLAG_BASE = 1360;
 export const at = (t: number) => t * 16 + 8;
@@ -44,13 +49,13 @@ export function trainerNpc(person: number, x: number, z: number, id: number, fac
 
 type Npc = ReturnType<typeof trainerNpc>;
 
-export function arenaSetup(o: { trainers: TrainerRecord[]; npcs?: Npc[]; walls?: [number, number][]; party?: PartyMember[]; script?: Parameters<typeof scriptFile>[1]; spawns?: { x: number; y: number }[] }) {
+export function arenaSetup(o: { trainers: TrainerRecord[]; npcs?: Npc[]; walls?: [number, number][]; party?: PartyMember[]; script?: Parameters<typeof scriptFile>[1]; spawns?: { x: number; y: number }[]; phone?: PhoneBook }) {
   const walls = new Set((o.walls ?? []).map(([x, y]) => `${x},${y}`));
   const grid: CollisionMap = { width: 16, height: 16, tiles: Array.from({ length: 256 }, (_, i) => ({ category: walls.has(`${i % 16},${Math.floor(i / 16)}`) ? ("blocked" as const) : ("free" as const), raw: 0 })) };
   const files = o.script ? [scriptFile(100, o.script)] : [];
   // With a script, a person at (0, 0) runs it when talked to.
   const talker = o.script ? [{ ...trainerNpc(99, 0, 0, 0, FACING.south, 0), type: 0, trainer: null, script: { id: 1, file: 100, entry: 0 } }] : [];
-  const data = scriptData(files, { 60: mapEvents({ npcs: [...(o.npcs ?? []), ...talker] as never }) });
+  const data = { ...scriptData(files, { 60: mapEvents({ npcs: [...(o.npcs ?? []), ...talker] as never }) }), phone: o.phone };
   const ai = buildAiData(BUNDLED_AI_CONTENT);
   // Trainer t says text 0728:(10t + kind): 0 the challenge, 1 when it loses, 2 after.
   const messages = o.trainers.flatMap((t) => [0, 1, 2].map((kind) => ({ trainer: t.id, kind, text: `0728:${t.id * 10 + kind}` })));

@@ -53,6 +53,9 @@ async function fakeWorkspace(options: Options = {}): Promise<StageContext> {
     musicDay,
     musicNight,
     weather: 0,
+    bikeAllowed: true,
+    escapeRopeAllowed: false,
+    flyAllowed: true,
     refs: { events: 0, scripts: 0, messages: 0, encounters: null },
   });
   await mkdir(join(root, "maps", "maps"), { recursive: true });

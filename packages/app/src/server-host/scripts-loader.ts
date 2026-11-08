@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseEventsJson, resolveScript, type MapEventsFile, type ScriptFile } from "@soulsilver/shared/events";
 import { parseMapJson } from "@soulsilver/shared/maps";
+import { parsePhoneFile, type PhoneBook } from "@soulsilver/shared/phone";
 import { parseTextJson } from "@soulsilver/shared/text";
 import type { ScriptData } from "@soulsilver/server";
 
@@ -19,6 +20,22 @@ function readDefaultRival(stagesDir: string, log: (message: string) => void): st
   return undefined;
 }
 
+/** The phone book (spec 026); an extraction from before it has no file, and an invalid one is logged and left out. */
+function readPhone(path: string, log: (message: string) => void): PhoneBook | undefined {
+  if (!existsSync(path)) return undefined;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    log(`${path}: ${(error as Error).message}`);
+    return undefined;
+  }
+  const parsed = parsePhoneFile("phone", raw, path);
+  if (parsed.ok) return parsed.data.value;
+  log(`${parsed.error.file}: ${parsed.error.path}: ${parsed.error.problem}`);
+  return undefined;
+}
+
 /** `stagesDir` is the extraction's `stages` folder; undefined when it has no events. */
 export function loadScripts(stagesDir: string, log: (message: string) => void): ScriptData | undefined {
   const eventsDir = join(stagesDir, "events", "events");
@@ -32,7 +49,7 @@ export function loadScripts(stagesDir: string, log: (message: string) => void): 
   const refs = new Map(headers.data.records.map((h) => [h.id, h.refs]));
   const files = new Map<number, ScriptFile | undefined>();
   const events = new Map<number, MapEventsFile | undefined>();
-  function read<K extends "script-file" | "map-events" | "new-game" | "std-messages" | "fly-points" | "headbutt">(kind: K, path: string) {
+  function read<K extends "script-file" | "map-events" | "new-game" | "std-messages" | "fly-points" | "headbutt" | "rock-smash" | "field-items">(kind: K, path: string) {
     if (!existsSync(path)) return undefined;
     const parsed = parseEventsJson(kind, readFileSync(path, "utf8"), path);
     if (parsed.ok) return parsed.data;
@@ -47,11 +64,18 @@ export function loadScripts(stagesDir: string, log: (message: string) => void): 
   const fly = read("fly-points", join(eventsDir, "fly-points.json"));
   // Headbutt tables and trees, by map id (spec 015's extraction; read by spec 025).
   const headbutt = new Map(read("headbutt", join(eventsDir, "headbutt.json"))?.records.map((r) => [r.id, r]));
+  // Rock Smash item odds by map (spec 025); an extraction from before it has no file.
+  const rockSmash = new Map(read("rock-smash", join(eventsDir, "rock-smash.json"))?.records.map((r) => [r.id, r]));
+  // Spec 027: hidden items, apricorn trees and berry growth; an extraction from before it has no file.
+  const fieldItems = read("field-items", join(eventsDir, "field-items.json"));
   return {
+    fieldItems: fieldItems && { hidden: fieldItems.hidden, apricornTrees: fieldItems.apricornTrees, berries: fieldItems.berries },
+    phone: readPhone(join(eventsDir, "phone.json"), log),
     newGame: newGame && { map: newGame.map, tx: newGame.tx, ty: newGame.ty, facing: newGame.facing, initScript: newGame.initScript },
     stdMessageBanks: std?.banks,
     flyPoints: fly?.points,
     headbutt: (map) => headbutt.get(map),
+    rockSmash: (map) => rockSmash.get(map),
     defaultRival: readDefaultRival(stagesDir, log),
     file(id) {
       if (!files.has(id)) files.set(id, read("script-file", join(eventsDir, "scripts", `${padded(id)}.json`)));

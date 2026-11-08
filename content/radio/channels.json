@@ -1,0 +1,54 @@
+{
+  "kind": "radio-channels",
+  "formatVersion": 1,
+  "value": {
+    "shows": [
+      { "id": "mahoganySignal", "bank": 409 },
+      { "id": "unown", "bank": 410 },
+      { "id": "buenasPassword", "bank": 411 },
+      { "id": "commercials", "bank": 412 },
+      { "id": "serialRadioDrama", "bank": 413 },
+      { "id": "pokemonTalk", "bank": 414 },
+      { "id": "thatTownThesePeople", "bank": 415 },
+      { "id": "pokemonMusic", "bank": 416 },
+      { "id": "pokeFlute", "bank": 417 },
+      { "id": "teamRocket", "bank": 418 },
+      { "id": "pokemonSearchParty", "bank": 419 },
+      { "id": "trainerProfiles", "bank": 420 }
+    ],
+    "baseRate": 40,
+    "music": {
+      "march": 25,
+      "lullaby": -25
+    },
+    "stations": [
+      {
+        "id": "music",
+        "shows": [
+          "pokemonMusic"
+        ]
+      },
+      {
+        "id": "talk",
+        "shows": [
+          "pokemonTalk"
+        ]
+      },
+      {
+        "id": "profiles",
+        "shows": [
+          "trainerProfiles",
+          "thatTownThesePeople"
+        ]
+      },
+      {
+        "id": "variety",
+        "shows": [
+          "pokemonSearchParty",
+          "serialRadioDrama",
+          "buenasPassword"
+        ]
+      }
+    ]
+  }
+}

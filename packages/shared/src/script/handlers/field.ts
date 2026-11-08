@@ -40,12 +40,11 @@ export const FIELD: Record<string, Handler> = {
     if (action === 2) c.writeVar(c.ptr("var"), c.host.strength() ? 1 : 0);
     else c.host.setStrength(action === 1);
   },
-  // A wild Pokémon may come out of the rock; then whether an item was found (arg1) and which (arg2).
-  // shortcut: no item drops, the per-map odds (NARC a/2/5/3) are not extracted; extract them when a spec needs the items.
+  // A wild Pokémon may come out of the rock; if none does, whether an item was found (arg1) and which (arg2).
   RockSmashItemCheck: (c) => {
-    c.host.fieldEncounter("rockSmash");
-    c.writeVar(c.ptr("arg1"), 0);
-    c.writeVar(c.ptr("arg2"), 0);
+    const item = c.host.fieldEncounter("rockSmash") ? 0 : c.host.rockSmashItem();
+    c.writeVar(c.ptr("arg1"), item ? 1 : 0);
+    c.writeVar(c.ptr("arg2"), item);
   },
   TryHeadbuttEncounter: (c) => c.writeVar(c.ptr("arg0"), c.host.fieldEncounter("headbutt") ? 1 : 0),
   RockClimb: cross("rockClimb"),

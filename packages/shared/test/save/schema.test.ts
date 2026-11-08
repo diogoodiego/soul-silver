@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { newBoxes, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, saveSchema } from "../../src/save/schema.ts";
 
 const all = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });
 const stats = { experience: 125, ivs: all(31), evs: all(0), nature: 0 };
 
 const valid = {
-  schemaVersion: 9,
+  schemaVersion: 11,
   name: "Gold",
   character: "male",
   area: "60",
@@ -34,6 +34,8 @@ const valid = {
   vars: { "16510": 1 },
   rivalName: "",
   storyRev: 1,
+  phone: { contacts: [], seeking: [], called: [], pending: [], log: [] },
+  ...newItemState(),
 };
 
 describe("saveSchema", () => {

@@ -59,3 +59,5 @@ export function buildWildData(content: WildContent, extracted: ExtractedForWild)
 
 /** content/wild as bundled with the app. */
 export const BUNDLED_WILD_CONTENT: WildContent = { spawn: spawnJson, temperaments: temperamentsJson, balls: ballsJson };
+/** The original bands of the bundled content/wild/spawn.json (spec 026): the one source of the time of day when no wild data was loaded. */
+export const BUNDLED_TIME_BANDS = (parse("spawn", spawnJson) as SpawnRules).timeBands;

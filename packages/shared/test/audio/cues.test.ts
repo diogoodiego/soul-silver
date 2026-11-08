@@ -19,6 +19,7 @@ function cues(patch: Record<string, unknown> = {}) {
       championBattle: "SEQ_CHAMP",
       trainerVictory: "SEQ_WIN1",
       leaderVictory: "SEQ_WIN3",
+      bicycle: "SEQ_BICYCLE",
     },
     effects: Object.fromEntries(EFFECT_CUES.map((c) => [c, `SE_${c}`])),
     archetypes: { projectile: "SE_PROJECTILE" },

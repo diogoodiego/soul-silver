@@ -1,0 +1,20 @@
+{
+  "kind": "phone-scripted-calls",
+  "formatVersion": 1,
+  "value": {
+    "calls": [
+      {
+        "caller": 1,
+        "scripts": [2, 3, 4, 5, 6]
+      },
+      {
+        "caller": 2,
+        "scripts": [82]
+      },
+      {
+        "caller": 0,
+        "scripts": [0]
+      }
+    ]
+  }
+}

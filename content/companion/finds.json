@@ -1,0 +1,28 @@
+{
+  "kind": "companion-finds",
+  "formatVersion": 1,
+  "value": {
+    "everyS": 300,
+    "chance": 30,
+    "places": {
+      "route": [
+        { "item": 155, "weight": 30 },
+        { "item": 17, "weight": 25 },
+        { "item": 149, "weight": 10 },
+        { "item": 150, "weight": 10 },
+        { "item": 151, "weight": 10 },
+        { "item": 4, "weight": 15 }
+      ],
+      "cave": [
+        { "item": 86, "weight": 30 },
+        { "item": 78, "weight": 20 },
+        { "item": 18, "weight": 25 },
+        { "item": 90, "weight": 25 }
+      ],
+      "town": [
+        { "item": 17, "weight": 60 },
+        { "item": 4, "weight": 40 }
+      ]
+    }
+  }
+}

@@ -43,6 +43,12 @@ function duel() {
     },
     /** A uses move 1 toward B's Pokémon, then waits. */
     attack(ticks = 30) {
+      // A move waits for a full action bar.
+      for (let i = 0; i < 100 && companionOf(a)!.data["gauge"] !== 100; i++) {
+        send(0, 0);
+        send(1, 0);
+        t.session.step();
+      }
       const ca = companionOf(a)!;
       const cb = companionOf(b)!;
       const d = Math.hypot(cb.x - ca.x, cb.y - ca.y);

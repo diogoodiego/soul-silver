@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { WorldMap } from "../../src/game/world-map.ts";
-import { checkCoherence, COHERENCE_RULES, type CoherenceRule } from "../../src/save/coherence.ts";
-import { newBoxes, type Save } from "../../src/save/schema.ts";
+import { checkCoherence, COHERENCE_RULES, flyPointsRule, type CoherenceRule } from "../../src/save/coherence.ts";
+import { newBoxes, newItemState, type Save } from "../../src/save/schema.ts";
 
 const save: Save = {
-  schemaVersion: 9,
+  schemaVersion: 11,
   rivalName: "",
   storyRev: 1,
+  phone: { contacts: [], seeking: [], called: [], pending: [], log: [] },
+  ...newItemState(),
   flags: [],
   vars: {}, npcPlacement: {},
   name: "Gold",
@@ -69,5 +71,19 @@ describe("checkCoherence", () => {
     const result = checkCoherence(withLevel, world, rules);
     expect(result.ok).toBe(false);
     expect(!result.ok && result.message).toContain("level");
+  });
+});
+
+describe("flyPointsRule (spec 025)", () => {
+  const rules = [...COHERENCE_RULES, flyPointsRule([{ map: 60 }, { map: 67 }])];
+
+  it("accepts visited fly points that exist", () => {
+    expect(checkCoherence({ ...save, flyPoints: ["60", "67"] }, world, rules)).toEqual({ ok: true });
+  });
+
+  it("refuses an area that is no fly point", () => {
+    const result = checkCoherence({ ...save, flyPoints: ["60", "33"] }, world, rules);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.message).toContain("flyPoints");
   });
 });

@@ -7,12 +7,6 @@ import type { Handler } from "../runner.ts";
 
 const nothing: Handler = () => undefined;
 
-/**
- * Scripted Pokégear calls by "caller:call:arg", with the player-is-male and player-is-female texts (bank 716, Elm's calls).
- * shortcut: only this stretch's call (Elm's on Route 30 after Mr. Pokémon, 227:0), shown as a text box, not the Pokégear's
- * call screen; map the rest from the ROM's phone call table when a spec reaches them.
- */
-const SCRIPTED_CALLS: Record<string, [string, string]> = { "1:2:0": ["0716:33", "0716:34"] };
 /** VERSION_SOULSILVER (config.h). */
 const GAME_VERSION = 8;
 /** BufferFriendsName: the friend is the other character. shortcut: the English names; read them from the ROM's text when a language switch exists. */
@@ -32,6 +26,10 @@ export const STORY: Record<string, Handler> = {
   MsgBoxExtern: (c) => c.block({ kind: "say", text: formatTextId(c.get("arg0"), c.get("arg1")), buffers: { ...c.buffers } }),
   GetItemPocket: (c) => c.writeVar(c.ptr("arg1"), c.host.itemPocket(c.get("arg0"))),
   BufferItemName: (c) => void (c.buffers[c.raw("slot")] = { kind: "item", id: c.get("item") }),
+  // Spec 027: the item-ball and hidden-item std scripts (scr_seq_0141, 0145).
+  BufferItemNameIndef: (c) => void (c.buffers[c.raw("arg0")] = { kind: "item", id: c.get("arg1") }),
+  BufferTMHMMoveName: (c) => void (c.buffers[c.raw("slot")] = { kind: "move", id: c.host.machineMove?.(c.get("tmhm")) ?? 0 }),
+  ItemIsTMOrHM: (c) => c.writeVar(c.ptr("arg1"), (c.host.machineMove?.(c.get("arg0")) ?? 0) > 0 ? 1 : 0),
   // shortcut: the singular name; the ROM's plural bank is not extracted yet.
   BufferItemNamePlural: (c) => void (c.buffers[c.raw("arg0")] = { kind: "item", id: c.get("arg1") }),
   BufferPocketName: (c) => void (c.buffers[c.raw("slot")] = { kind: "pocket", id: c.get("pocket") }),
@@ -45,20 +43,23 @@ export const STORY: Record<string, Handler> = {
   BufferFriendsName: (c) => void (c.buffers[c.raw("slot")] = { kind: "name", name: FRIEND_NAME[c.host.character] }),
   // shortcut: without the English article ("a CYNDAQUIL"); add it with the text formatter's articles.
   BufferPartyMonSpeciesNameIndef: (c) => void (c.buffers[c.raw("arg0")] = { kind: "species", id: c.host.partySpecies(c.get("arg1")) }),
-  // shortcut: the Pokégear has no phone yet, so no number is registered and no call is due; keep them when it does.
-  RegisterGearNumber: nothing,
-  CheckRegisteredPhoneNumber: (c) => c.writeVar(c.ptr("arg1"), 0),
-  GetPhoneBookRematch: (c) => c.writeVar(c.ptr("arg1"), 0),
+  // The phone (spec 026): numbers and rematches are this player's.
+  RegisterGearNumber: (c) => c.host.registerContact(c.get("arg0")),
+  CheckRegisteredPhoneNumber: (c) => c.writeVar(c.ptr("arg1"), c.host.isRegistered(c.get("arg0")) ? 1 : 0),
+  GetPhoneBookRematch: (c) => c.writeVar(c.ptr("arg1"), c.host.rematch(c.get("arg0"))),
+  ScrCmd_462: (c) => c.host.endRematch(c.get("arg0")),
+  // shortcut: call triggers (CALL_TRIGGER_*) are not kept yet, as none rings before Violet City; keep them when one does.
   UnsetPhoneCallTrigger: nothing,
-  // Scripted calls (std 3:39): SetPhoneCall picks the caller and the call, the phone rings, RunPhoneCall plays it.
+  // Scripted calls (std 3:39): SetPhoneCall picks the caller and the call (arg1 2 is "scripted", arg2 the index), RunPhoneCall rings it.
   SetPhoneCall: (c) => {
-    c.phone.call = `${c.get("arg0")}:${c.get("arg1")}:${c.get("arg2")}`;
-    if (!SCRIPTED_CALLS[c.phone.call]) c.unsupported();
+    const caller = c.get("arg0");
+    const script = c.get("arg1") === 2 ? c.host.scriptedCall(caller, c.get("arg2")) : undefined;
+    c.phone.call = script === undefined ? undefined : { caller, script };
+    if (!c.phone.call) c.unsupported();
   },
   RunPhoneCall: (c) => {
-    const texts = SCRIPTED_CALLS[c.phone.call ?? ""];
-    if (!texts) return c.unsupported();
-    c.block({ kind: "say", text: texts[c.host.character === "male" ? 0 : 1], buffers: { 0: { kind: "player" } } });
+    if (!c.phone.call) return c.unsupported();
+    c.block({ kind: "call", ...c.phone.call });
   },
   RegisterPokegearCard: nothing,
   // Running needs no shoes here and the Pokédex is always open.

@@ -16,7 +16,7 @@ const WORLD: Record<string, WorldMap> = {
 const lookup = (id: string) => WORLD[id];
 
 function game(options: { hour?: number; area?: string; wild?: ReturnType<typeof wildData>; ai?: ReturnType<typeof aiData>; players?: number } = {}) {
-  const t = setup({ world: lookup, timeoutTicks: 1e9, combat: combatData(), wild: options.wild ?? wildData(), ai: options.ai, hour: () => options.hour ?? 12, spawn: (n) => ({ area: options.area ?? "route", x: px(5 + n), y: px(5) }) });
+  const t = setup({ world: lookup, timeoutTicks: 1e9, combat: combatData(), wild: options.wild ?? wildData(), ai: options.ai, now: () => new Date(2026, 10, 1, options.hour ?? 12), spawn: (n) => ({ area: options.area ?? "route", x: px(5 + n), y: px(5) }) });
   const ps = Array.from({ length: options.players ?? 1 }, () => t.connect());
   const wilds = () => t.session.world.all().filter((e) => e.kind === "pokemon" && e.data["owner"] === "wild");
   const run = (ticks: number) => {

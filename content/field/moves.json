@@ -17,6 +17,14 @@
       { "name": "teleport", "move": 100, "obstacle": "none" }
     ],
     "bikeSpeedPx": 9,
-    "escapeRope": 78
+    "escapeRope": 78,
+    "bicycle": 450,
+    "darkWeather": [11, 12],
+    "rockSmashItems": {
+      "weights": [25, 20, 10, 10, 10, 10, 10, 5],
+      "default": [39, 28, 93, 72, 73, 75, 74, 91],
+      "ruinsOfAlph": [73, 75, 102, 39, 72, 74, 103, 29],
+      "cliffCave": [39, 88, 89, 73, 75, 99, 99, 106]
+    }
   }
 }
