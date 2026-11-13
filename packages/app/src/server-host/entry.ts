@@ -7,6 +7,8 @@ import { LAN_PORT_GAME } from "@soulsilver/shared/lan";
 import type { ServerToHostMessage } from "@soulsilver/shared";
 import { loadServerData } from "./server-data";
 import { createWsListener, REMOTE_CONN_BASE } from "./ws-listener";
+import { join } from "node:path";
+import { openTradeLedger } from "./trade-ledger";
 
 const port = process.parentPort;
 const log = (message: string) => {
@@ -71,6 +73,8 @@ const server = createGameServer({
   // The test arena ships in every build; the debug commands stay in development.
   devArena: true,
   devTools,
+  // The stages folder is <userData>/extraction/stages: the book lives in <userData>, next to the saves folder.
+  tradeLedger: stagesDir ? openTradeLedger(join(stagesDir, "..", "..", "trades-pending.json"), log) : undefined,
   onDecision: aiLog && ((d) => aiLog.write(`${JSON.stringify(d)}\n`)),
   onMissingCommand: scriptLog && ((m) => scriptLog.write(`${JSON.stringify({ time: new Date().toISOString(), ...m })}\n`)),
   onStuck: scriptLog && ((s) => scriptLog.write(`${JSON.stringify({ time: new Date().toISOString(), stuck: true, ...s })}\n`)),

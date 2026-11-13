@@ -17,7 +17,7 @@ import type { TrainerData } from "./trainer-loader";
 import type { MissingCommand } from "@soulsilver/shared/script";
 import type { Connection } from "./connection";
 import { checkCoherence, COHERENCE_RULES, flyPointsRule } from "@soulsilver/shared/save";
-import { createSession, MAX_PLAYERS, type Session } from "./session";
+import { createSession, MAX_PLAYERS, type Session, type TradeLedger } from "./session";
 import { createTickLoop, type Scheduler, type TickLoop } from "./tick-loop";
 import { createTickMetrics } from "./tick-metrics";
 
@@ -54,6 +54,8 @@ export interface GameServerOptions extends Scheduler {
   devArena?: boolean | undefined;
   /** Development builds: the debug commands, and saves with no party get a test party (spec 014) and an empty bag 20 Poké Balls (spec 015). */
   devTools?: boolean | undefined;
+  /** Spec 028.3: the host's book of trades unsaved on a client, kept across sessions. */
+  tradeLedger?: TradeLedger | undefined;
   /** Wild Pokémon and capture (spec 015); none when omitted. */
   wild?: WildData | undefined;
   /** Companion rules (spec 014); nobody follows when omitted. */
@@ -119,6 +121,7 @@ export function createGameServer(options: GameServerOptions): GameServer {
       shops: options.shops,
       // Development builds may change story flags from the script debugger.
       devTools: options.devTools,
+      tradeLedger: options.tradeLedger,
       now: () => new Date(),
       ...(options.devTools ? { devParty: DEV_PARTY, devBag: DEV_BAG } : {}),
       // Without an extracted world there is nothing to check a save against.

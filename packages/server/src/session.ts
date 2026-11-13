@@ -16,6 +16,7 @@ import {
   type ServerMessage,
   type ArenaSpec,
   type WorldLookup,
+  type TradeOffer,
 } from "@soulsilver/shared/game";
 import type { Decision } from "@soulsilver/shared/ai";
 import { TICKS_PER_S } from "@soulsilver/shared/combat";
@@ -42,6 +43,8 @@ import { createScripts, type ScriptData, type Scripts, type StuckPlayer } from "
 import type { MissingCommand } from "@soulsilver/shared/script";
 import { startPosition } from "./start";
 import { createPcs } from "./pc";
+import { createTrades } from "./trade";
+import { createDuels } from "./duel";
 import { createShops, type ShopData, type Shops } from "./shop";
 import { createTrainerBattles, type TrainerBattles } from "./trainer-battle";
 import type { TrainerData } from "./trainer-loader";
@@ -80,7 +83,19 @@ export interface Spawn {
   facing: Direction;
 }
 
+/**
+ * Spec 028.3: the host's book of trades whose save a client never acknowledged, kept across sessions (a file, in
+ * the app). Keyed by the player's name; shortcut: two friends with one name share an entry, add an id if that happens.
+ */
+export interface TradeLedger {
+  get(name: string): Save | undefined;
+  put(name: string, save: Save): void;
+  remove(name: string): void;
+}
+
 export interface SessionOptions {
+  /** Spec 028.3: without it, a trade unsaved on a client survives only while this session lasts. */
+  tradeLedger?: TradeLedger | undefined;
   seed: number;
   /** Maps by id; an unknown map is open ground. */
   world: WorldLookup;
@@ -161,6 +176,10 @@ interface Player {
   /** The save state captured when the running script started; undefined between scripts. */
   beforeScript?: BeforeScript | undefined;
   lastArea: string;
+  /** Spec 028.3: rev of the save a trade sent, until the client acknowledges it. */
+  tradeRev?: number | undefined;
+  /** Spec 028.5: the progress from before a duel, given back when it ends; saves taken meanwhile use it. */
+  duelBackup?: Pick<Save, "party" | "bag" | "money" | "pending" | "pokedex"> | undefined;
   /** Rev of a save sent while closing that has not been acknowledged yet. */
   pendingAck: number | undefined;
   gone: boolean;
@@ -186,6 +205,8 @@ interface Reserved {
   base: Save;
   spawn: Spawn;
   until: number;
+  /** Spec 028.3: a trade changed this progress and its save was never acknowledged: the seat does not expire, and the player gets this progress back even without the token. */
+  tradeUnsaved: boolean;
 }
 
 export interface Session {
@@ -336,7 +357,7 @@ export function createSession(options: SessionOptions): Session {
       return rod;
     },
   });
-  const npcs = options.scripts ? createNpcs({ world, lookup: lookup, seed: options.seed, log: options.log }) : undefined;
+  const npcs = options.scripts ? createNpcs({ world, lookup: lookup, seed: options.seed, log: (message) => options.log(message) }) : undefined;
   const scripts: Scripts | undefined = options.scripts
     ? createScripts({
         data: options.scripts,
@@ -415,6 +436,82 @@ export function createSession(options: SessionOptions): Session {
       else if (captures) captures.refresh(playerId);
       else p?.conn?.send({ type: "bag", items: p.progress.bag.map((b) => ({ ...b })) } satisfies ServerMessage);
     }, onClose: (playerId) => scripts?.serviceClosed(playerId), pocketOf: options.items && ((item) => options.items!.item(item)?.pocket) });
+  /** Spec 028.2: trades between players standing near each other on the same map. */
+  const TRADE_RANGE_PX = 48;
+  const trades = createTrades({
+    // Combat (wild, trainer, a duel to come) or a cutscene; a menu does not count.
+    busy: (id) => {
+      const presence = world.get(players.get(id)?.entityId ?? -1)?.data["presence"];
+      return presence === "combat" || presence === "cutscene";
+    },
+    near(a, b) {
+      const [ea, eb] = [world.get(players.get(a)?.entityId ?? -1), world.get(players.get(b)?.entityId ?? -1)];
+      return !!ea && !!eb && ea.area === eb.area && Math.hypot(ea.x - eb.x, ea.y - eb.y) <= TRADE_RANGE_PX;
+    },
+    holdings: (id) => ({ party: players.get(id)?.progress.party.length ?? 0, bag: players.get(id)?.progress.bag ?? [] }),
+    commit: (a, giveA, b, giveB) => commitTrade(a, giveA, b, giveB),
+    send: (id, msg) => players.get(id)?.conn?.send(msg),
+  });
+
+  /** Spec 028.5: duels between players, in an arena like a trainer battle's (spec 022); nothing is won or lost. */
+  const DUEL_BATTLE_BASE = 1_000_000;
+  let duelBattles = 0;
+  const duels = createDuels({
+    busy: (id) => {
+      const presence = world.get(players.get(id)?.entityId ?? -1)?.data["presence"];
+      return presence === "combat" || presence === "cutscene" || trades.of(id) !== undefined;
+    },
+    near: (a, b) => {
+      const [ea, eb] = [world.get(players.get(a)?.entityId ?? -1), world.get(players.get(b)?.entityId ?? -1)];
+      return !!ea && !!eb && ea.area === eb.area && Math.hypot(ea.x - eb.x, ea.y - eb.y) <= TRADE_RANGE_PX;
+    },
+    send: (id, msg) => players.get(id)?.conn?.send(msg),
+    begin(a, b, rules) {
+      const [pa, pb] = [players.get(a), players.get(b)];
+      const [ea, eb] = [world.get(pa?.entityId ?? -1), world.get(pb?.entityId ?? -1)];
+      if (!pa || !pb || !ea || !eb || !companions) return undefined;
+      // Between the two players, as wide as a trainer battle's.
+      const arena = { area: ea.area, x: (ea.x + eb.x) / 2, y: (ea.y + eb.y) / 2, radiusPx: (options.trainers?.tuning.arenaRadiusTiles ?? 4) * MAP_TILE_PX };
+      const battle = DUEL_BATTLE_BASE + ++duelBattles;
+      for (const p of [pa, pb]) {
+        const { party, bag, money, pending, pokedex } = p.progress;
+        p.duelBackup = structuredClone({ party, bag, money, pending, pokedex });
+        // The first `team` members; at level 50, every one at full HP for it.
+        p.progress.party = party.slice(0, rules.team).map((m) => {
+          const fighter = structuredClone(m);
+          if (rules.level === "50") {
+            fighter.level = 50;
+            fighter.hp = hpMax(fighter);
+          }
+          return fighter;
+        });
+        p.progress.pending = [];
+      }
+      const entered = [pa, pb].every((p) => companions.enterBattle(p.id, { battle, x: arena.x, y: arena.y, radiusPx: arena.radiusPx, onDefeat: () => duels.defeated(p.id) }, tick));
+      if (!entered) {
+        for (const p of [pa, pb]) giveBack(p);
+        return undefined;
+      }
+      return arena;
+    },
+    finish(a, b) {
+      for (const id of [a, b]) {
+        const p = players.get(id);
+        if (p) giveBack(p);
+      }
+    },
+  });
+
+  /** Spec 028.5: out of the duel's arena, with the progress from before it. */
+  function giveBack(p: Player): void {
+    companions?.leaveBattle(p.id);
+    if (!p.duelBackup) return;
+    Object.assign(p.progress, p.duelBackup);
+    p.duelBackup = undefined;
+    companions?.refresh(p.id);
+    p.conn?.send({ type: "bag", items: p.progress.bag.map((r) => ({ ...r })) } satisfies ServerMessage);
+  }
+
   const trainerBattles: TrainerBattles | undefined =
     options.trainers && combat && options.combat && companions && scripts
       ? createTrainerBattles({
@@ -539,6 +636,17 @@ export function createSession(options: SessionOptions): Session {
     else delete data["busy"];
     world.update({ ...e, data });
   }
+  /** What the others see this player doing (spec 028.1): combat over a cutscene over a menu, or nothing. */
+  function setPresence(p: Player): void {
+    const e = world.get(p.entityId);
+    if (!e) return;
+    const presence = companions?.inCombat(p.id) || trainerBattles?.inBattle(p.id) ? "combat" : scripts?.busy(p.id) ? "cutscene" : p.menuOpen || p.gearOpen ? "menu" : undefined;
+    if (e.data["presence"] === presence) return;
+    const data = { ...e.data };
+    if (presence) data["presence"] = presence;
+    else delete data["presence"];
+    world.update({ ...e, data });
+  }
   /** "Estou preso" (spec 024): to the blackout spot, cutting short a script in progress; never a way out of a fight. */
   function rescue(p: Player): boolean {
     if (p.arenaFoes !== undefined || companions?.inCombat(p.id) || trainerBattles?.inBattle(p.id) || scripts?.abort(p.id) === false) return false;
@@ -648,6 +756,8 @@ export function createSession(options: SessionOptions): Session {
     // The boxes and the PC's items only change in the PC, so they are always saved as they are.
     return {
       ...(p.beforeScript ?? capture(p)),
+      // Spec 028.5: mid-duel, the progress from before it; the duel's levels and HP never reach a save.
+      ...(p.duelBackup ? structuredClone(p.duelBackup) : {}),
       boxes: structuredClone(p.progress.boxes),
       pcItems: p.progress.pcItems.map((b) => ({ ...b })),
       playTimeMs: p.playTimeMs + (tick - p.joinTick) * TICK_MS,
@@ -677,15 +787,65 @@ export function createSession(options: SessionOptions): Session {
     };
   }
 
-  function sendSave(p: Player): void {
-    if (!p.conn || p.arenaFoes !== undefined) return;
+  /** The rev of the save sent, if one was. */
+  function sendSave(p: Player): number | undefined {
+    if (!p.conn || p.arenaFoes !== undefined) return undefined;
     const save = snapshot(p);
     if (state === "closing") p.pendingAck = save.rev;
     p.conn.send({ type: "save", save } satisfies ServerMessage);
+    return save.rev;
+  }
+
+  /**
+   * Spec 028.3: both sides of a trade in one synchronous step, checked again against what each player holds now;
+   * then a save to each, kept until acknowledged (a drop before that keeps the seat, see `Reserved.tradeUnsaved`).
+   */
+  function commitTrade(a: number, giveA: TradeOffer, b: number, giveB: TradeOffer): boolean {
+    const [pa, pb] = [players.get(a), players.get(b)];
+    if (!pa || !pb) return false;
+    const after = (p: Player, give: TradeOffer, get: TradeOffer) => {
+      const party = p.progress.party.filter((_, i) => !give.party.includes(i));
+      if (give.party.some((i) => i >= p.progress.party.length)) return undefined;
+      party.push(...(get === giveA ? pa : pb).progress.party.filter((_, i) => get.party.includes(i)).map((m) => structuredClone(m)));
+      const bag = p.progress.bag.map((row) => ({ ...row }));
+      for (const g of give.items) {
+        const row = bag.find((r) => r.item === g.item);
+        if (!row || row.count < g.count) return undefined;
+        row.count -= g.count;
+      }
+      for (const g of get.items) {
+        const row = bag.find((r) => r.item === g.item);
+        if (row) row.count += g.count;
+        else bag.push({ ...g });
+      }
+      // Nobody is left without a Pokémon, nor over the party or the bag's row limit.
+      if (party.length < 1 || party.length > 6 || bag.some((r) => r.count > 999)) return undefined;
+      return { party, bag: bag.filter((r) => r.count > 0) };
+    };
+    const [nextA, nextB] = [after(pa, giveA, giveB), after(pb, giveB, giveA)];
+    if (!nextA || !nextB) return false;
+    for (const [p, next, got] of [[pa, nextA, giveB], [pb, nextB, giveA]] as const) {
+      p.progress.party = next.party;
+      p.progress.bag = next.bag;
+      // Spec 028.4: what arrived sits at the end of the party; its trade evolutions queue before the save goes out.
+      for (let i = next.party.length - got.party.length; i < next.party.length; i++) progression?.traded(p.id, i);
+      companions?.refresh(p.id);
+      p.conn?.send({ type: "bag", items: p.progress.bag.map((r) => ({ ...r })) } satisfies ServerMessage);
+    }
+    for (const p of [pa, pb]) {
+      const save = snapshot(p);
+      // Into the host's book before it goes out: if the host closes before this client writes, its next game still owes it.
+      p.tradeRev = save.rev;
+      options.tradeLedger?.put(p.base.name, save);
+      p.conn?.send({ type: "save", save } satisfies ServerMessage);
+    }
+    return true;
   }
 
   function remove(p: Player): void {
     p.gone = true;
+    duels.cancel(p.id);
+    trades.cancel(p.id);
     trainerBattles?.leave(p.id);
     players.delete(p.id);
     companions?.leave(p.id);
@@ -722,6 +882,8 @@ export function createSession(options: SessionOptions): Session {
   /** A guest dropped: the seat and the progress are kept for a while. */
   function reserve(p: Player): void {
     if (p.gone) return;
+    duels.cancel(p.id);
+    trades.cancel(p.id);
     // Ends any fight first, so the reserved progress keeps the HP it ended with; a trainer battle ends undecided.
     trainerBattles?.leave(p.id);
     companions?.leave(p.id);
@@ -731,6 +893,7 @@ export function createSession(options: SessionOptions): Session {
       base: snapshot(p),
       spawn: { area: e.area, x: e.x, y: e.y, level: e.level, facing: e.facing },
       until: tick + RESERVE_TICKS,
+      tradeUnsaved: p.tradeRev !== undefined,
     });
     remove(p);
     p.conn?.close();
@@ -839,9 +1002,12 @@ export function createSession(options: SessionOptions): Session {
     }
     const key = nameKey(save.name);
     const held = reserved.get(key);
-    if (held && held.token === msg.resumeToken) {
+    if (held && (held.token === msg.resumeToken || held.tradeUnsaved)) {
       reserved.delete(key);
-      return { player: add(held.base, conn, held.spawn, held.token), resumed: true };
+      const back = add(held.base, conn, held.spawn, held.token);
+      // Still unsaved on the client: the next acknowledged save clears it.
+      if (held.tradeUnsaved) back.tradeRev = held.base.rev;
+      return { player: back, resumed: true };
     }
     if (held || [...players.values()].some((p) => nameKey(p.base.name) === key)) {
       reject(conn, "name-taken", "Esse nome já está em uso nesta sessão.");
@@ -857,7 +1023,13 @@ export function createSession(options: SessionOptions): Session {
       player.arenaFoes = spawnFoes(player, msg.arena.foe);
       return { player, resumed: false };
     }
-    return { player: add(save, conn, { area: save.area, x: save.x, y: save.y, level: 0, facing: save.facing }, options.newToken()), resumed: false };
+    // Spec 028.3: a save older than a trade this host still owes the player is replaced by the traded one.
+    const owed = options.tradeLedger?.get(save.name);
+    if (owed && owed.rev > save.rev) save = owed;
+    else if (owed) options.tradeLedger?.remove(save.name);
+    const player = add(save, conn, { area: save.area, x: save.x, y: save.y, level: 0, facing: save.facing }, options.newToken());
+    if (owed && save === owed) player.tradeRev = owed.rev;
+    return { player, resumed: false };
   }
 
   function connect(conn: Connection): void {
@@ -892,6 +1064,8 @@ export function createSession(options: SessionOptions): Session {
         } satisfies ServerMessage);
         conn.send(clockMessage());
         phone.sync(player.id);
+        // Spec 028.3: the client came back with a save from before a trade; the traded progress goes to its disk at once.
+        if (player.tradeRev !== undefined) player.tradeRev = sendSave(player) ?? player.tradeRev;
         return;
       }
       switch (msg.type) {
@@ -926,6 +1100,34 @@ export function createSession(options: SessionOptions): Session {
         case "pc-items":
         case "pc-leave":
           pcs.handle(player.id, msg);
+          return;
+        case "trade-propose": {
+          const refused = players.has(msg.to) ? trades.propose(player.id, msg.to) : "action-refused";
+          if (refused) notice(player, refused);
+          return;
+        }
+        case "trade-answer":
+          trades.answer(player.id, msg.accept);
+          return;
+        case "trade-offer":
+          if (!trades.offer(player.id, msg.offer)) notice(player, "action-refused");
+          return;
+        case "trade-confirm":
+          trades.confirm(player.id);
+          return;
+        case "duel-invite": {
+          const refused = players.has(msg.to) ? duels.invite(player.id, msg.to, msg.rules) : "action-refused";
+          if (refused) notice(player, refused);
+          return;
+        }
+        case "duel-answer":
+          duels.answer(player.id, msg.accept);
+          return;
+        case "duel-cancel":
+          duels.cancel(player.id);
+          return;
+        case "trade-cancel":
+          trades.cancel(player.id);
           return;
         case "shop-buy":
         case "shop-sell":
@@ -1064,6 +1266,10 @@ export function createSession(options: SessionOptions): Session {
           progression?.answer(player.id, msg);
           return;
         case "save-ack":
+          if (player.tradeRev !== undefined && msg.rev >= player.tradeRev) {
+            player.tradeRev = undefined;
+            options.tradeLedger?.remove(player.base.name);
+          }
           if (player.pendingAck !== undefined && msg.rev >= player.pendingAck) {
             player.pendingAck = undefined;
             if (state === "closing" && ![...players.values()].some((p) => p.pendingAck !== undefined)) finishClose();
@@ -1089,7 +1295,7 @@ export function createSession(options: SessionOptions): Session {
       return;
     }
     for (const [key, r] of reserved) {
-      if (tick >= r.until) reserved.delete(key);
+      if (tick >= r.until && !r.tradeUnsaved) reserved.delete(key);
     }
     // Timeouts run before the tick advances so they record like any other leave between ticks.
     for (const p of [...players.values()]) {
@@ -1102,10 +1308,12 @@ export function createSession(options: SessionOptions): Session {
     // A timed-out host closes the session; TS cannot see that mutation through close().
     if ((state as Session["state"]) !== "open") return;
     // Joins and leaves show up here, after the welcome went out.
-    const ids = [...players.keys()].join();
+    // Map changes too (spec 028.1): the list shows where each player is.
+    const areaOf = (p: Player) => world.get(p.entityId)?.area ?? "";
+    const ids = [...players.values()].map((p) => `${p.id}@${areaOf(p)}`).join();
     if (ids !== roster) {
       roster = ids;
-      const list = [...players.values()].map((p) => ({ id: p.id, name: p.base.name, host: p.id === hostId }));
+      const list = [...players.values()].map((p) => ({ id: p.id, name: p.base.name, host: p.id === hostId, area: areaOf(p) }));
       for (const p of players.values()) p.conn?.send({ type: "players", players: list } satisfies ServerMessage);
     }
     tick++;
@@ -1175,6 +1383,9 @@ export function createSession(options: SessionOptions): Session {
           setBusy(p, p.menuOpen || scripts.busy(p.id) || (trainerBattles?.locked(p.id) ?? false));
           setSheltered(p, scripts.sheltered(p.id));
         }
+    for (const p of players.values()) setPresence(p);
+    trades.check();
+    duels.check();
     const entities = world.all();
     for (const p of players.values()) {
       const entity = world.get(p.entityId)!;

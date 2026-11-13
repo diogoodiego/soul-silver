@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import { BUTTON, createRng, findDuplicates, tileAt, type PcSlot, type ServerMessage } from "@soulsilver/shared/game";
 import type { Direction } from "@soulsilver/shared/maps";
-import { memberStats } from "@soulsilver/shared/progression";
+import { expForLevel, memberStats } from "@soulsilver/shared/progression";
 import { applyNewGame, badgeCount, migrate, type Save } from "@soulsilver/shared/save";
 import { SCRIPT_HANDLERS } from "@soulsilver/shared/script";
 import { prize } from "@soulsilver/shared/trainer";
@@ -26,6 +26,10 @@ const RIVAL = "Silver";
 /** The starter machine offers Chikorita, Cyndaquil, Totodile: Cyndaquil, strong against Sprout Tower's Bellsprout. */
 const STARTER_PICK = 1;
 const POTION = 17;
+/** Shortcut of the golden path: the starter's level and the Potions added once it is received, so the bot does not lose the early trainer battles. */
+const BOOST_LEVEL = 60;
+const BOOST_POTIONS = 100;/** The share of its maximum HP at which the bot's Pokémon gets a Potion in combat. */
+const POTION_AT = 0.2;
 const CANCEL = -1;
 const POKE_BALL = 4;
 /** Where the second player waits, in New Bark Town (map 60), away from the first player's path. */
@@ -171,6 +175,7 @@ function pilot(from?: Save) {
 
   /** One tick, as both clients: the first moves and fights trainer battles with the spec 019 bot, the second stands still. */
   function tick(move: Direction | null = null, buttons = 0): void {
+    potionIfLow();
     const fight = hold ? undefined : botInput();
     client.send({ type: "input", seq: ++one.seq, move: fight?.move ?? (move ? VECTORS[move] : { x: 0, y: 0 }), run: false, buttons: fight?.buttons ?? buttons });
     two.client.send({ type: "input", seq: ++two.seq, move: { x: 0, y: 0 }, run: false, buttons: 0 });
@@ -184,6 +189,17 @@ function pilot(from?: Save) {
 
   /** Whether the first player's Pokémon is out fighting (a trainer battle or a wild one). */
   const inCombat = () => session.world.all().some((e) => e.kind === "pokemon" && session.combat?.get(e.id)?.owner === welcome.playerId);
+
+  /** Tick before which no Potion is tried again, so one refused use is not repeated every tick. */
+  let potionAt = 0;
+  /** A Potion on the player's Pokémon in combat once its HP is down to POTION_AT of its maximum. */
+  function potionIfLow(): void {
+    if (steps < potionAt) return;
+    const mine = session.world.all().flatMap((e) => (e.kind === "pokemon" ? [session.combat?.get(e.id)] : [])).find((c) => c?.owner === welcome.playerId && c.hp > 0);
+    if (!mine || mine.hp > mine.stats.hp * POTION_AT) return;
+    client.send({ type: "use-item-combat", item: POTION });
+    potionAt = steps + 20;
+  }
 
   /** The bot's input for the player's Pokémon against the nearest of the trainer's; none between send-outs. */
   function botInput() {
@@ -458,6 +474,26 @@ function pilot(from?: Save) {
 type Pilot = ReturnType<typeof pilot>;
 
 /**
+ * The pilot again from its latest save, with the party at BOOST_LEVEL (full HP) and BOOST_POTIONS more Potions;
+ * what the first pilot recorded (maps, commands, stuck scripts) carries over.
+ */
+function boosted(p: Pilot): Pilot {
+  const save = p.fresh();
+  const party = save.party.map((m) => {
+    const rate = p.data.progression?.species(m.species)?.growthRate;
+    const up = { ...m, level: BOOST_LEVEL, experience: rate ? expForLevel(rate, BOOST_LEVEL) : m.experience };
+    return { ...up, hp: p.hpMax(up) };
+  });
+  const bag = [...save.bag.filter((b) => b.item !== POTION), { item: POTION, count: p.count(save, POTION) + BOOST_POTIONS }];
+  const next = pilot({ ...save, party, bag });
+  next.missing.push(...p.missing);
+  next.stuck.push(...p.stuck);
+  for (const m of p.visited) next.visited.add(m);
+  for (const c of p.hit) next.hit.add(c);
+  return next;
+}
+
+/**
  * The Cherrygrove mart (spec 023, map 68; the clerk behind the counter at (2, 6)), in one conversation as a player has
  * it: buy (the stock the extraction gives for now, then a Potion), the clerk's menu again, sell it, then quit.
  */
@@ -621,7 +657,8 @@ function pc(p: Pilot): Check {
       const f = p.session.combat?.get(foe.id);
       return !f || f.hp <= f.stats.hp * 0.6 || !p.inCombat();
     }, 1500);
-    if (!p.session.combat?.get(foe.id)?.hp || !p.inCombat()) continue;
+    // A knocked-out wild one stays catchable where it fell (faintedSeconds); the BOOST_LEVEL lead knocks them out in one hit.
+    if (!p.session.combat?.get(foe.id)) continue;
     p.setHold(true);
     p.tick(null, BUTTON.throw);
     p.tick();
@@ -780,7 +817,7 @@ const STEPS: Record<number, (p: Pilot) => void> = {
 };
 
 it("goes from the bedroom to the Zephyr Badge", () => {
-  const p = pilot();
+  let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;
   const isolation: Check[] = [];
@@ -792,6 +829,8 @@ it("goes from the bedroom to the Zephyr Badge", () => {
   };
   const extra = () => ({ checks: [...checks, ...isolation], optional: optional() });
   for (const m of MILESTONES) {
+    // From the starter on (milestone 3), the boosted party.
+    if (m.n === 4) p = boosted(p);
     const step = STEPS[m.n];
     const check = step ? (step(p), p.check(m)) : "passos do marco não escritos";
     const apart = p.isolation();

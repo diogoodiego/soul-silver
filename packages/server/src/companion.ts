@@ -57,6 +57,8 @@ export interface Arena {
   radiusPx: number;
   /** Party index fighting as the AI ally in a double battle: it cannot be swapped in. */
   ally?: number | undefined;
+  /** Spec 028.5: a duel's arena; its last Pokémon down ends the duel here instead of a blackout. */
+  onDefeat?: (() => void) | undefined;
 }
 
 export interface CompanionOptions {
@@ -257,6 +259,10 @@ export function createCompanions(options: CompanionOptions) {
         const canContinue = launchLead(s) !== undefined;
         s.trainer.send({ type: "fainted", partyIndex: fainted, canContinue });
         if (!canContinue) {
+          if (s.arena?.onDefeat) {
+            s.arena.onDefeat();
+            return;
+          }
           // Only Pokémon that cannot fight on the water are left: back on the water, no blackout.
           if (leadIndex(party) !== undefined && !s.arena) endCombat(s);
           else blackout(s);

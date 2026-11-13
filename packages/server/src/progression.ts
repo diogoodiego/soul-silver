@@ -156,6 +156,9 @@ export function createProgression(options: ProgressionOptions) {
         if (answer.type !== "evolve-answer") return false;
         if (!answer.accept || !data.species(item.into)) return true;
         const before = statsOf(m);
+        // Spec 028.4: an evolution by trade holding an item uses that item up.
+        const byHeld = data.evolutions(m.species).some((e) => e.method === "trade-item" && e.into === item.into && e.condition.kind === "item" && e.condition.item === m.held);
+        if (byHeld) delete m.held;
         m.species = item.into;
         regrow(m, before);
         markCaught(pokedex, item.into);
@@ -243,6 +246,14 @@ export function createProgression(options: ProgressionOptions) {
      * Spec 027: a Rare Candy, an evolution stone or a machine used on party member `index`; it queues the same
      * items a level or an evolution would. False, with nothing queued, when it does nothing for that Pokémon.
      */
+    /** Spec 028.4: party member `index` just arrived by trade; its trade evolution, if the data has one it meets, is queued. */
+    traded(playerId: number, index: number): void {
+      const s = states.get(playerId);
+      const m = s?.learner.progress.party[index];
+      if (!s || !m) return;
+      const to = data.evolutions(m.species).find((e) => e.method === "trade" || (e.method === "trade-item" && e.condition.kind === "item" && e.condition.item === m.held));
+      if (to) s.learner.progress.pending.push({ kind: "evolve", member: index, into: to.into });
+    },
     useItem(playerId: number, index: number, use: ItemGrowth): boolean {
       const s = states.get(playerId);
       const m = s?.learner.progress.party[index];

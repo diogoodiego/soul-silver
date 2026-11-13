@@ -101,7 +101,7 @@ describe("game channel", () => {
     server.handleMessage({ type: "client-message", connId: 1, msg: hello });
     clock.advance(1000);
     const debug = toClient(sent, 1).filter((m) => m.type === "debug");
-    expect(debug).toEqual([{ type: "debug", metrics: expect.objectContaining({ overruns: 0 }) }]);
+    expect(debug).toEqual([{ type: "debug", metrics: expect.objectContaining({ overruns: 0 }) as unknown }]);
   });
 
   it("tells the host to drop a connection the session closes", () => {

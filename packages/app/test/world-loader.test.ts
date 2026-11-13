@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { serializeEventsFile, type MapEventsFile } from "@soulsilver/shared/events";
 import { serializeMapFile, type CollisionCell, type MapArea, type MapHeader } from "@soulsilver/shared/maps";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { loadWorld } from "../src/world-loader";
+import { loadWorld } from "../src/server-host/world-loader";
 
 // Synthetic extraction (no ROM data): maps 1 and 2 side by side on matrix 0, map 3 indoors on matrix 5.
 

@@ -144,7 +144,7 @@ export const audio = {
     await Promise.all(
       names.map((n) => {
         const track = typeof n === "number" ? i?.byId.get(n) : i?.byName.get((cues?.effects as Record<string, string> | undefined)?.[n] ?? n);
-        return track && buffer(ctx, track.file);
+        return track ? buffer(ctx, track.file) : Promise.resolve();
       }),
     );
   },

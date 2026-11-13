@@ -4,7 +4,8 @@ import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import { BUTTON, type ServerMessage } from "@soulsilver/shared/game";
 import { newBoxes, newCollection, newProgress } from "@soulsilver/shared/save";
 import { createRunner, SCRIPT_HANDLERS, type ScriptHost } from "@soulsilver/shared/script";
-import { createMemoryConnectionPair, createSession, loadWorld } from "@soulsilver/server";
+import { createMemoryConnectionPair, createSession } from "@soulsilver/server";
+import { loadWorld } from "../src/server-host/world-loader";
 import { describe, expect, it } from "vitest";
 import { loadScripts } from "../src/server-host/scripts-loader";
 

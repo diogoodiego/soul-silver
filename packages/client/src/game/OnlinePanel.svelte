@@ -2,6 +2,7 @@
   // The Online tab beside the game screen: who is in the session, opening a solo game to the LAN, and
   // leaving for another session (found on the LAN or typed in).
   import { parseAddress, type SessionListing } from "@soulsilver/shared/lan";
+  import type { DuelRules } from "@soulsilver/shared/game";
   import { onMount } from "svelte";
   import { t } from "../i18n";
 
@@ -12,13 +13,16 @@
     address,
     addresses,
     busy,
-    busyNames = [],
+    doing = {},
     error,
     onOpen,
     onJoin,
+    onTrade,
+    onDuel,
   }: {
     mode: "solo" | "host" | "guest" | "arena";
-    players: { id: number; name: string; host: boolean }[];
+    /** `place`: the map's name once read; `area` (the map id) until then (spec 028.1). */
+    players: { id: number; name: string; host: boolean; area: string; place?: string }[];
     /** This player's id in the session. */
     me: number | undefined;
     /** The host this guest is connected to. */
@@ -26,18 +30,30 @@
     /** Where friends join, once this PC opened its session to the LAN. */
     addresses: string[];
     busy: boolean;
-    /** Players in a script or a menu right now (spec 021); shortcut: matched by name, add the player id to the entity if names can repeat. */
-    busyNames?: string[];
+    /** What players in view are doing (spec 028.1), by name; shortcut: matched by name, add the player id to the entity if names can repeat. */
+    doing?: Record<string, string>;
     error: string | undefined;
     onOpen: () => void;
     onJoin: (address: string) => void;
+    /** Spec 028.2: proposes a trade to this player; the server refuses one too far away. */
+    onTrade?: (playerId: number) => void;
+    /** Spec 028.5: invites this player to a duel with the rules chosen below the list. */
+    onDuel?: (playerId: number, rules: DuelRules) => void;
   } = $props();
+
+  let duelLevel = $state<DuelRules["level"]>("current");
+  let duelTeam = $state(3);
 
   let sessions = $state<SessionListing[]>([]);
   let typed = $state("");
   const valid = $derived(parseAddress(typed) !== undefined);
 
-  onMount(() => window.soulSilver.watchSessions((list) => (sessions = list)));
+  // The callback returns nothing: a returned Svelte proxy cannot cross the context bridge ("could not be cloned").
+  onMount(() =>
+    window.soulSilver.watchSessions((list) => {
+      sessions = list;
+    }),
+  );
 </script>
 
 <div class="grid content-start gap-4 p-4 overflow-y-auto text-[#eef]">
@@ -52,11 +68,30 @@
         <li class="flex gap-2 items-baseline px-3 py-2 rounded-[4px] bg-black/25">
           <strong>{p.name}</strong>
           {#if p.host}<span class="text-[0.8rem] text-focus">{t("online.host")}</span>{/if}
-          {#if p.id !== me && busyNames.includes(p.name)}<span class="text-[0.8rem] text-muted">{t("game.busy")}</span>{/if}
-          {#if p.id === me}<span class="ml-auto text-[0.8rem] text-muted">{t("online.you")}</span>{/if}
+          <span class="text-[0.8rem] text-muted">{p.place ?? p.area}</span>
+          {#if p.id !== me && doing[p.name]}<span class="text-[0.8rem] text-muted">{doing[p.name]}</span>{/if}
+          {#if p.id === me}<span class="ml-auto text-[0.8rem] text-muted">{t("online.you")}</span>{:else}
+            {#if onTrade}<button type="button" class="ml-auto" onclick={() => onTrade(p.id)}>{t("trade.propose")}</button>{/if}
+            {#if onDuel}<button type="button" onclick={() => onDuel(p.id, { level: duelLevel, team: duelTeam })}>{t("duel.propose")}</button>{/if}
+          {/if}
         </li>
       {/each}
     </ul>
+    {#if onDuel && players.length > 1}
+      <div class="flex gap-3 items-center text-[0.9rem]">
+        <label class="flex gap-1 items-center">{t("duel.level")}
+          <select bind:value={duelLevel}>
+            <option value="current">{t("duel.levelCurrent")}</option>
+            <option value="50">{t("duel.level50")}</option>
+          </select>
+        </label>
+        <label class="flex gap-1 items-center">{t("duel.team")}
+          <select bind:value={duelTeam}>
+            {#each [1, 2, 3, 4, 5, 6] as n (n)}<option value={n}>{n}</option>{/each}
+          </select>
+        </label>
+      </div>
+    {/if}
   </section>
 
   {#if mode === "solo"}

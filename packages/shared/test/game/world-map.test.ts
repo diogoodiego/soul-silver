@@ -32,7 +32,7 @@ describe("buildWorldMap", () => {
 
   it("ignores the placeholder map 0 and lists each neighbor once", () => {
     // Map 0 fills matrix cells that belong to no map; map 7 touches map 12 on two sides.
-    const matrix: MapArea = { id: 0, name: "m", width: 3, height: 3, pieces: Array(9).fill(0), heights: null, maps: [0, 7, 7, 12, 12, 7, 0, 0, 0] };
+    const matrix: MapArea = { id: 0, name: "m", width: 3, height: 3, pieces: Array<number>(9).fill(0), heights: null, maps: [0, 7, 7, 12, 12, 7, 0, 0, 0] };
     const map = buildWorldMap(matrix, 12, [grid(64, 64, free)], []);
     expect(map.neighbors).toEqual([{ map: "7", dx: 32 * 16, dy: -32 * 16 }]);
   });

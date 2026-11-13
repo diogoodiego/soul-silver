@@ -47,16 +47,18 @@ describe("save v7", () => {
     expect(save.boxes.flatMap((b) => b.slots).filter(Boolean)).toHaveLength(n);
   });
 
+  /** The fields of a v7 save the cases below break. */
+  type Spoilable = { boxes: { name: string; slots: unknown[] }[]; pcItems: unknown };
   it.each([
-    ["a box name longer than 8", (s: Record<string, any>) => (s["boxes"][0].name = "123456789")],
-    ["a box with the wrong slot count", (s: Record<string, any>) => s["boxes"][0].slots.pop()],
-    ["a missing box", (s: Record<string, any>) => s["boxes"].pop()],
-    ["a repeated PC item", (s: Record<string, any>) => (s["pcItems"] = [{ item: 4, count: 1 }, { item: 4, count: 2 }])],
-    ["more than 50 PC items", (s: Record<string, any>) => (s["pcItems"] = Array.from({ length: 51 }, (_, i) => ({ item: i + 1, count: 1 })))],
+    ["a box name longer than 8", (s: Spoilable) => (s.boxes[0]!.name = "123456789")],
+    ["a box with the wrong slot count", (s: Spoilable) => s.boxes[0]!.slots.pop()],
+    ["a missing box", (s: Spoilable) => s.boxes.pop()],
+    ["a repeated PC item", (s: Spoilable) => (s.pcItems = [{ item: 4, count: 1 }, { item: 4, count: 2 }])],
+    ["more than 50 PC items", (s: Spoilable) => (s.pcItems = Array.from({ length: 51 }, (_, i) => ({ item: i + 1, count: 1 })))],
   ])("refuses %s", (_, spoil) => {
     const result = migrate({ ...v6 });
     if (!result.ok) throw new Error(result.message);
-    const v7 = structuredClone(result.save) as Record<string, any>;
+    const v7 = structuredClone(result.save) as Spoilable;
     spoil(v7);
     expect(migrate(v7).ok).toBe(false);
   });

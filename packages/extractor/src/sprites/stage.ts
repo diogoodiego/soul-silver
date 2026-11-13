@@ -83,7 +83,8 @@ async function run(ctx: StageContext): Promise<void> {
 export const spritesStage: Stage = {
   id: "sprites",
   title: "Extraindo os sprites",
-  version: 5,
+  // v6 (spec 028.8): party icons read their palette bank from the right ARM9 table; older extractions redo this stage.
+  version: 6,
   weight: 10,
   inputs: [NARC_INPUT, CODE_INPUT],
   outputs: ["sprites"],

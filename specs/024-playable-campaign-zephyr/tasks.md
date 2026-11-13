@@ -213,6 +213,49 @@ comandos sem implementação fora do caminho principal (não reprovam): BankOrWa
 
 Sem comandos faltando no caminho principal, sem jogador travado e log do servidor vazio (o teste exige os três).
 
+**Relatório da camada 3 com os checks dos specs 020–023 e 026–027 (`npm run golden`, extração local, 2026-11-13, 3 de 3 execuções iguais, ~9 s cada)**:
+
+Reforço do caminho dourado: depois do inicial (marco 3), o piloto reconecta com o Cyndaquil no nível 60 (PS cheio e experiência do nível) e mais 100 Potions, e usa uma Potion em combate com 20% do PS ou menos; a captura do PC lança a bola também no selvagem nocauteado, que o jogo deixa capturável por `faintedSeconds` (30 s). Este relatório não prova que o rival se vence com o inicial no nível 5: isso fica para a jogada humana desta tarefa.
+
+```text
+ok  1. Jogo novo no quarto
+ok  2. Cena da mãe concluída
+ok  3. Inicial recebido
+ok  4. Running Shoes
+ok  5. Mystery Egg e Pokédex
+ok  6. Rival vencido e nomeado
+ok  7. Ovo entregue ao Elm
+ok  8. Poké Balls do tutorial
+ok  9. Sprout Tower concluída
+ok  10. Falkner e Insígnia Zephyr
+10 de 10 marcos
+ok  loja de Cherrygrove: loja 0, 4 itens; Potion comprada por 300 e vendida por 150
+ok  Centro de Cherrygrove: HP máximo, sem status salvo, retorno no mapa 69
+ok  luta do rival (Cherrygrove): treinador 497, flag 1857, prêmio 500, sem novo desafio
+ok  ligação do Elm depois do Mr. Pokémon pelo telefone (spec 026): 0716:33
+ok  PC de Cherrygrove: espécie 16 capturada, depositada e retirada
+ok  ligação da mãe na Rota 30 pelo telefone (spec 026): 0664:22, escolha guardar, FLAG_SYS_MOMS_SAVINGS ligada
+ok  luta Joey (Rota 30): treinador 8, flag 1368, prêmio 64, sem novo desafio
+ok  Joey oferece o número depois da luta (spec 026): contato 10 registrado
+ok  revanche do Joey pelo telefone (spec 026): ligação 0675:10, revanche contra o treinador 279 vencida, seeking desligado
+ok  luta Mikey (Rota 30): treinador 47, flag 1407, prêmio 64, sem novo desafio
+ok  luta Don (Rota 30): treinador 249, flag 1609, prêmio 48, sem novo desafio
+ok  luta Wade (Rota 31): treinador 4, flag 1364, prêmio 32, sem novo desafio
+ok  luta Li (Sprout Tower): treinador 290, flag 1650, prêmio 1200, sem novo desafio
+ok  luta Falkner (ginásio de Violet): treinador 20, flag 1380, prêmio 1560, sem novo desafio
+ok  item 17 (heal) da mochila no fim do caminho
+ok  item 468 (none) da mochila no fim do caminho
+ok  item 4 (ball) da mochila no fim do caminho
+ok  item 155 (heal) da mochila no fim do caminho
+ok  item 397 (teach) da mochila no fim do caminho
+ok  item 378 (teach) da mochila no fim do caminho
+ok  isolamento (spec 020): em 10 marcos o segundo jogador viu New Bark pelas próprias flags; até 2 flags de esconder diferentes das do primeiro
+21 de 21 checks dos specs 020–023
+comandos sem implementação fora do caminho principal (não reprovam): BankOrWalletIsFull, BankTransaction, CameronPhoto, CheckBankBalance, CheckReturnLoanMon, GetPartySelection, GiveRibbon, HasEnoughMoneyVar, KenyaCheck, KenyaCheckPartyOrMailbox, MonGiveMail, MonHasRibbon, PartySelectUI, PhotoAlbumIsFull, ReturnLoanMon, ScrCmd_376, ScrCmd_377, ScrCmd_795, ScrCmd_796
+```
+
+Sem comandos faltando no caminho principal, sem jogador travado e log do servidor vazio (o teste exige os três).
+
 ## Phase 12: Convergence
 
 - [X] T062 Atualizar o "Como ficou" da research R7 em `research.md`: lutas pelo bot do spec 019 (sem zerar a vida), treino contra selvagens antes do Li e do Falkner, spawn de selvagens ligado só na captura e no treino, segundo jogador e checks dos specs 020–023 per plan: research R7 (partial)

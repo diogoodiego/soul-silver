@@ -69,6 +69,43 @@ node .claude/skills/run-soulsilver/driver.mjs "$O" wait:2000 press:F3 "$P" shot:
 Then open the PNGs and look at them. The game is drawn at 256×192, scaled by a whole factor and
 centred with black bars, so the screenshot has a black border around the game.
 
+`type:<text>` types into the focused field (`{ip}` becomes this PC's LAN IPv4, a private range first).
+
+## Run two instances (host + guest, spec 028.7)
+
+```bash
+node .claude/skills/run-soulsilver/driver.mjs --two [--guest-slot=3] <outDir> <step> <step> ...
+```
+
+- The host is the normal app (your data folder, DevTools port 9222). The guest runs with
+  `--user-data-dir=<outDir>/guest-data` (port 9223): the app's single-instance lock is per data folder,
+  so both can run at once.
+- The guest folder holds a junction to the host's `extraction` folder (nothing copied) and a copy of
+  the host's `saves/slot-<N>.json` (slot 3 by default, the test save) renamed "Convidado", since names
+  are unique within a session. The copy is rewritten on every run; the host's own saves are never touched.
+- Steps go to the host unless prefixed: `host>step`, `guest>step`, `both>step` (run side by side on
+  both). Shots land in `<outDir>/host-<name>.png` and `<outDir>/guest-<name>.png`; the logs in
+  `host-app.log` and `guest-app.log`. Keep `>` quoted or escaped in the shell (`both\>wait:500`).
+
+Verified flow: the host hosts slot 3, the guest joins by the LAN IP, both screens and Online tabs
+are captured.
+
+```bash
+O=.evidence/028/duas-instancias
+B="[...document.querySelectorAll('button')]"
+node .claude/skills/run-soulsilver/driver.mjs --two "$O" both\>wait:2500 both\>press:Enter both\>wait:600 both\>press:Enter both\>wait:2000 \
+  "host>eval:$B.find(b=>b.innerText.startsWith('Teste026')).click()" "guest>eval:$B.find(b=>b.innerText.startsWith('Convidado')).click()" both\>wait:800 \
+  "host>eval:$B.find(b=>b.innerText==='Hospedar').click()" host\>wait:7000 \
+  "guest>eval:$B.find(b=>b.innerText==='Entrar').click()" guest\>wait:1000 \
+  "guest>eval:(i=>{i.focus();i.select();})(document.querySelector('input'))" "guest>type:{ip}" \
+  "guest>eval:$B.find(b=>b.innerText==='Conectar').click()" guest\>wait:8000 both\>shot:01-mapa \
+  "both>eval:$B.find(b=>b.innerText.trim()==='Online')?.click()" both\>wait:800 both\>shot:02-online
+```
+
+The guest starts with empty caches and is slower: give it the 2 s before the slot click. On the slot screen the save buttons start with the save's name (`Teste026` is slot 3 here; the guest's
+copy shows as `Convidado`). The join screen lists the sessions found on the LAN and a field with the
+host's IP; the guest steps above type the IP by hand, as the manual connection does.
+
 Useful map ids: 60 New Bark Town, 33 Route 29 (west of New Bark), 67 Cherrygrove City.
 From the spawn, `hold:ArrowDown:300 hold:ArrowLeft:2400 hold:ArrowDown:1500 hold:ArrowLeft:2300`
 walks around the trees and crosses into Route 29 (`mapa 33 · 1532, 266`).

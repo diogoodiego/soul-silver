@@ -45,7 +45,7 @@
         <p class="m-0 font-bold">{speciesName(shown)}</p>
         <p class="m-0 flex gap-1">
           {#each types.get(shown) ?? [] as key (key)}
-            <span class="px-2 rounded text-xs uppercase" style:background={TYPE_COLORS[key as keyof typeof TYPE_COLORS] ?? "#888"}>{t(`type.${key}` as MessageKey)}</span>
+            <span class="px-2 rounded text-xs uppercase" style:background={TYPE_COLORS[key] ?? "#888"}>{t(`type.${key}` as MessageKey)}</span>
           {/each}
         </p>
       {/if}

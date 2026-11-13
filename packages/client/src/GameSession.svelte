@@ -3,16 +3,19 @@
   // the companion's reactions, the quick swap and the fight notices (spec 014); progression after a fight (spec 016);
   // the combat HUD, the dialog box, the full menu that never pauses the world and the busy mark (spec 017).
   import { CUTSCENE_TEXT_BOOST, PROTOCOL_VERSION } from "@soulsilver/shared";
-  import { BUTTON, PLAYER_NAME_MAX, surfable, tileAt, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics } from "@soulsilver/shared/game";
+  import { BUTTON, PLAYER_NAME_MAX, surfable, tileAt, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics, type TradeOffer, type DuelRules } from "@soulsilver/shared/game";
   import { POCKET_KEYS, type ItemRecord } from "@soulsilver/shared/game-data";
   import { formatText, parseTextId, screenText, textVariables } from "@soulsilver/shared/text";
   import { onMount, untrack } from "svelte";
+  import { SvelteMap } from "svelte/reactivity";
   import { audio, createAudioReactions } from "./audio";
   import { leadIndex } from "@soulsilver/shared/companion";
   import CombatHud from "./game/CombatHud.svelte";
   import type { MenuPage } from "./game/menu-page";
   import MovePanel from "./game/MovePanel.svelte";
   import OnlinePanel from "./game/OnlinePanel.svelte";
+  import TradePanel from "./game/TradePanel.svelte";
+  import DuelPanel from "./game/DuelPanel.svelte";
   import PartyPanel from "./game/PartyPanel.svelte";
   import { createDialogQueue } from "./game/dialog-queue";
   import DialogBox from "./game/DialogBox.svelte";
@@ -56,6 +59,7 @@
   import itemEffectsJson from "../../../content/items/effects.json";
   import DexButton from "./ui/DexButton.svelte";
   import Glyph from "./Glyph.svelte";
+  import { presenceText } from "./game/presence";
 
   let {
     play,
@@ -75,8 +79,11 @@
   let menuOpen = $state(false);
   // The Online tab beside the screen.
   let tab = $state<"party" | "online">("party");
-  let players = $state<{ id: number; name: string; host: boolean }[]>([]);
-  let busyNames = $state<string[]>([]);
+  let players = $state<{ id: number; name: string; host: boolean; area: string; place?: string }[]>([]);
+  /** Counts "players" lists, so an older list's place names never land over a newer list. */
+  let placesAsked = 0;
+  /** What each player in view is doing (spec 028.1), by name; shortcut: names are unique within a session. */
+  let doing = $state<Record<string, string>>({});
   let me = $state<number | undefined>();
   let mode = $state<"solo" | "host" | "guest" | "arena">(untrack(() => (play.arena ? "arena" : play.address ? "guest" : play.hosting ? "host" : "solo")));
   let addresses = $state<string[]>([]);
@@ -172,7 +179,7 @@
   /** The trainer that spotted this player (spec 022): its "!" and its walk are drawn here only, the server never moves it. */
   let approach: { npcId: number; start: number; tiles: number } | undefined;
   /** Trainer battle arenas on this player's map, by battle id; drawn as rings on the ground. */
-  const arenas = new Map<number, { area: string; x: number; y: number; radiusPx: number }>();
+  const arenas = new SvelteMap<number, { area: string; x: number; y: number; radiusPx: number }>();
   let arenaRings = $state<{ key: number; cx: number; cy: number; rx: number; ry: number }[]>([]);
   /** A trainer line (bank 728); trainer lines may name the player through buffer 0. */
   const trainerLine = async (text: string) => dialog.say(await scriptPages(text, { 0: { kind: "player" } }));
@@ -232,6 +239,10 @@
   /** The Pokémon PC's boxes while it is open (spec 023), and the last refusal. */
   let pcBoxes = $state<Extract<ServerMessage, { type: "pcOpen" }>["boxes"] | undefined>();
   let pcItems = $state<Extract<ServerMessage, { type: "pcOpen" }>["pcItems"]>([]);
+  /** Spec 028.2: the trade this player is in, until its screen is closed. */
+  let trade = $state<Extract<ServerMessage, { type: "tradeState" }> | undefined>();
+  /** Spec 028.5: the duel invitation, wait or result; the fight itself needs no panel. */
+  let duel = $state<Extract<ServerMessage, { type: "duelState" }> | undefined>();
   let pcRefused = $state<string | undefined>();
   function answer(msg: { type: "progression-ack" } | { type: "learn-answer"; forget: number | null } | { type: "evolve-answer"; accept: boolean }): void {
     progression = undefined;
@@ -257,7 +268,7 @@
     const values: Record<string, string | number> = {};
     // Spec 026: places by MAPSEC and texts by id (a phone contact's name) are looked up first.
     const places = Object.values(buffers).some((b) => b.kind === "place") ? await bankTexts(BANK.mapNames) : undefined;
-    const texts = new Map<string, string>();
+    const texts = new SvelteMap<string, string>();
     for (const b of Object.values(buffers)) if (b.kind === "text" && !texts.has(b.text)) texts.set(b.text, (await scriptPages(b.text, {})).join(" "));
     for (const key of textVariables(raw)) {
       const b = buffers[key.split(":")[1] ?? ""];
@@ -298,8 +309,8 @@
 
   function beginScene({ id, actors, steps }: NonNullable<typeof nextScene>, view: DrawView, playerId: number | undefined, now: number): void {
     const all = view.self ? [view.self, ...view.others] : view.others;
-    const start = new Map<string, Pose>();
-    const ids = new Map<string, number>();
+    const start = new SvelteMap<string, Pose>();
+    const ids = new SvelteMap<string, number>();
     for (const a of actors) {
       const e = a === "player" ? view.self : a === "companion" ? all.find((o) => o.kind === "pokemon" && o.data["owner"] === String(playerId)) : all.find((o) => o.kind === "npc" && o.data["person"] === a.person);
       if (!e) continue;
@@ -488,6 +499,16 @@
     }
     /** Screen point above a standing sprite: 40 px north of its feet on the ground. */
     const over = (e: Entity) => renderer.project(e.x, e.y, 40);
+    /** A map's place name, from its header's MAPSEC; the map id when it has none. */
+    const placeName = async (area: string) => {
+      const h = await world.header(area);
+      return screenText((await bankTexts(BANK.mapNames)).get(h?.mapsec ?? -1) ?? area);
+    };
+    /** A player's name with their presence (spec 028.1), or "busy" for the rest of what holds them (a trainer's approach). */
+    const nameTag = (e: Entity) => {
+      const doing = presenceText(e.data["presence"]) ?? (e.data["busy"] === true ? t("game.busy") : undefined);
+      return doing ? `${String(e.data["name"])} · ${doing}` : String(e.data["name"]);
+    };
 
     function companionEvents(now: number): void {
       for (const ev of game.takeCompanionEvents()) {
@@ -498,6 +519,12 @@
         } else if (ev.type === "players") {
           players = ev.players;
           me = game.playerId;
+          // Spec 028.1: each player's place by name, once the map headers are read; a newer list wins.
+          const list = ev.players;
+          const asked = ++placesAsked;
+          void Promise.all(list.map((p) => placeName(p.area))).then((names) => {
+            if (asked === placesAsked) players = list.map((p, i) => ({ ...p, place: names[i] ?? p.area }));
+          });
         } else if (ev.type === "reaction") {
           emotion = { id: ev.companionId, text: EMOTIONS[ev.emotion] ?? "", until: now + 2000 };
           void bankTexts(ev.bank).then((bank) => {
@@ -582,6 +609,10 @@
         } else if (ev.type === "shopResult") {
           shopRefused = ev.ok ? undefined : t(`shop.refused.${ev.reason ?? "invalid"}` as MessageKey);
           if (shop) shop = { ...shop, money: ev.money };
+        } else if (ev.type === "duelState") {
+          duel = ev;
+        } else if (ev.type === "tradeState") {
+          trade = ev;
         } else if (ev.type === "pcOpen") {
           pcBoxes = ev.boxes;
           pcItems = ev.pcItems;
@@ -620,10 +651,7 @@
             flyMap = points.map((p, i) => ({ area: p.area, name: screenText(names.get(headers[i]?.mapsec ?? -1) ?? p.area) }));
           });
         } else if (ev.type === "gear-map") {
-          const place = async (area: string) => {
-            const h = await world.header(area);
-            return screenText((await bankTexts(BANK.mapNames)).get(h?.mapsec ?? -1) ?? area);
-          };
+          const place = placeName;
           // The region map draws the overworld (matrix 0) maps; a player indoors is listed but not drawn.
           const OVERWORLD = 0;
           const on = async (area: string) => {
@@ -816,7 +844,8 @@
       usesSeen = Object.fromEntries(fighters.map((e) => [e.id, Number(e.data["used"] ?? 0)]));
       if (moveCall && (now > moveCall.until || !fighting)) moveCall = undefined;
       const nextMarks: typeof marks = shown.filter((e) => e.data["inCombat"] === true).map((e) => ({ key: `fight-${e.id}`, ...over(e), text: "⚔" }));
-      for (const e of shown) if (e.data["busy"] === true && e.id !== game.entityId) nextMarks.push({ key: `busy-${e.id}`, ...over(e), text: t("game.busy") });
+      // Spec 028.1: every other player's name, above the other marks, with what the server says they are doing.
+      for (const e of shown) if (e.kind === "player" && e.id !== game.entityId) nextMarks.push({ key: `name-${e.id}`, ...renderer.project(e.x, e.y, 56), text: nameTag(e) });
       // A wild Pokémon that just noticed someone (spec 019, Alert state), or a trainer that spotted this player (spec 022).
       for (const e of shown) if (e.data["alert"] === true) nextMarks.push({ key: `alert-${e.id}`, ...over(e), text: "!" });
       const spotter = approach && now - approach.start < TRAINER.alertS * 1000 ? shown.find((e) => e.id === approach!.npcId) : undefined;
@@ -835,8 +864,12 @@
       if (bubbleOver && emotion) nextMarks.push({ key: "emotion", ...over(bubbleOver), text: emotion.text });
       if (fishing && view.self) nextMarks.push({ key: "fishing", ...over(view.self), text: fishing === "bite" ? "!" : "…" });
       if (nextMarks.length > 0 || marks.length > 0) marks = nextMarks;
-      const nextBusy = shown.filter((e) => e.kind === "player" && e.data["busy"] === true).map((e) => String(e.data["name"]));
-      if (nextBusy.join() !== busyNames.join()) busyNames = nextBusy;
+      const nextDoing: Record<string, string> = {};
+      for (const e of shown) if (e.kind === "player" && e.id !== game.entityId) {
+        const text = presenceText(e.data["presence"]) ?? (e.data["busy"] === true ? t("game.busy") : undefined);
+        if (text) nextDoing[String(e.data["name"])] = text;
+      }
+      if (JSON.stringify(nextDoing) !== JSON.stringify(doing)) doing = nextDoing;
       if (view.self && view.self.area !== darkArea) {
         const area = (darkArea = view.self.area);
         darkMap = false;
@@ -1088,6 +1121,32 @@
     <PcPanel boxes={pcBoxes} {party} {pcItems} {bag} {itemName} onItem={(dir: "deposit" | "withdraw", item: number) => window.soulSilver.sendGame({ type: "pc-items", dir, item, qty: 1 })} refused={pcRefused} {speciesName} {moveName} natureName={names.nature} onMove={(from: PcSlot, to: PcSlot) => window.soulSilver.sendGame({ type: "pc-move", from, to })} onRename={(box: number, name: string) => window.soulSilver.sendGame({ type: "pc-rename", box, name })} onLeave={() => window.soulSilver.sendGame({ type: "pc-leave" })} />
   {/if}
 
+  {#if duel && duel.phase !== "fighting"}
+    <DuelPanel
+      {duel}
+      partnerName={players.find((p) => p.id === duel?.partner)?.name ?? "?"}
+      onAnswer={(accept: boolean) => window.soulSilver.sendGame({ type: "duel-answer", accept })}
+      onCancel={() => window.soulSilver.sendGame({ type: "duel-cancel" })}
+      onClose={() => (duel = undefined)}
+    />
+  {/if}
+
+  {#if trade}
+    <TradePanel
+      {trade}
+      partnerName={players.find((p) => p.id === trade?.partner)?.name ?? "?"}
+      {party}
+      {bag}
+      {speciesName}
+      {itemName}
+      onAnswer={(accept: boolean) => window.soulSilver.sendGame({ type: "trade-answer", accept })}
+      onOffer={(offer: TradeOffer) => window.soulSilver.sendGame({ type: "trade-offer", offer })}
+      onConfirm={() => window.soulSilver.sendGame({ type: "trade-confirm" })}
+      onCancel={() => window.soulSilver.sendGame({ type: "trade-cancel" })}
+      onClose={() => (trade = undefined)}
+    />
+  {/if}
+
   {#if naming}
     <NameInput
       title={naming.title}
@@ -1146,7 +1205,7 @@
       {#if tab === "party"}
         <PartyPanel {party} {out} {speciesName} />
       {:else}
-        <OnlinePanel {mode} {players} {busyNames} {me} address={play.address} {addresses} busy={onlineBusy || status !== "playing"} error={switchingTo ? t("online.switching") : onlineError} onOpen={() => void openLan()} onJoin={joinOther} />
+        <OnlinePanel {mode} {players} {doing} {me} address={play.address} {addresses} busy={onlineBusy || status !== "playing"} error={switchingTo ? t("online.switching") : onlineError} onOpen={() => void openLan()} onJoin={joinOther} onTrade={(to: number) => window.soulSilver.sendGame({ type: "trade-propose", to })} onDuel={(to: number, rules: DuelRules) => window.soulSilver.sendGame({ type: "duel-invite", to, rules })} />
       {/if}
     </section>
     <nav class={NAV_CLASS}>{@render navButtons()}</nav>

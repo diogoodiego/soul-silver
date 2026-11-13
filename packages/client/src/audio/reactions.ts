@@ -42,7 +42,7 @@ export function createAudioReactions(options: AudioReactionsOptions) {
       bicycle: id(m?.bicycle),
     };
   })();
-  let hasTrack = (_name: string) => false;
+  let hasTrack: (name: string) => boolean = () => false;
   void index.then((i) => (hasTrack = (n) => i?.byName.has(n) ?? false));
   void audio.preload(effectNames());
   void themes.then((t) => audio.preload([t.wildBattle, t.victory]));

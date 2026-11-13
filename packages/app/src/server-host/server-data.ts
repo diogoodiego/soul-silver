@@ -1,7 +1,8 @@
 // The extracted data the game server runs on, shared by the server utility process and the golden path (spec 024).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BUNDLED_AI_CONTENT, BUNDLED_COMBAT_CONTENT, BUNDLED_COMPANION_CONTENT, BUNDLED_WILD_CONTENT, buildAiData, buildCombatData, buildCompanionData, buildItemsData, buildProgressionData, buildShopData, buildTrainerData, buildWildData, loadWorld, type CombatData, type CompanionData, type ItemsData, type ProgressionData, type ShopData, type TrainerData, type WildData } from "@soulsilver/server";
+import { BUNDLED_AI_CONTENT, BUNDLED_COMBAT_CONTENT, BUNDLED_COMPANION_CONTENT, BUNDLED_WILD_CONTENT, buildAiData, buildCombatData, buildCompanionData, buildItemsData, buildProgressionData, buildShopData, buildTrainerData, buildWildData, type CombatData, type CompanionData, type ItemsData, type ProgressionData, type ShopData, type TrainerData, type WildData } from "@soulsilver/server";
+import { loadWorld } from "./world-loader";
 import { parseEventsJson } from "@soulsilver/shared/events";
 import { parseSpriteJson } from "@soulsilver/shared/sprites";
 import { parseTextJson } from "@soulsilver/shared/text";

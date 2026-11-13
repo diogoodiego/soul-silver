@@ -11,7 +11,12 @@
   let address = $state("");
   const valid = $derived(parseAddress(address) !== undefined);
 
-  onMount(() => window.soulSilver.watchSessions((list) => (sessions = list)));
+  // The callback returns nothing: a returned Svelte proxy cannot cross the context bridge ("could not be cloned").
+  onMount(() =>
+    window.soulSilver.watchSessions((list) => {
+      sessions = list;
+    }),
+  );
 </script>
 
 <section use:menu={{ onBack }}>

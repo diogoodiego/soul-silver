@@ -72,8 +72,12 @@ export const FORM_GROUPS: readonly { species: number; forms: number; pal: number
 /** Pokémon icons: palette 0, then animation sets, then one graphic per icon from member 7. */
 export const ICON_ARCHIVE = "a/0/2/0";
 export const ICON_FIRST_MEMBER = 7;
-/** u8 palette bank (0 to 2) of each icon, in the decompressed ARM9; index 0 is the "?" icon. */
-export const ICON_PALETTE_TABLE = 0xffb8f;
+/**
+ * u8 palette bank (0 to 2) of each icon, in the decompressed ARM9; index 0 is the "?" icon. 544 entries (species,
+ * eggs, then forms), the decompilation's sPokemonPalNoBySpeciesAndForm. 0xffb8f, used before, gave wrong banks
+ * (a purple Pikachu); this offset holds that table byte for byte.
+ */
+export const ICON_PALETTE_TABLE = 0xffc10;
 /** Icon indices of the forms that have their own icon (form 1 and up; form 0 is the species icon). */
 export const ICON_FORMS: readonly { species: number; first: number; count: number }[] = [
   { species: 386, first: 496, count: 3 }, // Deoxys: Attack, Defense, Speed

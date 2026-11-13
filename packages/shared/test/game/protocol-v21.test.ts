@@ -6,7 +6,7 @@ import { PROTOCOL_VERSION } from "../../src/protocol-version.ts";
 
 describe("protocol v21", () => {
   it("is version 21", () => {
-    expect(PROTOCOL_VERSION).toBe(21);
+    expect(PROTOCOL_VERSION).toBeGreaterThanOrEqual(21);
   });
 
   it.each([

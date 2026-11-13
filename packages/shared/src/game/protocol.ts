@@ -74,6 +74,19 @@ export type ShopRefusal = (typeof SHOP_REFUSALS)[number];
 export const PC_REFUSALS = ["occupied", "empty", "last-fighter", "full", "invalid"] as const;
 export type PcRefusal = (typeof PC_REFUSALS)[number];
 
+/** Spec 028.2: one side of a trade, party indices and bag items. */
+export const tradeOffer = z.strictObject({
+  party: z.array(z.number().int().min(0).max(5)).max(6),
+  items: z.array(z.strictObject({ item: count(), count: z.number().int().min(1).max(999) })).max(20),
+});
+export type TradeOffer = z.infer<typeof tradeOffer>;
+export const TRADE_PHASES = ["invited", "waiting", "open", "final", "done", "cancelled"] as const;
+/** Spec 028.5: a duel's rules, chosen by who invites. `level`: the party as it is, or every member at level 50. */
+export const duelRules = z.strictObject({ level: z.enum(["current", "50"]), team: z.number().int().min(1).max(6) });
+export type DuelRules = z.infer<typeof duelRules>;
+export const DUEL_PHASES = ["invited", "waiting", "fighting", "ended"] as const;
+export const DUEL_RESULTS = ["won", "lost", "cancelled", "aborted"] as const;
+
 export const clientMessage = z.discriminatedUnion("type", [
   /**
    * `save` is checked by the session (migrate, schema, coherence) so a bad one is rejected with a reason.
@@ -174,6 +187,16 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("pc-rename"), box: z.number().int().min(0).max(BOX_COUNT - 1), name: z.string().min(1).max(BOX_NAME_MAX) }),
   z.strictObject({ type: z.literal("pc-items"), dir: z.enum(["deposit", "withdraw"]), item: count(), qty: z.number().int().min(1).max(999) }),
   z.strictObject({ type: z.literal("pc-leave") }),
+  /** Spec 028.2: a trade with a player nearby; the flow only, nothing changes hands yet. */
+  z.strictObject({ type: z.literal("trade-propose"), to: count() }),
+  z.strictObject({ type: z.literal("trade-answer"), accept: z.boolean() }),
+  z.strictObject({ type: z.literal("trade-offer"), offer: tradeOffer }),
+  z.strictObject({ type: z.literal("trade-confirm") }),
+  z.strictObject({ type: z.literal("trade-cancel") }),
+  /** Spec 028.5: a duel with a player nearby, in an arena of its own; nothing is won or lost. */
+  z.strictObject({ type: z.literal("duel-invite"), to: count(), rules: duelRules }),
+  z.strictObject({ type: z.literal("duel-answer"), accept: z.boolean() }),
+  z.strictObject({ type: z.literal("duel-cancel") }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessage>;
 
@@ -202,7 +225,7 @@ export const REJECT_CODES = ["protocol-mismatch", "session-full", "session-close
 export type RejectCode = (typeof REJECT_CODES)[number];
 
 /** `no-escape` is the original's refusal in a trainer battle (spec 022). */
-export const NOTICE_CODES = ["no-balls", "storage-full", "ball-returned", "menu-blocked", "action-refused", "item-unavailable", "no-escape", "launch-refused", "item-busy", "item-not-compatible", "bag-full", "not-ready", "repel-ended"] as const;
+export const NOTICE_CODES = ["no-balls", "storage-full", "ball-returned", "menu-blocked", "action-refused", "item-unavailable", "no-escape", "launch-refused", "item-busy", "item-not-compatible", "bag-full", "not-ready", "repel-ended", "trade-far", "trade-busy"] as const;
 export type NoticeCode = (typeof NOTICE_CODES)[number];
 
 export const CLOSE_REASONS =["host-left", "closed-by-host"] as const;
@@ -377,7 +400,7 @@ export const serverMessage = z.discriminatedUnion("type", [
     active: count().optional(),
   }),
   /** Who is in the session (v12), sent to everyone whenever someone joins or leaves. */
-  z.strictObject({ type: z.literal("players"), players: z.array(z.strictObject({ id: count(), name: z.string().min(1).max(PLAYER_NAME_MAX), host: z.boolean() })).max(4) }),
+  z.strictObject({ type: z.literal("players"), players: z.array(z.strictObject({ id: count(), name: z.string().min(1).max(PLAYER_NAME_MAX), host: z.boolean(), area: z.string() })).max(4) }),
   z.strictObject({ type: z.literal("reaction"), companionId: count(), species: count(), emotion: z.enum(EMOTIONS), bank: count(), text: count() }),
   /** The Pokémon out fainted; `canContinue` is false when nobody is left (a blackout follows). */
   z.strictObject({ type: z.literal("fainted"), partyIndex: count(), canContinue: z.boolean() }),
@@ -447,6 +470,10 @@ export const serverMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("pcOpen"), boxes: saveSchema.shape.boxes, pcItems: saveSchema.shape.pcItems }),
   z.strictObject({ type: z.literal("pcResult"), ok: z.boolean(), reason: z.enum(PC_REFUSALS).optional(), boxes: saveSchema.shape.boxes, pcItems: saveSchema.shape.pcItems }),
   z.strictObject({ type: z.literal("pcClose") }),
+  /** Spec 028.2: the trade as this player sees it; `confirmed` resets whenever an offer changes. */
+  z.strictObject({ type: z.literal("tradeState"), phase: z.enum(TRADE_PHASES), partner: count(), mine: tradeOffer, theirs: tradeOffer, confirmed: z.strictObject({ mine: z.boolean(), theirs: z.boolean() }) }),
+  /** Spec 028.5: the duel as this player sees it; `arena` while fighting, `result` once ended. */
+  z.strictObject({ type: z.literal("duelState"), phase: z.enum(DUEL_PHASES), partner: count(), rules: duelRules, arena: z.strictObject({ area: z.string(), x: z.number(), y: z.number(), radiusPx: z.number() }).optional(), result: z.enum(DUEL_RESULTS).optional() }),
   /** Spec 025: a field move can clear the obstacle; `user` is the party index that would use it. Answered with field-use. */
   z.strictObject({ type: z.literal("field-prompt"), move: z.string().regex(/^[a-z][A-Za-z]*$/), user: z.number().int().min(0).max(5), dialog: textId.optional() }),
   z.strictObject({ type: z.literal("field-result"), ok: z.boolean(), reason: z.enum(FIELD_REFUSALS).optional() }),

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkAssets, createConsoleLogger, createRegistry, defaultStages } from "@soulsilver/extractor";
-import { loadWorld } from "@soulsilver/server";
+import { loadWorld } from "../server-host/world-loader";
 import { type AppSettings, IpcChannel, PROTOCOL_VERSION } from "@soulsilver/shared";
 import { CANCELLED, SAVE_SLOTS } from "@soulsilver/shared/save";
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell, utilityProcess, type IpcMainInvokeEvent } from "electron";

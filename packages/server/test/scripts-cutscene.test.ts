@@ -41,7 +41,7 @@ describe("cutscenes", () => {
   });
 
   it("without an answer the script times out and lets the player go", () => {
-    const t = story(data(), { scriptTimeoutTicks: 5 } as never);
+    const t = story(data(), { scriptTimeoutTicks: 5 });
     const a = t.connect();
     t.step();
     t.press(a);

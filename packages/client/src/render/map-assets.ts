@@ -3,7 +3,7 @@ import { buildWorldMap, type WorldLookup, type WorldMap } from "@soulsilver/shar
 import { MESH_VERTEX_FLOATS, mapCells, parseMapFile, type MapArea, type MapFileKind, type MapHeader, type MapMeshFile } from "@soulsilver/shared/maps";
 
 // The extraction as the renderer sees it, through the read-only assets:// protocol (spec 011, T010).
-// Mirrors packages/server/src/world-loader.ts so prediction simulates the same maps and warps.
+// Mirrors packages/app/src/server-host/world-loader.ts so prediction simulates the same maps and warps.
 // Maps load asynchronously: until a warp's destination is loaded, prediction does not start that warp.
 
 const STAGES = "assets://stages";

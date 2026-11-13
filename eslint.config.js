@@ -21,6 +21,8 @@ export default ts.config(
       },
     },
   },
+  // A rest sibling drops a field on purpose: `const { texture: _, ...rest } = e`.
+  { rules: { "@typescript-eslint/no-unused-vars": ["error", { ignoreRestSiblings: true }] } },
   {
     files: ["**/*.svelte"],
     languageOptions: { parserOptions: { parser: ts.parser } },

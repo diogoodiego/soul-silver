@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { WorldMap } from "@soulsilver/shared/game";
 import { describe, expect, it } from "vitest";
-import { loadWorld } from "../src/world-loader";
+import { loadWorld } from "../src/server-host/world-loader";
 
 // SC-005 against the local extraction (never committed, principle II): every warp of New Bark Town,
 // Route 29, Cherrygrove City and the buildings reached from them leads somewhere that leads back.
