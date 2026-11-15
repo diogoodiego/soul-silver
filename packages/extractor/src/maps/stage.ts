@@ -45,7 +45,7 @@ export const SCRIPT_PROPS: readonly { model: number; map: number; poses?: readon
   { model: 122, map: 180, poses: [41, 42] },
 ];
 /** Buildings left out of a map's mesh because a script shows them as props (spec 030.5). */
-const SCRIPT_BUILDINGS = new Map([[AZALEA_GYM.map as number, new Set(Object.keys(AZALEA_GYM.levers).map(Number))]]);
+const SCRIPT_BUILDINGS = new Map<number, Set<number>>([[AZALEA_GYM.map, new Set(Object.keys(AZALEA_GYM.levers).map(Number))]]);
 
 /** Spec 030.5: a building in the pose an animation ends in: a joint pose (BCA0) or a texture pattern (BTP0). */
 function posedSource(model: number, bytes: Uint8Array, anim: Uint8Array): BuildingSource {

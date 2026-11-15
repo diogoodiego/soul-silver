@@ -1,48 +1,48 @@
 # Graph Report - soul-silver  (2026-11-15)
 
 ## Corpus Check
-- 1237 files · ~791,194 words
+- 1237 files · ~791,462 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 5, .graphify-bak 1, .css 1)
 
 ## Summary
-- 9392 nodes · 22580 edges · 365 communities (348 shown, 17 thin omitted)
+- 9393 nodes · 22581 edges · 381 communities (360 shown, 21 thin omitted)
 - Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 1578 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c093c893`
+- Built from commit: `09fe114a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- duel.ts
+- src/trade.ts
 - field/schemas.ts
 - GameSession.svelte
 - game-data/index.ts
 - createWilds
-- src/items.ts
-- scene.ts
+- game-data/items.ts
+- maps/index.ts
 - t
-- src/field.ts
-- Tasks: Validação da ROM, desempacotamento e primeira execução
+- src/fishing.ts
+- Contrato: CLI do extrator
 - combat-loader.ts
 - sprites/stage.ts
-- createGameServer
+- coherence.test.ts
 - SoulSilverApi
 - maps/stage.test.ts
 - input.ts
 - stages.ts
-- trainer-battle.ts
+- session.ts
 - session-controller.ts
 - trainer/schemas.ts
 - src/phone.ts
 - game/index.ts
 - App.svelte
-- maps/index.ts
+- npcs.ts
 - ai-loader.ts
 - app/package.json
-- Connection
+- ServerMessage
 - animation.test.ts
 - scripts-loader.ts
 - events/schemas.ts
@@ -58,12 +58,12 @@
 - Tasks: Dados do jogo
 - Pesquisa: Interpretador de scripts
 - radio.ts
-- Tests for User Story 2 (test-first) ⚠️
-- sprites/stage.test.ts
+- server-host/entry.ts
+- icons.test.ts
 - User Scenarios & Testing *(mandatory)*
 - Tasks: IA de combate dos Pokémon
 - combat.ts
-- runner.ts
+- createRunner
 - Research: Dados do jogo
 - 011-world-movement-warps/tasks.md
 - nsbmd.ts
@@ -72,14 +72,14 @@
 - Tasks: Campanha jogável até a Insígnia Zephyr
 - maps/stage.ts
 - forbidden-files.ts
-- text/stage.ts
-- rom-unpack.test.ts
+- extractor/src/index.ts
+- stages/index.ts
 - ByteWriter
 - shop.ts
 - createCompanions
 - script/index.ts
 - AssetsController
-- Feature Specification: Servidor de jogo e protocolo
+- ai.ts
 - Implementation Plan: Pokémon companheiro e regras do combate no mundo
 - companion-loader.ts
 - game-data/builders.ts
@@ -88,83 +88,83 @@
 - build-nds-rom.ts
 - Tasks: Golpes de campo e locomoção
 - synth.ts
-- wild-loader.ts
-- engine.ts
-- Research: Combate em tempo real
+- wild/schemas.ts
+- battle.ts
+- Tasks: Servidor de jogo e protocolo
 - movement.ts
 - Tasks: [FEATURE NAME]
 - Bag.svelte
 - data/report.ts
 - exports
-- Play.svelte
+- ArenaSetup.svelte
 - sseq.ts
 - pilot
 - Tasks: Interpretador de scripts
 - scriptData
-- extractor/src/index.ts
+- cli.ts
 - text/index.ts
 - client/package.json
-- entity.ts
-- Shop.svelte
+- Implementation for User Story 1
+- overworld.ts
 - Tasks: Fundação do projeto
-- Implementation Plan: Interpretador de scripts
+- User Scenarios & Testing *(mandatory)*
 - Feature Specification: Tempo e Pokégear
 - createTrainerBattles
-- Save
+- trade-atomic.test.ts
 - readU16
 - hostFor
-- loader.ts
+- int
 - ref_node_fs
 - areaType
-- action.ts
+- src/items.ts
 - 037 · Viridian até a última insígnia
 - area
 - Audio viewer page
 - events/stage.ts
 - trainer-fixture.ts
 - audio/stage.test.ts
-- phone/schemas.ts
+- combat-coverage.ts
 - createAi
 - GameDataError
 - calls.ts
-- pc.ts
+- createCaptures
 - audio/reactions.ts
-- Research: Tempo e Pokégear
-- map-assets.ts
+- Tasks: Tempo e Pokégear
+- world-loader.test.ts
 - map-blocks.ts
 - render/cutscene.ts
 - DialogBox.svelte
 - companion/schemas.ts
 - input/menu.ts
-- Tasks: Tempo e Pokégear
+- held-world.test.ts
 - Feature Specification: Pokémon selvagens e captura
-- TradePanel.svelte
+- @soulsilver/shared/game
 - Feature Specification: Progressão dos Pokémon
 - Pesquisa: IA de combate dos Pokémon
 - User Scenarios & Testing *(mandatory)*
 - Princípios Fundamentais
 - wild/capture.test.ts
 - package.json
-- Research: Progressão dos Pokémon
+- common.ts
 - game-connection.ts
 - game-renderer.ts
 - Pesquisa: Itens
 - daycare/index.ts
-- Tasks: Cutscenes e NPCs
+- wav.ts
 - Tasks: Textos e i18n
-- movement.test.ts
+- OnlinePanel.svelte
 - Implementation Plan: Cutscenes e NPCs
 - 026-time-pokegear/tasks.md
 - devDependencies
-- PcPanel.svelte
+- script.ts
 - Research: Validação da ROM, desempacotamento e primeira execução
 - Data Model: Dados do jogo
 - schema.ts
 - Pesquisa: Eventos, scripts, encontros e treinadores
 - README.md
 - timeOfDay
-- decide.test.ts
-- CombatInput
+- say
+- run
 - game-data.ts
 - SoulSilver Desktop
 - User Scenarios & Testing *(mandatory)*
@@ -173,19 +173,19 @@
 - Sprites viewer page
 - common.ps1
 - Pesquisa: Mapas pré-renderizados e colisão
-- narc
-- cutscene
+- Contrato: API de sprites (`shared` e `extractor`)
+- Tasks: Cutscenes e NPCs
 - User Scenarios & Testing *(mandatory)*
-- SaveSlots.svelte
+- Play.svelte
 - Research: Batalhas contra treinadores
-- sprites/schemas.ts
+- items/schemas.ts
 - Research: Mundo, movimento e warps
 - Research: Pokémon companheiro e regras do combate no mundo
 - Quickstart: validação de eventos, scripts, encontros e treinadores
 - Pesquisa: Áudio
-- Quickstart: validação da fundação
+- 001-project-foundation/data-model.md
 - Research: Fundação do projeto
-- server-host/entry.ts
+- remote-connection.ts
 - audio/stage.ts
 - Pesquisa: Sprites
 - Feature Specification: Sprites
@@ -200,8 +200,8 @@
 - extractor/package.json
 - Tasks: Combate em tempo real
 - Tasks: Build, distribuição e auto-update
-- Feature Specification: Interface básica, menu inicial e controles
 - User Scenarios & Testing *(mandatory)*
+- 027-items/tasks.md
 - Feature Specification: [FEATURE NAME]
 - Feature Specification: Dados do jogo
 - 017-ui-menus-controls/tasks.md
@@ -222,10 +222,10 @@
 - Implementation Plan: Progressão dos Pokémon
 - evolution.ts
 - Tasks: Progressão dos Pokémon
-- newProgress
+- phone
 - Core Principles
-- pc.test.ts
-- createGameRenderer
+- harness.ts
+- duel.ts
 - Data Model: LAN, sessões e saves
 - Roteiro manual: multiplayer em dois PCs (spec 028)
 - Feature Specification: Golpes de campo e locomoção
@@ -233,64 +233,64 @@
 - field-fixture.ts
 - server/package.json
 - assets-controller.ts
-- Implementation Plan: Eventos, scripts, encontros e treinadores
+- canAdd
 - Quickstart: validação desta feature
 - movement
 - new-game-visibility.test.ts
 - Implementation Plan: Pokémon selvagens e captura
 - Quickstart: validação de áudio
 - Research: Pokémon selvagens e captura
-- Tasks: Pokémon companheiro e regras do combate no mundo
-- headbutt.ts
+- Data Model: Pokémon companheiro e regras do combate no mundo
+- field/index.ts
 - Implementation Plan: Mundo, movimento e warps
 - vitest
 - speckit-converge/SKILL.md
 - compilerOptions
 - 022-trainer-battles/tasks.md
 - Implementation Plan: Validação da ROM, desempacotamento e primeira execução
-- world-map.ts
+- map-assets.ts
 - Implementation Plan: [FEATURE]
-- Specification Quality Checklist: IA de combate dos Pokémon
-- Research: Áudio no jogo
+- zone.ts
+- main/settings.ts
 - 039 · Revanches e lendários restantes
-- Feature Specification: IA de combate dos Pokémon
+- validateReleaseTag
 - Implementation Plan: Mapas pré-renderizados e colisão
 - tileAt
 - Data Model: Batalhas contra treinadores
 - Implementation Plan: Áudio
 - Implementation Plan: Dados do jogo
-- balls.json (`kind: "wild-balls"`)
+- scripts
 - 023-economy-center-pc/tasks.md
 - world-items.test.ts
 - schemas-us2.test.ts
 - compilerOptions
-- problem
-- types.test.ts
+- Data Model: Validação da ROM, desempacotamento e primeira execução
+- readers/tables.ts
 - speckit-checklist/SKILL.md
 - Feature Specification: Economia, Centro Pokémon e PC
 - app/tsconfig.json
 - server/tsconfig.json
 - title/stage.ts
 - Data Model: Combate em tempo real
-- Data Model: Interface básica, menu inicial e controles
-- proximos.mjs
+- battle-fx.ts
+- Contrato: pipeline de release
 - events/schemas.test.ts
-- heal
+- level
 - campaign.golden.ts
 - Feature Specification: Áudio no jogo
-- Specification Quality Checklist: Mapas pré-renderizados e colisão
+- NewGame.svelte
 - Contrato: protocolo v23
-- session.ts
+- progression.ts
 - speckit-clarify/SKILL.md
-- Research: Interface básica, menu inicial e controles
+- preload/index.ts
 - speckit-implement/SKILL.md
 - script
 - extractor/tsconfig.json
-- Implementation Plan: Interface básica, menu inicial e controles
+- events/index.ts
 - Polimento
 - shared/tsconfig.json
 - Specification Quality Checklist: Sprites
-- Specification Quality Checklist: Eventos, scripts, encontros e treinadores
+- shared/src/events/refs.ts
 - 013-realtime-combat/tasks.md
 - User Scenarios & Testing *(mandatory)*
 - Contrato: protocolo 15
@@ -299,76 +299,92 @@
 - Implementation Plan: Combate em tempo real
 - create-new-feature.ps1
 - trail.ts
-- Quickstart: validar a IA de combate
 - Modelo de dados: IA de combate dos Pokémon
-- scripts-counter.test.ts
+- Feature Specification: Build, distribuição e auto-update
+- Research: Combate em tempo real
 - gear.test.ts
 - Modelo de dados: Mapas pré-renderizados e colisão
 - nsbmd.test.ts
-- Specification Quality Checklist: Interface básica, menu inicial e controles
+- scripts
 - Implementation Plan: Sprites
 - [CHECKLIST TYPE] Checklist: [FEATURE NAME]
 - Tasks: Eventos, scripts, encontros e treinadores
 - Research: Servidor de jogo e protocolo
 - Quickstart: LAN, sessões e saves
 - Quickstart: validação de sprites
-- view.ts
+- Point
 - Implementation Plan: Áudio no jogo
 - Lacuna de cobertura: introdução até Violet City
 - Quickstart: validação desta feature
-- PipelineError
+- driver.mjs
 - Contrato: descoberta na LAN
-- Quickstart: validar o spec 017
+- Data Model: Campanha jogável até a Insígnia Zephyr
 - controller.ts
+- 008-events-scripts-encounters/spec.md
 - Contrato: cues de áudio e API do cliente
+- music-follow.test.ts
 - SoulSilver Desktop
 - css.d.ts
+- pc/items.ts
 - Tasks: Economia, Centro Pokémon e PC
+- Tasks: Mundo, movimento e warps
 - Implementation Plan: Golpes de campo e locomoção
 - server-host-protocol.ts
 - Research: LAN, sessões e saves
+- devDependencies
 - Tasks: Mapas pré-renderizados e colisão
-- audio/report.ts
+- .mode
+- events/phone.test.ts
 - Quickstart: validar Cutscenes e NPCs
 - 025-field-moves-locomotion/tasks.md
 - Research: Textos e i18n
 - field/azalea-gym.ts
-- field/moves.test.ts
+- test/azalea-gym.test.ts
+- field/moves.ts
 - Tasks: Itens
+- Effect
 - test/daycare.test.ts
+- events/phone.ts
 - Implementation Plan: Servidor de jogo e protocolo
 - Data Model: Servidor de jogo e protocolo
 - hatch.test.ts
+- migrate-v7.test.ts
 - audio/schemas.ts
 - ProgressionOptions
 - Execution Steps
 - Quickstart: validar servidor de jogo e protocolo
 - Tasks: Batalhas contra treinadores
-- 015-wild-pokemon-capture/quickstart.md
+- Data Model: Pokémon selvagens e captura
 - server-host.ts
 - Specification Quality Checklist: Áudio
 - Implementation Plan: Campanha jogável até a Insígnia Zephyr
 - 024-playable-campaign-zephyr/tasks.md
-- Implementation Plan: LAN, sessões e saves
-- createCaptures
+- Constitution Check
+- Implementation Plan: Itens
+- verify-package.ts
 - Quickstart: validação de build, distribuição e auto-update
+- Data Model: Progressão dos Pokémon
 - Specification Quality Checklist: Áudio no jogo
+- Synthetic test fixtures convention
 - Quickstart: validar a campanha até a Insígnia Zephyr
+- Pcs
 - 003-rom-extraction-pipeline/research.md
+- Shops
 - Tasks: Sprites
 - Estado do projeto
 - Research: Campanha jogável até a Insígnia Zephyr
 - Data Model: Áudio no jogo
-- host.ts
+- R0. Verificação dos arquivos de sprite na ROM (pré-requisito)
+- Contrato: API de áudio (`shared` e `extractor`)
+- RemoteClientOptions
+- CommandContext
+- ShopsOptions
 - Rodar prompts do roadmap
-- game-server.test.ts
-- moneyLoss
+- createGameServer
+- Tasks: Pokémon companheiro e regras do combate no mundo
 - xp-cooperativa.md
-- test/ribbons-photos.test.ts
-- Data Model: Pokémon selvagens e captura
 - Implementation Plan: Economia, Centro Pokémon e PC
-- User Scenarios & Testing *(mandatory)*
-- level
+- accept
 - User Scenarios & Testing *(mandatory)*
 - markCaught
 - Quickstart: Áudio no jogo
@@ -377,7 +393,7 @@
 1. `vitest` - 418 edges
 2. `createSession()` - 108 edges
 3. `readU16()` - 101 edges
-4. `ScriptHost` - 97 edges
+4. `ScriptHost` - 98 edges
 5. `ServerMessage` - 89 edges
 6. `ByteWriter` - 77 edges
 7. `scriptData()` - 74 edges
@@ -394,8 +410,8 @@
   specs/028-presence/contracts/protocol-v23.md → packages/app/golden/trade.golden.ts
 - `No servidor` --references--> `loadScripts()`  [INFERRED]
   specs/024-playable-campaign-zephyr/contracts/new-game-data.md → packages/app/src/server-host/scripts-loader.ts
-- `Regras do lado do principal (`assets-controller.ts`)` --references--> `extracting()`  [INFERRED]
-  specs/003-rom-extraction-pipeline/contracts/extractor-host-protocol.md → packages/app/test/assets-controller.test.ts
+- `Envelope comum` --references--> `records()`  [INFERRED]
+  specs/004-game-data-extraction/data-model.md → packages/client/src/game/game-data.ts
 
 ## Import Cycles
 - None detected.
@@ -403,141 +419,126 @@
 ## Hyperedges (group relationships)
 - **Dev-only data viewer pages** — packages_extractor_src_viewer_audio_html, packages_extractor_src_viewer_index_html, packages_extractor_src_viewer_sprites_html [INFERRED 0.75]
 
-## Communities (365 total, 17 thin omitted)
+## Communities (381 total, 21 thin omitted)
 
-### Community 0 - "duel.ts"
-Cohesion: 0.07
-Nodes (23): ArenaPlace, createDuels(), end(), sendTo(), Duel, Duels, DuelsOptions, DuelState (+15 more)
+### Community 0 - "src/trade.ts"
+Cohesion: 0.12
+Nodes (11): createTrades(), holds(), sendTo(), EMPTY, Trade, Trades, TradesOptions, TradeState (+3 more)
 
 ### Community 1 - "field/schemas.ts"
-Cohesion: 0.06
-Nodes (27): BUNDLED_COMBAT_CONTENT, coverage, hasExtraction, STAGES, serializeCombatFile, parseEventsFile, codec, FIELD_FORMAT_VERSION (+19 more)
+Cohesion: 0.12
+Nodes (12): codec, FIELD_FORMAT_VERSION, FIELD_OBSTACLES, FieldFileKind, fieldMove, fieldSchemas, LOCOMOTION_CLASSES, LocomotionTable (+4 more)
 
 ### Community 2 - "GameSession.svelte"
 Cohesion: 0.02
-Nodes (112): bankTexts(), activeMember, addresses, aiShapes, answerScript(), apricornBox, arenaRings, arenas (+104 more)
+Nodes (108): bankTexts(), activeMember, addresses, aiShapes, answerScript(), apricornBox, arenaRings, arenas (+100 more)
 
 ### Community 3 - "game-data/index.ts"
-Cohesion: 0.05
-Nodes (57): StatOptions, Stats, BATTLE_STAT_KEYS, fileSchema(), GAME_DATA_FORMAT_VERSION, id(), int(), STAT_KEYS (+49 more)
+Cohesion: 0.09
+Nodes (27): TARGETS, fileSchema(), stats(), textRef(), codec, gameDataSchemas, learnsetsFile, machinesFile (+19 more)
 
 ### Community 4 - "createWilds"
-Cohesion: 0.10
-Nodes (30): createWilds(), add(), areaOf(), remove(), tableOf(), trySpawn(), waterCells(), SpawnArea (+22 more)
+Cohesion: 0.15
+Nodes (21): createWilds(), add(), areaOf(), remove(), tableOf(), trySpawn(), waterCells(), SpawnArea (+13 more)
 
-### Community 5 - "src/items.ts"
-Cohesion: 0.03
-Nodes (72): APRICORN_BOX, BERRY_POTS, COMBAT_ARCHETYPES, DOWSING_MCHN, FIELD_ARCHETYPES, ITEM_STATE_KEYS, ItemData, ItemRules (+64 more)
+### Community 5 - "game-data/items.ts"
+Cohesion: 0.06
+Nodes (35): ItemRules, Member, byte, ItemRecord, itemsFile, hpRestore(), RESTORE_HP, REVIVE (+27 more)
 
-### Community 6 - "scene.ts"
-Cohesion: 0.04
-Nodes (75): Extent, gymLevers(), Layout, readAzaleaGym(), buildCollision(), CollisionWarning, NEIGHBORS, buildMapMesh() (+67 more)
+### Community 6 - "maps/index.ts"
+Cohesion: 0.07
+Nodes (40): Extent, gymLevers(), Layout, buildCollision(), CollisionWarning, NEIGHBORS, Model, Building (+32 more)
 
 ### Community 7 - "t"
-Cohesion: 0.04
-Nodes (46): gauge, hpFraction, {
-    self,
-    bars,
-    call,
-    speciesName,
-  }, status, {
-    duel,
-    partnerName,
-    onAnswer,
-    onCancel,
-    onClose,
-  }, rules, {
+Cohesion: 0.06
+Nodes (34): {
     choices,
     selected,
     using,
     cooling,
     itemName,
   }, {
-    party,
-    out,
-    speciesName,
-  } (+38 more)
-
-### Community 8 - "src/field.ts"
-Cohesion: 0.05
-Nodes (34): buildFieldData(), bundledFieldData(), Field, FieldData, LAND_WALLS, OPPOSITE, parse(), Rider (+26 more)
-
-### Community 9 - "Tasks: Validação da ROM, desempacotamento e primeira execução"
-Cohesion: 0.09
-Nodes (21): romRejectionMessage(), Contrato: CLI do extrator, Códigos de saída, Exemplos, Opções, Saída, Dentro de cada história, Dependencies & Execution Order (+13 more)
-
-### Community 10 - "combat-loader.ts"
-Cohesion: 0.03
-Nodes (51): TARGETS, TypeChartResult, buildCombatData(), resolve(), checkShape(), CombatContent, ExtractedForCombat, fail() (+43 more)
-
-### Community 11 - "sprites/stage.ts"
-Cohesion: 0.04
-Nodes (106): BattleResult, extractBattle(), Failure, firstFrame(), extractBattleFx(), placement(), scriptEmitters(), STATUS_EFFECTS (+98 more)
-
-### Community 12 - "createGameServer"
-Cohesion: 0.23
-Nodes (9): createGameServer(), init(), newSession(), checkCoherence(), COHERENCE_RULES, CoherenceRule, flyPointsRule(), map (+1 more)
-
-### Community 13 - "SoulSilverApi"
-Cohesion: 0.04
-Nodes (30): api, ImportMeta, Window, create(), AssetsState, IpcChannel, LanResult, SERVER_UNAVAILABLE (+22 more)
-
-### Community 14 - "maps/stage.test.ts"
-Cohesion: 0.06
-Nodes (70): createRegistry(), StageRegistryError, validate(), runPipeline(), RunResult, Stage, textCatalogStage, base() (+62 more)
-
-### Community 15 - "input.ts"
-Cohesion: 0.05
-Nodes (50): {
     self,
     lead,
     moveName,
     moveType,
-  }, SLOTS, waiting, { action, pad = false }, label, PAD_NAMES, Direction, menuNavigation() (+42 more)
+  }, SLOTS, waiting, presenceText(), { name, direction }, { minuteOfDay, weekday }, { map, phone, radio, clock, onDial, onTune, onBack } (+26 more)
+
+### Community 8 - "src/fishing.ts"
+Cohesion: 0.08
+Nodes (23): Angler, center(), createFishing(), end(), FishingControl, FishingOptions, STEP, biteChance() (+15 more)
+
+### Community 9 - "Contrato: CLI do extrator"
+Cohesion: 0.29
+Nodes (5): Contrato: CLI do extrator, Códigos de saída, Exemplos, Opções, Saída
+
+### Community 10 - "combat-loader.ts"
+Cohesion: 0.04
+Nodes (51): buildCombatData(), resolve(), BUNDLED_COMBAT_CONTENT, checkShape(), CombatContent, fail(), FILES, GENERIC (+43 more)
+
+### Community 11 - "sprites/stage.ts"
+Cohesion: 0.04
+Nodes (63): BATTLE_MEMBERS_PER_SPECIES, FIELD_EFFECT_ARCHIVE, FORMS_ARCHIVE, GRASS_EFFECT_MEMBER, ICON_ARCHIVE, ICON_FIRST_MEMBER, ICON_FORMS, ITEM_ICON_ARCHIVE (+55 more)
+
+### Community 12 - "coherence.test.ts"
+Cohesion: 0.27
+Nodes (7): checkCoherence(), COHERENCE_RULES, CoherenceRule, map, save, R6. Validação no host, Phase 4: User Story 2 - Jogar sozinho (P1)
+
+### Community 13 - "SoulSilverApi"
+Cohesion: 0.06
+Nodes (21): ImportMeta, Window, create(), AssetsState, SoulSilverApi, SaveResult, R11. Interface da atualização, Phase 4: User Story 2 - Instalar e abrir o app (Priority: P2) (+13 more)
+
+### Community 14 - "maps/stage.test.ts"
+Cohesion: 0.05
+Nodes (82): createDataStages(), mapsStage, checkAssets(), createRegistry(), validate(), runPipeline(), RunResult, Stage (+74 more)
+
+### Community 15 - "input.ts"
+Cohesion: 0.08
+Nodes (35): ACTION_BITS, createInput(), gamepad(), pad(), createRepeater(), DASH_BIT, Device, has() (+27 more)
 
 ### Community 16 - "stages.ts"
-Cohesion: 0.08
-Nodes (43): DataLayout, readEvolutions(), readItem(), readItemMap(), hex(), readEggMoves(), readLevelUp(), readMachineCompat() (+35 more)
+Cohesion: 0.16
+Nodes (30): readNarcMember(), readEvolutions(), readItem(), readItemMap(), hex(), readEggMoves(), readLevelUp(), readMachineCompat() (+22 more)
 
-### Community 17 - "trainer-battle.ts"
-Cohesion: 0.03
-Nodes (60): Ai, AiOptions, AiData, WALKABLE, Attempt, CaptureOptions, Captures, Flight (+52 more)
+### Community 17 - "session.ts"
+Cohesion: 0.02
+Nodes (91): PlayRequest, ARENA_AREA, ARENA_MAP, ARENA_SPAWN, center(), foeSpot(), trainerMember(), Attempt (+83 more)
 
 ### Community 18 - "session-controller.ts"
-Cohesion: 0.11
-Nodes (22): HostAnnouncement, SaveStore, close(), connect(), connectGame(), createSessionController(), announce(), end() (+14 more)
+Cohesion: 0.07
+Nodes (29): HostAnnouncement, SaveStore, close(), connect(), connectGame(), createSessionController(), announce(), end() (+21 more)
 
 ### Community 19 - "trainer/schemas.ts"
-Cohesion: 0.15
-Nodes (14): apply(), over(), trainerProfile(), AiFlagsTable, ClassProfiles, codec, itemRules, ProfilePatch (+6 more)
+Cohesion: 0.08
+Nodes (27): chooseItem(), chooseSwitch(), ItemInput, SwitchInput, TeamView, apply(), over(), trainerProfile() (+19 more)
 
 ### Community 20 - "src/phone.ts"
-Cohesion: 0.07
-Nodes (14): BAND, Caller, callersFile, FLAG_MOMS_SAVINGS, Phone, Ringing, SAVINGS_CHOICES, scriptedCallOf() (+6 more)
+Cohesion: 0.05
+Nodes (32): BAND, Caller, callersFile, FLAG_MOMS_SAVINGS, Phone, Ringing, SAVINGS_CHOICES, scriptedCallOf() (+24 more)
 
 ### Community 21 - "game/index.ts"
 Cohesion: 0.03
-Nodes (142): ROUTE, buildAiData(), BUNDLED_AI_CONTENT, buildCompanionData(), BUNDLED_COMPANION_CONTENT, buildItemsData(), createRecorder(), replay() (+134 more)
+Nodes (96): probe(), BUNDLED_AI_CONTENT, createRecorder(), replay(), buildWildData(), createWorld(), hashWorld(), game() (+88 more)
 
 ### Community 22 - "App.svelte"
-Cohesion: 0.05
-Nodes (33): appVersion, assets, attempt, failed, play, reconnect(), Screen, serverReady (+25 more)
-
-### Community 23 - "maps/index.ts"
 Cohesion: 0.06
-Nodes (31): Spot, clearings(), fighting(), MAX_CLEARINGS, createNpcs(), holdMap(), NpcSpawn, Spawn (+23 more)
+Nodes (28): appVersion, assets, attempt, failed, play, reconnect(), Screen, serverReady (+20 more)
+
+### Community 23 - "npcs.ts"
+Cohesion: 0.09
+Nodes (22): createNpcs(), holdMap(), NpcSpawn, Spawn, free, lookupOf(), open, setup() (+14 more)
 
 ### Community 24 - "ai-loader.ts"
 Cohesion: 0.06
-Nodes (19): AiContent, FILES, parse(), profileFor(), AI_FORMAT_VERSION, AiFileKind, aiSchemas, codec (+11 more)
+Nodes (20): AiContent, AiData, FILES, parse(), profileFor(), AI_FORMAT_VERSION, AiFileKind, aiSchemas (+12 more)
 
 ### Community 25 - "app/package.json"
 Cohesion: 0.10
 Nodes (19): author, description, @soulsilver/server, @soulsilver/shared, @sveltejs/vite-plugin-svelte, main, name, private (+11 more)
 
-### Community 26 - "Connection"
-Cohesion: 0.22
-Nodes (3): Connection, HostedConnection, R1. Transporte para convidados
+### Community 26 - "ServerMessage"
+Cohesion: 0.04
+Nodes (75): data, info(), MAN, parent(), stages, COUNTER, data, stages (+67 more)
 
 ### Community 27 - "animation.test.ts"
 Cohesion: 0.21
@@ -545,203 +546,199 @@ Nodes (13): Texture, fieldTextureTable(), fx(), patternFile(), PatternMaterial, 
 
 ### Community 28 - "scripts-loader.ts"
 Cohesion: 0.09
-Nodes (24): DEFAULT_RIVAL_TEXT, loadScripts(), read(), readDefaultRival(), readPhone(), ascending(), buildEventsReport(), buildEventsReportFile() (+16 more)
+Nodes (25): DEFAULT_RIVAL_TEXT, loadScripts(), read(), readDefaultRival(), readPhone(), scriptSounds(), ascending(), buildEventsReport() (+17 more)
 
 ### Community 29 - "events/schemas.ts"
-Cohesion: 0.05
-Nodes (36): argWhen, codec, command, coverage, encounter, EncountersFile, gymTile, headbutt (+28 more)
+Cohesion: 0.04
+Nodes (50): readRockSmash(), member(), ScriptData, argWhen, codec, command, coverage, encounter (+42 more)
 
 ### Community 30 - "breeding.ts"
-Cohesion: 0.12
-Nodes (22): breed(), daycareCompatibility(), withGender(), BreedingData, compatibility, compatibilityScore(), eggCheckDue(), eggOf() (+14 more)
+Cohesion: 0.13
+Nodes (21): breed(), BreedingData, compatibility, compatibilityScore(), eggCheckDue(), eggOf(), eggRoll(), eggSpecies() (+13 more)
 
 ### Community 31 - "createItems"
-Cohesion: 0.09
-Nodes (37): createItems(), find(), finish(), harvest(), heldItem(), plant(), potsMessage(), repelFor() (+29 more)
+Cohesion: 0.15
+Nodes (19): createItems(), find(), finish(), harvest(), heldItem(), plant(), potsMessage(), repelFor() (+11 more)
 
 ### Community 32 - "main/discovery.ts"
-Cohesion: 0.10
-Nodes (18): broadcastAddresses(), createDiscovery(), DiscoveryOptions, localAddresses(), stops, save, Announcement, createSessionList() (+10 more)
+Cohesion: 0.11
+Nodes (17): broadcastAddresses(), createDiscovery(), DiscoveryOptions, localAddresses(), stops, Announcement, createSessionList(), decodeAnnouncement() (+9 more)
 
 ### Community 33 - "pipeline/run.ts"
-Cohesion: 0.04
-Nodes (80): outdated(), AssetsCheck, CheckArgs, checkAssets(), OutputMismatch, sizeOf(), verifyOutputs(), countFiles() (+72 more)
+Cohesion: 0.05
+Nodes (68): outdated(), AssetsCheck, OutputMismatch, sizeOf(), countFiles(), digestTree(), listFiles(), LockOptions (+60 more)
 
 ### Community 34 - "scripts.ts"
 Cohesion: 0.04
-Nodes (14): DebugView, FlagChange, FROM_WATER, HIDDEN_VARS, INTRO_SCRIPT, MAPTEMP_FLAGS, OPEN_ENDED, OPPOSITE (+6 more)
+Nodes (18): DebugView, FlagChange, FROM_WATER, HIDDEN_VARS, INTRO_SCRIPT, MAPTEMP_FLAGS, OPEN_ENDED, OPPOSITE (+10 more)
 
 ### Community 35 - "fixtures.ts"
-Cohesion: 0.21
-Nodes (17): pickWeighted(), effectiveness(), EMBER, env(), FILES, foe(), move(), profile() (+9 more)
+Cohesion: 0.17
+Nodes (25): createController(), newSenses(), TemperamentRules, AiTick, OpponentView, SelfView, effectiveness(), EMBER (+17 more)
 
 ### Community 36 - "033 · Torre de Rádio até Lugia"
 Cohesion: 0.05
 Nodes (37): 030.10 Verificação, 030.8 Goldenrod e Whitney, 030.9 Routes 35 e 36, National Park e Sudowoodo, 030 · Violet até o National Park, 031.1 Ecruteak e Burned Tower, 031.2 Cães errantes e Suicune, 031.3 Ginásio de Ecruteak, 031.4 Strength e exploração com Surf (+29 more)
 
 ### Community 37 - "createSession"
-Cohesion: 0.11
-Nodes (37): arenaMember(), itemStateOf(), reorderParty(), createReplica(), replicate(), createSession(), add(), admit() (+29 more)
+Cohesion: 0.12
+Nodes (36): play(), scene(), arenaMember(), itemStateOf(), reorderParty(), createReplica(), createSession(), add() (+28 more)
 
 ### Community 38 - "server-data.ts"
-Cohesion: 0.09
-Nodes (19): readExtracted(), combatOrNothing(), companionOrNothing(), itemsOrNothing(), loadServerData(), Log, progressionOrNothing(), readJson() (+11 more)
+Cohesion: 0.07
+Nodes (21): readExtracted(), combatOrNothing(), companionOrNothing(), itemsOrNothing(), loadServerData(), Log, progressionOrNothing(), readJson() (+13 more)
 
 ### Community 39 - "Tasks: Dados do jogo"
-Cohesion: 0.10
-Nodes (20): pad4(), writeInputs(), writeMembers(), Dentro de cada história, Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation Strategy, Incremental Delivery (+12 more)
+Cohesion: 0.12
+Nodes (14): Dentro de cada história, Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation Strategy, Incremental Delivery, MVP First (User Story 1), Notes, Parallel Example: User Story 1 (+6 more)
 
 ### Community 40 - "Pesquisa: Interpretador de scripts"
 Cohesion: 0.09
 Nodes (21): Call, Decisões tomadas na implementação (2026-10-26), Pesquisa: Interpretador de scripts, R10. Fonte da semântica dos comandos, R11. Espera, R12. Inicial, R13. Leitura dos arquivos, R14. Bloqueio pelo movimento (+13 more)
 
 ### Community 41 - "radio.ts"
-Cohesion: 0.10
-Nodes (22): createRadio(), file, GB_SOUNDS, capFor(), listenerFactor(), musicOf(), MusicState, pokemonMusicLines() (+14 more)
+Cohesion: 0.09
+Nodes (24): createRadio(), file, GB_SOUNDS, capFor(), listenerFactor(), musicOf(), MusicState, pokemonMusicLines() (+16 more)
 
-### Community 42 - "Tests for User Story 2 (test-first) ⚠️"
-Cohesion: 0.29
-Nodes (7): createMainWindow(), isAllowedNavigation(), permissionRequestHandler(), windowOpenHandler(), createWindowOptions(), electron, Tests for User Story 2 (test-first) ⚠️
+### Community 42 - "server-host/entry.ts"
+Cohesion: 0.18
+Nodes (8): createWindowOptions(), devTools, lan, LAN_PORTS, send(), server, stagesDir, electron
 
-### Community 43 - "sprites/stage.test.ts"
+### Community 43 - "icons.test.ts"
 Cohesion: 0.10
-Nodes (33): FORM_GRAPHICS, FORM_GROUPS, GRASS_EFFECT_MEMBER, OVERWORLD_GFX_TABLE, spritesStage, btx0(), ascii(), bgr555() (+25 more)
+Nodes (30): FORM_GRAPHICS, FORM_GROUPS, ICON_PALETTE_TABLE, btx0(), ascii(), bgr555(), buildLz10(), buildNcgr() (+22 more)
 
 ### Community 44 - "User Scenarios & Testing *(mandatory)*"
-Cohesion: 0.12
-Nodes (17): Assumptions, Contexto, Edge Cases, Feature Specification: LAN, sessões e saves, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)* (+9 more)
+Cohesion: 0.06
+Nodes (30): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: LAN, sessões e saves, Complexity Tracking, Constitution Check, Documentation (this feature) (+22 more)
 
 ### Community 45 - "Tasks: IA de combate dos Pokémon"
-Cohesion: 0.09
-Nodes (22): enrage(), Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation, Implementation, Implementation, Implementation, Implementation Strategy (+14 more)
+Cohesion: 0.11
+Nodes (19): enrage(), Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation, Implementation, Implementation, Implementation Strategy, Parallel Opportunities (+11 more)
 
 ### Community 46 - "combat.ts"
-Cohesion: 0.05
-Nodes (61): ParseResult, AIMED, createCombat(), begin(), damageOf(), emit(), execute(), get() (+53 more)
+Cohesion: 0.07
+Nodes (40): AIMED, createCombat(), begin(), damageOf(), emit(), execute(), get(), hit() (+32 more)
 
-### Community 47 - "runner.ts"
+### Community 47 - "createRunner"
 Cohesion: 0.08
-Nodes (44): MusicTracks, ScriptCommand, ScriptEvent, SCRIPT_HANDLERS, Abort, createRunner(), contextFor(), readVar() (+36 more)
+Nodes (37): ScriptCommand, PLAYER_NAME_MAX, SCRIPT_HANDLERS, Abort, createRunner(), contextFor(), readVar(), run() (+29 more)
 
 ### Community 48 - "Research: Dados do jogo"
-Cohesion: 0.12
-Nodes (16): R10. Constante de layout e checagens estruturais, R11. Representação dos campos, R12. Biblioteca de schema, R13. Formato e determinismo dos arquivos, R14. Divisão em etapas, R15. Relatório de sanidade, R16. Estratégia de testes, R1. Onde está cada dado (+8 more)
+Cohesion: 0.08
+Nodes (21): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Dados do jogo, R10. Constante de layout e checagens estruturais, R11. Representação dos campos, R12. Biblioteca de schema (+13 more)
 
 ### Community 49 - "011-world-movement-warps/tasks.md"
-Cohesion: 0.12
-Nodes (10): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Mundo, movimento e warps, Conferência manual (SC-001 a SC-003), Pré-requisitos, Quickstart: Mundo, movimento e warps (+2 more)
+Cohesion: 0.10
+Nodes (15): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Mundo, movimento e warps, Data Model: Mundo, movimento e warps, Entity (acréscimos), PlayerInput (protocolo v3, substitui `dir`) (+7 more)
 
 ### Community 50 - "nsbmd.ts"
 Cohesion: 0.13
-Nodes (27): apply(), assemble(), channel(), decodeDisplayList(), GxFormatError, GxTriangle, GxVertex, IDENTITY (+19 more)
+Nodes (28): apply(), assemble(), channel(), decodeDisplayList(), GxFormatError, GxTriangle, GxVertex, IDENTITY (+20 more)
 
 ### Community 51 - "map-scene.ts"
-Cohesion: 0.21
-Nodes (11): CLEARING_RADIUS_PX, buildMapObject(), clearGrass(), grassClearings, grassTexture(), groupTexture(), KEPT, MISSING (+3 more)
+Cohesion: 0.08
+Nodes (25): MapVisual, CLEARING_RADIUS_PX, clearings(), fighting(), MAX_CLEARINGS, MapMesh, buildMapObject(), clearGrass() (+17 more)
 
 ### Community 52 - "ScriptHost"
 Cohesion: 0.03
-Nodes (3): ScriptHost, Phase 3: User Story 1 - Jogo novo começa como o original (P1) 🎯 MVP, Phase 5: User Story 4 - Receber ligações e aceitar revanches (P2)
+Nodes (3): ScriptHost, Constitution Check, Phase 3: User Story 1 - Jogo novo começa como o original (P1) 🎯 MVP
 
 ### Community 53 - "Tasks: Campanha jogável até a Insígnia Zephyr"
 Cohesion: 0.14
 Nodes (13): Dependencies & Execution Order, Implementation Strategy, Parallel opportunities, Phase 10: Polish, Phase 11: Convergence, Phase 12: Convergence, Phase 13: Convergence, Phase 14: Convergence (+5 more)
 
 ### Community 54 - "maps/stage.ts"
-Cohesion: 0.06
-Nodes (36): stages(), areas, collision(), free, logs, mapMusic(), readJson(), runAudio() (+28 more)
+Cohesion: 0.09
+Nodes (28): collision(), mapCells(), MatrixFormatError, readMatrix(), buildMapMesh(), buildPropMesh(), posePatterns(), buildMapScene() (+20 more)
 
 ### Community 55 - "forbidden-files.ts"
-Cohesion: 0.04
-Nodes (51): @electron/asar, GIT_ARGS, lines, violations, width, result, DS_EXTENSIONS, DS_FORMAT_RULE (+43 more)
+Cohesion: 0.12
+Nodes (21): GIT_ARGS, lines, violations, width, DS_EXTENSIONS, DS_FORMAT_RULE, extensionOf(), findForbiddenFiles() (+13 more)
 
-### Community 56 - "text/stage.ts"
-Cohesion: 0.16
-Nodes (23): Bank, BankEntry, BankFormatError, decodeBank(), encodeBank(), pack9into15(), tableKey(), textKey() (+15 more)
+### Community 56 - "extractor/src/index.ts"
+Cohesion: 0.09
+Nodes (43): StageContext, Bank, BankEntry, BankFormatError, decodeBank(), encodeBank(), pack9into15(), tableKey() (+35 more)
 
-### Community 57 - "rom-unpack.test.ts"
-Cohesion: 0.07
-Nodes (29): BlzFormatError, decompressBlz(), decompressArm9(), decompressOverlay(), indexOfBytes(), MODULE_PARAMS_MAGIC, OverlayEntry, readOverlayTable() (+21 more)
+### Community 57 - "stages/index.ts"
+Cohesion: 0.12
+Nodes (18): BlzFormatError, decompressBlz(), decompressArm9(), decompressOverlay(), indexOfBytes(), MODULE_PARAMS_MAGIC, OverlayEntry, readOverlayTable() (+10 more)
 
 ### Community 58 - "ByteWriter"
 Cohesion: 0.11
-Nodes (45): fakeRom(), read(), buildFnt(), buildNarc(), ByteWriter, BgSpec, buildEncounter(), buildHeadbutt() (+37 more)
+Nodes (44): fakeRom(), read(), ByteWriter, BgSpec, buildEncounter(), buildHeadbutt(), buildLevelScripts(), buildScriptFile() (+36 more)
 
 ### Community 59 - "shop.ts"
-Cohesion: 0.07
-Nodes (19): createShops(), Open, Shopper, ShopRequest, Shops, ShopsOptions, buy(), BUY_MAX (+11 more)
+Cohesion: 0.10
+Nodes (17): createShops(), Open, Shopper, ShopRequest, buy(), BUY_MAX, MONEY_MAX, PriceInfo (+9 more)
 
 ### Community 60 - "createCompanions"
-Cohesion: 0.16
-Nodes (21): canHarm(), playerPic(), createCompanions(), blackout(), endCombat(), follow(), keepHp(), launchLead() (+13 more)
+Cohesion: 0.14
+Nodes (23): canHarm(), createCompanions(), blackout(), endCombat(), follow(), interact(), keepHp(), launchLead() (+15 more)
 
 ### Community 61 - "script/index.ts"
 Cohesion: 0.06
-Nodes (27): COMMON_MART, CutsceneActor, STARTER_LEVEL, STARTERS, BRIDGE, BRIDGED, CENTER, RTC_TIME_OF_DAY (+19 more)
+Nodes (32): COMMON_MART, CutsceneActor, STARTER_LEVEL, STARTERS, BRIDGE, BRIDGED, CENTER, RTC_TIME_OF_DAY (+24 more)
 
-### Community 62 - "AssetsController"
-Cohesion: 0.14
-Nodes (5): AssetsController, AssetsFailure, Implementation for User Story 5, Phase 7: User Story 5 - Log de erros que o jogador consegue enviar (Priority: P3), Tests for User Story 5 ⚠️
-
-### Community 63 - "Feature Specification: Servidor de jogo e protocolo"
-Cohesion: 0.14
-Nodes (14): Assumptions, Contexto, Edge Cases, Feature Specification: Servidor de jogo e protocolo, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)* (+6 more)
+### Community 63 - "ai.ts"
+Cohesion: 0.06
+Nodes (18): Ai, AiOptions, WALKABLE, Combatant, BotSide, Fight, FightOptions, lookup() (+10 more)
 
 ### Community 64 - "Implementation Plan: Pokémon companheiro e regras do combate no mundo"
 Cohesion: 0.07
 Nodes (27): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Pokémon companheiro e regras do combate no mundo, Complexity Tracking, Constitution Check, Documentation (this feature) (+19 more)
 
 ### Community 65 - "companion-loader.ts"
-Cohesion: 0.07
-Nodes (18): interact(), CompanionContent, ExtractedForCompanion, parse(), start(), Fighter, leadIndex(), pickReaction() (+10 more)
+Cohesion: 0.11
+Nodes (9): CompanionContent, ExtractedForCompanion, parse(), BattleRules, FollowRules, parseCompanionFile, ReactionRules, largeSpeciesOf() (+1 more)
 
 ### Community 66 - "game-data/builders.ts"
-Cohesion: 0.14
-Nodes (22): inputsWithValidAbilities(), blank(), eggMoves(), evolutions(), growth(), item(), ItemInput, itemMap() (+14 more)
+Cohesion: 0.08
+Nodes (36): types(), layout, inputsWithValidAbilities(), blank(), eggMoves(), evolutions(), growth(), item() (+28 more)
 
 ### Community 67 - "createScripts"
-Cohesion: 0.15
-Nodes (26): createScripts(), checkFree(), companionOf(), devState(), enterMap(), finish(), interact(), lock() (+18 more)
+Cohesion: 0.14
+Nodes (27): createScripts(), checkFree(), companionOf(), devState(), enterMap(), finish(), interact(), lock() (+19 more)
 
 ### Community 68 - "createAssetsController"
-Cohesion: 0.31
+Cohesion: 0.28
 Nodes (12): AssetsControllerOptions, createAssetsController(), acceptsRom(), extract(), fail(), finish(), handleCommon(), needsRom() (+4 more)
 
 ### Community 69 - "build-nds-rom.ts"
-Cohesion: 0.13
-Nodes (18): crc16(), BuiltFnt, Dir, BANNER_SIZE, buildNdsRom(), corruptByte(), filled(), HEADER_SIZE (+10 more)
+Cohesion: 0.17
+Nodes (17): buildFnt(), BuiltFnt, Dir, buildNarc(), BANNER_SIZE, buildNdsRom(), corruptByte(), filled() (+9 more)
 
 ### Community 70 - "Tasks: Golpes de campo e locomoção"
-Cohesion: 0.09
-Nodes (22): shown(), R4 Quando creditar e quando resolver, Data Model: Golpes de campo e locomoção, Estado de sessão (não persistido), Fishing (`content/field/fishing.json`), FlyPoints (extraído; `fly-points.json`), Locomotion (`content/species/locomotion.json`), Save v9 (mudanças sobre v8) (+14 more)
+Cohesion: 0.15
+Nodes (13): shown(), Convergência, fase 11 (2026-11-05), Dependências e ordem, Estratégia, Fechamento (2026-11-05), Notas e relatórios, Phase 11: Convergence, Phase 1: Setup (+5 more)
 
 ### Community 71 - "synth.ts"
-Cohesion: 0.10
-Nodes (22): Registro de balanceamento, Instrument, NoteDefinition, Track, Wave, Channel, Env, FRAME_RATE (+14 more)
-
-### Community 72 - "wild-loader.ts"
-Cohesion: 0.04
-Nodes (34): BUNDLED_TIME_BANDS, BUNDLED_WILD_CONTENT, ExtractedForWild, parse(), WildContent, EncounterRecord, EvolutionRecord, LearnsetRecord (+26 more)
-
-### Community 73 - "engine.ts"
 Cohesion: 0.11
-Nodes (15): ctx, effectsBus, focused, listener, master, musicBus, Playing, voice() (+7 more)
+Nodes (20): Registro de balanceamento, NoteDefinition, noteForKey(), Track, Channel, Env, FRAME_RATE, LoopFound (+12 more)
 
-### Community 74 - "Research: Combate em tempo real"
-Cohesion: 0.05
-Nodes (36): input(), EntityDelta, Cliente → servidor, Contract: protocolo de jogo cliente ↔ servidor, Host ↔ processo do servidor, Regras, Servidor → cliente, Dependencies (+28 more)
+### Community 72 - "wild/schemas.ts"
+Cohesion: 0.07
+Nodes (20): parse(), codec, parseTimeFile, Rgb, TIME_FORMAT_VERSION, timeSchemas, runClock(), BALL_CONDITIONS (+12 more)
+
+### Community 73 - "battle.ts"
+Cohesion: 0.14
+Nodes (37): BattleResult, extractBattle(), Failure, firstFrame(), GENDERS, MEMBER, Pixels, same() (+29 more)
+
+### Community 74 - "Tasks: Servidor de jogo e protocolo"
+Cohesion: 0.09
+Nodes (22): input(), EntityDelta, Cliente → servidor, Contract: protocolo de jogo cliente ↔ servidor, Host ↔ processo do servidor, Regras, Servidor → cliente, Dependencies (+14 more)
 
 ### Community 75 - "movement.ts"
-Cohesion: 0.13
-Nodes (30): afterMove(), arrive(), Blocker, blockers(), cellAt(), center(), counter(), CURRENT (+22 more)
+Cohesion: 0.05
+Nodes (58): diffEntity(), ENTITY_KINDS, EntityData, sameData(), afterMove(), arrive(), Blocker, blockers() (+50 more)
 
 ### Community 76 - "Tasks: [FEATURE NAME]"
 Cohesion: 0.07
 Nodes (28): Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation for User Story 1, Implementation for User Story 2, Implementation for User Story 3, Implementation Strategy, Incremental Delivery, MVP First (User Story 1 Only) (+20 more)
 
 ### Community 77 - "Bag.svelte"
-Cohesion: 0.08
-Nodes (20): {
+Cohesion: 0.06
+Nodes (22): {
     bag,
     items,
     party,
@@ -755,214 +752,210 @@ Nodes (20): {
     onPlant,
     onHarvest,
     onBack,
-  }, berries, effectOf(), inPocket, Member, ON_MEMBER, ON_MOVE, onAction() (+12 more)
+  }, berries, effectOf(), inPocket, Member, ON_MEMBER, ON_MOVE, onAction() (+14 more)
 
 ### Community 78 - "data/report.ts"
-Cohesion: 0.11
-Nodes (25): buildSanityReport(), checkWarnings(), COUNT_LABELS, countAll(), EXPECTED_COUNTS, formatSanityReport(), GENDER_RAWS, listIgnored() (+17 more)
+Cohesion: 0.06
+Nodes (43): DataLayout, FormLayout, SOULSILVER_US_LAYOUT, buildSanityReport(), checkWarnings(), COUNT_LABELS, countAll(), EXPECTED_COUNTS (+35 more)
 
 ### Community 79 - "exports"
 Cohesion: 0.06
 Nodes (35): dependencies, zod, exports, ./ai, ./audio, ./combat, ./companion, ./daycare (+27 more)
 
-### Community 80 - "Play.svelte"
-Cohesion: 0.05
-Nodes (38): bank(), behavior, character, combatant(), foeKind, json(), mine, moveIds() (+30 more)
+### Community 80 - "ArenaSetup.svelte"
+Cohesion: 0.08
+Nodes (29): bank(), behavior, character, combatant(), foeKind, json(), mine, moveIds() (+21 more)
 
 ### Community 81 - "sseq.ts"
 Cohesion: 0.17
-Nodes (18): apply(), ArgOverride, BYTE_ARG, byteCommand(), commandCensus(), runCommand(), s16(), sequenceData() (+10 more)
+Nodes (19): SdatFormatError, apply(), ArgOverride, BYTE_ARG, byteCommand(), commandCensus(), runCommand(), s16() (+11 more)
 
 ### Community 82 - "pilot"
 Cohesion: 0.22
 Nodes (28): dailyDrawing(), deptClerk(), joeyNumber(), joeyRematch(), momCall(), pc(), pilot(), approach() (+20 more)
 
 ### Community 83 - "Tasks: Interpretador de scripts"
-Cohesion: 0.09
-Nodes (17): Answer, State, AzaleaGymState, GymTile, Runner, RunState, Dependencies & Execution Order, Implementation Strategy (+9 more)
+Cohesion: 0.10
+Nodes (16): Answer, State, AzaleaGymState, Runner, RunState, Dependencies & Execution Order, Implementation Strategy, Notas da implementação (2026-10-26) (+8 more)
 
 ### Community 84 - "scriptData"
-Cohesion: 0.06
-Nodes (63): SCRIPT_TIMEOUT_TICKS, data(), scene, game(), data(), events, file, data() (+55 more)
+Cohesion: 0.05
+Nodes (74): data(), scene, game(), data(), events, file, data(), game() (+66 more)
 
-### Community 85 - "extractor/src/index.ts"
+### Community 85 - "cli.ts"
 Cohesion: 0.04
 Nodes (67): abort, extract(), finish(), send(), validateAndCopy(), CliIo, collectNameRefs(), EXIT (+59 more)
 
 ### Community 86 - "text/index.ts"
 Cohesion: 0.04
-Nodes (95): COLORS, FeedbackLine, feedbackLines(), FeedbackTexts, SPECIES_BANK, TEXT, base, BATTLE (+87 more)
+Nodes (76): dialogTest(), runFind(), loadTextCatalog(), loadTranslatedCatalog(), findTexts(), FoundText, searchKey(), english (+68 more)
 
 ### Community 87 - "client/package.json"
 Cohesion: 0.10
 Nodes (20): dependencies, @soulsilver/shared, svelte, three, devDependencies, @soulsilver/server, svelte-check, @sveltejs/vite-plugin-svelte (+12 more)
 
-### Community 88 - "entity.ts"
-Cohesion: 0.16
-Nodes (9): diffEntity(), ENTITY_KINDS, EntityData, sameData(), base, east, field, free (+1 more)
+### Community 88 - "Implementation for User Story 1"
+Cohesion: 0.10
+Nodes (31): ready(), runAudio(), fatRange(), NdsFile, NdsFileSystem, NdsOverlay, readNdsFileSystem(), readOverlays() (+23 more)
 
-### Community 89 - "Shop.svelte"
-Cohesion: 0.11
-Nodes (14): chosen, confirm(), max, qty, selling, {
-    shop,
-    bag,
-    refused,
-    itemName,
-    onConfirm,
-    onLeave,
-  }, total, AppSettings (+6 more)
+### Community 89 - "overworld.ts"
+Cohesion: 0.10
+Nodes (31): RgbaImage, BITS, decodeTexture(), five(), readTextureSet(), TextureFormatError, three(), OVERWORLD_FRAME_MS (+23 more)
 
 ### Community 90 - "Tasks: Fundação do projeto"
-Cohesion: 0.08
-Nodes (23): Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation for User Story 1, Implementation for User Story 4, Implementation Strategy, Incremental Delivery, MVP First (User Story 1 Only), Notes (+15 more)
+Cohesion: 0.10
+Nodes (20): Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation for User Story 4, Implementation Strategy, Incremental Delivery, MVP First (User Story 1 Only), Notes, Parallel Example: User Story 2 (+12 more)
 
-### Community 91 - "Implementation Plan: Interpretador de scripts"
-Cohesion: 0.08
-Nodes (22): Specification Quality Checklist: Interpretador de scripts, Complexity Tracking, Constitution Check, Documentation (this feature), Implementation Plan: Interpretador de scripts, Project Structure, Source Code (repository root), Summary (+14 more)
+### Community 91 - "User Scenarios & Testing *(mandatory)*"
+Cohesion: 0.12
+Nodes (14): Specification Quality Checklist: Interpretador de scripts, Assumptions, Edge Cases, Feature Specification: Interpretador de scripts, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)* (+6 more)
 
 ### Community 92 - "Feature Specification: Tempo e Pokégear"
 Cohesion: 0.13
 Nodes (15): Assumptions, Como testar *(mandatory)*, Edge Cases, Feature Specification: Tempo e Pokégear, Fora do escopo, Functional Requirements, Key Entities *(include if feature involves data)*, Measurable Outcomes (+7 more)
 
 ### Community 93 - "createTrainerBattles"
-Cohesion: 0.16
-Nodes (18): world(), createTrainerBattles(), begin(), end(), hooksFor(), memberOf(), nextUp(), place() (+10 more)
+Cohesion: 0.19
+Nodes (18): world(), playerPic(), createTrainerBattles(), begin(), end(), hooksFor(), memberOf(), nextUp() (+10 more)
 
-### Community 94 - "Save"
-Cohesion: 0.08
-Nodes (22): Catcher, Trainer, ItemOwner, PcUser, Learner, Storyteller, Player, Reserved (+14 more)
+### Community 94 - "trade-atomic.test.ts"
+Cohesion: 0.16
+Nodes (10): BEFORE, Client, Disk, game(), drop(), join(), reach(), Name (+2 more)
 
 ### Community 95 - "readU16"
-Cohesion: 0.05
-Nodes (82): ready(), census, sdat, tally, KIND, noteAt(), noteForKey(), readSbnk() (+74 more)
+Cohesion: 0.08
+Nodes (46): census, sdat, tally, MAX_SECONDS, Instrument, KIND, noteAt(), readSbnk() (+38 more)
 
 ### Community 96 - "hostFor"
 Cohesion: 0.13
-Nodes (9): Npcs, ApricornHost, hostFor(), register(), registered(), rematch(), rematchWon(), ScriptsOptions (+1 more)
+Nodes (10): Npcs, ApricornHost, daycareCompatibility(), hostFor(), register(), registered(), rematch(), rematchWon() (+2 more)
 
-### Community 97 - "loader.ts"
-Cohesion: 0.16
-Nodes (10): buffer(), buffers, decode(), index, log(), parsedCues, Pcm, pending (+2 more)
+### Community 97 - "int"
+Cohesion: 0.09
+Nodes (29): AudioCues, audioCuesFile, codec, name(), friendship(), GAME_DATA_FORMAT_VERSION, id(), int() (+21 more)
 
 ### Community 98 - "ref_node_fs"
-Cohesion: 0.05
-Nodes (45): apps, args, electron, env, guestSlot, launch(), run(), localIp() (+37 more)
+Cohesion: 0.04
+Nodes (46): dir, files, i, items, m, n, picked, root (+38 more)
 
 ### Community 99 - "areaType"
-Cohesion: 0.14
-Nodes (16): areaType(), R6. Tipo de lugar e horário, Phase 6: User Story 4 - Interagir com o companheiro (P3), R10. Botão da vara e teclas novas nas configurações (US3), R1. Onde estão as insígnias, os pontos de voo e a escuridão (T001, resolvido), R2. Obstáculo removido só para quem removeu, R3. Insígnias como conjunto, R4. Pesca (+8 more)
+Cohesion: 0.12
+Nodes (18): areaType(), Implementação da US2, Phase 4: User Story 2 - Composição e vizinhança das áreas (Priority: P2), Testes da US2 (escritos antes e com falha), R6. Tipo de lugar e horário, R10. Botão da vara e teclas novas nas configurações (US3), R1. Onde estão as insígnias, os pontos de voo e a escuridão (T001, resolvido), R2. Obstáculo removido só para quem removeu (+10 more)
 
-### Community 100 - "action.ts"
-Cohesion: 0.18
-Nodes (12): aimAt(), CONTACT, rotate(), threatened(), unit(), Memory, perceive(), remember() (+4 more)
+### Community 100 - "src/items.ts"
+Cohesion: 0.07
+Nodes (20): APRICORN_BOX, BERRY_POTS, buildItemRules(), COMBAT_ARCHETYPES, DOWSING_MCHN, FIELD_ARCHETYPES, ITEM_STATE_KEYS, ItemData (+12 more)
 
 ### Community 101 - "037 · Viridian até a última insígnia"
 Cohesion: 0.08
 Nodes (23): 035.1 S.S. Aqua, Vermilion e Lt. Surge, 035.2 Saffron e Sabrina, 035.3 Celadon e Erika, 035.4 Cycling Road, Fuchsia e Janine, 035.5 Lavender e a Torre de Rádio de Kanto, 035.6 Verificação, 035 · Chegada a Kanto até Lavender, 036.1 Cerulean e a usina (+15 more)
 
 ### Community 102 - "area"
-Cohesion: 0.08
-Nodes (25): area(), Contrato: passo de movimento (`@soulsilver/shared/game`), Cliente → servidor, Contrato: protocolo v3 (delta sobre a v2 da spec 010), Servidor → cliente, Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation (+17 more)
+Cohesion: 0.14
+Nodes (14): area(), Contrato: passo de movimento (`@soulsilver/shared/game`), Cliente → servidor, Contrato: protocolo v3 (delta sobre a v2 da spec 010), Servidor → cliente, Implementation, Phase 4: User Story 2 — Entrar e sair de prédios por warps (P2), Tests (+6 more)
 
 ### Community 103 - "Audio viewer page"
 Cohesion: 0.12
 Nodes (16): Audio viewer page, decodeWav, draw waveform, entries, start playback, buildMap, buildOverlay collision overlay, frameView (+8 more)
 
 ### Community 104 - "events/stage.ts"
-Cohesion: 0.02
-Nodes (108): loadScriptTable(), readScriptTable(), ScriptTable, levelSlots(), readEncounter(), readHeadbutt(), slot(), splitSpecies() (+100 more)
+Cohesion: 0.10
+Nodes (34): APRICORN_TREES, AZALEA_GYM, BERRY_DATA, CLASS_MUSIC, EVENT_ARCHIVES, FLY_POINTS, HEADBUTT_ARCHIVE, HIDDEN_ITEMS (+26 more)
 
 ### Community 105 - "trainer-fixture.ts"
-Cohesion: 0.15
-Nodes (21): FLAG_RADIO_TOWER, beatJoey, BOOK, Client, game(), spotted(), spotted(), arenaSetup() (+13 more)
+Cohesion: 0.11
+Nodes (28): buildAiData(), FLAG_RADIO_TOWER, buildTrainerData(), BUNDLED_TRAINER_CONTENT, options(), beatJoey, BOOK, Client (+20 more)
 
 ### Community 106 - "audio/stage.test.ts"
-Cohesion: 0.08
-Nodes (37): encodeNibble(), encodeWav(), samplesPerBlock(), toInt16(), SINE, source(), cryEvents, fakeWorkspace() (+29 more)
+Cohesion: 0.12
+Nodes (22): SINE, source(), bank, seq, swar, cryEvents, fakeWorkspace(), looped (+14 more)
 
-### Community 107 - "phone/schemas.ts"
-Cohesion: 0.09
-Nodes (21): callerRule, codec, contact, GREETING_BANK, NO_GREETING, NO_TIME, NO_WEEKDAY, PHONE_CONTACT_MAX (+13 more)
+### Community 107 - "combat-coverage.ts"
+Cohesion: 0.08
+Nodes (18): levelSlots(), readEncounter(), readHeadbutt(), slot(), splitSpecies(), SLOT_CHANCES, serializeCombatFile, EncounterRecord (+10 more)
 
 ### Community 108 - "createAi"
-Cohesion: 0.24
-Nodes (9): createAi(), envFor(), moveView(), opponentView(), sees(), tileOf(), blocksSight(), lineOfSight() (+1 more)
+Cohesion: 0.20
+Nodes (12): createAi(), envFor(), moveView(), opponentView(), sees(), tileOf(), blocksSight(), inCone() (+4 more)
 
 ### Community 109 - "GameDataError"
-Cohesion: 0.15
-Nodes (13): GameDataError, Status (2026-10-23), CLI, Contrato: API de eventos, scripts, encontros e treinadores (`shared` e `extractor`), `extractor` (`packages/extractor/src/events/`), Garantias, `shared` (`@soulsilver/shared/events`), Constitution Check (+5 more)
+Cohesion: 0.12
+Nodes (16): GameDataError, Status (2026-10-23), CLI, Contrato: API de eventos, scripts, encontros e treinadores (`shared` e `extractor`), `extractor` (`packages/extractor/src/events/`), Garantias, `shared` (`@soulsilver/shared/events`), Complexity Tracking (+8 more)
 
 ### Community 110 - "calls.ts"
-Cohesion: 0.16
-Nodes (10): CALL_CHANCE, CALL_MIN_STEPS, CallContext, CallResult, CallState, DueCall, RANDOM_TYPES, CallHeader (+2 more)
+Cohesion: 0.13
+Nodes (13): CALL_CHANCE, CALL_MIN_STEPS, CallContext, callDue(), CallResult, CallState, DueCall, RANDOM_TYPES (+5 more)
 
-### Community 111 - "pc.ts"
-Cohesion: 0.07
-Nodes (23): apply(), createPcs(), PcRequest, Pcs, PcsOptions, BAG_ITEM_MAX, PcRefusal, PcSlot (+15 more)
+### Community 111 - "createCaptures"
+Cohesion: 0.13
+Nodes (24): createCaptures(), addBall(), broadcast(), fly(), hit(), resolve(), sendBag(), sendDex() (+16 more)
 
 ### Community 112 - "audio/reactions.ts"
-Cohesion: 0.07
-Nodes (28): cues, archetypeOf, AudioReactionsOptions, createAudioReactions(), updateMusic(), effectNames(), CompanionEvent, SHAKE_MS (+20 more)
+Cohesion: 0.05
+Nodes (37): ctx, effectsBus, focused, listener, master, musicBus, Playing, voice() (+29 more)
 
-### Community 113 - "Research: Tempo e Pokégear"
-Cohesion: 0.13
-Nodes (15): 1. Tabela de contatos: arquivo próprio, fácil de extrair, 2. Textos de ligação: tabelas em código, no overlay 101, 3. Quando chega uma ligação aleatória (`src/field/overlay_2_gear_phone.c`, `src/unk_02092BE8.c`), 4. Revanche: outra entrada na tabela de treinadores, 5. Rádio (T002), 6. Comando de horário nos scripts, R1. Um relógio injetável, R3. Eventos por dia da semana e horário (+7 more)
+### Community 113 - "Tasks: Tempo e Pokégear"
+Cohesion: 0.09
+Nodes (23): 1. Tabela de contatos: arquivo próprio, fácil de extrair, 2. Textos de ligação: tabelas em código, no overlay 101, 3. Quando chega uma ligação aleatória (`src/field/overlay_2_gear_phone.c`, `src/unk_02092BE8.c`), 4. Revanche: outra entrada na tabela de treinadores, 5. Rádio (T002), 6. Comando de horário nos scripts, R1. Um relógio injetável, R3. Eventos por dia da semana e horário (+15 more)
 
-### Community 114 - "map-assets.ts"
-Cohesion: 0.18
-Nodes (15): loadSet(), pixelTexture(), ClientWorld, createClientWorld(), load(), fetchJson(), fetchMap(), fetchWarps() (+7 more)
+### Community 114 - "world-loader.test.ts"
+Cohesion: 0.08
+Nodes (17): areas, free, logs, AudioReactionsOptions, ArchiveCounts, HeaderFormatError, MAP_HEADER_COUNT, readMapHeaders() (+9 more)
 
 ### Community 115 - "map-blocks.ts"
 Cohesion: 0.15
 Nodes (13): Assignment, BlocksFile, Command, Header, isObject(), mapBlocks(), MapBlocksInput, parseBlocksFile() (+5 more)
 
 ### Community 116 - "render/cutscene.ts"
-Cohesion: 0.21
-Nodes (10): actorKey(), durationOf(), Pose, stage(), Staged, STEP, WALK_MS_PER_TILE, run() (+2 more)
+Cohesion: 0.19
+Nodes (11): beginScene(), actorKey(), durationOf(), Pose, stage(), Staged, STEP, WALK_MS_PER_TILE (+3 more)
 
 ### Community 117 - "DialogBox.svelte"
 Cohesion: 0.12
 Nodes (14): createDialogQueue(), push(), DialogQueue, DialogView, Entry, YES_NO, choose(), onAction() (+6 more)
 
 ### Community 118 - "companion/schemas.ts"
-Cohesion: 0.12
-Nodes (11): codec, COMPANION_FORMAT_VERSION, CompanionFileKind, companionSchemas, Emotion, EMOTIONS, friendship(), PLACES (+3 more)
+Cohesion: 0.13
+Nodes (12): ReactionContext, codec, COMPANION_FORMAT_VERSION, CompanionFileKind, companionSchemas, Emotion, EMOTIONS, PLACES (+4 more)
 
 ### Community 119 - "input/menu.ts"
-Cohesion: 0.06
-Nodes (30): { question, onAnswer }, { onContinue, onBack }, { points, onFly, onBack }, known, { party, bag, riding, onField, onBack }, text, { title, max, keep, onDone }, Member (+22 more)
+Cohesion: 0.04
+Nodes (41): { question, onAnswer }, acceptsRom, askingCancel, { assets }, dragging, failureMessage(), formatBytes(), { points, onFly, onBack } (+33 more)
 
-### Community 120 - "Tasks: Tempo e Pokégear"
-Cohesion: 0.12
-Nodes (15): tintAt(), bands, palette, R2. Tonalidade contínua, Dependências e ordem, Estratégia, Execução paralela (exemplos), Phase 1: Setup (sondagem) (+7 more)
+### Community 120 - "held-world.test.ts"
+Cohesion: 0.09
+Nodes (12): apricornReady(), BERRY_STAGES, dayKey(), daysBetween(), kurtReady(), parsed, raw, effectsFile (+4 more)
 
 ### Community 121 - "Feature Specification: Pokémon selvagens e captura"
 Cohesion: 0.13
 Nodes (15): Assumptions, Contexto, Edge Cases, Feature Specification: Pokémon selvagens e captura, Fora do escopo, Functional Requirements, Key Entities, Measurable Outcomes (+7 more)
 
-### Community 122 - "TradePanel.svelte"
-Cohesion: 0.43
-Nodes (6): changeItem(), offered(), plainItems(), togglePokemon(), {
-    trade,
+### Community 122 - "@soulsilver/shared/game"
+Cohesion: 0.10
+Nodes (17): {
+    duel,
     partnerName,
-    party,
-    bag,
-    speciesName,
-    itemName,
     onAnswer,
-    onOffer,
-    onConfirm,
     onCancel,
     onClose,
-  }, trading
+  }, rules, Member, moving, {
+    party,
+    speciesName,
+    moveName,
+    natureName,
+    abilityName,
+    itemName,
+    onReorder,
+    onBack,
+  }, selected, STATS, flag (+9 more)
 
 ### Community 123 - "Feature Specification: Progressão dos Pokémon"
 Cohesion: 0.13
 Nodes (15): Assumptions, Contexto, Edge Cases, Feature Specification: Progressão dos Pokémon, Fora do escopo, Functional Requirements, Key Entities, Measurable Outcomes (+7 more)
 
 ### Community 124 - "Pesquisa: IA de combate dos Pokémon"
-Cohesion: 0.13
-Nodes (14): Pesquisa: IA de combate dos Pokémon, R10. Escalonamento, dormência e orçamento, R11. Determinismo e reprodução, R12. Depuração, R13. Calibração para "≥ 90% de vitória", R14. Reuso pelos treinadores, R1. Onde a IA entra: input, não combate, R3. Informação permitida (`AiView`) (+6 more)
+Cohesion: 0.07
+Nodes (26): CombatInput, Complexity Tracking, Constitution Check, Documentation (this feature), Implementation Plan: IA de combate dos Pokémon, Project Structure, Source Code (repository root), Summary (+18 more)
 
 ### Community 125 - "User Scenarios & Testing *(mandatory)*"
 Cohesion: 0.13
@@ -977,44 +970,57 @@ Cohesion: 0.19
 Nodes (15): BallContext, ballMultiplier(), catchValue(), rollShakes(), shakeThreshold(), statusMultiplier(), Ball, hpMax() (+7 more)
 
 ### Community 128 - "package.json"
-Cohesion: 0.05
-Nodes (41): allowScripts, electron-winstaller, devDependencies, @electron/asar, eslint, @eslint/js, eslint-plugin-svelte, globals (+33 more)
+Cohesion: 0.13
+Nodes (15): allowScripts, electron-winstaller, engines, node, name, private, type, workspaces (+7 more)
 
-### Community 129 - "Research: Progressão dos Pokémon"
-Cohesion: 0.29
-Nodes (7): R1 Fórmula de XP, R2 Curvas de crescimento, R2b Natureza, R3 Participante em tempo real, R6 Evolução cancelada, R7 Amizade, Research: Progressão dos Pokémon
+### Community 129 - "common.ts"
+Cohesion: 0.12
+Nodes (21): computeStats(), fill(), StatOptions, Stats, BATTLE_STAT_KEYS, STAT_KEYS, StatKey, TEXT_CATALOGS (+13 more)
 
 ### Community 130 - "game-connection.ts"
 Cohesion: 0.05
-Nodes (33): createGameConnection(), receive(), GameConnection, GameConnectionOptions, GameStatus, createInterpolator(), Interpolator, Sample (+25 more)
+Nodes (28): createGameConnection(), receive(), GameConnection, GameConnectionOptions, GameStatus, createInterpolator(), Interpolator, Sample (+20 more)
 
 ### Community 131 - "game-renderer.ts"
-Cohesion: 0.07
-Nodes (36): Bounds, clampAxis(), clampCamera(), DS_VIEW, fillView(), OBLIQUE, obliqueProjection(), VIEW_H (+28 more)
+Cohesion: 0.05
+Nodes (57): Bounds, clampAxis(), clampCamera(), DS_VIEW, fillView(), OBLIQUE, obliqueProjection(), VIEW_H (+49 more)
 
 ### Community 132 - "Pesquisa: Itens"
-Cohesion: 0.08
-Nodes (22): byte, hpRestore(), RESTORE_HP, REVIVE, ANTIDOTE, MAX_POTION, POKE_BALL, POTION (+14 more)
+Cohesion: 0.15
+Nodes (12): Place, Acréscimos fora do plano (Phase 12, T077), Pesquisa: Itens, R10. Relatório de cobertura, R11. Protocolo e save, R3. Uso em combate: ação do treinador, R4. PP como cooldown, R6. Itens do chão e escondidos — **a sondar** (+4 more)
 
 ### Community 133 - "daycare/index.ts"
 Cohesion: 0.22
 Nodes (15): DAYCARE_SLOTS, DaycareGrowth, DaycareSlot, daycareState(), daycareStep(), deposit(), grownExperience(), grownLevel() (+7 more)
 
-### Community 134 - "Tasks: Cutscenes e NPCs"
+### Community 134 - "wav.ts"
 Cohesion: 0.13
-Nodes (14): Estratégia de implementação, Implementação, Implementação, Implementação, Notas, Paralelismo, Phase 3: User Story 1 — NPCs vivos no mapa (P1) 🎯 MVP, Phase 5: User Story 3 — Cutscene do amigo não afeta o meu jogo (P1) (+6 more)
+Nodes (19): encodeNibble(), encodeWav(), samplesPerBlock(), toInt16(), DecodedWav, decodeWav(), IMA_INDEX_CHANGE, IMA_STEPS (+11 more)
 
 ### Community 135 - "Tasks: Textos e i18n"
-Cohesion: 0.11
-Nodes (18): Dentro de cada história, Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation for User Story 3, Implementation Strategy, Incremental Delivery, MVP First (User Story 1), Notes (+10 more)
-
-### Community 136 - "movement.test.ts"
 Cohesion: 0.12
-Nodes (13): HOP_TICKS, MoveInput, RUN_SPEED_PX, field, free, grid(), ladder, ledgeSouth (+5 more)
+Nodes (17): Dentro de cada história, Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation for User Story 3, Implementation Strategy, Incremental Delivery, MVP First (User Story 1), Notes (+9 more)
+
+### Community 136 - "OnlinePanel.svelte"
+Cohesion: 0.09
+Nodes (15): Client app shell page, duelLevel, duelTeam, {
+    mode,
+    players,
+    me,
+    address,
+    addresses,
+    busy,
+    doing = {},
+    error,
+    onOpen,
+    onJoin,
+    onTrade,
+    onDuel,
+  }, sessions, typed, valid, address (+7 more)
 
 ### Community 137 - "Implementation Plan: Cutscenes e NPCs"
-Cohesion: 0.13
-Nodes (12): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Cutscenes e NPCs, Complexity Tracking, Constitution Check, Documentation (this feature) (+4 more)
+Cohesion: 0.14
+Nodes (11): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Cutscenes e NPCs, Complexity Tracking, Documentation (this feature), Implementation Plan: Cutscenes e NPCs (+3 more)
 
 ### Community 138 - "026-time-pokegear/tasks.md"
 Cohesion: 0.12
@@ -1024,23 +1030,9 @@ Nodes (11): Content Quality, Feature Readiness, Notes, Requirement Completeness,
 Cohesion: 0.14
 Nodes (14): devDependencies, electron, electron-builder, electron-updater, electron-vite, @soulsilver/extractor, @soulsilver/server, @soulsilver/shared (+6 more)
 
-### Community 140 - "PcPanel.svelte"
-Cohesion: 0.17
-Nodes (9): box, {
-    boxes,
-    party,
-    pcItems,
-    bag,
-    refused,
-    itemName,
-    speciesName,
-    moveName,
-    natureName,
-    onMove,
-    onItem,
-    onRename,
-    onLeave,
-  }, current, held, heldMon, naming, onAction(), tab (+1 more)
+### Community 140 - "script.ts"
+Cohesion: 0.13
+Nodes (15): loadScriptTable(), readScriptTable(), ScriptTable, MOVEMENT_END, SCRIPT_TABLE_END, Decoded, decodeScriptFile(), ENDS_FLOW (+7 more)
 
 ### Community 141 - "Research: Validação da ROM, desempacotamento e primeira execução"
 Cohesion: 0.11
@@ -1052,7 +1044,7 @@ Nodes (11): Data Model: Dados do jogo, Envelope comum, evolutions.json (`data-ev
 
 ### Community 143 - "schema.ts"
 Cohesion: 0.04
-Nodes (47): count(), PLAYER_NAME_MAX, MigrateOptions, MigrateResult, SAVE_MIGRATIONS, SaveFailureCode, Step, BOX_COUNT (+39 more)
+Nodes (43): count(), BANDS, BOOK, game(), MigrateOptions, MigrateResult, SAVE_MIGRATIONS, SaveFailureCode (+35 more)
 
 ### Community 144 - "Pesquisa: Eventos, scripts, encontros e treinadores"
 Cohesion: 0.15
@@ -1060,23 +1052,28 @@ Nodes (13): Achados, Arquivos (NARCs relativos à saída `narc` da 003), Fonte d
 
 ### Community 145 - "README.md"
 Cohesion: 0.13
-Nodes (13): art/, Synthetic game data fixtures, BLZ encoder for tests, Synthetic test fixtures convention, buildNarc, buildNdsRom, Caracteres e comandos sem nome no catálogo, Dívida técnica: textos da feature 005 (+5 more)
+Nodes (13): art/, Caracteres e comandos sem nome no catálogo, Dívida técnica: textos da feature 005, Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Mapas pré-renderizados e colisão (+5 more)
 
 ### Community 146 - "timeOfDay"
-Cohesion: 0.12
-Nodes (22): createPhone(), buffersFor(), deliver(), incomingScript(), momAsk(), rematch(), ring(), sendState() (+14 more)
+Cohesion: 0.10
+Nodes (25): createPhone(), buffersFor(), deliver(), incomingScript(), momAsk(), rematch(), ring(), sendState() (+17 more)
 
-### Community 147 - "decide.test.ts"
+### Community 147 - "say"
+Cohesion: 0.09
+Nodes (19): say(), ScriptRequest, Cliente → servidor, Contrato: protocolo 12 → 13, Regras, Servidor → cliente, Complexity Tracking, Constitution Check (+11 more)
+
+### Community 148 - "run"
 Cohesion: 0.17
-Nodes (15): noise(), chooseItem(), chooseSwitch(), ItemInput, SwitchInput, TeamView, threat(), TrainerProfile (+7 more)
-
-### Community 148 - "CombatInput"
-Cohesion: 0.20
-Nodes (10): CombatInput, Complexity Tracking, Constitution Check, Documentation (this feature), Implementation Plan: IA de combate dos Pokémon, Project Structure, Source Code (repository root), Summary (+2 more)
+Nodes (14): CODE_INPUT, countNarcMembers(), listNarcIndices(), readArm9(), readFileSystemFile(), readOverlay(), inside(), readApricornTrees() (+6 more)
 
 ### Community 149 - "game-data.ts"
-Cohesion: 0.06
-Nodes (33): BANK, banks, files, Frame, itemRecords(), moveTypes(), pokemonFronts(), pokemonIcons() (+25 more)
+Cohesion: 0.05
+Nodes (41): gauge, hpFraction, {
+    self,
+    bars,
+    call,
+    speciesName,
+  }, status, BANK, banks, files, Frame (+33 more)
 
 ### Community 150 - "SoulSilver Desktop"
 Cohesion: 0.12
@@ -1094,37 +1091,51 @@ Nodes (13): Find-SpecifyRoot(), Format-SpecKitCommand(), Get-CurrentBranch(), Ge
 Cohesion: 0.13
 Nodes (15): Achados parciais (R0), Pesquisa: Mapas pré-renderizados e colisão, R0. Verificação dos formatos de mapa na ROM (pré-requisito), R10. Mapas com falha e relatório, R11. Testes, R1. Tamanho do tile em pixels, R2. Projeção dos prédios, R3. Renderizador de software sem dependência nova (+7 more)
 
-### Community 157 - "narc"
-Cohesion: 0.22
-Nodes (9): name(), narc(), R6. Layout da área de trabalho e saídas da etapa `rom-unpack`, CLI, Contrato: API de sprites (`shared` e `extractor`), `extractor` (`packages/extractor/src/sprites/`), Garantias, `shared` (`@soulsilver/shared/sprites`) (+1 more)
+### Community 157 - "Contrato: API de sprites (`shared` e `extractor`)"
+Cohesion: 0.40
+Nodes (5): CLI, Contrato: API de sprites (`shared` e `extractor`), `extractor` (`packages/extractor/src/sprites/`), Garantias, `shared` (`@soulsilver/shared/sprites`)
 
-### Community 158 - "cutscene"
-Cohesion: 0.13
-Nodes (18): show(), cutscene(), script-commands (`packages/extractor/data/script-commands.json`), Contratos em `shared` (test-first), Leitores e dados base (test-first), Phase 2: Fundação (bloqueia todas as histórias), Verificação dos formatos (R0), Pedido de cutscene (servidor → cliente) (+10 more)
+### Community 158 - "Tasks: Cutscenes e NPCs"
+Cohesion: 0.10
+Nodes (24): show(), cutscene(), Contratos em `shared` (test-first), Leitores e dados base (test-first), Phase 2: Fundação (bloqueia todas as histórias), Verificação dos formatos (R0), Pedido de cutscene (servidor → cliente), Constitution Check (+16 more)
 
 ### Community 159 - "User Scenarios & Testing *(mandatory)*"
 Cohesion: 0.15
 Nodes (13): Assumptions, Edge Cases, Feature Specification: Batalhas contra treinadores, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)*, Success Criteria *(mandatory)* (+5 more)
 
-### Community 160 - "SaveSlots.svelte"
-Cohesion: 0.09
-Nodes (18): Client app shell page, hpColor(), tick, target, asking, confirmThen(), importInto(), latest (+10 more)
+### Community 160 - "Play.svelte"
+Cohesion: 0.06
+Nodes (32): start(), { onContinue, onBack }, box, {
+    boxes,
+    party,
+    pcItems,
+    bag,
+    refused,
+    itemName,
+    speciesName,
+    moveName,
+    natureName,
+    onMove,
+    onItem,
+    onRename,
+    onLeave,
+  }, current, held, heldMon, naming (+24 more)
 
 ### Community 161 - "Research: Batalhas contra treinadores"
 Cohesion: 0.18
 Nodes (11): R11. Falas e espera do desafio, R1. Alcance de visão, R2. Fluxo único (avistamento e script), R3. Derrotado, R4. Prêmio, R5. Perfil de IA, R6. Troca e itens, R7. Arena e isolamento multiplayer (+3 more)
 
-### Community 162 - "sprites/schemas.ts"
-Cohesion: 0.12
-Nodes (16): ATLAS_MAX_SIZE, SPRITE_CATEGORIES, SPRITE_FORMAT_VERSION, animation, category, categoryCounts, codec, color (+8 more)
+### Community 162 - "items/schemas.ts"
+Cohesion: 0.10
+Nodes (14): STATUS_IDS, codec, HELD_TRIGGERS, HeldTrigger, ItemFileKind, ITEMS_FORMAT_VERSION, itemSchemas, PASSIVE_REASONS (+6 more)
 
 ### Community 163 - "Research: Mundo, movimento e warps"
-Cohesion: 0.14
-Nodes (14): ground(), R10. Render e escala, R11. Ordem de desenho, R12. Input, R1. Passo de movimento livre, em 4 direções, com colisão, R2. Velocidades, R3. Posição suave a 20 Hz no render a 60 fps, R4. Ressaltos (+6 more)
+Cohesion: 0.15
+Nodes (13): ground(), R10. Render e escala, R11. Ordem de desenho, R12. Input, R2. Velocidades, R3. Posição suave a 20 Hz no render a 60 fps, R4. Ressaltos, R5. Grama alta (+5 more)
 
 ### Community 164 - "Research: Pokémon companheiro e regras do combate no mundo"
-Cohesion: 0.17
-Nodes (11): EntityKind, R10. Perda de dinheiro, R11. Câmera e input, R1. Seguimento por rastro, R2. Companheiro como entidade, R4. Pokémon grande, R5. Prédio e locais restritos, R7. Textos das reações (+3 more)
+Cohesion: 0.13
+Nodes (13): EntityKind, R10. Perda de dinheiro, R11. Câmera e input, R1. Seguimento por rastro, R2. Companheiro como entidade, R3. Equipe e save, R4. Pokémon grande, R5. Prédio e locais restritos (+5 more)
 
 ### Community 165 - "Quickstart: validação de eventos, scripts, encontros e treinadores"
 Cohesion: 0.20
@@ -1134,25 +1145,25 @@ Nodes (9): 1. Testes automatizados, 2. Typecheck e lint, 3. Extração e relató
 Cohesion: 0.13
 Nodes (15): Achados (conferidos na ROM real; só contagens e estrutura), Pesquisa: Áudio, R0. Verificação do arquivo de som na ROM (concluída), R10. Falhas parciais e relatório, R11. Ordem de entrega, R1. Pré-renderizar ou tocar as sequências em tempo real, R2. Emulador do motor de som, R3. Loop e introdução (+7 more)
 
-### Community 167 - "Quickstart: validação da fundação"
-Cohesion: 0.08
-Nodes (21): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Fundação do projeto, Contrato: verificação de arquivos proibidos, Mensagem de recusa (formato), Regras (primeira que casar vence; sem diferenciar maiúsculas e minúsculas) (+13 more)
+### Community 167 - "001-project-foundation/data-model.md"
+Cohesion: 0.09
+Nodes (18): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Fundação do projeto, Contrato: verificação de arquivos proibidos, Mensagem de recusa (formato), Regras (primeira que casar vence; sem diferenciar maiúsculas e minúsculas) (+10 more)
 
 ### Community 168 - "Research: Fundação do projeto"
-Cohesion: 0.06
-Nodes (35): banks(), JOEY, JOEY_IN, layout, scripts(), trainers, u16s(), Complexity Tracking (+27 more)
+Cohesion: 0.08
+Nodes (30): ServerInfo, ServerState, ServerStatus, Canais de IPC, Comportamento, Contrato: API do preload para o renderer, Proibições, Tipo (+22 more)
 
-### Community 169 - "server-host/entry.ts"
-Cohesion: 0.06
-Nodes (29): createRemoteClient(), playerName, RemoteClient, RemoteClientOptions, devTools, lan, LAN_PORTS, send() (+21 more)
+### Community 169 - "remote-connection.ts"
+Cohesion: 0.13
+Nodes (13): createRemoteClient(), playerName, RemoteClient, createWsListener(), rawText(), REMOTE_CONN_BASE, WsListener, hello (+5 more)
 
 ### Community 170 - "audio/stage.ts"
-Cohesion: 0.10
-Nodes (26): CRY_FORMS, cryBank(), renderCry(), CRY_SEQUENCE, CRY_SEQUENCES, MARKER_NAMES, SCRIPT_SOUND_ARGS, SHAYMIN (+18 more)
+Cohesion: 0.08
+Nodes (34): CRY_FORMS, cryBank(), renderCry(), CRY_SEQUENCE, CRY_SEQUENCES, MARKER_NAMES, SCRIPT_SOUND_ARGS, SHAYMIN (+26 more)
 
 ### Community 171 - "Pesquisa: Sprites"
-Cohesion: 0.13
-Nodes (15): Achados confirmados na implementação (batalha, espécies base), Achados confirmados na implementação (overworld), Achados confirmados na implementação (ícones e treinadores), Achados parciais (R0), Pesquisa: Sprites, R0. Verificação dos arquivos de sprite na ROM (pré-requisito), R1. Decodificação dos formatos gráficos do NDS, R2. Atlas: agrupamento, empacotamento e shiny (+7 more)
+Cohesion: 0.20
+Nodes (10): Pesquisa: Sprites, R1. Decodificação dos formatos gráficos do NDS, R2. Atlas: agrupamento, empacotamento e shiny, R3. Contrato de metadados, R4. Espelhamento, R5. Falhas parciais e relatório, R6. Pré-visualização de desenvolvimento, R7. Reextração e saída (+2 more)
 
 ### Community 172 - "Feature Specification: Sprites"
 Cohesion: 0.14
@@ -1195,20 +1206,20 @@ Cohesion: 0.15
 Nodes (12): dependencies, @soulsilver/shared, devDependencies, three, exports, @soulsilver/shared, three, name (+4 more)
 
 ### Community 182 - "Tasks: Combate em tempo real"
-Cohesion: 0.18
-Nodes (11): Dependencies, Format: `[ID] [P?] [Story] Description`, Implementation Strategy, Parallel Opportunities, Phase 1: Setup, Phase 3: User Story 6 - Arena de teste (P1), Phase 5: User Story 2 - Efetividade na hora (P1), Phase 6: User Story 3 - Speed e peso dos golpes (P2) (+3 more)
+Cohesion: 0.17
+Nodes (12): Dependencies, Format: `[ID] [P?] [Story] Description`, Implementation Strategy, Parallel Opportunities, Phase 1: Setup, Phase 3: User Story 6 - Arena de teste (P1), Phase 4: User Story 1 - Lutar por controle direto (P1) 🎯 MVP, Phase 5: User Story 2 - Efetividade na hora (P1) (+4 more)
 
 ### Community 183 - "Tasks: Build, distribuição e auto-update"
 Cohesion: 0.11
 Nodes (17): Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation Strategy, Incremental Delivery, MVP First (User Story 1), Notes, Parallel Example: User Story 1, Parallel Opportunities (+9 more)
 
-### Community 184 - "Feature Specification: Interface básica, menu inicial e controles"
-Cohesion: 0.22
-Nodes (9): Assumptions, Contexto, Feature Specification: Interface básica, menu inicial e controles, Fora do escopo, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)* (+1 more)
+### Community 184 - "User Scenarios & Testing *(mandatory)*"
+Cohesion: 0.11
+Nodes (18): Assumptions, Contexto, Edge Cases, Feature Specification: Interface básica, menu inicial e controles, Fora do escopo, Functional Requirements, Key Entities, Measurable Outcomes (+10 more)
 
-### Community 185 - "User Scenarios & Testing *(mandatory)*"
-Cohesion: 0.22
-Nodes (9): Edge Cases, User Scenarios & Testing *(mandatory)*, User Story 1 - Título e menu principal (Priority: P1), User Story 2 - Escolher save e modo de jogo (Priority: P1), User Story 3 - HUD de combate (Priority: P1), User Story 4 - Diálogos com sim ou não (Priority: P1), User Story 5 - Equipe, mochila e Pokédex (Priority: P2), User Story 6 - Menus não pausam o mundo (Priority: P2) (+1 more)
+### Community 185 - "027-items/tasks.md"
+Cohesion: 0.11
+Nodes (12): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Itens, Cliente → servidor, Contrato: protocolo v21, Camada 3 (local) (+4 more)
 
 ### Community 186 - "Feature Specification: [FEATURE NAME]"
 Cohesion: 0.14
@@ -1217,6 +1228,10 @@ Nodes (13): Assumptions, Como testar *(mandatory)*, Edge Cases, Feature Specific
 ### Community 187 - "Feature Specification: Dados do jogo"
 Cohesion: 0.15
 Nodes (13): Assumptions, Contexto, Edge Cases, Feature Specification: Dados do jogo, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)* (+5 more)
+
+### Community 188 - "017-ui-menus-controls/tasks.md"
+Cohesion: 0.07
+Nodes (23): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Interface básica, menu inicial e controles, Contrato: ações de interface e controles padrão, Action (shared/input/bindings.ts), AppSettings (por PC, `settings.json`) (+15 more)
 
 ### Community 189 - "Feature Specification: Textos e i18n"
 Cohesion: 0.15
@@ -1227,16 +1242,16 @@ Cohesion: 0.15
 Nodes (13): Assumptions, Contexto, Edge Cases, Feature Specification: Mapas pré-renderizados e colisão, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)* (+5 more)
 
 ### Community 191 - "Tasks: Pokémon selvagens e captura"
-Cohesion: 0.29
-Nodes (7): Dependencies, Format: `[ID] [P?] [Story] Description`, Implementation Strategy, Parallel Examples, Phase 5: User Story 2 - Selvagens com temperamento (P2), Phase 7: Polish, Tasks: Pokémon selvagens e captura
+Cohesion: 0.14
+Nodes (14): Balls, repeat(), balls.json (`kind: "wild-balls"`), Contract: content/wild, spawn.json (`kind: "wild-spawn"`), temperaments.json (`kind: "wild-temperaments"`), Dependencies, Format: `[ID] [P?] [Story] Description` (+6 more)
 
 ### Community 192 - "Feature Specification: Áudio"
-Cohesion: 0.25
-Nodes (8): Assumptions, Contexto, Feature Specification: Áudio, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)*, Success Criteria *(mandatory)*
+Cohesion: 0.15
+Nodes (13): Assumptions, Contexto, Edge Cases, Feature Specification: Áudio, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)* (+5 more)
 
 ### Community 193 - "extractor-host-protocol.ts"
-Cohesion: 0.19
-Nodes (19): ExtractionMode, Fields, isAssetsFailure(), isCount(), isExtractorToMainMessage(), isMainToExtractorMessage(), isNonEmptyString(), isRecord() (+11 more)
+Cohesion: 0.18
+Nodes (20): AssetsFailure, ExtractionMode, Fields, isAssetsFailure(), isCount(), isExtractorToMainMessage(), isMainToExtractorMessage(), isNonEmptyString() (+12 more)
 
 ### Community 194 - "compilerOptions"
 Cohesion: 0.15
@@ -1251,8 +1266,8 @@ Cohesion: 0.25
 Nodes (8): scripts, build, dev, dist, golden, postinstall, preview, typecheck
 
 ### Community 197 - "trainer-loader.ts"
-Cohesion: 0.08
-Nodes (16): BUNDLED_TRAINER_CONTENT, ExtractedForTrainers, FILES, KINDS, parse(), TrainerContent, TrainerLines, extracted (+8 more)
+Cohesion: 0.07
+Nodes (21): TRAINER_MESSAGE_BANK, MUSIC, readTrainerClasses(), readTrainerMessages(), SEQ, TrainerClassTables, tables(), u16s() (+13 more)
 
 ### Community 198 - "User Scenarios & Testing *(mandatory)*"
 Cohesion: 0.12
@@ -1279,28 +1294,28 @@ Cohesion: 0.12
 Nodes (13): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Progressão dos Pokémon, Complexity Tracking, Constitution Check, Documentation (this feature) (+5 more)
 
 ### Community 204 - "evolution.ts"
-Cohesion: 0.22
-Nodes (7): Evolution, ITEM, LEVEL, NONE, EVOLUTION_METHODS, EvolutionCondition, EvolutionMethodKey
+Cohesion: 0.17
+Nodes (10): Evolution, ITEM, LEVEL, NONE, EVOLUTION_METHODS, EvolutionCondition, EvolutionMethodKey, evolutionsFile (+2 more)
 
 ### Community 205 - "Tasks: Progressão dos Pokémon"
-Cohesion: 0.11
-Nodes (15): Client → server, Contract: game protocol v8 (7 → 8), Server → client, Contract: save v4 (3 → 4), No app, Quickstart: Progressão dos Pokémon, Testes, Dependencies (+7 more)
+Cohesion: 0.10
+Nodes (16): Client → server, Contract: game protocol v8 (7 → 8), Server → client, Contract: save v4 (3 → 4), No app, Quickstart: Progressão dos Pokémon, Testes, Dependencies (+8 more)
 
-### Community 206 - "newProgress"
+### Community 206 - "phone"
 Cohesion: 0.06
-Nodes (42): clock(), ClockMode, createSessionClock(), SessionClock, SUNDAY_NOON(), BANDS, MONDAY_0730, seeking() (+34 more)
+Nodes (37): clock(), ClockMode, createSessionClock(), SessionClock, SUNDAY_NOON(), BANDS, MONDAY_0730, seeking() (+29 more)
 
 ### Community 207 - "Core Principles"
 Cohesion: 0.18
 Nodes (10): Core Principles, Governance, [PRINCIPLE_1_NAME], [PRINCIPLE_2_NAME], [PRINCIPLE_3_NAME], [PRINCIPLE_4_NAME], [PRINCIPLE_5_NAME], [PROJECT_NAME] Constitution (+2 more)
 
-### Community 208 - "pc.test.ts"
-Cohesion: 0.39
-Nodes (7): flatWorld(), atPc(), data(), grid(), mon(), pc, stats()
+### Community 208 - "harness.ts"
+Cohesion: 0.05
+Nodes (48): ROUTE, BEFORE, game(), join(), kill(), reach(), step(), until() (+40 more)
 
-### Community 209 - "createGameRenderer"
-Cohesion: 0.17
-Nodes (19): createGameRenderer(), destroyVisual(), drawEffects(), drawEntity(), drawParticles(), drop(), enterArea(), frameFor() (+11 more)
+### Community 209 - "duel.ts"
+Cohesion: 0.15
+Nodes (12): ArenaPlace, createDuels(), end(), sendTo(), Duel, Duels, DuelsOptions, DuelState (+4 more)
 
 ### Community 210 - "Data Model: LAN, sessões e saves"
 Cohesion: 0.18
@@ -1320,31 +1335,31 @@ Nodes (8): Complexity Tracking, Constitution Check, Documentation (this feature)
 
 ### Community 214 - "field-fixture.ts"
 Cohesion: 0.05
-Nodes (44): afloat(), Client, distance(), me(), scene(), Test, Client, DEFAULT_ITEMS (+36 more)
+Nodes (46): afloat(), Client, distance(), me(), scene(), Test, Client, DEFAULT_ITEMS (+38 more)
 
 ### Community 215 - "server/package.json"
 Cohesion: 0.20
 Nodes (9): dependencies, @soulsilver/shared, exports, @soulsilver/shared, name, private, scripts, typecheck (+1 more)
 
 ### Community 216 - "assets-controller.ts"
-Cohesion: 0.13
-Nodes (12): AssetsCheckResult, AssetsPaths, cancel(), ExtractorProcess, MODE_BY_REASON, Task, extracting(), FakeHost (+4 more)
+Cohesion: 0.12
+Nodes (13): AssetsCheckResult, AssetsPaths, cancel(), ExtractorProcess, MODE_BY_REASON, Task, extracting(), FakeHost (+5 more)
 
-### Community 217 - "Implementation Plan: Eventos, scripts, encontros e treinadores"
-Cohesion: 0.25
-Nodes (8): Complexity Tracking, Dependências novas (princípio X), Documentation (this feature), Implementation Plan: Eventos, scripts, encontros e treinadores, Project Structure, Source Code (repository root), Summary, Technical Context
+### Community 217 - "canAdd"
+Cohesion: 0.19
+Nodes (15): setHeld(), PcsOptions, PocketKey, addItem(), BagRow, canAdd(), countOf(), POCKET_LIMITS (+7 more)
 
 ### Community 218 - "Quickstart: validação desta feature"
 Cohesion: 0.10
 Nodes (20): Build, Gotchas, Prerequisites, Run (agent path), Run (human path), Run two instances (host + guest, spec 028.7), Test, Troubleshooting (+12 more)
 
 ### Community 219 - "movement"
-Cohesion: 0.09
-Nodes (26): movement(), mount(), sprite(), encounters (`encounters.json`), headbutt (`headbutt.json`), Layout de saída, map-events (`maps/<id>.json`), Modelo de dados: Eventos, scripts, encontros e treinadores (+18 more)
+Cohesion: 0.07
+Nodes (33): movement(), mount(), sprite(), Implementation for User Story 1, Phase 3: User Story 1 - Do clone ao app aberto (Priority: P1) 🎯 MVP, Tests for User Story 1 (test-first) ⚠️, encounters (`encounters.json`), headbutt (`headbutt.json`) (+25 more)
 
 ### Community 220 - "new-game-visibility.test.ts"
-Cohesion: 0.12
-Nodes (12): data(), duplicates(), house, init, newBark, object(), start, Test (+4 more)
+Cohesion: 0.14
+Nodes (10): data(), duplicates(), house, init, newBark, object(), start, Test (+2 more)
 
 ### Community 221 - "Implementation Plan: Pokémon selvagens e captura"
 Cohesion: 0.12
@@ -1356,15 +1371,15 @@ Nodes (10): 1. Testes automatizados, 2. Typecheck e lint, 3. Extração e relat�
 
 ### Community 223 - "Research: Pokémon selvagens e captura"
 Cohesion: 0.10
-Nodes (19): CollisionCategory, Collision (`collision/<nível>.json`), R6. Tradução de permissões para categorias, Colisão e constantes (shared), Leitor de modelo (extractor), Phase 2: Fundação (bloqueia todas as histórias), Rasterizador e PNG (extractor), Verificação dos formatos (R0, pré-requisito) (+11 more)
+Nodes (18): bag(), R10. Arremesso e disputa, R11. Destino, Pokédex e bolsa, R1. Tabela e horário, R3. Fora da visão, R4. Despawn, R5. Shiny, R6. Golpes (+10 more)
 
-### Community 224 - "Tasks: Pokémon companheiro e regras do combate no mundo"
-Cohesion: 0.07
-Nodes (25): battle-rules.json (`kind: "companion-battle-rules"`), Contract: content/companion/*.json, follow.json (`kind: "companion-follow"`), reactions.json (`kind: "companion-reactions"`), Client → server, Contract: game protocol v6 (5 → 6), Server → client, Contract: save v2 (1 → 2) (+17 more)
+### Community 224 - "Data Model: Pokémon companheiro e regras do combate no mundo"
+Cohesion: 0.11
+Nodes (15): battle-rules.json (`kind: "companion-battle-rules"`), Contract: content/companion/*.json, follow.json (`kind: "companion-follow"`), reactions.json (`kind: "companion-reactions"`), Client → server, Contract: game protocol v6 (5 → 6), Server → client, Contract: save v2 (1 → 2) (+7 more)
 
-### Community 225 - "headbutt.ts"
-Cohesion: 0.15
-Nodes (11): HeadbuttRecord, Cell, headbuttTree(), LUT_1, LUT_2, LUT_3, LUT_4, LUT_5 (+3 more)
+### Community 225 - "field/index.ts"
+Cohesion: 0.12
+Nodes (7): launchAllowed(), LocomotionClass, raw, BLOCKERS, parsed, ok(), Phase 4: User Story 2 - Surfar e encontrar Pokémon aquáticos (P1)
 
 ### Community 226 - "Implementation Plan: Mundo, movimento e warps"
 Cohesion: 0.25
@@ -1372,7 +1387,7 @@ Nodes (8): Complexity Tracking, Constitution Check, Documentation (this feature)
 
 ### Community 227 - "vitest"
 Cohesion: 0.05
-Nodes (39): AI_STATES, arenaTeam, battleStats, ClientMessage, CLOSE_REASONS, direction, DUEL_PHASES, DUEL_RESULTS (+31 more)
+Nodes (38): AI_STATES, arenaTeam, battleStats, ClientMessage, CLOSE_REASONS, direction, DUEL_PHASES, DUEL_RESULTS (+30 more)
 
 ### Community 228 - "speckit-converge/SKILL.md"
 Cohesion: 0.22
@@ -1390,29 +1405,29 @@ Nodes (13): Content Quality, Feature Readiness, Requirement Completeness, Specif
 Cohesion: 0.25
 Nodes (8): Complexity Tracking, Dependências novas (princípio X), Documentation (this feature), Implementation Plan: Validação da ROM, desempacotamento e primeira execução, Project Structure, Source Code (repository root), Summary, Technical Context
 
-### Community 232 - "world-map.ts"
-Cohesion: 0.08
-Nodes (25): BLOCKED, origin(), ownTile(), WorldNeighbor, WorldWarp, AreaCell, belongs(), mapCells() (+17 more)
+### Community 232 - "map-assets.ts"
+Cohesion: 0.06
+Nodes (43): ClientWorld, createClientWorld(), load(), fetchJson(), fetchMap(), fetchWarps(), loadBitmap(), loadMesh() (+35 more)
 
 ### Community 233 - "Implementation Plan: [FEATURE]"
 Cohesion: 0.22
 Nodes (8): Complexity Tracking, Constitution Check, Documentation (this feature), Implementation Plan: [FEATURE], Project Structure, Source Code (repository root), Summary, Technical Context
 
-### Community 234 - "Specification Quality Checklist: IA de combate dos Pokémon"
-Cohesion: 0.25
-Nodes (5): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: IA de combate dos Pokémon
+### Community 234 - "zone.ts"
+Cohesion: 0.17
+Nodes (10): LEVEL_SCRIPT, arm9, Raw, RawLevelScripts, RawZone, readLevelScripts(), readZone(), s16() (+2 more)
 
-### Community 235 - "Research: Áudio no jogo"
-Cohesion: 0.15
+### Community 235 - "main/settings.ts"
+Cohesion: 0.12
 Nodes (17): createSettings(), read(), set(), readSettings(), SettingsPatch, R10. Cries de desmaio, R1. Como tocar, R2. Crossfade e "mesma música continua" (+9 more)
 
 ### Community 236 - "039 · Revanches e lendários restantes"
 Cohesion: 0.14
 Nodes (13): 038.1 Mewtwo, 038.2 Monte Silver e Moltres, 038.3 Red, 038.4 Verificação, 038 · Monte Silver e Red, 039.1 Revanches, 039.2 Iniciais de Kanto e de Hoenn, 039.3 Embedded Tower (+5 more)
 
-### Community 237 - "Feature Specification: IA de combate dos Pokémon"
-Cohesion: 0.25
-Nodes (8): Assumptions, Contexto, Feature Specification: IA de combate dos Pokémon, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)*, Success Criteria *(mandatory)*
+### Community 237 - "validateReleaseTag"
+Cohesion: 0.16
+Nodes (9): result, buildReleaseNotes(), SECTIONS, compare(), parts(), ReleaseTagInput, ReleaseTagResult, validateReleaseTag() (+1 more)
 
 ### Community 238 - "Implementation Plan: Mapas pré-renderizados e colisão"
 Cohesion: 0.22
@@ -1420,7 +1435,7 @@ Nodes (9): Complexity Tracking, Constitution Check, Dependências novas (princí
 
 ### Community 239 - "tileAt"
 Cohesion: 0.18
-Nodes (14): currentSpot(), objectSpot(), shore(), walkable(), wallSpot(), center(), createField(), ahead() (+6 more)
+Nodes (15): currentSpot(), objectSpot(), shore(), walkable(), wallSpot(), center(), createField(), ahead() (+7 more)
 
 ### Community 240 - "Data Model: Batalhas contra treinadores"
 Cohesion: 0.25
@@ -1434,17 +1449,17 @@ Nodes (9): Complexity Tracking, Constitution Check, Dependências novas (princí
 Cohesion: 0.22
 Nodes (9): Complexity Tracking, Constitution Check, Dependências novas (princípio X), Documentation (this feature), Implementation Plan: Dados do jogo, Project Structure, Source Code (repository root), Summary (+1 more)
 
-### Community 243 - "balls.json (`kind: "wild-balls"`)"
-Cohesion: 0.29
-Nodes (7): Balls, repeat(), balls.json (`kind: "wild-balls"`), Contract: content/wild, spawn.json (`kind: "wild-spawn"`), temperaments.json (`kind: "wild-temperaments"`), Phase 1: Setup
+### Community 243 - "scripts"
+Cohesion: 0.12
+Nodes (16): scripts, audio:view, build, check:assets, dev, dist, extract, golden (+8 more)
 
 ### Community 244 - "023-economy-center-pc/tasks.md"
-Cohesion: 0.16
-Nodes (7): Notes, Specification Quality Checklist: Economia, Centro Pokémon e PC, Contrato: `shops.json`, Cliente → servidor, Contrato: protocolo 16, Servidor → cliente, Quickstart: validação
+Cohesion: 0.12
+Nodes (12): Notes, Specification Quality Checklist: Economia, Centro Pokémon e PC, Contrato: `shops.json`, Cliente → servidor, Contrato: protocolo 16, Servidor → cliente, Data Model, Save v7 (muda em relação ao v6) (+4 more)
 
 ### Community 245 - "world-items.test.ts"
-Cohesion: 0.09
-Nodes (20): code, gym, gymTest(), path, trigger(), branch, code, forest() (+12 more)
+Cohesion: 0.17
+Nodes (10): ballAt, ballFile, hiddenFile, hiddenSign, items, kurt, kurtFile, tree (+2 more)
 
 ### Community 246 - "schemas-us2.test.ts"
 Cohesion: 0.11
@@ -1454,13 +1469,13 @@ Nodes (20): parseGameDataFile, check(), expectPath(), file(), Json, move, specie
 Cohesion: 0.22
 Nodes (8): compilerOptions, allowImportingTsExtensions, module, moduleResolution, types, extends, include, ./tsconfig.base.json
 
-### Community 248 - "problem"
+### Community 248 - "Data Model: Validação da ROM, desempacotamento e primeira execução"
 Cohesion: 0.08
-Nodes (23): problem(), Etapa `rom-unpack` (versão 1), Contrato: módulo `@soulsilver/shared/game-data`, Contrato: etapas novas do pipeline, Efeito no app, Regras para todas as etapas de dados, Layout, builders e escrita, Phase 2: Foundational (Blocking Prerequisites) (+15 more)
+Nodes (22): PipelineError, Como uma etapa futura se pluga (specs 4 a 9), Contrato: API pública de `@soulsilver/extractor`, `runPipeline`, Data Model: Validação da ROM, desempacotamento e primeira execução, Estado dos assets no app (`shared/src/assets-state.ts`), Etapa (`extractor/src/pipeline/stage.ts`), Etapa `rom-unpack` (versão 1) (+14 more)
 
-### Community 249 - "types.test.ts"
-Cohesion: 0.38
-Nodes (5): GEN4_CHART, Name, rows, T, EXTRACTED
+### Community 249 - "readers/tables.ts"
+Cohesion: 0.08
+Nodes (18): gender(), readPersonal(), Tenths, TypeChartResult, EGG_GROUP_KEYS, GROWTH_RATE_KEYS, GrowthRateRecord, NatureRecord (+10 more)
 
 ### Community 250 - "speckit-checklist/SKILL.md"
 Cohesion: 0.25
@@ -1480,71 +1495,71 @@ Nodes (7): compilerOptions, allowImportingTsExtensions, resolveJsonModule, types
 
 ### Community 255 - "title/stage.ts"
 Cohesion: 0.12
-Nodes (20): readNarcMember(), chunk(), encodePng(), decompressLz10(), Lz10FormatError, five(), Nscr, readNscr() (+12 more)
+Nodes (19): NARC_INPUT, chunk(), encodePng(), decompressLz10(), Lz10FormatError, five(), Nscr, readNscr() (+11 more)
 
 ### Community 256 - "Data Model: Combate em tempo real"
 Cohesion: 0.29
 Nodes (7): ActiveMove (entidade `projectile` ou só no servidor), Archetype (`content/combat/archetypes.json`), Combatant (estado no servidor), Data Model: Combate em tempo real, HitEvent (enviado ao cliente), StatusDef (`content/combat/statuses.json`), Tuning (`content/combat/tuning.json`)
 
-### Community 257 - "Data Model: Interface básica, menu inicial e controles"
+### Community 257 - "battle-fx.ts"
 Cohesion: 0.29
-Nodes (7): Action (shared/input/bindings.ts), AppSettings (por PC, `settings.json`), Data Model: Interface básica, menu inicial e controles, Entidade do jogador — `data.busy`, Pedido de diálogo (client), SlotSummary (ok) — ampliado, Tela (client)
+Nodes (11): extractBattleFx(), placement(), scriptEmitters(), STATUS_EFFECTS, BLOCKS, mirror(), readSpaEmitters(), readSpaTextures() (+3 more)
 
-### Community 258 - "proximos.mjs"
-Cohesion: 0.18
-Nodes (9): dir, files, i, items, m, n, picked, root (+1 more)
+### Community 258 - "Contrato: pipeline de release"
+Cohesion: 0.13
+Nodes (13): ForbiddenFileViolation, Artefatos publicados na release `vX.Y.Z`, CLIs (rodam com `node`, sem build), Contrato: pipeline de release, Gatilho, Passos (nomes exibidos no GitHub Actions), Script local, AppVersion (+5 more)
 
 ### Community 259 - "events/schemas.test.ts"
 Cohesion: 0.18
 Nodes (8): encounter(), member(), parse(), ref, slot(), trainer(), trainers(), events-report (`report.json`)
 
-### Community 260 - "heal"
+### Community 260 - "level"
 Cohesion: 0.16
-Nodes (13): center(), drain(), heal(), Effect, MoveParams, Arquivos, Contrato: dados de combate (`content/combat/`), Exemplos (+5 more)
+Nodes (15): center(), drain(), heal(), Effect, level(), MoveParams, R6. Evoluções, 44 bytes, Arquivos (+7 more)
 
 ### Community 261 - "campaign.golden.ts"
-Cohesion: 0.03
-Nodes (126): checks, Got, SECOND, STEPS, VECTORS, data, info(), MAN (+118 more)
+Cohesion: 0.04
+Nodes (70): checks, Got, SECOND, STEPS, VECTORS, Data, DIRS, extracted() (+62 more)
 
 ### Community 262 - "Feature Specification: Áudio no jogo"
 Cohesion: 0.22
 Nodes (9): Assumptions, Contexto, Feature Specification: Áudio no jogo, Fora do escopo, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)* (+1 more)
 
-### Community 263 - "Specification Quality Checklist: Mapas pré-renderizados e colisão"
-Cohesion: 0.33
-Nodes (5): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Mapas pré-renderizados e colisão
+### Community 263 - "NewGame.svelte"
+Cohesion: 0.14
+Nodes (10): activeDevice, DIGITS, letters, upper, { value, max, onChange }, busy, character, error (+2 more)
 
 ### Community 264 - "Contrato: protocolo v23"
 Cohesion: 0.12
 Nodes (14): Estado persistido (save v5), Log de faltantes, Modelo de dados: Interpretador de scripts, Requisição bloqueante, Runner (memória, por jogador), Visibilidade de NPC, R2. Bloqueio e retomada, Cancelamento automático (+6 more)
 
-### Community 265 - "session.ts"
+### Community 265 - "progression.ts"
 Cohesion: 0.04
-Nodes (71): boosted(), member(), rate(), ARENA_AREA, ARENA_MAP, ARENA_SPAWN, center(), foeSpot() (+63 more)
+Nodes (57): boosted(), member(), rate(), ExtractedForCombat, createProgression(), credit(), regrow(), resolve() (+49 more)
 
 ### Community 266 - "speckit-clarify/SKILL.md"
 Cohesion: 0.29
 Nodes (6): Completion Report, Done When, Mandatory Post-Execution Hooks, Outline, Pre-Execution Checks, User Input
 
-### Community 267 - "Research: Interface básica, menu inicial e controles"
+### Community 267 - "preload/index.ts"
 Cohesion: 0.08
-Nodes (23): bag(), R11. Destino, Pokédex e bolsa, Phase 2: Foundational (bloqueia todas as histórias), Cliente → servidor (novas), Contrato: protocolo de jogo v9, Servidor → cliente, R12 — Fluxo até o mapa em 4 escolhas, R1 — Arte da tela de título (+15 more)
+Nodes (24): api, IpcChannel, LanResult, SERVER_UNAVAILABLE, SessionResult, SlotSummary, AppSettings, Contrato: IPC renderer ↔ main (adições a `SoulSilverApi`) (+16 more)
 
 ### Community 268 - "speckit-implement/SKILL.md"
 Cohesion: 0.29
 Nodes (6): Completion Report, Done When, Mandatory Post-Execution Hooks, Outline, Pre-Execution Checks, User Input
 
 ### Community 269 - "script"
-Cohesion: 0.10
-Nodes (18): script(), changes(), Cliente → servidor, Contrato: protocolo 12 → 13, Regras, Servidor → cliente, Cliente → servidor, Contrato: protocolo 13 → 14 (+10 more)
+Cohesion: 0.12
+Nodes (14): script(), changes(), Cliente → servidor, Contrato: protocolo 13 → 14, Regras, Servidor → cliente, Contrato: protocolo v17 (16 → 17), Depurador de scripts (+6 more)
 
 ### Community 270 - "extractor/tsconfig.json"
 Cohesion: 0.29
 Nodes (6): compilerOptions, allowImportingTsExtensions, types, extends, include, ../../tsconfig.base.json
 
-### Community 271 - "Implementation Plan: Interface básica, menu inicial e controles"
-Cohesion: 0.29
-Nodes (7): Complexity Tracking, Documentation (this feature), Implementation Plan: Interface básica, menu inicial e controles, Project Structure, Source Code (repository root), Summary, Technical Context
+### Community 271 - "events/index.ts"
+Cohesion: 0.18
+Nodes (4): readFlyPoints(), FACING, readNewGameStart(), readStdMessageBanks()
 
 ### Community 272 - "Polimento"
 Cohesion: 0.18
@@ -1558,13 +1573,13 @@ Nodes (6): compilerOptions, allowImportingTsExtensions, types, extends, include,
 Cohesion: 0.33
 Nodes (5): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Sprites
 
-### Community 275 - "Specification Quality Checklist: Eventos, scripts, encontros e treinadores"
-Cohesion: 0.33
-Nodes (5): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Eventos, scripts, encontros e treinadores
+### Community 275 - "shared/src/events/refs.ts"
+Cohesion: 0.20
+Nodes (10): map, MapScripts, NO_SCRIPT, resolveScript(), ScriptTarget, TRAINER_SCRIPTS, trainerOfScript(), VAR_BASE (+2 more)
 
 ### Community 277 - "013-realtime-combat/tasks.md"
-Cohesion: 0.13
-Nodes (9): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Combate em tempo real, Cenários manuais (arena), Pré-requisitos, Quickstart: Combate em tempo real (+1 more)
+Cohesion: 0.12
+Nodes (11): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Combate em tempo real, Contrato: dados de combate (`content/combat/`), Exemplos, Cenários manuais (arena) (+3 more)
 
 ### Community 278 - "User Scenarios & Testing *(mandatory)*"
 Cohesion: 0.12
@@ -1575,48 +1590,48 @@ Cohesion: 0.50
 Nodes (3): Cliente → servidor, Contrato: protocolo 15, Servidor → cliente
 
 ### Community 280 - "Quickstart: validação desta feature"
-Cohesion: 0.13
-Nodes (12): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Dados do jogo, 1. Checagens automáticas, 2. Extração com a ROM real, 3. Relatório de sanidade (SC-001) (+4 more)
+Cohesion: 0.22
+Nodes (9): invalid(), 1. Checagens automáticas, 2. Extração com a ROM real, 3. Relatório de sanidade (SC-001), 5. Amostra manual (SC-002), 6. Atualização no app, Pré-requisitos, Quickstart: validação desta feature (+1 more)
 
 ### Community 281 - "User Scenarios & Testing *(mandatory)*"
-Cohesion: 0.22
-Nodes (9): Edge Cases, User Scenarios & Testing *(mandatory)*, User Story 1 - Selvagem que percebe e luta (Priority: P1), User Story 2 - Ataques legíveis e escolha de golpe coerente (Priority: P1), User Story 3 - Dificuldade por faixa de nível (Priority: P1), User Story 4 - Temperamento e fuga (Priority: P2), User Story 5 - Alvo estável em grupo (Priority: P2), User Story 6 - Depuração visível (Priority: P2) (+1 more)
+Cohesion: 0.08
+Nodes (22): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: IA de combate dos Pokémon, Assumptions, Contexto, Edge Cases (+14 more)
 
 ### Community 282 - "Implementation Plan: Combate em tempo real"
 Cohesion: 0.20
 Nodes (10): encounters(), MapHeader (`<mapa-id>/header.json`), Complexity Tracking, Constitution Check, Documentation (this feature), Implementation Plan: Combate em tempo real, Project Structure, Source Code (repository root) (+2 more)
 
 ### Community 284 - "trail.ts"
-Cohesion: 0.42
-Nodes (7): heading(), length(), poseAt(), pushPose(), STEP, at(), walk()
-
-### Community 286 - "Quickstart: validar a IA de combate"
-Cohesion: 0.11
-Nodes (14): Contrato: content/ai, profiles.json (`kind: "ai-profiles"`), temperaments.json (`kind: "ai-temperaments"`), wild-levels.json (`kind: "ai-wild-levels"`), Cliente → servidor, Contrato: protocolo de jogo v11, Sem mudança, Servidor → cliente (+6 more)
-
-### Community 287 - "Modelo de dados: IA de combate dos Pokémon"
 Cohesion: 0.33
-Nodes (6): Estados em memória (não persistidos), Modelo de dados: IA de combate dos Pokémon, SkillProfile (`content/ai/profiles.json`), Temperament (`content/ai/temperaments.json`), Transições entre estados, WildLevelTable (`content/ai/wild-levels.json`)
+Nodes (9): State, heading(), length(), Pose, poseAt(), pushPose(), STEP, at() (+1 more)
 
-### Community 288 - "scripts-counter.test.ts"
-Cohesion: 0.60
-Nodes (4): data(), grid(), talk, talkSouth()
+### Community 286 - "Modelo de dados: IA de combate dos Pokémon"
+Cohesion: 0.07
+Nodes (24): noise(), threat(), Contrato: content/ai, profiles.json (`kind: "ai-profiles"`), temperaments.json (`kind: "ai-temperaments"`), tuning.json (`kind: "ai-tuning"`), wild-levels.json (`kind: "ai-wild-levels"`), Cliente → servidor (+16 more)
+
+### Community 287 - "Feature Specification: Build, distribuição e auto-update"
+Cohesion: 0.14
+Nodes (14): Assumptions, Contexto, Edge Cases, Feature Specification: Build, distribuição e auto-update, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)* (+6 more)
+
+### Community 288 - "Research: Combate em tempo real"
+Cohesion: 0.14
+Nodes (14): R11. Cobertura do mapeamento, R12. Dono e fogo amigo, R13. Arena de desenvolvimento, R14. Animações de golpes da ROM (refinamento), R1. Onde o combate roda, R2. Fórmula de dano, R3. Tabela de tipos, R4. Stats do combatente (+6 more)
 
 ### Community 289 - "gear.test.ts"
 Cohesion: 0.22
 Nodes (7): BOOK, data(), Gear, BOOK, data(), scene, PhoneBook
 
 ### Community 290 - "Modelo de dados: Mapas pré-renderizados e colisão"
-Cohesion: 0.11
-Nodes (20): failure(), Ajustes da implementação, Area (`areas.json`, um por extração), MapLayer (`layers/<nível>-<camada>.png`), MapReport (`report.json`, por extração), Modelo de dados: Mapas pré-renderizados e colisão, Piece (entrada interna da etapa; não é gravada, só alimenta a renderização), Relações (+12 more)
+Cohesion: 0.12
+Nodes (15): CollisionCategory, Ajustes da implementação, Area (`areas.json`, um por extração), Collision (`collision/<nível>.json`), MapLayer (`layers/<nível>-<camada>.png`), Modelo de dados: Mapas pré-renderizados e colisão, Piece (entrada interna da etapa; não é gravada, só alimenta a renderização), Relações (+7 more)
 
 ### Community 291 - "nsbmd.test.ts"
-Cohesion: 0.24
-Nodes (13): displayList(), fx(), texcoord(), triangleList(), vtx16(), ModelSpec, MAT(), NODE() (+5 more)
+Cohesion: 0.20
+Nodes (15): displayList(), fx(), texcoord(), triangleList(), vtx16(), ModelSpec, MAT(), NODE() (+7 more)
 
-### Community 292 - "Specification Quality Checklist: Interface básica, menu inicial e controles"
-Cohesion: 0.40
-Nodes (5): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Interface básica, menu inicial e controles
+### Community 292 - "scripts"
+Cohesion: 0.15
+Nodes (13): scripts(), Cenário 1 — Do clone ao app aberto (US1, SC-001), Cenário 2 — Caminho renderer → servidor (US2, SC-002, SC-003), Cenário 3 — Checagens com um comando (US3, SC-004), Cenário 4 — Bloqueio de assets (US4, SC-005, SC-006), Cenário 5 — Integração contínua (US5, SC-007), Pré-requisitos, Quickstart: validação da fundação (+5 more)
 
 ### Community 293 - "Implementation Plan: Sprites"
 Cohesion: 0.22
@@ -1627,12 +1642,12 @@ Cohesion: 0.40
 Nodes (4): [Category 1], [Category 2], [CHECKLIST TYPE] Checklist: [FEATURE NAME], Notes
 
 ### Community 295 - "Tasks: Eventos, scripts, encontros e treinadores"
-Cohesion: 0.15
-Nodes (13): Dependências e ordem de execução, Estratégia de implementação, Etapa, Format: `[ID] [P?] [Story] Description`, Oportunidades de paralelismo, Phase 1: Setup, Phase 3: User Story 1 — Eventos e scripts legíveis (P1), Phase 6: User Story 4 — Relatório de cobertura de scripts (P4) (+5 more)
+Cohesion: 0.17
+Nodes (12): Dependências e ordem de execução, Estratégia de implementação, Etapa, Format: `[ID] [P?] [Story] Description`, Oportunidades de paralelismo, Phase 1: Setup, Phase 3: User Story 1 — Eventos e scripts legíveis (P1), Phase 7: Polimento e conferência (+4 more)
 
 ### Community 296 - "Research: Servidor de jogo e protocolo"
-Cohesion: 0.15
-Nodes (12): R10. Métricas de tick e painel, R11. Ciclo de vida, R1. Transporte nesta feature, R2. Validação de mensagens, R3. Estado incremental, R4. Previsão e reconciliação, R5. Interpolação de remotos, R6. Inputs (+4 more)
+Cohesion: 0.17
+Nodes (11): R10. Métricas de tick e painel, R11. Ciclo de vida, R1. Transporte nesta feature, R2. Validação de mensagens, R3. Estado incremental, R5. Interpolação de remotos, R6. Inputs, R7. Movimento (+3 more)
 
 ### Community 297 - "Quickstart: LAN, sessões e saves"
 Cohesion: 0.40
@@ -1642,9 +1657,9 @@ Nodes (4): Cenários manuais, Pré-requisitos, Quickstart: LAN, sessões e saves
 Cohesion: 0.22
 Nodes (9): 1. Testes automatizados, 2. Typecheck e lint, 3. Extração e relatório (SC-001), 4. Pré-visualização (SC-003), 5. Conferência visual de 20 Pokémon (SC-002), 6. Reexecução determinística (SC-004), Pré-requisitos, Quickstart: validação de sprites (+1 more)
 
-### Community 299 - "view.ts"
-Cohesion: 0.17
-Nodes (23): CombatMove, Controller, ControllerOptions, Senses, AiTuning, SkillProfile, TemperamentRules, ScoreContext (+15 more)
+### Community 299 - "Point"
+Cohesion: 0.14
+Nodes (16): ParseResult, Flight, Active, CombatMove, Wild, MoveView, Body, overlaps() (+8 more)
 
 ### Community 300 - "Implementation Plan: Áudio no jogo"
 Cohesion: 0.25
@@ -1658,53 +1673,77 @@ Nodes (4): Lacuna de cobertura: introdução até Violet City, Lista completa (c
 Cohesion: 0.07
 Nodes (23): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Textos e i18n, Complexity Tracking, Constitution Check, Dependências novas (princípio X) (+15 more)
 
-### Community 303 - "PipelineError"
-Cohesion: 0.50
-Nodes (4): PipelineError, Como uma etapa futura se pluga (specs 4 a 9), Contrato: API pública de `@soulsilver/extractor`, `runPipeline`
+### Community 303 - "driver.mjs"
+Cohesion: 0.21
+Nodes (10): apps, args, electron, env, guestSlot, launch(), run(), localIp() (+2 more)
 
 ### Community 304 - "Contrato: descoberta na LAN"
 Cohesion: 0.50
 Nodes (3): Contrato: descoberta na LAN, Lista, Pacote (JSON, ≤ 512 bytes, validado por zod; inválido é ignorado)
 
-### Community 305 - "Quickstart: validar o spec 017"
-Cohesion: 0.50
-Nodes (3): Quickstart: validar o spec 017, Roteiro manual (skill run-soulsilver), Testes automáticos
+### Community 305 - "Data Model: Campanha jogável até a Insígnia Zephyr"
+Cohesion: 0.17
+Nodes (10): Checks dos specs 020–023 com a ROM real, Contrato: caminho dourado, Marcos, Relatório, Data Model: Campanha jogável até a Insígnia Zephyr, DebugObject / DebugTrigger (derivados, somente leitura), Milestone (dados do caminho dourado), NewGameData (extraído; `new-game.json`, pasta de dados) (+2 more)
 
 ### Community 306 - "controller.ts"
-Cohesion: 0.19
-Nodes (23): eightWay(), preferredRange(), steer(), AiStateName, createController(), dist(), Plan, stepController() (+15 more)
+Cohesion: 0.10
+Nodes (46): createReferenceBot(), aimAt(), CONTACT, eightWay(), preferredRange(), rotate(), steer(), threatened() (+38 more)
+
+### Community 307 - "008-events-scripts-encounters/spec.md"
+Cohesion: 0.32
+Nodes (5): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Eventos, scripts, encontros e treinadores
 
 ### Community 308 - "Contrato: cues de áudio e API do cliente"
 Cohesion: 0.50
 Nodes (4): `client` (`packages/client/src/audio`), `content/audio/cues.json`, Contrato: cues de áudio e API do cliente, `shared` (`@soulsilver/shared/audio`)
 
+### Community 309 - "music-follow.test.ts"
+Cohesion: 0.25
+Nodes (6): MusicState, MusicTracks, TrainerMusic, MUSIC, run(), tracks
+
 ### Community 310 - "SoulSilver Desktop"
 Cohesion: 0.29
 Nodes (6): Antes de começar, Ao terminar um item, graphify, Regras, SoulSilver Desktop, Verificação
 
+### Community 317 - "pc/items.ts"
+Cohesion: 0.27
+Nodes (7): BAG_ITEM_MAX, depositItem(), ItemStore, move(), Stack, withdrawItem(), PC_ITEMS_MAX
+
 ### Community 318 - "Tasks: Economia, Centro Pokémon e PC"
-Cohesion: 0.09
-Nodes (20): Summary, R1. Origem dos estoques das lojas, R2. Regra de venda, R3. Comando de script do PC, R4. Cura e ponto de retorno, R5. PP, R6. Caixas e migração, R8. Atomicidade e concorrência (+12 more)
+Cohesion: 0.10
+Nodes (19): Summary, R1. Origem dos estoques das lojas, R2. Regra de venda, R3. Comando de script do PC, R4. Cura e ponto de retorno, R5. PP, R6. Caixas e migração, R8. Atomicidade e concorrência (+11 more)
+
+### Community 319 - "Tasks: Mundo, movimento e warps"
+Cohesion: 0.18
+Nodes (11): Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation, Implementation notes, Implementation Strategy, Parallel Examples, Phase 1: Setup, Phase 5: User Story 3 — Áreas contínuas sem carregamento (P2) (+3 more)
 
 ### Community 320 - "Implementation Plan: Golpes de campo e locomoção"
 Cohesion: 0.25
 Nodes (8): Complexity Tracking, Constitution Check, Documentation (this feature), Implementation Plan: Golpes de campo e locomoção, Project Structure, Source Code (repository root), Summary, Technical Context
 
 ### Community 321 - "server-host-protocol.ts"
-Cohesion: 0.22
-Nodes (15): hostConnection(), Fields, isCount(), isHostToServerMessage(), isNonEmptyString(), isRecord(), isServerInfo(), isServerStatus() (+7 more)
+Cohesion: 0.29
+Nodes (13): Fields, isCount(), isHostToServerMessage(), isNonEmptyString(), isRecord(), isServerInfo(), isServerStatus(), isServerToHostMessage() (+5 more)
 
 ### Community 322 - "Research: LAN, sessões e saves"
-Cohesion: 0.18
-Nodes (10): R10. Nome único, R2. Descoberta na LAN, R3. Aviso de firewall, R4. Formato e gravação do save, R5. Migração, R6. Validação no host, R7. Save devolvido pelo servidor, R8. Queda e reconexão (+2 more)
+Cohesion: 0.20
+Nodes (9): R10. Nome único, R2. Descoberta na LAN, R3. Aviso de firewall, R4. Formato e gravação do save, R5. Migração, R7. Save devolvido pelo servidor, R8. Queda e reconexão, R9. Sessão solo isolada (+1 more)
+
+### Community 323 - "devDependencies"
+Cohesion: 0.20
+Nodes (10): devDependencies, @electron/asar, eslint, @eslint/js, eslint-plugin-svelte, globals, @types/node, typescript (+2 more)
 
 ### Community 324 - "Tasks: Mapas pré-renderizados e colisão"
-Cohesion: 0.09
-Nodes (23): Dependências dentro de cada história, Dependências e ordem de execução, Dependências entre fases, Entrega incremental, Estratégia de implementação, Exemplo de paralelismo: US1, Format: `[ID] [P?] [Story] Description`, Implementação da US1 (+15 more)
+Cohesion: 0.06
+Nodes (34): failure(), MapReport (`report.json`, por extração), Transições de estado de um mapa na etapa, 1. Testes automatizados, 2. Typecheck e lint, 3. Extração dos mapas, 4. Conferência tile a tile (SC-003), 5. Visualizador (+26 more)
 
-### Community 325 - "audio/report.ts"
-Cohesion: 0.12
-Nodes (16): buildAudioReport(), buildAudioReportFile(), MAX_LOSS_SHARE, mb(), ReportInput, reportLines(), read(), AudioIndexFile (+8 more)
+### Community 325 - ".mode"
+Cohesion: 0.22
+Nodes (9): PlayerMode, R4 Quando creditar e quando resolver, Data Model: Golpes de campo e locomoção, Estado de sessão (não persistido), Fishing (`content/field/fishing.json`), FlyPoints (extraído; `fly-points.json`), Locomotion (`content/species/locomotion.json`), Save v9 (mudanças sobre v8) (+1 more)
+
+### Community 326 - "events/phone.test.ts"
+Cohesion: 0.25
+Nodes (7): banks(), JOEY, JOEY_IN, layout, trainers, u16s(), text-report
 
 ### Community 327 - "Quickstart: validar Cutscenes e NPCs"
 Cohesion: 0.29
@@ -1719,24 +1758,36 @@ Cohesion: 0.12
 Nodes (16): R10. Ida e volta e relatório, R11. Formatação, R12. i18n e fallback, R13. Busca, R14. Estratégia de testes, R15. Dependências, R1. Formato do banco e cifra, R2. Texto comprimido (`0xF100`) (+8 more)
 
 ### Community 330 - "field/azalea-gym.ts"
-Cohesion: 0.14
-Nodes (21): glide(), AzaleaGym, Facing, facingOf(), gymProps(), initAzaleaGym(), length(), px() (+13 more)
+Cohesion: 0.09
+Nodes (26): glide(), AzaleaGym, Facing, facingOf(), gymProps(), GymTile, initAzaleaGym(), length() (+18 more)
 
-### Community 332 - "field/moves.test.ts"
-Cohesion: 0.14
-Nodes (12): canUseFieldMove(), canUseNamedMove(), check(), FieldMoveCheck, Member, pickUser(), FieldMoveRule, FieldObstacle (+4 more)
+### Community 331 - "test/azalea-gym.test.ts"
+Cohesion: 0.25
+Nodes (6): code, gym, gymTest(), path, trigger(), AzaleaGymFile
+
+### Community 332 - "field/moves.ts"
+Cohesion: 0.25
+Nodes (10): canUseFieldMove(), canUseNamedMove(), check(), FieldMoveCheck, Member, pickUser(), FieldMoveRule, FieldObstacle (+2 more)
 
 ### Community 333 - "Tasks: Itens"
-Cohesion: 0.05
-Nodes (44): fights(), held(), town(), NoticeCode, dowse(), Content Quality, Feature Readiness, Notes (+36 more)
+Cohesion: 0.09
+Nodes (29): fights(), useItem(), held(), ORAN(), town(), NoticeCode, dowse(), Servidor → cliente (+21 more)
+
+### Community 334 - "Effect"
+Cohesion: 0.25
+Nodes (9): Effect, audio-index (`index.json`), audio-report (`report.json`), Cry, Layout de saída, Modelo de dados: Áudio, Track (música, jingle ou efeito), Transições de estado (+1 more)
 
 ### Community 335 - "test/daycare.test.ts"
 Cohesion: 0.32
 Nodes (6): dayCare(), lady, member(), pidge, progression, stats()
 
+### Community 336 - "events/phone.ts"
+Cohesion: 0.32
+Nodes (5): fits(), HEADER_ENDS, PhoneLayout, readHeaders(), readPhoneBook()
+
 ### Community 337 - "Implementation Plan: Servidor de jogo e protocolo"
-Cohesion: 0.12
-Nodes (13): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Servidor de jogo e protocolo, Complexity Tracking, Constitution Check, Documentation (this feature) (+5 more)
+Cohesion: 0.07
+Nodes (27): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Servidor de jogo e protocolo, Complexity Tracking, Constitution Check, Documentation (this feature) (+19 more)
 
 ### Community 338 - "Data Model: Servidor de jogo e protocolo"
 Cohesion: 0.20
@@ -1746,9 +1797,13 @@ Nodes (9): Data Model: Servidor de jogo e protocolo, Entity, EntityDelta, Input,
 Cohesion: 0.31
 Nodes (9): cyclesToSubtract(), EGG_CYCLE_PX, EGG_CYCLE_STEPS, eggWalk(), HATCH_ABILITIES, STEP_PX, mon(), stats() (+1 more)
 
+### Community 340 - "migrate-v7.test.ts"
+Cohesion: 0.33
+Nodes (6): BOX_COUNT, BOX_SLOTS, mon(), Spoilable, stats(), v6
+
 ### Community 341 - "audio/schemas.ts"
-Cohesion: 0.08
-Nodes (33): cryOf(), AudioCues, audioCuesFile, codec, EFFECT_CUES, EffectCue, name(), parseAudioCues() (+25 more)
+Cohesion: 0.06
+Nodes (34): buffer(), buffers, cryOf(), decode(), index, log(), parsedCues, Pcm (+26 more)
 
 ### Community 343 - "Execution Steps"
 Cohesion: 0.29
@@ -1759,16 +1814,16 @@ Cohesion: 0.40
 Nodes (4): Pré-requisitos, Quickstart: validar servidor de jogo e protocolo, Testes automatizados, Verificação manual
 
 ### Community 345 - "Tasks: Batalhas contra treinadores"
-Cohesion: 0.20
-Nodes (10): Dependencies, Implementation Strategy, Parallel Examples, Phase 1: Setup, Phase 3: User Story 1 - Treinador avista e desafia (P1) 🎯 MVP, Phase 4: User Story 2 - Lutar contra o time inteiro (P1), Phase 6: User Story 4 - Multiplayer sem interferência (P2), Phase 7: Polish & Cross-Cutting (+2 more)
+Cohesion: 0.15
+Nodes (12): prize(), Dependencies, Implementation Strategy, Parallel Examples, Phase 1: Setup, Phase 3: User Story 1 - Treinador avista e desafia (P1) 🎯 MVP, Phase 4: User Story 2 - Lutar contra o time inteiro (P1), Phase 5: User Story 3 - Recompensas e fim da batalha (P2) (+4 more)
 
-### Community 346 - "015-wild-pokemon-capture/quickstart.md"
-Cohesion: 0.24
-Nodes (5): Client → server, Contract: game protocol v7 (6 → 7), Server → client, Contract: save v3 (2 → 3), Quickstart: validar o spec 015
+### Community 346 - "Data Model: Pokémon selvagens e captura"
+Cohesion: 0.14
+Nodes (11): Client → server, Contract: game protocol v7 (6 → 7), Server → client, Contract: save v3 (2 → 3), CaptureAttempt (servidor), Dados (content/wild), Data Model: Pokémon selvagens e captura, Save v3 (+3 more)
 
 ### Community 347 - "server-host.ts"
-Cohesion: 0.05
-Nodes (32): createServerHost(), handleExit(), handleMessage(), settle(), settleListen(), PendingListen, PendingRequest, ServerHost (+24 more)
+Cohesion: 0.07
+Nodes (14): createServerHost(), handleExit(), handleMessage(), settle(), settleListen(), PendingListen, PendingRequest, ServerHost (+6 more)
 
 ### Community 348 - "Specification Quality Checklist: Áudio"
 Cohesion: 0.33
@@ -1779,84 +1834,92 @@ Cohesion: 0.25
 Nodes (8): Complexity Tracking, Constitution Check, Documentation (this feature), Implementation Plan: Campanha jogável até a Insígnia Zephyr, Project Structure, Source Code (repository root), Summary, Technical Context
 
 ### Community 350 - "024-playable-campaign-zephyr/tasks.md"
-Cohesion: 0.10
-Nodes (14): keep(), Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Campanha jogável até a Insígnia Zephyr, Contrato: dados de jogo novo e tabela de mensagens padrão, `events/events/new-game.json` (+6 more)
+Cohesion: 0.14
+Nodes (10): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Campanha jogável até a Insígnia Zephyr, Contrato: dados de jogo novo e tabela de mensagens padrão, `events/events/new-game.json`, `events/events/std-messages.json` (+2 more)
 
-### Community 352 - "Implementation Plan: LAN, sessões e saves"
-Cohesion: 0.12
-Nodes (13): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: LAN, sessões e saves, Complexity Tracking, Constitution Check, Documentation (this feature) (+5 more)
+### Community 351 - "Constitution Check"
+Cohesion: 0.29
+Nodes (7): Complexity Tracking, Constitution Check, Documentation (this feature), Implementation Plan: Build, distribuição e auto-update, Project Structure, Source Code (repository root), Summary
 
-### Community 354 - "createCaptures"
-Cohesion: 0.31
-Nodes (12): createCaptures(), addBall(), broadcast(), fly(), hit(), resolve(), sendBag(), sendDex() (+4 more)
+### Community 352 - "Implementation Plan: Itens"
+Cohesion: 0.29
+Nodes (7): Complexity Tracking, Constitution Check, Documentation (this feature), Implementation Plan: Itens, Project Structure, Source Code (repository root), Technical Context
+
+### Community 354 - "verify-package.ts"
+Cohesion: 0.33
+Nodes (5): @electron/asar, files, paths, violations, width
 
 ### Community 355 - "Quickstart: validação de build, distribuição e auto-update"
-Cohesion: 0.05
-Nodes (33): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Build, distribuição e auto-update, Artefatos publicados na release `vX.Y.Z`, CLIs (rodam com `node`, sem build), Contrato: pipeline de release (+25 more)
+Cohesion: 0.12
+Nodes (13): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Build, distribuição e auto-update, Cenário 1 — Build e verificação local (SC-005), Cenário 2 — Publicar com tag (US1, SC-001), Cenário 3 — Instalar num Windows limpo (US2, SC-002, SC-007) (+5 more)
+
+### Community 356 - "Data Model: Progressão dos Pokémon"
+Cohesion: 0.33
+Nodes (5): Data Model: Progressão dos Pokémon, Estados, Participação (só no servidor, não persistida), ProgressionItem (fila), Validação
 
 ### Community 357 - "Specification Quality Checklist: Áudio no jogo"
 Cohesion: 0.33
 Nodes (5): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Áudio no jogo
+
+### Community 358 - "Synthetic test fixtures convention"
+Cohesion: 0.40
+Nodes (5): Synthetic game data fixtures, BLZ encoder for tests, Synthetic test fixtures convention, buildNarc, buildNdsRom
 
 ### Community 359 - "Quickstart: validar a campanha até a Insígnia Zephyr"
 Cohesion: 0.33
 Nodes (5): Automático (CI-safe, fixtures sintéticas), Caminho dourado (local, extração da ROM real; fora da CI), Manual (humano, sem comandos de desenvolvimento), Quickstart: validar a campanha até a Insígnia Zephyr, Roteiro no app (camada 4, skill `run-soulsilver`)
 
 ### Community 361 - "003-rom-extraction-pipeline/research.md"
-Cohesion: 0.16
-Nodes (9): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Validação da ROM, desempacotamento e primeira execução, Contrato: protocolo processo principal ↔ extractor-host, Extractor-host → principal, Principal → extractor-host (+1 more)
+Cohesion: 0.17
+Nodes (8): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Validação da ROM, desempacotamento e primeira execução, Contrato: protocolo processo principal ↔ extractor-host, Extractor-host → principal, Principal → extractor-host
 
 ### Community 363 - "Tasks: Sprites"
-Cohesion: 0.17
-Nodes (12): Dependências e ordem de execução, Estratégia de implementação, Format: `[ID] [P?] [Story] Description`, Oportunidades de paralelismo, Phase 1: Setup, Phase 2: Fundação (bloqueia todas as histórias), Phase 4: User Story 2 — Sprites de batalha normais e shiny (P2), Phase 5: User Story 3 — Ícones e treinadores (P3) (+4 more)
+Cohesion: 0.14
+Nodes (14): name(), narc(), R6. Layout da área de trabalho e saídas da etapa `rom-unpack`, Dependências e ordem de execução, Estratégia de implementação, Format: `[ID] [P?] [Story] Description`, Oportunidades de paralelismo, Phase 1: Setup (+6 more)
 
 ### Community 364 - "Estado do projeto"
 Cohesion: 0.29
 Nodes (6): Concluídos, Decisões, Estado do projeto, Marco 4 · Johto completo (em andamento), Pendências, Próximos marcos
 
 ### Community 365 - "Research: Campanha jogável até a Insígnia Zephyr"
-Cohesion: 0.09
-Nodes (22): Checks dos specs 020–023 com a ROM real, Contrato: caminho dourado, Marcos, Relatório, Data Model: Campanha jogável até a Insígnia Zephyr, DebugObject / DebugTrigger (derivados, somente leitura), Milestone (dados do caminho dourado), NewGameData (extraído; `new-game.json`, pasta de dados) (+14 more)
+Cohesion: 0.12
+Nodes (16): keep(), Save v8 (mudanças sobre v7), R10. Padrão de estágio do extrator (T002), R1. Origem do estado inicial do jogo novo (flags, variáveis, mapa, posição), R2. Inicial pelo script do laboratório, R3. Comandos restantes (confirmado em T001), R4. Nome do rival, R5. Migração de saves e "história desatualizada" (+8 more)
 
 ### Community 366 - "Data Model: Áudio no jogo"
-Cohesion: 0.50
-Nodes (4): Data Model: Áudio no jogo, Entidade selvagem, Estado de música (cliente), Preferências de áudio (`AppSettings.audio`)
+Cohesion: 0.33
+Nodes (6): EffectCue, Cues (`content/audio/cues.json`), Data Model: Áudio no jogo, Entidade selvagem, Estado de música (cliente), Preferências de áudio (`AppSettings.audio`)
 
-### Community 370 - "host.ts"
-Cohesion: 0.08
-Nodes (14): DAYCARE, GENDER_SIGN, say(), textArg(), DaycareView, ScriptRequest, TextBuffer, CommandContext (+6 more)
+### Community 367 - "R0. Verificação dos arquivos de sprite na ROM (pré-requisito)"
+Cohesion: 0.40
+Nodes (5): Achados confirmados na implementação (batalha, espécies base), Achados confirmados na implementação (overworld), Achados confirmados na implementação (ícones e treinadores), Achados parciais (R0), R0. Verificação dos arquivos de sprite na ROM (pré-requisito)
+
+### Community 368 - "Contrato: API de áudio (`shared` e `extractor`)"
+Cohesion: 0.40
+Nodes (5): CLI, Contrato: API de áudio (`shared` e `extractor`), `extractor` (`packages/extractor/src/audio/`), Garantias, `shared` (`@soulsilver/shared/audio`)
+
+### Community 370 - "CommandContext"
+Cohesion: 0.14
+Nodes (4): init(), textArg(), CommandContext, Phase 5: User Story 4 - Receber ligações e aceitar revanches (P2)
 
 ### Community 372 - "Rodar prompts do roadmap"
 Cohesion: 0.33
 Nodes (5): 1. Preparar, 2. Executar cada item, 3. Quando parar antes de N, 4. Relatório final, Rodar prompts do roadmap
 
-### Community 374 - "game-server.test.ts"
-Cohesion: 0.16
-Nodes (10): createTickLoop(), run(), scheduleNext(), Scheduler, TickLoop, TickLoopOptions, createFakeClock(), Timer (+2 more)
+### Community 374 - "createGameServer"
+Cohesion: 0.07
+Nodes (28): createMainWindow(), isAllowedNavigation(), permissionRequestHandler(), windowOpenHandler(), createGameServer(), hostConnection(), init(), newSession() (+20 more)
 
-### Community 375 - "moneyLoss"
-Cohesion: 0.50
-Nodes (3): moneyLoss(), BASE, Phase 5: User Story 3 - Trocar, desmaiar, fugir e blackout (P2)
-
-### Community 379 - "test/ribbons-photos.test.ts"
-Cohesion: 0.47
-Nodes (5): mon(), photo, run(), stats(), talk
-
-### Community 381 - "Data Model: Pokémon selvagens e captura"
-Cohesion: 0.33
-Nodes (6): CaptureAttempt (servidor), Dados (content/wild), Data Model: Pokémon selvagens e captura, Save v3, SpawnArea (servidor, memória), Wild (entidade `pokemon`, servidor)
+### Community 375 - "Tasks: Pokémon companheiro e regras do combate no mundo"
+Cohesion: 0.15
+Nodes (12): moneyLoss(), BASE, Dependencies & Execution Order, Format: `[ID] [P?] [Story] Description`, Implementation Strategy, Parallel Opportunities, Phase 1: Setup, Phase 4: User Story 2 - Assumir o controle em combate (P1) (+4 more)
 
 ### Community 382 - "Implementation Plan: Economia, Centro Pokémon e PC"
+Cohesion: 0.33
+Nodes (6): Complexity Tracking, Documentation (this feature), Implementation Plan: Economia, Centro Pokémon e PC, Project Structure, Source Code (repository root), Technical Context
+
+### Community 387 - "accept"
 Cohesion: 0.22
-Nodes (7): Complexity Tracking, Constitution Check, Documentation (this feature), Implementation Plan: Economia, Centro Pokémon e PC, Project Structure, Source Code (repository root), Technical Context
-
-### Community 384 - "User Scenarios & Testing *(mandatory)*"
-Cohesion: 0.40
-Nodes (5): Edge Cases, User Scenarios & Testing *(mandatory)*, User Story 1 - Música de cada lugar, em loop sem corte (Priority: P1), User Story 2 - Efeitos sonoros e cries por nome ou número (Priority: P2), User Story 3 - Reprodutor de desenvolvimento (Priority: P3)
-
-### Community 387 - "level"
-Cohesion: 0.10
-Nodes (19): level(), R6. Evoluções, 44 bytes, Data Model: Mundo, movimento e warps, Entity (acréscimos), PlayerInput (protocolo v3, substitui `dir`), Transições de estado do jogador, WorldMap (`shared/src/game/world-map.ts`), Data Model: Progressão dos Pokémon (+11 more)
+Nodes (7): accept(), WsListenerOptions, Cliente → servidor, Contrato: protocolo v24, Regras da luta, Servidor → cliente, Testes
 
 ### Community 392 - "User Scenarios & Testing *(mandatory)*"
 Cohesion: 0.29
@@ -1872,23 +1935,23 @@ Nodes (4): Conferência manual (com a ROM), Pré-requisitos, Quickstart: Áudio 
 
 ## Knowledge Gaps
 - **39 isolated node(s):** `@types/node`, `eslint`, `typescript`, `@soulsilver/extractor`, `@soulsilver/server` (+34 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 4020 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **17 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 4021 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **21 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `vitest` connect `vitest` to `duel.ts`, `field/schemas.ts`, `GameSession.svelte`, `game-data/index.ts`, `createWilds`, `src/items.ts`, `scene.ts`, `src/field.ts`, `combat-loader.ts`, `sprites/stage.ts`, `createGameServer`, `SoulSilverApi`, `maps/stage.test.ts`, `input.ts`, `stages.ts`, `trainer-battle.ts`, `trainer/schemas.ts`, `src/phone.ts`, `game/index.ts`, `maps/index.ts`, `ai-loader.ts`, `animation.test.ts`, `scripts-loader.ts`, `breeding.ts`, `createItems`, `main/discovery.ts`, `pipeline/run.ts`, `fixtures.ts`, `radio.ts`, `Tests for User Story 2 (test-first) ⚠️`, `sprites/stage.test.ts`, `combat.ts`, `runner.ts`, `nsbmd.ts`, `maps/stage.ts`, `forbidden-files.ts`, `text/stage.ts`, `rom-unpack.test.ts`, `ByteWriter`, `shop.ts`, `companion-loader.ts`, `game-data/builders.ts`, `build-nds-rom.ts`, `synth.ts`, `wild-loader.ts`, `engine.ts`, `data/report.ts`, `sseq.ts`, `scriptData`, `extractor/src/index.ts`, `text/index.ts`, `entity.ts`, `createTrainerBattles`, `Save`, `readU16`, `ref_node_fs`, `events/stage.ts`, `trainer-fixture.ts`, `audio/stage.test.ts`, `createAi`, `calls.ts`, `pc.ts`, `audio/reactions.ts`, `map-blocks.ts`, `render/cutscene.ts`, `DialogBox.svelte`, `companion/schemas.ts`, `Tasks: Tempo e Pokégear`, `wild/capture.test.ts`, `package.json`, `game-connection.ts`, `game-renderer.ts`, `Pesquisa: Itens`, `daycare/index.ts`, `movement.test.ts`, `schema.ts`, `timeOfDay`, `decide.test.ts`, `Research: Fundação do projeto`, `server-host/entry.ts`, `UpdateState`, `extractor-host-protocol.ts`, `trainer-loader.ts`, `newProgress`, `pc.test.ts`, `field-fixture.ts`, `assets-controller.ts`, `new-game-visibility.test.ts`, `headbutt.ts`, `world-map.ts`, `world-items.test.ts`, `schemas-us2.test.ts`, `types.test.ts`, `title/stage.ts`, `events/schemas.test.ts`, `campaign.golden.ts`, `session.ts`, `trail.ts`, `scripts-counter.test.ts`, `gear.test.ts`, `nsbmd.test.ts`, `controller.ts`, `server-host-protocol.ts`, `audio/report.ts`, `field/azalea-gym.ts`, `field/moves.test.ts`, `test/daycare.test.ts`, `hatch.test.ts`, `audio/schemas.ts`, `server-host.ts`, `game-server.test.ts`, `moneyLoss`, `test/ribbons-photos.test.ts`, `markCaught`?**
-  _High betweenness centrality (0.331) - this node is a cross-community bridge._
+- **Why does `vitest` connect `vitest` to `src/trade.ts`, `field/schemas.ts`, `GameSession.svelte`, `createWilds`, `game-data/items.ts`, `maps/index.ts`, `src/fishing.ts`, `combat-loader.ts`, `sprites/stage.ts`, `coherence.test.ts`, `maps/stage.test.ts`, `input.ts`, `stages.ts`, `session.ts`, `session-controller.ts`, `trainer/schemas.ts`, `game/index.ts`, `npcs.ts`, `ai-loader.ts`, `ServerMessage`, `animation.test.ts`, `scripts-loader.ts`, `events/schemas.ts`, `breeding.ts`, `main/discovery.ts`, `pipeline/run.ts`, `scripts.ts`, `fixtures.ts`, `server-data.ts`, `radio.ts`, `server-host/entry.ts`, `icons.test.ts`, `combat.ts`, `createRunner`, `nsbmd.ts`, `map-scene.ts`, `maps/stage.ts`, `forbidden-files.ts`, `extractor/src/index.ts`, `stages/index.ts`, `ByteWriter`, `shop.ts`, `createCompanions`, `ai.ts`, `companion-loader.ts`, `game-data/builders.ts`, `build-nds-rom.ts`, `synth.ts`, `wild/schemas.ts`, `battle.ts`, `movement.ts`, `data/report.ts`, `ArenaSetup.svelte`, `sseq.ts`, `scriptData`, `cli.ts`, `text/index.ts`, `Implementation for User Story 1`, `overworld.ts`, `trade-atomic.test.ts`, `readU16`, `int`, `ref_node_fs`, `src/items.ts`, `events/stage.ts`, `trainer-fixture.ts`, `audio/stage.test.ts`, `combat-coverage.ts`, `createAi`, `calls.ts`, `createCaptures`, `audio/reactions.ts`, `world-loader.test.ts`, `map-blocks.ts`, `render/cutscene.ts`, `DialogBox.svelte`, `companion/schemas.ts`, `input/menu.ts`, `held-world.test.ts`, `wild/capture.test.ts`, `package.json`, `common.ts`, `game-connection.ts`, `game-renderer.ts`, `daycare/index.ts`, `wav.ts`, `script.ts`, `schema.ts`, `timeOfDay`, `run`, `items/schemas.ts`, `remote-connection.ts`, `UpdateState`, `extractor-host-protocol.ts`, `trainer-loader.ts`, `phone`, `harness.ts`, `duel.ts`, `field-fixture.ts`, `assets-controller.ts`, `canAdd`, `new-game-visibility.test.ts`, `field/index.ts`, `map-assets.ts`, `zone.ts`, `validateReleaseTag`, `world-items.test.ts`, `schemas-us2.test.ts`, `readers/tables.ts`, `title/stage.ts`, `battle-fx.ts`, `events/schemas.test.ts`, `campaign.golden.ts`, `progression.ts`, `preload/index.ts`, `events/index.ts`, `shared/src/events/refs.ts`, `trail.ts`, `gear.test.ts`, `nsbmd.test.ts`, `Point`, `controller.ts`, `music-follow.test.ts`, `pc/items.ts`, `server-host-protocol.ts`, `events/phone.test.ts`, `field/azalea-gym.ts`, `test/azalea-gym.test.ts`, `test/daycare.test.ts`, `hatch.test.ts`, `migrate-v7.test.ts`, `audio/schemas.ts`, `Tasks: Batalhas contra treinadores`, `server-host.ts`, `maps/schemas.test.ts`, `createGameServer`, `Tasks: Pokémon companheiro e regras do combate no mundo`, `markCaught`?**
+  _High betweenness centrality (0.311) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `createSession()` (e.g. with `scriptedCallOf()` and `close()`) actually correct?**
   _`createSession()` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@types/node`, `eslint`, `typescript` to the rest of the system?**
   _39 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `duel.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06707317073170732 - nodes in this community are weakly interconnected._
-- **Why does `defaultStages()` connect `campaign.golden.ts` to `pipeline/run.ts`, `Modelo de dados: Mapas pré-renderizados e colisão`, `src/items.ts`, `audio/report.ts`, `Tasks: Eventos, scripts, encontros e treinadores`, `Tasks: Sprites`, `GameDataError`, `PipelineError`, `text/index.ts`, `problem`, `rom-unpack.test.ts`, `narc`, `readU16`?**
-  _High betweenness centrality (0.026) - this node is a cross-community bridge._
+- **Should `src/trade.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.12380952380952381 - nodes in this community are weakly interconnected._
+- **Why does `defaultStages()` connect `ServerMessage` to `Data Model: Validação da ROM, desempacotamento e primeira execução`, `game-data/builders.ts`, `Tasks: Mapas pré-renderizados e colisão`, `campaign.golden.ts`, `audio/stage.ts`, `Tasks: Sprites`, `GameDataError`, `data/report.ts`, `Contrato: API de áudio (`shared` e `extractor`)`, `held-world.test.ts`, `stages/index.ts`, `extractor/src/index.ts`, `Implementation for User Story 1`, `scripts-loader.ts`, `Contrato: API de sprites (`shared` e `extractor`)`?**
+  _High betweenness centrality (0.025) - this node is a cross-community bridge._
 - **Should `field/schemas.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.05853658536585366 - nodes in this community are weakly interconnected._
-- **Why does `SoulSilver Desktop` connect `SoulSilver Desktop` to `README.md`?**
+  _Cohesion score 0.11764705882352941 - nodes in this community are weakly interconnected._
+- **Why does `ScriptHost` connect `ScriptHost` to `scripts.ts`, `Research: Pokémon companheiro e regras do combate no mundo`, `Quickstart: validação de eventos, scripts, encontros e treinadores`, `Pesquisa: Interpretador de scripts`, `field/azalea-gym.ts`, `Tasks: Itens`, `Research: Campanha jogável até a Insígnia Zephyr`, `createRunner`, `harness.ts`, `Tasks: Tempo e Pokégear`, `CommandContext`, `Tasks: Interpretador de scripts`, `say`, `Tasks: Campanha jogável até a Insígnia Zephyr`, `field-fixture.ts`, `canAdd`, `script/index.ts`, `Tasks: Economia, Centro Pokémon e PC`?**
   _High betweenness centrality (0.021) - this node is a cross-community bridge._

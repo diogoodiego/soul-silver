@@ -57,7 +57,7 @@ import { MAP_ARCHIVES } from "../maps/stage.ts";
 async function mapCells(ctx: StageContext, matrixId: number) {
   const matrix = readMatrix(await readNarcMember(ctx, MAP_ARCHIVES.matrices, matrixId), matrixId);
   const cells = matrix.pieces.map((piece, i) => ({ x: i % matrix.width, z: Math.floor(i / matrix.width), piece }));
-  return Promise.all(cells.filter((c) => c.piece !== 0xffff).map(async (c) => ({ ...c, piece: readPiece(await readNarcMember(ctx, MAP_ARCHIVES.pieces, c.piece)) })));
+  return Promise.all(cells.filter((c): c is typeof c & { piece: number } => c.piece !== null).map(async (c) => ({ ...c, piece: readPiece(await readNarcMember(ctx, MAP_ARCHIVES.pieces, c.piece)) })));
 }
 import { readApricornTrees, readBerryGrowth, readHiddenItems } from "./field-items.ts";
 import { readPhoneBook } from "./phone.ts";

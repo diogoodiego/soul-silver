@@ -96,6 +96,7 @@ export function fakeHost(over: Partial<FakeHost> = {}): FakeHost {
       return true;
     },
     hasItem: (item, count) => (host.bag.get(item) ?? 0) >= count,
+    itemCount: (item) => host.bag.get(item) ?? 0,
     hasSpaceForItem: (item, count) => (host.bag.get(item) ?? 0) + count <= 999,
     partyCount: () => host.party.length,
     partySpecies: (slot) => host.party[slot]?.species ?? 0,

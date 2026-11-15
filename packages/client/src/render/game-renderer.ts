@@ -554,7 +554,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
 
   return {
     /** Replaces the props on `area`; positions in the map's pixels, height included. */
-    setProps(area: string, list: readonly { model: number; x: number; y: number; z: number; pose?: number }[]): void {
+    setProps(area: string, list: readonly { model: number; x: number; y: number; z: number; pose?: number | undefined }[]): void {
       const models = list.map((p) => `${p.model}-${p.pose ?? ""}`).join(",");
       // Spec 030.5: the same props moved (a Spinarak cart gliding, every tick) are only placed again.
       if (props?.area === area && props.models === models && list.every((_, i) => props!.objects[i])) {

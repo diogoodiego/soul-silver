@@ -103,6 +103,8 @@ function pilot(from?: Save) {
 
   let locked = false;
   let fighting = false;
+  /** Spotted by a trainer who is still walking up: busy, as the player is, until the battle starts. */
+  let approached = false;
   let steps = 0;
   /** Holds the bot back (the player throws a ball instead). */
   let hold = false;
@@ -162,11 +164,14 @@ function pilot(from?: Save) {
       if (m.type === "script-lock") locked = m.locked;
       else if (m.type === "trainerSpotted") {
         spotted.push(m.trainerId);
+        approached = true;
         client.send({ type: "trainer-ready" });
       } else if (m.type === "trainerBattleStart" && m.player === welcome.playerId) {
         fighting = true;
+        approached = false;
         battles.set(m.battleId, { trainer: m.trainerId });
-      } else if (m.type === "trainerBattleEnd" && battles.has(m.battleId)) {
+      } else if (m.type === "trainerBattleEnd") approached = false;
+      if (m.type === "trainerBattleEnd" && battles.has(m.battleId)) {
         fighting = false;
         Object.assign(battles.get(m.battleId)!, { result: m.result, prize: m.prize ?? 0 });
       } else if (m.type === "script-debug" && m.at && m.at.file >= 0) lastScript = `${m.at.file}:${m.at.entry}`;
@@ -222,7 +227,7 @@ function pilot(from?: Save) {
     let calm = 0;
     for (let i = 0; i < max && calm < quiet; i++) {
       tick();
-      calm = locked || fighting ? 0 : calm + 1;
+      calm = locked || fighting || approached ? 0 : calm + 1;
     }
   }
 
@@ -269,22 +274,30 @@ function pilot(from?: Save) {
    * A trainer battle as the game has it (specs 019 and 022): fought by the bot to the end the script receives,
    * then the defeated flag, the prize against the formula and the money, and no second challenge on `again`.
    */
-  function battle(name: string, trainers: number[], moneyBefore: number, again: () => void): Check {
+  function battle(name: string, trainers: number[], moneyBefore: number, again: () => void, since?: number): Check {
     const fail = (failed: string): Check => ({ name, failed });
-    const b = [...battles.values()].filter((x) => trainers.includes(x.trainer)).at(-1);
+    // The save first: a neighbour may spot the player while it comes, and its battle counts too.
+    const early = since === undefined ? undefined : fresh();
+    const all = [...battles.values()];
+    const b = all.filter((x) => trainers.includes(x.trainer)).at(-1);
+    // `since` (route trainers): the battles from that index on; a neighbour that looks around may join in, or have fought this one already.
+    const fresh_ = since === undefined ? [] : all.slice(since);
+    const earlier = since !== undefined && b !== undefined && !fresh_.includes(b);
+    const others = fresh_.filter((x) => x !== b).reduce((sum, x) => sum + (x.prize ?? 0), 0);
     if (!b) return fail("a luta não começou");
     if (b.result !== "won") return fail(`luta ${b.result ?? "sem fim"} (time: ${one.save?.party.map((m) => `${m.species} nv${m.level} ${m.hp} PS`).join(", ")})`);
-    const after = fresh();
+    const after = early ?? fresh();
     const flag = (data.trainers?.tuning.trainerFlagBase ?? 0) + b.trainer;
     if (!after.flags.includes(flag)) return fail(`flag ${flag} de treinador derrotado desligada`);
     const record = data.trainers!.trainer(b.trainer)!;
     const formula = prize({ prizeBase: data.trainers!.trainerClass(record.class.id)?.prizeBase ?? 0, team: record.team, double: record.doubleBattle });
-    if (b.prize !== formula || after.money - moneyBefore !== formula) return fail(`prêmio ${b.prize}, dinheiro ${after.money - moneyBefore >= 0 ? "+" : ""}${after.money - moneyBefore}, fórmula ${formula}`);
+    const owed = (earlier ? 0 : formula) + others;
+    if (b.prize !== formula || after.money - moneyBefore !== owed) return fail(`prêmio ${b.prize}, dinheiro ${after.money - moneyBefore >= 0 ? "+" : ""}${after.money - moneyBefore}, fórmula ${formula}${others ? ` + ${others} de outro treinador` : ""}`);
     const fought = battles.size;
     const seen = spotted.length;
     again();
     if (battles.size !== fought || spotted.length !== seen) return fail("desafiou de novo");
-    return { name: `${name}: treinador ${b.trainer}, flag ${flag}, prêmio ${formula}, sem novo desafio` };
+    return { name: `${name}: treinador ${b.trainer}, flag ${flag}, prêmio ${formula}${earlier ? " (vencido antes, ao lado de outro treinador)" : ""}${others ? ` (+${others} de outro treinador na mesma passagem)` : ""}, sem novo desafio` };
   }
 
   /**
@@ -315,8 +328,12 @@ function pilot(from?: Save) {
         talk(opposite(side!));
       }
     };
+    const seen = spotted.length;
+    const since = battles.size;
     pass();
-    return battle(name, [person.trainer], money, pass);
+    // A trainer that looks around (movement 2, 5 to 13) spots only once it turns to the player, who waits in its line.
+    if (spotted.length === seen && until(() => spotted.length > seen, 600)) settle();
+    return battle(name, [person.trainer], money, pass, since);
   }
 
   /** Spec 026: beside person `npc` of `map`, facing them, and talks (a beaten trainer does not spot). */
@@ -1239,8 +1256,8 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     };
     through(76, 358, 326, "north", 101);
     through(101, 5, 3, "north", 39);
-    // shortcut: 0 shows only at night (ScrCmd_379, flag 462); 5 and 13 do not pass routeTrainer yet (see 030.10).
-    for (const npc of [1, 2, 3, 4, 6, 7]) checks.push(p.routeTrainer(`treinador ${npc} (Rota 35)`, 39, npc));
+    // shortcut: 0 shows only at night (ScrCmd_379, flag 462).
+    for (const npc of [1, 2, 3, 4, 5, 6, 7, 13]) checks.push(p.routeTrainer(`treinador ${npc} (Rota 35)`, 39, npc));
     through(39, 362, 267, "north", 102);
     route(p, 25, 3);
     p.walk("north", 1);
@@ -1248,15 +1265,13 @@ const STEPS: Record<number, (p: Pilot) => void> = {
   // The park's trainers, then its east door (75, 39) into the gate (map 104) and the gate's east door (10, 7) onto Route 36.
   39: (p) => {
     keep(p, "antes-rota-36");
-    // shortcut: 22 to 24 do not pass routeTrainer yet (see 030.10).
-    checks.push(p.routeTrainer("treinador 21 (National Park)", 96, 21));
+    for (const npc of [21, 22, 23, 24]) checks.push(p.routeTrainer(`treinador ${npc} (National Park)`, 96, npc));
     p.warp(96, 74, 39);
     p.walk("east", 1);
     if (p.fresh().area !== "104") throw new Error(`a porta leste do parque não levou ao mapa 104 (está ${p.fresh().area})`);
     p.warp(104, 9, 7);
     p.walk("east", 1);
-    // shortcut: 3 does not pass routeTrainer yet (see 030.10).
-    checks.push(p.routeTrainer("treinador 2 (Rota 36)", 40, 2));
+    for (const npc of [2, 3]) checks.push(p.routeTrainer(`treinador ${npc} (Rota 36)`, 40, npc));
   },
   // North of the Sudowoodo (person 4 at (415, 246), across the one-tile way down from the park's side), facing it: "yes"
   // to the SquirtBottle, then the bot fights the wild one.
@@ -1272,6 +1287,8 @@ const STEPS: Record<number, (p: Pilot) => void> = {
       p.tick(null, BUTTON.recall);
       p.until(() => !p.inCombat(), 100);
     }
+    // Knocked out, it lies there catchable for faintedSeconds; the script goes on (as won) once it is gone.
+    p.until(() => !p.session.world.all().some((e) => e.kind === "pokemon" && e.data["species"] === 185), 1200);
     p.settle();
   },
   // Through the Sudowoodo's tile and on east: Route 36's Violet gate (447, 246; map 149).

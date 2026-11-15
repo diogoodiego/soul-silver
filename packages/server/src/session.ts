@@ -315,14 +315,13 @@ export function createSession(options: SessionOptions): Session {
             return Math.round(radioCap * Math.min(1, ...here.map((p) => items.density(p.id))));
           },
           onDecision: options.onDecision,
-          onFaint: (id, species, level) => {
-            progression?.faint(id, species, level);
-            endStatic(id, OUTCOME.won);
-          },
+          onFaint: (id, species, level) => progression?.faint(id, species, level),
           onRemove: (id: number): void => {
             progression?.forget(id);
-            // Still fought when it leaves the world: caught (out of a ball that held), else the player got away from it.
-            endStatic(id, wilds?.get(id)?.capturing ? OUTCOME.caught : OUTCOME.fled);
+            // A static one ends when it leaves the world: caught (out of a ball that held, even knocked out, while it
+            // lay there for faintedSeconds), else won when knocked out, else the player got away from it.
+            const w = wilds?.get(id);
+            endStatic(id, w?.capturing ? OUTCOME.caught : w?.faintedTick !== undefined ? OUTCOME.won : OUTCOME.fled);
           },
           log: (message) => options.log(message),
         })

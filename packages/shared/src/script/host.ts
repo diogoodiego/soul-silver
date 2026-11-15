@@ -81,6 +81,7 @@ export interface ScriptHost {
   giveItem(item: number, count: number): boolean;
   takeItem(item: number, count: number): boolean;
   hasItem(item: number, count: number): boolean;
+  itemCount(item: number): number;
   hasSpaceForItem(item: number, count: number): boolean;
   partyCount(): number;
   /** 0 past the end of the party. */

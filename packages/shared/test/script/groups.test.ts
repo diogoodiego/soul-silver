@@ -138,6 +138,11 @@ describe("items and money", () => {
     expect(host.bag.get(17)).toBe(1);
   });
 
+  it("GetItemQuantity writes how many of an item the bag holds (Route 36, 030.10)", () => {
+    const { host } = start([["GiveItem", { arg0: 425, arg1: 3, arg2: v(0x4001) }], ["GetItemQuantity", { arg0: 425, arg1: v(0x4002) }], ["GetItemQuantity", { arg0: 17, arg1: v(0x4003) }], ["End"]]);
+    expect([host.vars.get(0x4002), host.vars.get(0x4003) ?? 0]).toEqual([3, 0]);
+  });
+
   it("adds and takes money and checks it", () => {
     const { host } = start([["AddMoney", { arg0: 500 }], ["SubMoneyImmediate", { arg0: 200 }], ["HasEnoughMoneyImmediate", { arg0: 0x4001, arg1: 3300 }], ["HasEnoughMoneyImmediate", { arg0: 0x4002, arg1: 3301 }], ["End"]]);
     expect(host.wallet).toBe(3300);

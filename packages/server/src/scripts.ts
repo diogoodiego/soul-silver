@@ -493,6 +493,7 @@ export function createScripts(options: ScriptsOptions) {
       money: () => who.progress.money,
       addMoney: (n) => void (who.progress.money = Math.max(0, Math.min(MONEY_MAX, who.progress.money + n))),
       hasItem: (item, count) => (bagRow(item)?.count ?? 0) >= count,
+      itemCount: (item) => bagRow(item)?.count ?? 0,
       hasSpaceForItem: (item, count) => fits(item, count),
       giveItem(item, count) {
         if (!fits(item, count)) return false;
