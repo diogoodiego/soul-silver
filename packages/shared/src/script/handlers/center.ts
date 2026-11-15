@@ -10,7 +10,8 @@ const RTC_TIME_OF_DAY = [4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2
 export const CENTER: Record<string, Handler> = {
   // shortcut: trainer card stars are not earned yet, so the nurse never greets a star trainer; count them with the spec that adds the card.
   GetTrcardStars: (c) => c.writeVar(c.ptr("arg0"), 0),
-  PartyCountNotEgg: (c) => c.writeVar(c.ptr("var"), c.host.partyCount()),
+  // Spec 029.2: eggs are not counted.
+  PartyCountNotEgg: (c) => c.writeVar(c.ptr("var"), Array.from({ length: c.host.partyCount() }, (_, i) => i).filter((i) => !c.host.partyIsEgg?.(i)).length),
   // No Pokérus in the remake (yet): the nurse never mentions it.
   PartyHasPokerus: (c) => c.writeVar(c.ptr("arg0"), 0),
   // Bad eggs (a corrupted save's) cannot exist here: the party is always legal and the nurse heals (spec 024).

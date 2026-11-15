@@ -7,6 +7,11 @@ describe("leadIndex", () => {
     expect(leadIndex([{ hp: 0 }, { hp: 0 }, { hp: 3 }])).toBe(2);
   });
 
+  it("skips an egg (spec 029.2)", () => {
+    expect(leadIndex([{ hp: 11, egg: { cycles: 20 } }, { hp: 5 }])).toBe(1);
+    expect(leadIndex([{ hp: 11, egg: { cycles: 20 } }])).toBeUndefined();
+  });
+
   it("follows a reordered party", () => {
     const a = { hp: 4 };
     const b = { hp: 9 };

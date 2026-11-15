@@ -36,6 +36,7 @@ import type { Connection } from "./connection";
 import { bundledItemRules, createItems, itemStateOf, reorderParty, type ItemRules, type ItemsData } from "./items";
 import { placeOf } from "@soulsilver/shared/companion";
 import type { ItemState } from "@soulsilver/shared/save";
+import { rollGender } from "@soulsilver/shared/daycare";
 import { createProgression, type Learner, type Progression, type ProgressionData } from "./progression";
 import { createReplica, replicate, type Replica } from "./replication";
 import { createNpcs } from "./npcs";
@@ -188,7 +189,7 @@ interface Player {
   /** Asked for the AI debug overlay (spec 019). */
   debugAi: boolean;
   /** Party, money, badges and respawn point, changed in place by the companion rules; bag, Pokédex and PC boxes by capture. */
-  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints" | "escape" | "phone"> & ItemState;
+  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints" | "escape" | "phone" | "daycare" | "daycareEgg" | "eggWalk" | "photos"> & ItemState;
   /** Story flags and variables (spec 020), changed by this player's scripts only. */
   flags: Set<number>;
   vars: Map<number, number>;
@@ -236,6 +237,8 @@ export function createSession(options: SessionOptions): Session {
   const world = createWorld();
   const lookup: WorldLookup = (id) => (id === ARENA_AREA ? ARENA_MAP : options.world(id));
   const rng = createRng(options.seed);
+  /** Spec 029.2: genders rolled on join, apart from the world's sequence, so a join does not change it. */
+  const genderRng = createRng((options.seed ^ 0x029) >>> 0);
   const timeoutTicks = options.timeoutTicks ?? DEFAULT_TIMEOUT_TICKS;
   const { clock } = options;
   const time = createSessionClock(options.now ?? SUNDAY_NOON);
@@ -371,6 +374,7 @@ export function createSession(options: SessionOptions): Session {
         hpMax,
         weekday: time.weekday,
         hour: time.hour,
+        clock: options.clock,
         phone,
         scriptedCall: scriptedCallOf,
         machineMove: (item) => progression?.machineMove(item),
@@ -715,6 +719,10 @@ export function createSession(options: SessionOptions): Session {
         pcItems: base.pcItems.map((b) => ({ ...b })),
         pending: base.pending.map((i) => ({ ...i })),
         phone: structuredClone(base.phone),
+        daycare: structuredClone(base.daycare),
+        daycareEgg: base.daycareEgg,
+        eggWalk: base.eggWalk,
+        photos: structuredClone(base.photos),
         ...itemStateOf(base),
       },
       flags: new Set(base.flags),
@@ -723,6 +731,12 @@ export function createSession(options: SessionOptions): Session {
       menuOpen: false,
       gearOpen: false,
     };
+    // Spec 029.2: members from before v13 get a gender by their species' ratio; genderless ones stay without.
+    for (const m of [...player.progress.party, ...player.progress.daycare.map((d) => d.mon), ...player.progress.boxes.flatMap((b) => b.slots)]) {
+      const ratio = m && !m.gender ? options.progression?.species(m.species)?.gender?.raw : undefined;
+      const gender = ratio === undefined ? undefined : rollGender(ratio, genderRng);
+      if (m && gender) m.gender = gender;
+    }
     players.set(id, player);
     const send = (msg: ServerMessage) => player.conn?.send(msg);
     companions?.join({ playerId: id, entityId, progress: player.progress, send });
@@ -777,6 +791,7 @@ export function createSession(options: SessionOptions): Session {
       pokedex: { seen: [...p.progress.pokedex.seen], caught: [...p.progress.pokedex.caught] },
       pending: p.progress.pending.map((i) => ({ ...i })),
       phone: structuredClone(p.progress.phone),
+      daycare: structuredClone(p.progress.daycare),
       ...itemStateOf(p.progress),
       flags: [...p.flags].sort((a, b) => a - b),
       vars: Object.fromEntries([...p.vars].map(([k, v]) => [String(k), v])),
@@ -1419,7 +1434,7 @@ export function createSession(options: SessionOptions): Session {
       for (const p of players.values()) p.conn?.send(msg);
     },
     join: (name, spawn) => {
-      const base: Save = { schemaVersion: 11, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
+      const base: Save = { schemaVersion: 15, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
       return add(base, undefined, spawn, "").id;
     },
     leave(playerId) {

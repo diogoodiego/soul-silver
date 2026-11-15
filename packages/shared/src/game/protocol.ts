@@ -323,6 +323,10 @@ export const scriptRequest = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("cutscene"), actors: z.array(cutsceneActor).max(16), steps: z.array(cutsceneStep).max(512) }),
   /** Spec 027: Kurt asks which apricorn colour to make into balls (ScrCmd_739); answered with the colour, 7 to cancel. */
   z.strictObject({ kind: z.literal("apricorn"), counts: z.array(count()).length(7) }),
+  /** Spec 029: the Day Care asks which party member to leave (ScrCmd_551); answered with the slot, past the party to cancel. */
+  z.strictObject({ kind: z.literal("party") }),
+  /** Spec 029.4: the hatch animation (EggHatchAnim) for the species that hatched; answered when it ends. */
+  z.strictObject({ kind: z.literal("hatch"), species: count() }),
 ]);
 export type ScriptRequestMessage = z.infer<typeof scriptRequest>;
 
@@ -336,7 +340,8 @@ export const scriptEvent = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("props"),
     area: z.string(),
-    props: z.array(z.strictObject({ model: count(), x: z.number(), y: z.number(), z: z.number() })).max(16),
+    /** Spec 030.5: `pose`, the building in that animation pose (props/<model>-<pose>); absent, as extracted. */
+    props: z.array(z.strictObject({ model: count(), x: z.number(), y: z.number(), z: z.number(), pose: z.number().int().min(0).max(7).optional() })).max(16),
   }),
 ]);
 
@@ -394,6 +399,8 @@ export const serverMessage = z.discriminatedUnion("type", [
           /** Spec 027: the item it holds, and the PP Ups on each move. */
           held: count().optional(),
           ppUps: z.array(z.number().int().min(0).max(3)).max(4).optional(),
+          /** Spec 029.2: an egg; it is never sent out. */
+          egg: z.literal(true).optional(),
         }),
       )
       .max(6),

@@ -50,6 +50,21 @@ export const FLY_POINTS = { offset: 0xf9e80, count: 30 } as const;
  * Found by signature in the US ROM and checked against Joey (contact 10, script 33, row 6).
  */
 export const PHONE = { book: "tel/pmtel_book.dat", banks: { offset: 1082492 }, scripts: { overlay: 101, offset: 70716, count: 456 }, headers: { offset: 73548 }, greetings: { offset: 73452 }, rematch: { overlay: 26, offset: 524, count: 63 } } as const;
+/**
+ * The Azalea Gym's Spinarak threads (spec 030.5): overlay 4 loads at 0x02253E20; the stops at 0x022575D4,
+ * the per-stop route pointers at 0x022575A4. The spiders' first stops are InitAzaleaGym's (gymmick_init.c).
+ */
+export const AZALEA_GYM = {
+  map: 180,
+  overlay: 4,
+  base: 0x02253e20,
+  stations: 0x37b4,
+  routes: 0x3784,
+  count: 12,
+  spiders: [0, 1, 2, 7],
+  /** The buildings each lever animates (AzaleaGymSwitch, 0x02254404): gym02rope_2 and gym02switch for lever 0, gym02rope_1 and gym02switch_r for lever 1. */
+  levers: { 116: 0, 117: 0, 115: 1, 122: 1 },
+} as const;
 export const SHOPS ={ normal: 0xfbf22, normalCount: 19, special: 0x10fa3c, specialCount: 30, badgeRank: [1, 2, 2, 3, 3, 4, 4, 5, 6] } as const;
 
 /** Level script types (init_script_types.h). */

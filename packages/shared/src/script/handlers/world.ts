@@ -21,6 +21,9 @@ export const WORLD: Record<string, Handler> = {
     const n = h.flag(FLAG_GOT_TM51_FROM_FALKNER) ? 0 : h.flag(FLAG_MET_PASSERBY_BOY) ? 1 : h.partyCount() > 0 ? 2 : 3;
     h.emit({ kind: "props", props: STARTER_BALL_AT.slice(0, n).map(([x, z]) => ({ model: STARTER_BALL, x, y: 0, z })) });
   },
+  // shortcut: warps stay where the map puts them; on a tile the first warp wins, which is the one the Ruins of Alph's MoveWarp keeps while VAR 0x403E < 6 (no puzzle solved). Move warps per player with the puzzles (Marco 6).
+  MoveWarp: nothing,
+  PlayerOnBikeCheck: (c) => c.writeVar(c.ptr("arg0"), c.host.onBike?.() ? 1 : 0),
   Warp: (c) => c.host.warp(c.get("arg0"), c.get("arg2"), c.get("arg3"), c.get("arg4")),
   FadeScreen: (c) => c.host.emit({ kind: "fade", type: c.raw("direction"), color: c.raw("color"), duration: c.raw("arg0") }),
   WaitFade: (c) => c.block({ kind: "wait-fade" }),

@@ -61,8 +61,8 @@ export interface MapMesh {
 
 /** The map's 3D scene (shared/maps/mesh.ts), or undefined when it was not extracted. */
 export const loadMapMesh = (mapId: string) => loadMesh(mapDir(mapId));
-/** A building model a script places (spec 024), drawn from its own origin. */
-export const loadPropMesh = (model: number) => loadMesh(`${STAGES}/maps/maps/props/${padded(model)}`);
+/** A building model a script places (spec 024), drawn from its own origin; `pose`, in an animation pose (spec 030.5). */
+export const loadPropMesh = (model: number, pose?: number) => loadMesh(`${STAGES}/maps/maps/props/${padded(model)}${pose === undefined ? "" : `-${pose}`}`);
 
 async function loadMesh(dir: string): Promise<MapMesh | undefined> {
   const file = await fetchMap("map-mesh", `${dir}/mesh.json`);

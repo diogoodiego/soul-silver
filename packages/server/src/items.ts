@@ -24,7 +24,7 @@ import {
   type PocketOf,
   type UseEffect,
 } from "@soulsilver/shared/items";
-import type { ItemState, PartyMember, Save } from "@soulsilver/shared/save";
+import { canFight, type ItemState, type PartyMember, type Save } from "@soulsilver/shared/save";
 import effectsJson from "../../../content/items/effects.json" with { type: "json" };
 import tuningJson from "../../../content/items/tuning.json" with { type: "json" };
 import findsJson from "../../../content/companion/finds.json" with { type: "json" };
@@ -190,7 +190,7 @@ export function createItems(options: ItemsOptions) {
   function repelLevel(s: State): number {
     const party = s.owner.progress.party;
     const out = options.active(s.owner.playerId);
-    return (out !== undefined ? party[out] : party.find((m) => m.hp > 0))?.level ?? 0;
+    return (out !== undefined ? party[out] : party.find(canFight))?.level ?? 0;
   }
 
   function startRepel(s: State, item: number): NoticeCode | undefined {
@@ -234,7 +234,8 @@ export function createItems(options: ItemsOptions) {
       return undefined;
     }
     const m = p.party[index];
-    if (!m) return "action-refused";
+    // Spec 029.2: nothing is used on an egg.
+    if (!m || m.egg) return "action-refused";
     const max = options.hpMax(m);
     switch (effect.archetype) {
       case "heal":

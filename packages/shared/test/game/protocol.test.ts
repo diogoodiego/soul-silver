@@ -4,7 +4,7 @@ import { newBoxes, newItemState } from "../../src/save/schema.ts";
 
 const entity = { id: 1, kind: "player", area: "a", x: 1.5, y: 2, level: 0, facing: "north", data: { name: "Ana" } };
 const still = { x: 0, y: 0 };
-const save = { schemaVersion: 11, flags: [], vars: {}, npcPlacement: {}, rivalName: "", storyRev: 1, name: "Ana", character: "female", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badgeSet: 0, flyPoints: [], respawn: null, bag: [], pokedex: { seen: [], caught: [] }, boxes: newBoxes(), pcItems: [], pending: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() };
+const save = { schemaVersion: 15, daycare: [], daycareEgg: false, eggWalk: 0, photos: [], flags: [], vars: {}, npcPlacement: {}, rivalName: "", storyRev: 1, name: "Ana", character: "female", area: "60", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-10-24T12:00:00.000Z", rev: 0, party: [], money: 3000, badgeSet: 0, flyPoints: [], respawn: null, bag: [], pokedex: { seen: [], caught: [] }, boxes: newBoxes(), pcItems: [], pending: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() };
 
 describe("clientMessage", () => {
   it.each([

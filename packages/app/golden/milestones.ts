@@ -14,6 +14,8 @@ export interface Checks {
   beaten?: number[];
   /** Minimum. */
   badges?: number;
+  /** Pokégear contacts registered. */
+  contacts?: number[];
 }
 
 export interface Milestone {
@@ -48,6 +50,7 @@ export function failedCheck({ checks: c }: Milestone, { save, duplicates, traine
     if (now < min) return `item ${id} × ${min} na bolsa (tem ${now})`;
   }
   if (c.badges !== undefined && badgeCount(save.badgeSet) < c.badges) return `insígnias ≥ ${c.badges} (tem ${badgeCount(save.badgeSet)})`;
+  for (const id of c.contacts ?? []) if (!save.phone.contacts.includes(id)) return `contato ${id} no Pokégear`;
   if (c.rivalNamed && save.rivalName === "") return "rival com nome";
   if (c.beaten && !c.beaten.some((t) => save.flags.includes(trainerFlagBase + t))) return `treinador ${c.beaten.join(", ").replace(/, (\d+)$/, " ou $1")} vencido`;
   const twice = duplicates[0];
@@ -55,7 +58,7 @@ export function failedCheck({ checks: c }: Milestone, { save, duplicates, traine
   return undefined;
 }
 
-/** The ten milestones, in the order the game allows (research R7, walkthrough). */
+/** The milestones, in the order the game allows (research R7, walkthrough). */
 export const MILESTONES: Milestone[] = [
   // 960 from NewGame_InitSaveData; 418, 678 and 744 from the init script (research R1).
   { n: 1, name: "Jogo novo no quarto", checks: { map: 64, flags: [418, 678, 744, 960] } },
@@ -77,4 +80,49 @@ export const MILESTONES: Milestone[] = [
   { n: 9, name: "Sprout Tower concluída", checks: { flags: [118], items: { 397: 1 }, beaten: [290] } },
   // 859:1: Falkner (trainer 20), the Zephyr Badge, flag 402 and VAR_SCENE_VIOLET_CITY_OW.
   { n: 10, name: "Falkner e Insígnia Zephyr", checks: { badges: 1, flags: [402], vars: { 0x4074: 1 }, beaten: [20] } },
+  // Spec 030.1. Out of the gym: Violet City's frame (0x4074 = 1) plays Elm's call, 857:0 (FLAG_GOT_PICK_UP_EGG_CALL_FROM_ELM).
+  { n: 11, name: "Ligação do Elm ao sair do ginásio", checks: { flags: [159], vars: { 0x4074: 2 } } },
+  // 858:2, the assistant in the Violet Poké Mart: GiveTogepiEgg, FLAG_GOT_EGG_FROM_ELMS_ASSISTANT; the lab moves on.
+  { n: 12, name: "Ovo de Togepi do assistente", checks: { flags: [112], vars: { 0x4074: 3, 0x4108: 7 } } },
+  // Out of the mart: the frame (0x4074 = 3) plays the Kimono Girl's scene, 857:4, which hides her again (568).
+  { n: 13, name: "Kimono Girl na saída do Poké Mart", checks: { flags: [568], vars: { 0x4074: 4 } } },
+  // The egg hatches by walking (spec 029.4); the assistant's Togepi sets FLAG_SYS_HATCHED_TOGEPI_EGG.
+  { n: 14, name: "Togepi eclodido", checks: { flags: [0x983] } },
+  // 843 L32: Elm sees Togepi in the lead and gives the Everstone (item 229), FLAG_GOT_EVERSTONE_FROM_ELM.
+  { n: 15, name: "Everstone do Elm", checks: { flags: [114], items: { 229: 1 } } },
+  // Spec 030.2. Route 32's north trigger (232:2, VAR_SCENE_ROUTE_32 = 0): with the egg taken, the man walks up and gives the Miracle Seed (item 239, flag 116).
+  { n: 16, name: "Miracle Seed na Rota 32", checks: { flags: [116], items: { 239: 1 }, vars: { 0x408d: 1 } } },
+  // 233:1, the fisherman in Route 32's Pokémon Center: the Old Rod (item 445, flag 117).
+  { n: 17, name: "Old Rod no Centro Pokémon da Rota 32", checks: { flags: [117], items: { 445: 1 } } },
+  // Union Cave 1F (map 99) from Route 32's south entrance to its exit onto Route 33.
+  { n: 18, name: "Union Cave até a Rota 33", checks: { map: 37 } },
+  // Spec 030.3. Ruins of Alph's first visit: Route 32's gate (98), the outside (113), then the Research Center (321), whose director meets the player (38:0, flag 271).
+  { n: 19, name: "Ruins of Alph e o centro de pesquisa", checks: { map: 321, flags: [271] } },
+  // Dark Cave from Route 31 (map 176), the part reached before Flash, Rock Smash and Surf.
+  { n: 20, name: "Dark Cave pela Rota 31", checks: { map: 176 } },
+  // Spec 030.4. Azalea's trigger at (434, 466) (866:3, VAR_SCENE_AZALEA_TOWN = 0): the Rockets' scene; the well's guard shows (415 cleared).
+  { n: 21, name: "Rockets na chegada a Azalea", checks: { map: 74, vars: { 0x4080: 1 }, flags: [625, 626] } },
+  // 874:1, Kurt in his house (map 164): he runs off to the well; FLAG_TALKED_TO_KURT (119), Kurt (414) and the guard (415) hidden.
+  { n: 22, name: "Kurt corre para o Slowpoke Well", checks: { flags: [119, 414, 415] } },
+  // 60:2, Proton (trainer 486) in the well's B1F: the Rockets leave (425, which also hides the one at the gym door), FLAG_CLEARED_SLOWPOKE_WELL (123);
+  // back in Kurt's house the frame 0x4080 = 2 plays 874:5: the Fast Ball (item 492, flag 124), then his granddaughter's Kurt number (contact 5).
+  { n: 23, name: "Slowpoke Well, Fast Ball e telefone do Kurt", checks: { map: 164, flags: [123, 124, 425], items: { 492: 1 }, vars: { 0x4080: 4 }, beaten: [486], contacts: [5] } },
+  // The Rocket at the gym door (person 1 of map 74, hide flag 425) is gone: the door (405, 471) leads into the gym's entrance (map 136).
+  { n: 24, name: "Ginásio de Azalea liberado", checks: { map: 136 } },
+  // Spec 030.5: the gym (map 180) by its Spinarak threads and levers (azalea-gym.json), to the tile below Bugsy; the step checks each ride.
+  { n: 25, name: "Ginásio de Azalea: Spinarak até o Bugsy", checks: { map: 180 } },
+  // Spec 030.6. 869:1, Bugsy (trainer 21): the Hive Badge (badge 1), the gym's trainers marked beaten, then the std 2033 gift
+  // of item 416 (0x8004) and FLAG_GOT_TM49_FROM_BUGSY (127).
+  { n: 26, name: "Bugsy e Insígnia Hive", checks: { badges: 2, flags: [127], items: { 416: 1 }, beaten: [21] } },
+  // 866:2, the trigger at Azalea's west exit (x 395, armed by Proton's 60:2 setting 0x4075 = 1): the rival's battle by the
+  // player's starter (266 Chikorita, 269 Cyndaquil, 1 Totodile), then 0x4075 = 2.
+  { n: 27, name: "Rival na saída de Azalea", checks: { map: 74, vars: { 0x4075: 2 }, beaten: [266, 269, 1] } },
+  // Spec 030.7. Ilex Forest (map 117, scr_seq 92): the Farfetch'd at (25, 62) faces the branch at (25, 66) once stepped on (92:3),
+  // then caught from behind, from the north (92:1 L28): flag 125, its hide flag 423, and back by the apprentice.
+  { n: 28, name: "Primeiro Farfetch'd do Ilex", checks: { map: 117, flags: [125, 423] } },
+  // The one at (41, 54) flees east from the front, faces the branch at (52, 53) (92:7), and is caught from the west (92:5 L74);
+  // with both back, the charcoal man (92 L142) gives HM01 (item 420, std 2033) and FLAG_GOT_HM01 (128).
+  { n: 29, name: "Segundo Farfetch'd e HM01 Cut", checks: { map: 117, flags: [126, 424, 128], items: { 420: 1 } } },
+  // The tree at (16, 62) (person 5, 146:0) is the only way north: Cut, then the forest's north exit into Route 34's gate (map 171).
+  { n: 30, name: "Travessia do Ilex com Cut", checks: { map: 171 } },
 ];

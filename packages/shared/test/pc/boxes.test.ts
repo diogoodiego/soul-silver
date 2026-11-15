@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { firstFree, moveMon, renameBox, store, type PcProgress } from "../../src/pc/boxes.ts";
-import { newBoxes } from "../../src/save/schema.ts";
+import { newBoxes, type PartyMember } from "../../src/save/schema.ts";
 
 // Spec 023, data-model.md "Validações": each operation checks everything before it changes anything.
 
@@ -64,6 +64,12 @@ describe("PC boxes", () => {
     const result = act(p);
     expect(result).toBe(reason);
     if (reason !== "occupied" && reason !== "full") expect(p).toEqual(before);
+  });
+
+  it("an egg does not count as able to fight (spec 029.2)", () => {
+    const egg: PartyMember = { ...mon(2), egg: { cycles: 20 } };
+    const p = pc([mon(1), egg]);
+    expect(moveMon(p, { where: "party", index: 0 }, { where: "box", box: 0, index: 0 })).toBe("last-fighter");
   });
 
   it("refuses to deposit the last Pokémon able to fight", () => {

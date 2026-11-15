@@ -5,7 +5,10 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 11;
+export const SAVE_SCHEMA_VERSION = 15;
+
+/** Photos Cameron's album holds (PhotoAlbumIsFull). */
+export const PHOTO_ALBUM_MAX = 36;
 
 /** The story revision new saves get (spec 024); a lower one marks a save whose story state predates it. */
 export const STORY_REV = 1;
@@ -39,8 +42,17 @@ export const partyMember = z.strictObject({
   held: z.number().int().min(1).max(0xffff).optional(),
   /** Spec 027: PP Ups used on each move slot (0 to 3); absent is none. */
   ppUps: z.array(z.number().int().min(0).max(3)).max(4).optional(),
+  /** Spec 029: absent for a genderless species, and on members from before v13 until the server rolls one on join. */
+  gender: z.enum(["male", "female"]).optional(),
+  /** Spec 029: an egg, with the egg cycles left before it hatches; it never fights. */
+  egg: z.strictObject({ cycles: z.number().int().min(0).max(255) }).optional(),
+  /** Spec 030.2: ribbon ids (0 to 79) the member holds (MonHasRibbon, GiveRibbon); absent is none. */
+  ribbons: z.array(z.number().int().min(0).max(79)).refine((l) => new Set(l).size === l.length, "fita repetida").optional(),
 });
 export type PartyMember = z.infer<typeof partyMember>;
+
+/** Spec 029.2: a member that can be sent out: not an egg, and with HP left. */
+export const canFight = (m: PartyMember): boolean => !m.egg && m.hp > 0;
 
 const memberIndex = () => z.number().int().min(0).max(5);
 
@@ -56,7 +68,7 @@ const species = () => z.number().int().min(1).max(493);
 const unique = (list: number[]) => new Set(list).size === list.length;
 
 /** What a v1 save gets on migration and a new game starts with (3000 is the HGSS starting money). */
-export const newProgress = () => ({ party: [] as PartyMember[], money: 3000, badgeSet: 0, flyPoints: [] as string[], respawn: null, phone: newPhone(), ...newItemState() });
+export const newProgress = () => ({ party: [] as PartyMember[], money: 3000, badgeSet: 0, flyPoints: [] as string[], respawn: null, phone: newPhone(), daycare: [] as DaycareSave, daycareEgg: false, eggWalk: 0, photos: [] as Photo[], ...newItemState() });
 
 /** Spec 027: an empty Apricorn Box, no tree picked, empty Berry Pots, nothing with Kurt, no Repel. */
 export const newItemState = (): ItemState => ({ apricorns: [0, 0, 0, 0, 0, 0, 0], apricornTrees: { day: "", trees: [] }, berryPots: [null, null, null, null], kurt: null, repel: null });
@@ -95,6 +107,12 @@ const phoneSave = z
   })
   .refine((p) => p.seeking.every((id) => p.contacts.includes(id)), { path: ["seeking"], message: "revanche de número não registrado" });
 export type PhoneSave = z.infer<typeof phoneSave>;
+
+/** Spec 029: the Pokémon left at the Route 34 Day Care and the steps each walked since (DaycareMon). */
+/** A photo Cameron took (CameronPhoto): where (map and the script's photo spot), the party's species, and when. */
+const photo = z.strictObject({ map: z.number().int().nonnegative(), spot: z.number().int().min(0).max(0xffff), species: z.array(species()).max(6), takenAt: z.iso.datetime() });
+const daycare = z.array(z.strictObject({ mon: partyMember, steps: z.number().int().nonnegative() })).max(2);
+export type DaycareSave = z.infer<typeof daycare>;
 
 /** Bag and Pokédex (spec 015): what a v2 save gets and a new game starts with. */
 export const newCollection = () => ({ bag: [] as { item: number; count: number }[], pokedex: { seen: [] as number[], caught: [] as number[] } });
@@ -164,5 +182,14 @@ export const saveSchema = z.strictObject({
   /** The Pokégear phone (spec 026). */
   phone: phoneSave,
   ...itemState.shape,
+  /** The Day Care (spec 029). */
+  daycare,
+  /** Spec 029: the Day Care man holds an egg for the player (Save_Daycare_HasEgg). */
+  daycareEgg: z.boolean(),
+  /** Spec 029.4: px walked in the current egg cycle (a cycle is 255 steps of 16 px). */
+  eggWalk: z.number().min(0).lt(255 * 16),
+  /** Spec 030.2: Cameron's photo album (CameronPhoto), oldest first. */
+  photos: z.array(photo).max(PHOTO_ALBUM_MAX),
 });
 export type Save = z.infer<typeof saveSchema>;
+export type Photo = z.infer<typeof photo>;

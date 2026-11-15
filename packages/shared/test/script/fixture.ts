@@ -26,7 +26,7 @@ export interface FakeHost extends ScriptHost {
   vars: Map<number, number>;
   events: ScriptEvent[];
   bag: Map<number, number>;
-  party: { species: number; level: number; hp: number; nickname?: string; friendship?: number }[];
+  party: { species: number; level: number; hp: number; nickname?: string; friendship?: number; egg?: boolean }[];
   storage: number;
   wallet: number;
   badges: Set<number>;

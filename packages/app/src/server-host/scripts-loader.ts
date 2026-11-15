@@ -49,7 +49,7 @@ export function loadScripts(stagesDir: string, log: (message: string) => void): 
   const refs = new Map(headers.data.records.map((h) => [h.id, h.refs]));
   const files = new Map<number, ScriptFile | undefined>();
   const events = new Map<number, MapEventsFile | undefined>();
-  function read<K extends "script-file" | "map-events" | "new-game" | "std-messages" | "fly-points" | "headbutt" | "rock-smash" | "field-items">(kind: K, path: string) {
+  function read<K extends "script-file" | "map-events" | "new-game" | "std-messages" | "fly-points" | "headbutt" | "rock-smash" | "field-items" | "azalea-gym">(kind: K, path: string) {
     if (!existsSync(path)) return undefined;
     const parsed = parseEventsJson(kind, readFileSync(path, "utf8"), path);
     if (parsed.ok) return parsed.data;
@@ -68,7 +68,10 @@ export function loadScripts(stagesDir: string, log: (message: string) => void): 
   const rockSmash = new Map(read("rock-smash", join(eventsDir, "rock-smash.json"))?.records.map((r) => [r.id, r]));
   // Spec 027: hidden items, apricorn trees and berry growth; an extraction from before it has no file.
   const fieldItems = read("field-items", join(eventsDir, "field-items.json"));
+  // Spec 030.5: the Azalea Gym's threads; an extraction from before it has no file.
+  const azaleaGym = read("azalea-gym", join(eventsDir, "azalea-gym.json"));
   return {
+    azaleaGym: azaleaGym && { stations: azaleaGym.stations, routes: azaleaGym.routes, spiders: azaleaGym.spiders, levers: azaleaGym.levers },
     fieldItems: fieldItems && { hidden: fieldItems.hidden, apricornTrees: fieldItems.apricornTrees, berries: fieldItems.berries },
     phone: readPhone(join(eventsDir, "phone.json"), log),
     newGame: newGame && { map: newGame.map, tx: newGame.tx, ty: newGame.ty, facing: newGame.facing, initScript: newGame.initScript },

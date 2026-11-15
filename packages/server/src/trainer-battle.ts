@@ -4,7 +4,7 @@ import { leadIndex } from "@soulsilver/shared/companion";
 import type { TrainerMusic, TrainerRecord } from "@soulsilver/shared/events";
 import { hpRestore, tileAt, type Entity, type HitEvent, type Rng, type ServerMessage, type WorldLookup } from "@soulsilver/shared/game";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
-import type { PartyMember, Save } from "@soulsilver/shared/save";
+import { canFight, type PartyMember, type Save } from "@soulsilver/shared/save";
 import type { HeldItem } from "@soulsilver/shared/items";
 import { chooseItem, chooseSwitch, prize, trainerProfile, type TrainerProfile } from "@soulsilver/shared/trainer";
 import { wildMoves } from "@soulsilver/shared/wild";
@@ -249,7 +249,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     b.fightAt = undefined;
     const party = b.fighter.progress.party;
     const lead = leadIndex(party);
-    const allyIndex = b.trainer.doubleBattle ? party.findIndex((m, i) => i !== lead && m.hp > 0) : -1;
+    const allyIndex = b.trainer.doubleBattle ? party.findIndex((m, i) => i !== lead && canFight(m)) : -1;
     const arena = { battle: b.id, x: b.arena.x, y: b.arena.y, radiusPx: b.arena.radiusPx, ally: allyIndex === -1 ? undefined : allyIndex };
     if (!companions.enterBattle(b.fighter.playerId, arena, tick)) {
       options.log(`Player ${b.fighter.playerId}: trainer battle ${b.trainer.id} not started, no Pokémon could come out`);

@@ -308,6 +308,25 @@ export const fieldItemsFile = z.strictObject({
 });
 export type FieldItemsFile = z.infer<typeof fieldItemsFile>;
 
+/**
+ * The Azalea Gym's Spinarak threads (spec 030.5, overlay 4): the stops, from each stop and per lever state
+ * (the switches bits) the stop its thread leads to and the thread's points, and the spiders' first stops.
+ */
+const gymTile = z.strictObject({ x: u16(), z: u16() });
+export const azaleaGymFile = z
+  .strictObject({
+    kind: z.literal("azalea-gym"),
+    formatVersion: z.literal(EVENTS_FORMAT_VERSION),
+    stations: z.array(gymTile).min(1),
+    routes: z.array(z.array(z.strictObject({ to: u16(), path: z.array(gymTile).min(2) }).nullable()).length(4)),
+    spiders: z.array(u16()).min(1),
+    /** The ropes and levers each lever animates (AzaleaGymSwitch), where map 180's piece places them, in map pixels. */
+    levers: z.array(z.strictObject({ model: u16(), lever: int(0, 1), x: z.number().finite(), y: z.number().finite(), z: z.number().finite() })).max(8).default([]),
+  })
+  .refine((f) => f.routes.length === f.stations.length, "uma lista de fios por parada")
+  .refine((f) => [...f.spiders, ...f.routes.flat().map((r) => r?.to ?? 0)].every((stop) => stop < f.stations.length), "parada inexistente");
+export type AzaleaGymFile = z.infer<typeof azaleaGymFile>;
+
 export const SCRIPT_ARG_TYPES =["number", "text", "species", "move", "item", "trainer", "flag", "variable", "jump", "movement"] as const;
 
 /** An argument is present only when an earlier one has (or lacks) certain values. */
@@ -391,6 +410,7 @@ const codec = createGameDataCodec({
   "std-messages": stdMessagesFile,
   "fly-points": flyPointsFile,
   "field-items": fieldItemsFile,
+  "azalea-gym": azaleaGymFile,
   "script-commands": scriptCommandsFile,
   "events-report": eventsReportFile,
 });
@@ -409,6 +429,7 @@ export type EventsFileKind =
   | "std-messages"
   | "fly-points"
   | "field-items"
+  | "azalea-gym"
   | "script-commands"
   | "events-report";
 export const parseEventsFile = codec.parseGameDataFile;

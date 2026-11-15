@@ -56,11 +56,11 @@ describe("migrate", () => {
   });
 
   it("applies the chain up to the current version", () => {
-    expect(migrate({ ...v1, party: [], money: 0, badgeSet: 0, flyPoints: [], respawn: null, bag: [], pokedex: { seen: [], caught: [] }, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, rivalName: "", storyRev: 0, phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() }, fake)).toMatchObject({ ok: true, save: { schemaVersion: 2, map: "60" } });
+    expect(migrate({ ...v1, party: [], money: 0, badgeSet: 0, flyPoints: [], respawn: null, bag: [], pokedex: { seen: [], caught: [] }, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, rivalName: "", storyRev: 0, phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, daycare: [], daycareEgg: false, eggWalk: 0, photos: [], ...newItemState() }, fake)).toMatchObject({ ok: true, save: { schemaVersion: 2, map: "60" } });
   });
 
   it("refuses a save newer than the app", () => {
-    expect(migrate({ ...v1, schemaVersion: 12 })).toMatchObject({ ok: false, code: "save-too-new" });
+    expect(migrate({ ...v1, schemaVersion: 16 })).toMatchObject({ ok: false, code: "save-too-new" });
   });
 
   it("fails when a step is missing", () => {

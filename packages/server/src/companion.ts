@@ -3,7 +3,7 @@ import { behind, leadIndex, moneyLoss, pickReaction, placeOf, poseAt, pushPose, 
 import { BUTTON, tileAt, type Entity, type PlayerInput, type Rng, type ServerMessage, type WorldLookup } from "@soulsilver/shared/game";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { friendshipOnFaint, memberStats, natureMods } from "@soulsilver/shared/progression";
-import { badgeCount, type PartyMember, type Save } from "@soulsilver/shared/save";
+import { badgeCount, canFight, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { canHarm, playerPic, type Combat, type CombatantSpec, type Owner } from "./combat";
 import type { CombatData } from "./combat-loader";
 import type { CompanionData } from "./companion-loader";
@@ -109,7 +109,7 @@ export function createCompanions(options: CompanionOptions) {
   };
 
   function sendParty(s: State): void {
-    const members = s.trainer.progress.party.map((m) => ({ species: m.species, ...(m.nickname ? { nickname: m.nickname } : {}), level: m.level, hp: m.hp, hpMax: hpMax(m), ...options.detail?.(m) }));
+    const members = s.trainer.progress.party.map((m) => ({ species: m.species, ...(m.nickname ? { nickname: m.nickname } : {}), level: m.level, hp: m.hp, hpMax: hpMax(m), ...options.detail?.(m), ...(m.egg ? { egg: true as const } : {}) }));
     s.trainer.send({ type: "party", members, ...(s.active !== undefined && s.mode === "combat" ? { active: s.active } : {}) });
   }
 
@@ -193,7 +193,7 @@ export function createCompanions(options: CompanionOptions) {
   const mayLaunch = (s: State, index: number) => options.launchable?.(s.trainer.playerId, s.trainer.progress.party[index]!.species) ?? true;
   /** The first member able to fight that may be sent out here: while surfing, not a terrestrial lead (spec 025). */
   function launchLead(s: State): number | undefined {
-    const i = s.trainer.progress.party.findIndex((m, i) => m.hp > 0 && mayLaunch(s, i));
+    const i = s.trainer.progress.party.findIndex((m, i) => canFight(m) && mayLaunch(s, i));
     return i === -1 ? undefined : i;
   }
 
@@ -392,7 +392,7 @@ export function createCompanions(options: CompanionOptions) {
     swap(playerId: number, index: number, tick: number): void {
       const s = states.get(playerId);
       const member = s?.trainer.progress.party[index];
-      if (!s || s.mode !== "combat" || !member || member.hp === 0 || index === s.active || index === s.arena?.ally || tick < s.swapReadyTick) return;
+      if (!s || s.mode !== "combat" || !member || !canFight(member) || index === s.active || index === s.arena?.ally || tick < s.swapReadyTick) return;
       if (!mayLaunch(s, index)) return s.trainer.send({ type: "notice", code: "launch-refused" });
       keepHp(s);
       if (s.companionId !== undefined) combat!.remove(world, s.companionId);

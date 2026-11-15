@@ -1,5 +1,5 @@
 import type { PcRefusal, PcSlot } from "../game/protocol.ts";
-import { BOX_NAME_MAX, BOX_SLOTS, type PartyMember, type Save } from "../save/schema.ts";
+import { BOX_NAME_MAX, BOX_SLOTS, canFight, type PartyMember, type Save } from "../save/schema.ts";
 
 // PC boxes (spec 023, data-model.md): each operation checks everything before it changes anything.
 
@@ -35,7 +35,7 @@ export function moveMon(p: PcProgress, from: PcSlot, to: PcSlot): PcRefusal | nu
     if (p.party.length >= 6) return "full";
     if (to.index < p.party.length) return "occupied";
   } else if (p.boxes[to.box]!.slots[to.index]) return "occupied";
-  if (from.where === "party" && to.where === "box" && !p.party.some((m, i) => i !== from.index && m.hp > 0)) return "last-fighter";
+  if (from.where === "party" && to.where === "box" && !p.party.some((m, i) => i !== from.index && canFight(m))) return "last-fighter";
 
   if (from.where === "party") p.party.splice(from.index, 1);
   else p.boxes[from.box]!.slots[from.index] = null;

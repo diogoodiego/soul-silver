@@ -4,6 +4,8 @@
 import { PLAYER_NAME_MAX } from "../../game/limits.ts";
 import { formatTextId } from "../../text/ids.ts";
 import type { Handler } from "../runner.ts";
+import { SCRIPT_DIRECTIONS } from "../host.ts";
+import { initAzaleaGym, rideSpinarak, rideTicks, gymProps, toggleSwitch } from "../../field/azalea-gym.ts";
 
 const nothing: Handler = () => undefined;
 
@@ -87,6 +89,34 @@ export const STORY: Record<string, Handler> = {
   // Violet Gym's lift (InitVioletGym, VioletGymmick_ElevatorAction): its floors are one collision level here, so Falkner is a walk away.
   VioletGymInit: nothing,
   VioletGymElevator: nothing,
+  // Spec 030.5: the Azalea Gym's Spinarak and levers (field/azalea-gym.ts). The carts are script props; the server glides the rider.
+  AzaleaGymInit: (c) => {
+    const gym = c.host.azaleaGym?.();
+    if (!gym) return;
+    const state = initAzaleaGym(gym);
+    c.host.setGymmick?.(state);
+    c.host.emit({ kind: "props", props: gymProps(gym, state) });
+  },
+  AzaleaGymSwitch: (c) => {
+    const gym = c.host.azaleaGym?.();
+    const state = c.host.gymmick?.();
+    if (!gym || !state) return;
+    const next = toggleSwitch(state, c.get("arg0"));
+    c.host.setGymmick?.(next);
+    c.host.emit({ kind: "props", props: gymProps(gym, next) });
+  },
+  AzaleaGymSpinarak: (c) => {
+    const gym = c.host.azaleaGym?.();
+    const state = c.host.gymmick?.();
+    const ride = gym && state && rideSpinarak(gym, state, c.get("arg0"));
+    if (!gym || !ride) return;
+    c.host.setGymmick?.(ride.state);
+    c.host.ride?.(ride.path, ride.spider);
+    c.block({ kind: "wait", ticks: rideTicks(ride.path) }, () => {
+      c.host.placePlayer?.(ride.land.x, ride.land.z, SCRIPT_DIRECTIONS.indexOf(ride.facing));
+      c.host.emit({ kind: "props", props: gymProps(gym, ride.state) });
+    });
+  },
   // Script sounds are not played yet (WORLD's PlaySE), so there is nothing to stop.
   StopSE: nothing,
 };

@@ -8,6 +8,9 @@ import { bundledItemRules, createMemoryConnectionPair, createSession } from "@so
 import type { loadServerData } from "../src/server-host/server-data";
 
 const CYNDAQUIL = 155;
+const RARE_CANDY = 50;
+/** HOLD_EFFECT_NO_EVOLVE: the Everstone (spec 030.1). */
+const NO_EVOLVE = 64;
 const FLASH_TM = 397;
 
 export function itemProbe(data: ReturnType<typeof loadServerData>, start: NewGameStart) {
@@ -165,7 +168,18 @@ const member = (species: number, level: number): PartyMember => {
         }
         break;
       default:
-        if (held && held.trigger !== "none") {
+        if (r?.holdEffect?.id === NO_EVOLVE) {
+          // Spec 030.1: held by a Cyndaquil at 13, a Rare Candy takes it to 14, Quilava's level, with no evolution.
+          const e = play({ bag: [{ item, count: 1 }, { item: RARE_CANDY, count: 1 }], party: [member(CYNDAQUIL, 13)] });
+          e.send({ type: "set-held", partyIndex: 0, item });
+          e.send({ type: "use-item", item: RARE_CANDY, partyIndex: 0 });
+          const levelled = e.last("progression")?.item.kind === "level-up";
+          e.send({ type: "progression-ack" });
+          if (e.party()[0]?.held !== item) failed = "não ficou segurado";
+          else if (!levelled) failed = "o Rare Candy não subiu o nível";
+          else if (e.last("progression")?.item.kind === "evolve") failed = "evoluiu segurando a Everstone";
+          e.close();
+        } else if (held && held.trigger !== "none") {
           g.send({ type: "set-held", partyIndex: 0, item });
           if (g.party()[0]?.held !== item) failed = "não ficou segurado";
         } else failed = "sem cenário";

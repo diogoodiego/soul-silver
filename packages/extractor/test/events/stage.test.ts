@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eventsStage } from "../../src/events/stage.ts";
-import { APRICORN_TREES, BERRY_DATA, CLASS_MUSIC, FLY_POINTS, HIDDEN_ITEMS, NEW_GAME_LOCATION, PHONE, PRIZE_TABLE, SHOPS, STD_MESSAGES, TRAINER_CLASS_COUNT } from "../../src/events/layout.ts";
+import { APRICORN_TREES, AZALEA_GYM, BERRY_DATA, CLASS_MUSIC, FLY_POINTS, HIDDEN_ITEMS, NEW_GAME_LOCATION, PHONE, PRIZE_TABLE, SHOPS, STD_MESSAGES, TRAINER_CLASS_COUNT } from "../../src/events/layout.ts";
 import { SEQ } from "../../src/events/trainer-classes.ts";
 import { MAP_HEADER_OFFSET, MAP_HEADER_SIZE } from "../../src/maps/header.ts";
 import type { StageContext } from "../../src/pipeline/stage.ts";
@@ -109,6 +109,18 @@ async function fakeRom(options: Options = {}): Promise<StageContext> {
   const overlay1 = new Uint8Array(STD_MESSAGES.offset + STD_MESSAGES.count * 2);
   [752, 211, 30, 435].forEach((n, i) => new DataView(overlay1.buffer).setUint16(STD_MESSAGES.offset + i * 2, n, true));
   await writeFile(join(root, "code-decompress", "code", "overlay9", name(STD_MESSAGES.overlay)), overlay1);
+  // Spec 030.5: one thread, stop 0 to stop 1 with every lever off; every stop points at the same four records.
+  const overlay4 = new Uint8Array(AZALEA_GYM.stations + AZALEA_GYM.count * 4 + 64);
+  const gym = new DataView(overlay4.buffer);
+  const records = AZALEA_GYM.stations + AZALEA_GYM.count * 4;
+  for (let i = 0; i < AZALEA_GYM.count; i++) {
+    gym.setUint16(AZALEA_GYM.stations + i * 4, i, true);
+    gym.setUint32(AZALEA_GYM.routes + i * 4, AZALEA_GYM.base + records, true);
+  }
+  [2, 1].forEach((n, i) => gym.setUint16(records + i * 2, n, true));
+  gym.setUint32(records + 4, AZALEA_GYM.base + records + 32, true);
+  [0, 0, 1, 0].forEach((n, i) => gym.setUint16(records + 32 + i * 2, n, true));
+  await writeFile(join(root, "code-decompress", "code", "overlay9", name(AZALEA_GYM.overlay)), overlay4);
   // An empty phone book with empty script and rematch tables (spec 026).
   await mkdir(join(root, "rom-unpack", "filesystem", "tel"), { recursive: true });
   await writeFile(join(root, "rom-unpack", "filesystem", "tel", "pmtel_book.dat"), new Uint8Array(4));
@@ -190,6 +202,9 @@ describe("events stage", () => {
     expect(await read("new-game", "new-game.json")).toEqual({ kind: "new-game", formatVersion: 1, map: 64, tx: 6, ty: 6, facing: "south", initScript: 9600 });
     expect((await read("std-messages", "std-messages.json")).banks).toEqual([752, 211, 30, 435]);
     expect((await read("fly-points", "fly-points.json")).points).toEqual([{ flypoint: 11, map: 60, tx: 0x2b7, ty: 0x18d }]);
+    const gym = await read("azalea-gym", "azalea-gym.json");
+    expect(gym.routes[0]![0]).toEqual({ to: 1, path: [{ x: 0, z: 0 }, { x: 1, z: 0 }] });
+    expect(gym.spiders).toEqual([0, 1, 2, 7]);
     const messages = await read("trainer-messages", "trainer-messages.json");
     expect(messages.records).toEqual([
       { trainer: 1, kind: 0, text: "0728:0" },

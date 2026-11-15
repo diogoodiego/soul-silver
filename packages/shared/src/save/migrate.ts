@@ -38,6 +38,13 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   9: (save) => ({ ...save, phone: newPhone(), schemaVersion: 10 }),
   // Spec 027: an empty Apricorn Box and Berry Pots; members hold nothing and have no PP Ups (both optional).
   10: (save) => ({ ...save, ...newItemState(), schemaVersion: 11 }),
+  // Spec 029: nobody has left a Pokémon at the Day Care yet.
+  11: (save) => ({ ...save, daycare: [], schemaVersion: 12 }),
+  // Spec 029: no egg waiting; genders are rolled by the server on join, which has the species' ratios.
+  12: (save) => ({ ...save, daycareEgg: false, schemaVersion: 13 }),
+  13: (save) => ({ ...save, eggWalk: 0, schemaVersion: 14 }),
+  // Spec 030.2: an empty photo album; members carry no ribbons until given one.
+  14: (save) => ({ ...save, photos: [], schemaVersion: 15 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

@@ -10,7 +10,7 @@
   import { menu } from "../input/menu";
   import PokemonIcon from "./PokemonIcon.svelte";
 
-  type Member = { species: number; nickname?: string | undefined; level: number; hp: number; hpMax: number; held?: number | undefined; moves?: number[] | undefined };
+  type Member = { species: number; nickname?: string | undefined; level: number; hp: number; hpMax: number; held?: number | undefined; moves?: number[] | undefined; egg?: true | undefined };
   type Pots = Extract<ServerMessage, { type: "berry-pots" }>["pots"];
 
   let {
@@ -174,7 +174,7 @@
         <li class="grid gap-[0.1rem]">
           <button type="button" class="flex gap-3 items-center justify-between" onclick={() => pickMember(i)}>
             <PokemonIcon species={m.species} />
-            <span>{m.nickname ?? speciesName(m.species)}</span>
+            <span>{m.egg ? t("party.egg") : (m.nickname ?? speciesName(m.species))}</span>
             <span>{m.hp}/{m.hpMax}</span>
           </button>
           {#if m.held !== undefined}

@@ -23,14 +23,39 @@ import { buildMapMesh } from "./mesh.ts";
 import { readModels } from "./nsbmd.ts";
 import { readPiece, type Piece } from "./piece.ts";
 import { encodePng } from "./png.ts";
-import { buildPropMesh } from "./props.ts";
+import { buildPropMesh, posePatterns } from "./props.ts";
+import { readJointPose } from "./joint-animation.ts";
+import { readAscii } from "../binary.ts";
+import { AZALEA_GYM } from "../events/layout.ts";
 import { buildMapScene, type BuildingSource } from "./scene.ts";
 import { readTextureSet, type TextureSet } from "./texture.ts";
 
 const MIB = 1024 * 1024;
 
 /** Models scripts place at run time, with the map whose building archive and area textures they use (spec 024). */
-export const SCRIPT_PROPS = [{ model: 0x8d, map: 61 }] as const;
+export const SCRIPT_PROPS: readonly { model: number; map: number; poses?: readonly number[] }[] = [
+  { model: 0x8d, map: 61 },
+  // Spec 030.5: gym02lift, the Azalea Gym's Spinarak cart (SPIDER_MODEL).
+  { model: 118, map: 180 },
+  // Its ropes and levers, one prop per animation of a/1/0/6 they end in (props/<model>-<pose>): AzaleaGymSwitch
+  // plays the first for a clear lever bit, the second for a set one. Matched by name (g2rope_1ani1, g2switch1...).
+  { model: 115, map: 180, poses: [25, 26] },
+  { model: 116, map: 180, poses: [27, 28] },
+  { model: 117, map: 180, poses: [23, 24] },
+  { model: 122, map: 180, poses: [41, 42] },
+];
+/** Buildings left out of a map's mesh because a script shows them as props (spec 030.5). */
+const SCRIPT_BUILDINGS = new Map([[AZALEA_GYM.map as number, new Set(Object.keys(AZALEA_GYM.levers).map(Number))]]);
+
+/** Spec 030.5: a building in the pose an animation ends in: a joint pose (BCA0) or a texture pattern (BTP0). */
+function posedSource(model: number, bytes: Uint8Array, anim: Uint8Array): BuildingSource {
+  const tex0 = readNitroBlocks(bytes, "BMD0").get("TEX0");
+  const joint = readAscii(anim, 0, 4) === "BCA0";
+  const read = readModels(bytes, joint ? readJointPose(anim) : undefined);
+  const models = joint ? read : posePatterns(read, readAnimations(anim).filter((a) => a.type === "pattern"));
+  const entry = tex0 === undefined ? { models } : { models, textures: readTextureSet(bytes, tex0) };
+  return (id) => (id === model ? entry : undefined);
+}
 
 async function writeMesh(folder: string, mesh: ReturnType<typeof buildMapMesh>): Promise<void> {
   await mkdir(join(folder, "textures"), { recursive: true });
@@ -189,8 +214,9 @@ async function run(ctx: StageContext): Promise<void> {
         const areaData = areaBytes[header.area]!;
         const archive = header.areaType === "indoor" ? MAP_ARCHIVES.roomBuildings : MAP_ARCHIVES.fieldBuildings;
         const source = await buildings(archive, mapCellsWithPieces.flatMap((c) => c.piece.buildings.map((b) => b.model)));
+        const hidden = SCRIPT_BUILDINGS.get(header.id);
         const sceneInput = {
-          cells: mapCellsWithPieces,
+          cells: hidden ? mapCellsWithPieces.map((c) => ({ ...c, piece: { ...c.piece, buildings: c.piece.buildings.filter((b) => !hidden.has(b.model)) } })) : mapCellsWithPieces,
           areaTextures: await textureSet(areaData[2]! | (areaData[3]! << 8)),
           buildings: source,
           animated,
@@ -240,12 +266,19 @@ async function run(ctx: StageContext): Promise<void> {
     if (!header) continue;
     const areaData = areaBytes[header.area]!;
     const archive = header.areaType === "indoor" ? MAP_ARCHIVES.roomBuildings : MAP_ARCHIVES.fieldBuildings;
-    const { mesh, warnings } = buildPropMesh(prop.model, await buildings(archive, [prop.model]), await textureSet(areaData[2]! | (areaData[3]! << 8)));
-    if (warnings.some((w) => w.code === "missing-model")) {
-      ctx.log.warn(`Prop ${prop.model} is not in ${archive}`, "maps");
-      continue;
+    const areaTextures = await textureSet(areaData[2]! | (areaData[3]! << 8));
+    const name = String(prop.model).padStart(4, "0");
+    const variants = prop.poses && prop.model < buildingCounts[archive]
+      ? await Promise.all(prop.poses.map(async (anim, pose) => ({ folder: `${name}-${pose}`, source: posedSource(prop.model, await member(archive, prop.model), await member(MAP_ARCHIVES.animations, anim)) })))
+      : [{ folder: name, source: await buildings(archive, [prop.model]) }];
+    for (const { folder, source } of variants) {
+      const { mesh, warnings } = buildPropMesh(prop.model, source, areaTextures);
+      if (warnings.some((w) => w.code === "missing-model")) {
+        ctx.log.warn(`Prop ${prop.model} is not in ${archive}`, "maps");
+        break;
+      }
+      await writeMesh(join(out, "props", folder), mesh);
     }
-    await writeMesh(join(out, "props", String(prop.model).padStart(4, "0")), mesh);
   }
 
   const report: MapReportFile = { kind: "map-report", formatVersion: MAP_FORMAT_VERSION, records };
@@ -256,8 +289,8 @@ export const mapsStage: Stage = {
   id: "maps",
   title: "Desenhando os mapas",
   // 7: script props (spec 024). 8: weather without the region bit, and the bike, escape rope and fly bits (spec 025).
-  // 9: the incoming-calls bit (spec 026).
-  version: 9,
+  // 9: the incoming-calls bit (spec 026). 10: the Azalea Gym's Spinarak cart (spec 030.5). 11: its ropes and levers as posed props.
+  version: 11,
   weight: 20,
   inputs: [NARC_INPUT, CODE_INPUT],
   outputs: ["maps"],

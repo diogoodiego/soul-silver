@@ -2,6 +2,7 @@
 // effect on the player, the map or the client goes through this interface.
 import type { ScriptFile } from "../events/schemas.ts";
 import type { CutsceneActor, CutsceneStep } from "../game/protocol.ts";
+import type { AzaleaGym, AzaleaGymState, GymTile } from "../field/azalea-gym.ts";
 
 /** A text buffer the next message fills in; the client turns ids into names. */
 export type TextBuffer = { kind: "player" } | { kind: "species"; id: number } | { kind: "number"; value: number } | { kind: "name"; name: string } | { kind: "rival"; name: string } | { kind: "item"; id: number } | { kind: "pocket"; id: number } | { kind: "place"; mapsec: number } | { kind: "text"; text: string } | { kind: "move"; id: number };
@@ -33,7 +34,22 @@ export type ScriptRequest =
   /** Spec 026: a call the script places rings on the Pokégear; answered once the player hangs up. */
   | { kind: "call"; caller: number; script: number }
   /** Spec 027: Kurt asks for an apricorn colour from the box (ScrCmd_739); answered with the colour, 7 to cancel. */
-  | { kind: "apricorn"; counts: number[] };
+  | { kind: "apricorn"; counts: number[] }
+  /** Spec 029: pick a party member (ScrCmd_551, the Day Care); answered with the slot, past the party to cancel. */
+  | { kind: "party" }
+  /** Spec 029.4: the hatch animation for the species that hatched (EggHatchAnim); answered when it ends. */
+  | { kind: "hatch"; species: number };
+
+/** Spec 029: a Pokémon at the Day Care as the player would take it back now. */
+export interface DaycareView {
+  species: number;
+  nickname?: string | undefined;
+  /** The level with the steps walked as experience. */
+  level: number;
+  gained: number;
+  /** Undefined when the species has both genders or none: the save does not keep which one a member is. */
+  gender: "male" | "female" | undefined;
+}
 
 /** Things a script shows without waiting. */
 export type ScriptEvent =
@@ -44,7 +60,7 @@ export type ScriptEvent =
   /** ResetBGM: the map's music again (spec 024). */
   | { kind: "bgm-reset" }
   /** Building models a script places on the map (spec 024), replacing any before; in map units. */
-  | { kind: "props"; props: { model: number; x: number; y: number; z: number }[] };
+  | { kind: "props"; props: { model: number; x: number; y: number; z: number; pose?: number }[] };
 
 /** Directions as the game numbers them. */
 export const SCRIPT_DIRECTIONS = ["north", "south", "west", "east"] as const;
@@ -109,6 +125,15 @@ export interface ScriptHost {
   /** In matrix tiles, as the scripts compare them; facing as SCRIPT_DIRECTIONS indexes. */
   playerPosition(): { x: number; z: number; facing: number };
   warp(map: number, x: number, z: number, facing: number): void;
+  /** Spec 030.5: moves the player on this map, in its own tiles, without it counting as a step onto a trigger. */
+  placePlayer?(x: number, z: number, facing: number): void;
+  /** Spec 030.5: the Azalea Gym's threads (azalea-gym.json); undefined without the file. */
+  azaleaGym?(): AzaleaGym | undefined;
+  /** Spec 030.5: this player's Azalea Gym spiders and levers (the original's Gymmick block), set on entering the gym. */
+  gymmick?(): AzaleaGymState | undefined;
+  setGymmick?(state: AzaleaGymState): void;
+  /** Spec 030.5: glides the player along `path` (map tiles) on spider `spider` while the script waits out the ride. */
+  ride?(path: GymTile[], spider: number): void;
   /** Turns the object the player talked to towards them, if any. */
   facePlayer(): void;
   hidePerson(id: number): void;
@@ -143,6 +168,40 @@ export interface ScriptHost {
   kurtCount?(): number;
   kurtBall?(): number;
   clearKurt?(): void;
+  /** Spec 029: the Day Care, slot 0 first. */
+  daycare?(): DaycareView[];
+  /** Leaves the party member at the Day Care (Save_Daycare_PutMonIn). */
+  daycareDeposit?(slot: number): void;
+  /** Takes a Pokémon back to the end of the party, grown (Save_Daycare_RetrieveMon); its species. */
+  daycareRetrieve?(index: number): number;
+  /** Party members with HP left, not counting `except` (CountAliveMons). */
+  aliveMons?(except?: number): number;
+  /** Pokémon in all the PC boxes (PCStorage_CountMonsInAllBoxes). */
+  boxMonCount?(): number;
+  /** Spec 029.2: the man holds an egg (Save_Daycare_HasEgg). */
+  daycareEgg?(): boolean;
+  /** Save_Daycare_CalcCompatibility: 0 best to 3 incompatible. */
+  daycareCompatibility?(): number;
+  /** GiveEggToPlayer: the egg to the end of the party, and the man no longer holds one. */
+  giveDaycareEgg?(): void;
+  /** Save_Daycare_ResetEggStats: the player turned the egg down. */
+  resetDaycareEgg?(): void;
+  /** Whether the party member is an egg. */
+  partyIsEgg?(slot: number): boolean;
+  /** Spec 029.4, EggHatchAnim: the first egg at 0 cycles hatches (Party_GetMonToHatch); its species, or none. */
+  hatchEgg?(): number | undefined;
+  /** Spec 029.5, ScrCmd_GiveEgg and ScrCmd_GiveTogepiEgg: a gift egg of `species` (with `move` added) when the party has room. */
+  giveEgg?(species: number, move?: number): void;
+  /** Spec 030.2, MonHasRibbon and GiveRibbon: a party member's ribbons. */
+  monHasRibbon?(slot: number, ribbon: number): boolean;
+  giveRibbon?(slot: number, ribbon: number): void;
+  /** Spec 030.2, PhotoAlbumIsFull and CameronPhoto: the photo album, and a photo of the party at `spot`. */
+  photoAlbumFull?(): boolean;
+  takePhoto?(spot: number): void;
+  /** Spec 030.3, PlayerOnBikeCheck: the player rides the bike. */
+  onBike?(): boolean;
+  /** Spec 030.3, ScrCmd_545 and CheckSeenAllLetterUnown: how many Unown forms the Pokédex holds. */
+  unownForms?(): number;
   /** A uniform u16 from the simulation's seeded generator (LCRandom in the original). */
   random16(): number;
   emit(event: ScriptEvent): void;

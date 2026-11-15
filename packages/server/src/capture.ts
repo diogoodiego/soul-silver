@@ -3,7 +3,7 @@ import { BUTTON, type PlayerInput, type Rng, type ServerMessage, type WorldLooku
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { expForLevel } from "@soulsilver/shared/progression";
 import { firstFree, store } from "@soulsilver/shared/pc";
-import type { PartyMember, Save } from "@soulsilver/shared/save";
+import { canFight, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { ballMultiplier, catchValue, markCaught, markSeen, rollShakes, timeOfDay } from "@soulsilver/shared/wild";
 import type { Combat } from "./combat";
 import type { CombatData } from "./combat-loader";
@@ -147,7 +147,7 @@ export function createCaptures(options: CaptureOptions) {
     const ball = data.balls.balls[String(f.ball)]!;
     const map = lookup(e.area);
     const user = options.controlled(f.playerId);
-    const lead = s.catcher.progress.party.find((m) => m.hp > 0);
+    const lead = s.catcher.progress.party.find(canFight);
     const mult = ballMultiplier(ball, {
       night: timeOfDay(options.hour(), rules.timeBands) === "night",
       cave: map?.areaType === "cave",

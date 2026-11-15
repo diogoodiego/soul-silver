@@ -340,13 +340,13 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   const markerMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide });
 
   // Script props (spec 024): models placed by the map's scripts, cleared when the player changes map.
-  const propMeshes = new Map<number, Promise<MapMesh | undefined>>();
-  let props: { area: string; objects: ReturnType<typeof buildMapObject>[] } | undefined;
+  const propMeshes = new Map<string, Promise<MapMesh | undefined>>();
+  let props: { area: string; models: string; objects: (ReturnType<typeof buildMapObject> | undefined)[] } | undefined;
   let propsVersion = 0;
   function clearProps(): void {
     for (const o of props?.objects ?? []) {
-      o.root.removeFromParent();
-      o.dispose();
+      o?.root.removeFromParent();
+      o?.dispose();
     }
     props = undefined;
   }
@@ -554,18 +554,25 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
 
   return {
     /** Replaces the props on `area`; positions in the map's pixels, height included. */
-    setProps(area: string, list: readonly { model: number; x: number; y: number; z: number }[]): void {
+    setProps(area: string, list: readonly { model: number; x: number; y: number; z: number; pose?: number }[]): void {
+      const models = list.map((p) => `${p.model}-${p.pose ?? ""}`).join(",");
+      // Spec 030.5: the same props moved (a Spinarak cart gliding, every tick) are only placed again.
+      if (props?.area === area && props.models === models && list.every((_, i) => props!.objects[i])) {
+        list.forEach((p, i) => props!.objects[i]!.root.position.set(p.x, p.y, p.z));
+        return;
+      }
       clearProps();
       const version = ++propsVersion;
-      props = { area, objects: [] };
-      for (const p of list) {
-        let mesh = propMeshes.get(p.model);
+      props = { area, models, objects: [] };
+      list.forEach((p, i) => {
+        const key = p.pose === undefined ? String(p.model) : `${p.model}-${p.pose}`;
+        let mesh = propMeshes.get(key);
         if (!mesh) {
-          mesh = loadPropMesh(p.model).catch((error: unknown) => {
-            log(`Prop ${p.model} mesh: ${(error as Error).message}`);
+          mesh = loadPropMesh(p.model, p.pose).catch((error: unknown) => {
+            log(`Prop ${key} mesh: ${(error as Error).message}`);
             return undefined;
           });
-          propMeshes.set(p.model, mesh);
+          propMeshes.set(key, mesh);
         }
         void mesh.then((m) => {
           if (!m || version !== propsVersion || !props) return;
@@ -574,9 +581,10 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
           object.root.position.set(p.x, p.y, p.z);
           object.root.visible = area === currentArea;
           scene.add(object.root);
-          props.objects.push(object);
+          // In list order, whichever mesh loads first: a later move places each by its index.
+          props.objects[i] = object;
         });
-      }
+      });
     },
     /** Once per animation frame. `running` is the local player's run button. */
     draw(view: DrawView, running: boolean, now: number): void {
@@ -592,7 +600,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         }
         currentArea = self.area;
         if (props && props.area !== self.area) clearProps();
-        for (const o of props?.objects ?? []) o.root.visible = true;
+        for (const o of props?.objects ?? []) if (o) o.root.visible = true;
         void enterArea(self.area);
       }
       const seen = new Set<number>();

@@ -29,7 +29,8 @@
     "./trainer": "./src/trainer/index.ts",
     "./pc": "./src/pc/index.ts",
     "./economy": "./src/economy/index.ts",
-    "./items": "./src/items/index.ts"
+    "./items": "./src/items/index.ts",
+    "./daycare": "./src/daycare/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

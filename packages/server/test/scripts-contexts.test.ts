@@ -92,11 +92,32 @@ describe("script contexts", () => {
     const both = scriptFile(100, ["L1:", ["NPCMsg", { msg_id: { text: "0007:1" } }], ["End"], "L2:", ["SetFlag", { flag: { flag: 305 } }], ["End"]]);
     const t = story(scriptData([both], { 60: mapEvents({ npcs: [npc(0, 1, 2, 0)], triggers: [{ script: { id: 2, file: 100, entry: 1 }, x: 1, z: 1, w: 1, h: 1, y: 0, variable: 0x4100, value: 0 }] }) }));
     const a = t.connect();
-    // The player spawns on the trigger: it runs once on the first step, then talking still works.
+    // The player spawns on the trigger, which does not run it (below); talking still works.
     t.step();
     t.press(a);
     t.press(a);
     expect(t.of(a, "script")).toHaveLength(1);
+  });
+
+  // Spec 030.5: as the original, whose coordinate events fire on a finished step, arriving on a trigger (a load, a
+  // door) does not run it. A save made mid-ride in the Azalea Gym keeps the player on a stop and rode again on load.
+  it("arriving on a trigger does not run it; stepping off it and back on does", () => {
+    const flag = scriptFile(100, ["L1:", ["SetFlag", { flag: { flag: 305 } }], ["End"]]);
+    const data = () => scriptData([flag], { 60: mapEvents({ triggers: [{ script: { id: 1, file: 100, entry: 0 }, x: 1, z: 1, w: 1, h: 1, y: 0, variable: 0x4100, value: 0 }] }) });
+    const flags = (walkOff: boolean) => {
+      const t = story(data());
+      const a = t.connect();
+      t.step(3);
+      if (walkOff) {
+        t.walk(a, { x: 0, y: 1 }, 8);
+        t.walk(a, { x: 0, y: -1 }, 8);
+      }
+      t.step(3);
+      t.session.close("closed-by-host");
+      return a.saves().at(-1)!.save.flags;
+    };
+    expect(flags(false)).not.toContain(305);
+    expect(flags(true)).toContain(305);
   });
 
   it("CallStd reaches global scripts", () => {

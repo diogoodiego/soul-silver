@@ -24,6 +24,7 @@
   import ScriptDebug from "./game/ScriptDebug.svelte";
   import Shop from "./game/Shop.svelte";
   import StarterChoice from "./game/StarterChoice.svelte";
+  import HatchScene from "./game/HatchScene.svelte";
   import NameInput from "./game/NameInput.svelte";
   import PcPanel from "./game/PcPanel.svelte";
   import { BANK, bankTexts, itemRecords, moveTypes } from "./game/game-data";
@@ -232,6 +233,10 @@
   /** The Poké Mart a clerk opened (spec 023), and the last refusal shown in it. */
   /** The starter scene a script waits on (spec 024). */
   let starter = $state<{ id: number; species: number[] } | undefined>();
+  /** The hatch animation a script waits on (spec 029.4), and what ends it. */
+  let hatching = $state<{ species: number; done: () => void } | undefined>();
+  /** "{species} hatched from the Egg!", in the hatch common script's bank. */
+  const HATCHED_TEXT = "0040:63";
   /** A naming screen a script waits on (spec 024). */
   let naming = $state<{ id: number; title: string; max: number; keep: string } | undefined>();
   let shop = $state<Extract<ServerMessage, { type: "shopOpen" }> | undefined>();
@@ -401,6 +406,20 @@
         const colours = r.counts.flatMap((n, i) => (n > 0 ? [i] : []));
         const picked = await dialog.choose([t("kurt.choose")], colours.map((i) => `${itemName(RED_APRICORN + i)} ×${r.counts[i]}`));
         answerScript(ev.id, picked < 0 ? 7 : colours[picked]!);
+        return;
+      }
+      case "party": {
+        // The Day Care (spec 029): which member to leave; a cancel answers past the party.
+        // shortcut: a list under the last message stands in for the party screen; open PartyMenu in a pick mode when the Day Care gets its layer 4 pass.
+        const picked = await dialog.choose(lastSay.slice(-1), party.map((m) => (m.egg ? t("party.egg") : `${m.nickname ?? speciesName(m.species)} Lv. ${m.level}`)));
+        answerScript(ev.id, picked < 0 ? party.length : picked);
+        return;
+      }
+      case "hatch": {
+        await new Promise<void>((done) => (hatching = { species: r.species, done }));
+        await dialog.say(await scriptPages(HATCHED_TEXT, { 0: { kind: "species", id: r.species } }));
+        hatching = undefined;
+        answerScript(ev.id);
         return;
       }
       case "wait-fade":
@@ -1158,6 +1177,7 @@
       }}
     />
   {/if}
+  {#if hatching}<HatchScene species={hatching.species} {speciesName} onDone={() => hatching!.done()} />{/if}
   {#if starter}
     <StarterChoice
       species={starter.species}

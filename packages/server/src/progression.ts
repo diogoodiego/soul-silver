@@ -1,6 +1,6 @@
 import type { Stats } from "@soulsilver/shared/combat";
 import type { ClientMessage, ServerMessage } from "@soulsilver/shared/game";
-import type { EvolutionRecord, LearnsetRecord, MachineRecord, SpeciesRecord } from "@soulsilver/shared/game-data";
+import type { EvolutionRecord, ItemRecord, LearnsetRecord, MachineRecord, SpeciesRecord } from "@soulsilver/shared/game-data";
 import { addEvs, expForLevel, expGain, friendshipOnLevelUp, levelFor, levelUpItems, memberStats } from "@soulsilver/shared/progression";
 import type { PartyMember, ProgressionItem, Save } from "@soulsilver/shared/save";
 import { markCaught } from "@soulsilver/shared/wild";
@@ -10,12 +10,14 @@ import { markCaught } from "@soulsilver/shared/wild";
 
 /** The parts of the extraction progression reads. */
 export interface ExtractedForProgression {
-  /** `abilities` only feeds the party screen (spec 017). */
-  species: (Pick<SpeciesRecord, "id" | "baseStats" | "baseExperience" | "evYield" | "growthRate" | "baseFriendship"> & Partial<Pick<SpeciesRecord, "abilities">>)[];
-  learnsets: (Pick<LearnsetRecord, "id" | "levelUp"> & Partial<Pick<LearnsetRecord, "machines">>)[];
+  /** `abilities` only feeds the party screen (spec 017); `gender`, `eggGroups` and `hatchCycles`, the Day Care (spec 029). */
+  species: (Pick<SpeciesRecord, "id" | "baseStats" | "baseExperience" | "evYield" | "growthRate" | "baseFriendship"> & Partial<Pick<SpeciesRecord, "abilities" | "gender" | "eggGroups" | "hatchCycles">>)[];
+  learnsets: (Pick<LearnsetRecord, "id" | "levelUp"> & Partial<Pick<LearnsetRecord, "machines" | "egg">>)[];
   evolutions: Pick<EvolutionRecord, "id" | "evolutions">[];
   /** Spec 027: TMs and HMs; without them no machine teaches anything. */
   machines?: MachineRecord[] | undefined;
+  /** Spec 030.1: the items' hold effects, for the Everstone; without them no item stops an evolution. */
+  items?: Pick<ItemRecord, "id" | "holdEffect">[] | undefined;
 }
 
 export interface ProgressionData {
@@ -25,6 +27,11 @@ export interface ProgressionData {
   /** Spec 027: the machines (1–100) a species can learn from, and what each teaches. */
   machines(species: number): number[];
   machine(id: number): MachineRecord | undefined;
+  /** Spec 029.2: the egg moves of a species, and what it evolves from (none for a base form). */
+  eggMoves(species: number): number[];
+  preEvolution(species: number): number | undefined;
+  /** Spec 030.1: the hold effect id of an item, 0 for none. */
+  holdEffect(item: number): number;
 }
 
 export function buildProgressionData(extracted: ExtractedForProgression): ProgressionData {
@@ -33,12 +40,18 @@ export function buildProgressionData(extracted: ExtractedForProgression): Progre
   const evolutions = new Map(extracted.evolutions.map((e) => [e.id, e.evolutions]));
   const compatible = new Map(extracted.learnsets.map((l) => [l.id, l.machines ?? []]));
   const machines = new Map((extracted.machines ?? []).map((m) => [m.id, m]));
+  const eggMoves = new Map(extracted.learnsets.map((l) => [l.id, l.egg ?? []]));
+  const from = new Map(extracted.evolutions.flatMap((e) => e.evolutions.map((v) => [v.into, e.id] as const)));
+  const holds = new Map((extracted.items ?? []).map((i) => [i.id, i.holdEffect.id]));
   return {
     species: (id) => species.get(id),
     levelUp: (id) => learnsets.get(id) ?? [],
     evolutions: (id) => evolutions.get(id) ?? [],
     machines: (id) => compatible.get(id) ?? [],
     machine: (id) => machines.get(id),
+    eggMoves: (id) => eggMoves.get(id) ?? [],
+    preEvolution: (id) => from.get(id),
+    holdEffect: (item) => holds.get(item) ?? 0,
   };
 }
 
@@ -63,6 +76,9 @@ export type ItemGrowth = { kind: "level" } | { kind: "evolve"; item: number } | 
 /** TM01 is item 328 and machine 1; HM08 is item 427 and machine 100. */
 const FIRST_MACHINE_ITEM = 328;
 const USE_ITEM_METHODS = new Set(["use-item", "use-item-male", "use-item-female"]);
+/** HOLD_EFFECT_NO_EVOLVE (the Everstone) and SPECIES_KADABRA, which ignores it (GetMonEvolutionInternal). */
+const HOLD_EFFECT_NO_EVOLVE = 64;
+const KADABRA = 64;
 
 type Answer = Extract<ClientMessage, { type: "progression-ack" | "learn-answer" | "evolve-answer" }>;
 
@@ -78,6 +94,8 @@ const diff = (a: Stats, b: Stats): Stats => Object.fromEntries(Object.keys(a).ma
 
 export function createProgression(options: ProgressionOptions) {
   const { data } = options;
+  /** The evolutions a level or a trade can start: none while it holds an Everstone, unless it is Kadabra. */
+  const evolutionsOf = (m: PartyMember) => (m.species !== KADABRA && m.held !== undefined && data.holdEffect(m.held) === HOLD_EFFECT_NO_EVOLVE ? [] : data.evolutions(m.species));
   const states = new Map<number, State>();
   /** Players who exchanged hits with each wild Pokémon. */
   const engaged = new Map<number, Set<number>>();
@@ -109,7 +127,7 @@ export function createProgression(options: ProgressionOptions) {
     if (to <= from) return;
     // A cancelled or still pending evolution is offered again after the new levels.
     const pending = s.learner.progress.pending.filter((i) => !(i.kind === "evolve" && i.member === index));
-    const items = levelUpItems({ member: index, from, to, moves: m.moves, learnset: data.levelUp(m.species), evolutions: data.evolutions(m.species) });
+    const items = levelUpItems({ member: index, from, to, moves: m.moves, learnset: data.levelUp(m.species), evolutions: evolutionsOf(m) });
     s.learner.progress.pending = [...pending, ...items];
   }
 
@@ -251,7 +269,7 @@ export function createProgression(options: ProgressionOptions) {
       const s = states.get(playerId);
       const m = s?.learner.progress.party[index];
       if (!s || !m) return;
-      const to = data.evolutions(m.species).find((e) => e.method === "trade" || (e.method === "trade-item" && e.condition.kind === "item" && e.condition.item === m.held));
+      const to = evolutionsOf(m).find((e) => e.method === "trade" || (e.method === "trade-item" && e.condition.kind === "item" && e.condition.item === m.held));
       if (to) s.learner.progress.pending.push({ kind: "evolve", member: index, into: to.into });
     },
     useItem(playerId: number, index: number, use: ItemGrowth): boolean {
@@ -265,7 +283,7 @@ export function createProgression(options: ProgressionOptions) {
         if (!rate || from >= 100) return false;
         m.experience = Math.max(m.experience, expForLevel(rate, from + 1));
         const rest = pending.filter((i) => !(i.kind === "evolve" && i.member === index));
-        s.learner.progress.pending = [...rest, ...levelUpItems({ member: index, from, to: from + 1, moves: m.moves, learnset: data.levelUp(m.species), evolutions: data.evolutions(m.species) })];
+        s.learner.progress.pending = [...rest, ...levelUpItems({ member: index, from, to: from + 1, moves: m.moves, learnset: data.levelUp(m.species), evolutions: evolutionsOf(m) })];
         return true;
       }
       if (use.kind === "evolve") {

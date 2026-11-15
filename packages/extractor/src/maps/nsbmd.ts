@@ -123,7 +123,7 @@ function readMaterials(b: Uint8Array, section: number): ModelMaterial[] {
   });
 }
 
-function readModel(b: Uint8Array, m: number, name: string): Model {
+function readModel(b: Uint8Array, m: number, name: string, pose?: ReadonlyMap<number, Matrix>): Model {
   const sbcStart = m + readU32(b, m + 4);
   const sbcEnd = m + readU32(b, m + 8);
   const shapeSection = m + readU32(b, m + 12);
@@ -131,7 +131,7 @@ function readModel(b: Uint8Array, m: number, name: string): Model {
   const invPosScale = fx32(b, m + 0x20);
 
   const nodeDict = m + 0x40;
-  const nodes = readDictionary(b, nodeDict).map((entry) => nodeMatrix(b, nodeDict + readU32(entry.data, 0)));
+  const nodes = readDictionary(b, nodeDict).map((entry, i) => pose?.get(i) ?? nodeMatrix(b, nodeDict + readU32(entry.data, 0)));
   const shapes = readDictionary(b, shapeSection).map((entry) => {
     const s = shapeSection + readU32(entry.data, 0);
     const start = s + readU32(b, s + 8);
@@ -226,9 +226,9 @@ function readModel(b: Uint8Array, m: number, name: string): Model {
   throw new ModelFormatError(`${name}: bytecode has no RET`);
 }
 
-/** Reads every model of an NSBMD file. */
-export function readModels(bytes: Uint8Array): Model[] {
+/** Reads every model of an NSBMD file; `pose` replaces node matrices by index (a joint animation's pose, spec 030.5). */
+export function readModels(bytes: Uint8Array, pose?: ReadonlyMap<number, Matrix>): Model[] {
   const mdl = readNitroBlocks(bytes, "BMD0").get("MDL0");
   if (mdl === undefined) throw new ModelFormatError("BMD0 without an MDL0 block");
-  return readDictionary(bytes, mdl + 8).map((entry) => readModel(bytes, mdl + readU32(entry.data, 0), entry.name));
+  return readDictionary(bytes, mdl + 8).map((entry) => readModel(bytes, mdl + readU32(entry.data, 0), entry.name, pose));
 }

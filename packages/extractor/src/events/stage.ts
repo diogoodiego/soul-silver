@@ -30,6 +30,7 @@ import {
   EVENT_ARCHIVES,
   HEADBUTT_ARCHIVE,
   ROCK_SMASH_ARCHIVE,
+  AZALEA_GYM,
   FLY_POINTS,
   HIDDEN_ITEMS,
   APRICORN_TREES,
@@ -47,6 +48,17 @@ import {
   ZERO_SCRIPT,
 } from "./layout.ts";
 import { readFlyPoints } from "./fly-points.ts";
+import { gymLevers, readAzaleaGym } from "./azalea-gym.ts";
+import { readMatrix } from "../maps/grid.ts";
+import { readPiece } from "../maps/piece.ts";
+import { MAP_ARCHIVES } from "../maps/stage.ts";
+
+/** A map's pieces with their cell in its matrix (spec 030.5: the Azalea Gym's ropes and levers). */
+async function mapCells(ctx: StageContext, matrixId: number) {
+  const matrix = readMatrix(await readNarcMember(ctx, MAP_ARCHIVES.matrices, matrixId), matrixId);
+  const cells = matrix.pieces.map((piece, i) => ({ x: i % matrix.width, z: Math.floor(i / matrix.width), piece }));
+  return Promise.all(cells.filter((c) => c.piece !== 0xffff).map(async (c) => ({ ...c, piece: readPiece(await readNarcMember(ctx, MAP_ARCHIVES.pieces, c.piece)) })));
+}
 import { readApricornTrees, readBerryGrowth, readHiddenItems } from "./field-items.ts";
 import { readPhoneBook } from "./phone.ts";
 import { PHONE_FORMAT_VERSION, serializePhoneFile } from "@soulsilver/shared/phone";
@@ -174,6 +186,16 @@ async function run(ctx: StageContext): Promise<void> {
   await write("std-messages.json", "std-messages", { kind: "std-messages", formatVersion: EVENTS_FORMAT_VERSION, banks });
   // Fly destinations (spec 025).
   await write("fly-points.json", "fly-points", { kind: "fly-points", formatVersion: EVENTS_FORMAT_VERSION, points: readFlyPoints(arm9, FLY_POINTS) });
+  // The Azalea Gym's Spinarak threads (spec 030.5).
+  const gymMap = maps.find((m) => m.id === AZALEA_GYM.map);
+  if (!gymMap) ctx.log.warn(`Map ${AZALEA_GYM.map} is not in map-headers.json: the Azalea Gym gets no ropes or levers`, "events");
+  const gymCells = gymMap ? await mapCells(ctx, gymMap.matrix) : [];
+  await write("azalea-gym.json", "azalea-gym", {
+    kind: "azalea-gym",
+    formatVersion: EVENTS_FORMAT_VERSION,
+    ...readAzaleaGym(await readOverlay(ctx, AZALEA_GYM.overlay), AZALEA_GYM),
+    levers: gymLevers(gymCells, AZALEA_GYM.levers),
+  });
   // Hidden items, apricorn trees and Berry Pot growth (spec 027).
   const berryData = await Promise.all((await listNarcIndices(ctx, BERRY_DATA)).map((id) => readNarcMember(ctx, BERRY_DATA, id)));
   await write("field-items.json", "field-items", {
@@ -269,7 +291,8 @@ export const eventsStage: Stage = {
   // 3: trainer classes and trainer lines (spec 022). 4: Poké Mart stock (spec 023).
   // 5: new-game start and std message table (spec 024).
   // 6: Fly destinations (spec 025). 7: Rock Smash item odds (spec 025). 8: the phone book (spec 026). 9: its greetings.
-  version: 9,
+  // 10: the Azalea Gym's threads (spec 030.5). 11: its ropes and levers.
+  version: 11,
   weight: 6,
   inputs: [NARC_INPUT, CODE_INPUT, FILESYSTEM_INPUT, MAPS_INPUT, TEXT_INPUT],
   outputs: ["events"],

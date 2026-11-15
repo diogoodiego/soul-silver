@@ -15,7 +15,8 @@ export interface ObjectIdentity {
  * Groups of objects showing one character twice (research R8): the same sprite and script, or a known
  * pair of versions, given by their hide flags. `visible` is the caller's filter, the one the game uses.
  * The same sprite alone is legitimate: trainers and scenery share sprites. So is a script from the common
- * banks (apricorn trees, item balls): only a map's own scripts belong to one character.
+ * banks (apricorn trees, item balls): only a map's own scripts belong to one character. So is a herd shown and hidden
+ * by one flag (Azalea's Slowpokes, spec 030.6): versions of one character differ in their hide flags.
  */
 export function findDuplicates<T extends ObjectIdentity>(objects: readonly T[], visible: (object: T) => boolean, versions: readonly (readonly [number, number])[] = []): T[][] {
   const groups = new Map<string, T[]>();
@@ -26,5 +27,6 @@ export function findDuplicates<T extends ObjectIdentity>(objects: readonly T[], 
       if (pair.includes(object.hideFlag)) add(`version ${i}`, object);
     });
   }
-  return [...groups.values()].filter((group) => group.length > 1);
+  const herd = (group: T[]) => group[0]!.hideFlag !== 0 && group.every((o) => o.hideFlag === group[0]!.hideFlag);
+  return [...groups.entries()].filter(([key, group]) => group.length > 1 && (key.startsWith("version") || !herd(group))).map(([, group]) => group);
 }

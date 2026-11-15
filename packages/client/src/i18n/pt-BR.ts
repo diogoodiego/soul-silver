@@ -444,6 +444,8 @@ export const ptBR = {
   "found.companion": "{name} encontrou {item}!",
   "found.berry": "Você colheu {count}× {item}!",
   "kurt.choose": "Quais apricorns dar ao Kurt?",
+  "party.egg": "Ovo",
+  "hatch.title": "Eclosão do ovo",
   "dowse.label": "Dowsing",
   "pocket.items": "Itens",
   "pocket.medicine": "Remédios",

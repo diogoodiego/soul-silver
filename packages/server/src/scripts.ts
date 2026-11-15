@@ -1,16 +1,17 @@
 import type { EncounterRecord, EncounterSlot, MapEventsFile, FieldItemsFile, FlyPointsFile, HeadbuttRecord, NewGameFile, RockSmashRecord, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
-import { headbuttTree, pickUser, type FieldMovesRules } from "@soulsilver/shared/field";
+import { headbuttTree, pickUser, RIDER_OFFSET_PX, rideAt, gymProps, type AzaleaGym, type AzaleaGymState, type FieldMovesRules, type GymTile } from "@soulsilver/shared/field";
 import { rollLevel, rollSlot } from "@soulsilver/shared/wild";
 import { createRng, stepMovement, tileAt, unstick, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
 import { isCounter, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { starterMember } from "@soulsilver/shared/progression";
 import { store } from "@soulsilver/shared/pc";
-import { hasBadgeBit, type PartyMember, type Save } from "@soulsilver/shared/save";
+import { canFight, hasBadgeBit, PHOTO_ALBUM_MAX, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { npcOccupied, type CutsceneActor, type CutsceneStep } from "@soulsilver/shared/npc";
 import { createRunner, SCRIPT_DIRECTIONS, SCRIPT_HANDLERS, type MissingCommand, type Runner, type ScriptHost } from "@soulsilver/shared/script";
 import { POCKET_KEYS } from "@soulsilver/shared/game-data";
 import type { PhoneBook } from "@soulsilver/shared/phone";
 import { addItem, canAdd, removeItem, type PocketOf } from "@soulsilver/shared/items";
+import { compatibility, compatibilityScore, cyclesToSubtract, daycareStep, eggWalk, makeGiftEgg, deposit, eggCheckDue, eggRoll, eggSpecies, grownLevel, makeEgg, motherIsFirst, retrieve, rollGender, type Parent } from "@soulsilver/shared/daycare";
 import type { ItemsData } from "./items";
 import type { Npcs } from "./npcs";
 import type { ProgressionData } from "./progression";
@@ -41,6 +42,8 @@ export interface ScriptData {
   rockSmash?: ((map: number) => RockSmashRecord | undefined) | undefined;
   /** Spec 027: hidden items, apricorn tree colours and berry growth; absent in older extractions. */
   fieldItems?: Omit<FieldItemsFile, "kind" | "formatVersion"> | undefined;
+  /** Spec 030.5: the Azalea Gym's Spinarak threads; absent in older extractions. */
+  azaleaGym?: AzaleaGym | undefined;
 }
 
 /** Temporary variables and map flags the game clears on every map change (vars.h, flags.h). */
@@ -162,6 +165,13 @@ export const INTRO_SCRIPT: ScriptFile = {
 
 /** The PC's common script (std 2010: the menu, then the storage). */
 const PC_SCRIPT = 2010;
+/** Spec 029.4: the egg hatching common script ("Oh?", EggHatchAnim), std 2021. */
+const HATCH_SCRIPT = 2021;
+/** Spec 030.1: FLAG_GOT_EGG_FROM_ELMS_ASSISTANT and FLAG_SYS_HATCHED_TOGEPI_EGG (flags.h). */
+const FLAG_GOT_TOGEPI_EGG = 112;
+const FLAG_HATCHED_TOGEPI_EGG = 0x983;
+const TOGEPI = 175;
+const UNOWN = 201;
 
 /** Default of content/trainer/tuning.json trainerFlagBase, for sessions without trainer data. */
 const TRAINER_FLAG_BASE = 1360;
@@ -180,7 +190,7 @@ export interface Storyteller {
   intro?: boolean | undefined;
   /** The story has not started (a new save, or one restarted, spec 024): _std_init runs once on joining. */
   init?: boolean | undefined;
-  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badgeSet" | "pokedex" | "respawn">;
+  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badgeSet" | "pokedex" | "respawn" | "daycare" | "daycareEgg" | "eggWalk" | "photos">;
   /** The save's rival name (spec 024); mutated in place, the session saves it. */
   rival?: Pick<Save, "rivalName"> | undefined;
   send(msg: ServerMessage): void;
@@ -199,6 +209,8 @@ export interface ScriptsOptions {
   items?: ItemsData | undefined;
   weekday(): number;
   hour(): number;
+  /** ISO timestamp for what the save records (Cameron's photos). */
+  clock: () => string;
   timeoutTicks?: number | undefined;
   /** Runs Prof. Oak's introduction for saves that were just created (off in tests that do not ask for it). */
   intro?: boolean | undefined;
@@ -285,6 +297,8 @@ interface State {
   talkedTo: number | undefined;
   area: string | undefined;
   tile: string;
+  /** Spec 029.4: where the player stood last tick while walking freely; undefined after a warp or a script. */
+  walkedFrom: { area: string; x: number; y: number } | undefined;
   /** HidePerson / ShowPerson for this visit of the map, by person id. */
   shown: Map<number, boolean>;
   /** Where cutscenes left people for this visit of the map, in map tiles, by person id. */
@@ -305,6 +319,10 @@ interface State {
   won: boolean;
   /** Strength is on for this visit of the map (spec 025). */
   strength: boolean;
+  /** Spec 030.5: the Azalea Gym's spiders and levers, set by AzaleaGymInit on entering the gym. */
+  gymmick: AzaleaGymState | undefined;
+  /** Spec 030.5: the Spinarak ride under way, glided a step each tick while its script waits. */
+  ride: { path: GymTile[]; spider: number; from: number } | undefined;
   /** The latest flag and variable changes for the debugger (spec 024), kept while it is off too. */
   changes: FlagChange[];
 }
@@ -410,6 +428,38 @@ export function createScripts(options: ScriptsOptions) {
     return { x, y, behavior: (tileAt(lookup, e.area, e.level, center(x), center(y))?.raw ?? 0) & 0xff };
   }
 
+  /** Spec 029.2: a member with no gender gets one by its species' ratio (members from before v13, or new ones). */
+  function withGender(m: PartyMember | undefined): void {
+    const ratio = m && !m.gender ? options.progression?.species(m.species)?.gender?.raw : undefined;
+    const gender = ratio === undefined ? undefined : rollGender(ratio, rng);
+    if (m && gender) m.gender = gender;
+  }
+
+  /** A Day Care Pokémon as breeding sees it; a species without egg data counts as Undiscovered. */
+  const parentOf = (m: PartyMember): Parent => ({ species: m.species, gender: m.gender, eggGroups: options.progression?.species(m.species)?.eggGroups ?? ["undiscovered"], held: m.held });
+
+  function daycareCompatibility(who: Storyteller): number {
+    const [a, b] = who.progress.daycare;
+    return a && b ? compatibility(parentOf(a.mon), parentOf(b.mon)) : 0;
+  }
+
+  /** GiveEggToPlayer: the egg the two Day Care Pokémon make; undefined without two or without species data. */
+  function breed(who: Storyteller): PartyMember | undefined {
+    const [a, b] = who.progress.daycare;
+    const data = options.progression;
+    if (!a || !b || !data) return undefined;
+    const [mother, father] = motherIsFirst(parentOf(a.mon), parentOf(b.mon)) ? [a.mon, b.mon] : [b.mon, a.mon];
+    const species = eggSpecies(parentOf(a.mon), parentOf(b.mon), (id) => data.preEvolution(id), rng);
+    return makeEgg(mother, father, species, {
+      levelUp: (id) => data.levelUp(id),
+      eggMoves: (id) => data.eggMoves(id),
+      machineMoves: (id) => data.machines(id).flatMap((m) => data.machine(m)?.move ?? []),
+      hatchCycles: (id) => data.species(id)?.hatchCycles ?? 0,
+      genderRatio: (id) => data.species(id)?.gender?.raw ?? 255,
+      hpMax: (m) => options.hpMax(m),
+    }, rng);
+  }
+
   function hostFor(s: State): ScriptHost {
     const { who } = s;
     const me = () => world.get(who.entityId)!;
@@ -471,7 +521,7 @@ export function createScripts(options: ScriptsOptions) {
       partyCount: () => who.progress.party.length,
       partySpecies: (slot) => who.progress.party[slot]?.species ?? 0,
       partyLeadAlive() {
-        const i = who.progress.party.findIndex((m) => m.hp > 0);
+        const i = who.progress.party.findIndex(canFight);
         return i === -1 ? who.progress.party.length : i;
       },
       partyNickname: (slot) => who.progress.party[slot]?.nickname,
@@ -506,6 +556,84 @@ export function createScripts(options: ScriptsOptions) {
         options.changed(who.playerId, "party");
         return true;
       },
+      // Spec 029: the Day Care; growth curve and level-up moves from the species data.
+      daycare: () =>
+        who.progress.daycare.map((s) => {
+          const info = options.progression?.species(s.mon.species);
+          const level = info ? grownLevel(s, info.growthRate) : s.mon.level;
+          return { species: s.mon.species, nickname: s.mon.nickname, level, gained: level - s.mon.level, gender: s.mon.gender };
+        }),
+      daycareDeposit(slot) {
+        if (!who.progress.party[slot] || who.progress.daycare.length >= 2) return;
+        withGender(who.progress.party[slot]);
+        deposit(who.progress.party, slot, who.progress.daycare);
+        options.changed(who.playerId, "party");
+      },
+      daycareRetrieve(index) {
+        const kept = who.progress.daycare[index];
+        const info = kept && options.progression?.species(kept.mon.species);
+        if (!kept || !info || who.progress.party.length >= 6) return 0;
+        who.progress.party.push(retrieve(who.progress.daycare, index, { rate: info.growthRate, levelUp: options.progression!.levelUp(kept.mon.species) }, (m) => options.hpMax(m)));
+        options.changed(who.playerId, "party");
+        return kept.mon.species;
+      },
+      aliveMons: (except) => who.progress.party.filter((m, i) => canFight(m) && i !== except).length,
+      // Spec 029.2: the egg.
+      daycareEgg: () => who.progress.daycareEgg,
+      daycareCompatibility: () => compatibilityScore(daycareCompatibility(who)),
+      resetDaycareEgg: () => void (who.progress.daycareEgg = false),
+      giveDaycareEgg() {
+        const egg = breed(who);
+        who.progress.daycareEgg = false;
+        if (!egg || who.progress.party.length >= 6) return;
+        who.progress.party.push(egg);
+        options.changed(who.playerId, "party");
+      },
+      partyIsEgg: (slot) => who.progress.party[slot]?.egg !== undefined,
+      giveEgg: (species, move) => {
+        const data = options.progression;
+        if (!data?.species(species)) {
+          options.log(`Script gives an egg of species ${species} but there is no species data; nothing given`);
+          return;
+        }
+        if (who.progress.party.length >= 6) return;
+        const egg = makeGiftEgg(species, { levelUp: (id) => data.levelUp(id), hatchCycles: (id) => data.species(id)?.hatchCycles ?? 0, genderRatio: (id) => data.species(id)?.gender?.raw ?? 255, hpMax: (m) => options.hpMax(m) }, rng, move);
+        who.progress.party.push(egg);
+        options.changed(who.playerId, "party");
+      },
+      hatchEgg: () => {
+        // Party_GetMonToHatch, then the hatched Pokémon (sub_0206D038): no longer an egg, friendship 120, in the Pokédex.
+        const m = who.progress.party.find((p) => p.egg?.cycles === 0);
+        if (!m) return undefined;
+        delete m.egg;
+        m.friendship = 120;
+        const dex = who.progress.pokedex;
+        if (!dex.seen.includes(m.species)) dex.seen.push(m.species);
+        if (!dex.caught.includes(m.species)) dex.caught.push(m.species);
+        // sub_02093134: the assistant's Togepi tells Elm (his Everstone, 843 L32).
+        // shortcut: MonIsFromTogepiEgg compares the personality GiveTogepiEgg saved; members keep none, so the first Togepi to hatch after the gift counts. Compare it when members get a personality.
+        if (m.species === TOGEPI && who.flags.has(FLAG_GOT_TOGEPI_EGG)) writeFlag(s, FLAG_HATCHED_TOGEPI_EGG, true);
+        options.changed(who.playerId, "party");
+        return m.species;
+      },
+      // Spec 030.2: ribbons on party members, and Cameron's photo of the party where the player stands.
+      monHasRibbon: (slot, ribbon) => who.progress.party[slot]?.ribbons?.includes(ribbon) ?? false,
+      giveRibbon(slot, ribbon) {
+        const m = who.progress.party[slot];
+        if (!m || m.ribbons?.includes(ribbon)) return;
+        m.ribbons = [...(m.ribbons ?? []), ribbon];
+        options.changed(who.playerId, "party");
+      },
+      photoAlbumFull: () => who.progress.photos.length >= PHOTO_ALBUM_MAX,
+      takePhoto(spot) {
+        if (who.progress.photos.length >= PHOTO_ALBUM_MAX) return;
+        who.progress.photos.push({ map: Number(me().area), spot, species: who.progress.party.filter((m) => !m.egg).map((m) => m.species), takenAt: options.clock() });
+      },
+      // Spec 030.3, the Ruins of Alph.
+      onBike: () => me().data["mode"] === "bike",
+      // shortcut: the save's Pokédex keeps no forms, so a caught Unown counts as one; keep forms in the Pokédex when the puzzles make Unown catchable (Marco 6).
+      unownForms: () => (who.progress.pokedex.caught.includes(UNOWN) ? 1 : 0),
+      boxMonCount: () => who.progress.boxes.reduce((n, b) => n + b.slots.filter((m) => m !== null).length, 0),
       healParty() {
         for (const m of who.progress.party) m.hp = options.hpMax(m);
         // The nurse makes this Center the blackout respawn point, in front of her counter (spec 023); Mr. Pokémon and Mom heal too, but do not.
@@ -519,7 +647,7 @@ export function createScripts(options: ScriptsOptions) {
       hasBadge: (b) => hasBadgeBit(who.progress.badgeSet, b),
       giveBadge: (b) => void (b >= 0 && b < 16 && (who.progress.badgeSet |= 1 << b)),
       // The original answers PARTY_SIZE, not the party's length, and the scripts compare against 6.
-      partySlotWithMove: (move) => pickUser(who.progress.party, move, companionOf(s) ? who.progress.party.findIndex((m) => m.hp > 0) : undefined) ?? 6,
+      partySlotWithMove: (move) => pickUser(who.progress.party, move, companionOf(s) ? who.progress.party.findIndex(canFight) : undefined) ?? 6,
       strength: () => s.strength,
       setStrength: (on) => void (s.strength = on),
       fieldEncounter(kind) {
@@ -549,7 +677,7 @@ export function createScripts(options: ScriptsOptions) {
         if (!record || !lists) return 0;
         // The companion swinging at the rock adds 5 (followMonUsingHm).
         // shortcut: Suction Cups, Magnet Pull, Keen Eye (+5) and Serene Grace, Super Luck (next place) are left out, the save keeps no ability; add them with abilities.
-        const odds = Math.min(100, record.odds + (companionOf(s) && who.progress.party.find((m) => m.hp > 0)?.moves.includes(ROCK_SMASH) ? 5 : 0));
+        const odds = Math.min(100, record.odds + (companionOf(s) && who.progress.party.find(canFight)?.moves.includes(ROCK_SMASH) ? 5 : 0));
         if (rng.nextInt(100) >= odds) return 0;
         let roll = rng.nextInt(100);
         const place = lists.weights.findIndex((w) => (roll -= w) < 0);
@@ -577,6 +705,18 @@ export function createScripts(options: ScriptsOptions) {
         const o = origin(area);
         world.update({ ...me(), area, x: center(x - o.tx), y: center(z - o.ty), level: 0, facing: SCRIPT_DIRECTIONS[facing] ?? me().facing });
       },
+      ride: (path, spider) => void (s.ride = { path, spider, from: tick }),
+      placePlayer(x, z, facing) {
+        s.ride = undefined;
+        const e = me();
+        world.update({ ...e, x: center(x), y: center(z), facing: SCRIPT_DIRECTIONS[facing] ?? e.facing });
+        // Already on the tile: stepping off a spider onto a stop's trigger must not ride it at once.
+        const t = tileOf(me());
+        s.tile = `${e.area}:${t.x},${t.z}`;
+      },
+      azaleaGym: () => data.azaleaGym,
+      gymmick: () => s.gymmick,
+      setGymmick: (state) => void (s.gymmick = state),
       facePlayer() {
         const npc = s.talkedTo === undefined ? undefined : world.get(s.talkedTo);
         if (npc) world.update({ ...npc, facing: OPPOSITE[me().facing] });
@@ -588,9 +728,10 @@ export function createScripts(options: ScriptsOptions) {
         if (flag) writeFlag(s, flag, true);
       },
       showPerson: (id) => void s.shown.set(id, true),
+      // Where this player sees them: Ilex Forest's Farfetch'd (spec 030.7) are found by the tile their last flight left them on.
       personPosition(id) {
         const e = personOf(me().area, id);
-        return e && visibleTo(s, e) ? tileOf(e) : undefined;
+        return e && visibleTo(s, e) ? tileOf(viewOf(s, e)) : undefined;
       },
       // Only for this player and kept in their save: the shared person stays put for the others (FR-009).
       movePerson(id, x, z, facing) {
@@ -726,6 +867,7 @@ export function createScripts(options: ScriptsOptions) {
   function finish(s: State): void {
     s.runner = undefined;
     s.waitUntil = undefined;
+    s.ride = undefined;
     s.talkedTo = undefined;
     s.frameRunning = false;
     lock(s, false);
@@ -774,8 +916,22 @@ export function createScripts(options: ScriptsOptions) {
     return true;
   }
 
+  /** Spec 030.5: the rider and their spider cart a tick further along the thread. */
+  function glide(s: State, e: Entity, ride: NonNullable<State["ride"]>): void {
+    const at = rideAt(ride.path, tick - ride.from);
+    world.update({ ...e, x: at.x, y: at.z + RIDER_OFFSET_PX, facing: at.facing });
+    const gym = data.azaleaGym;
+    if (gym && s.gymmick) send(s, { type: "script-event", event: { kind: "props", area: e.area, props: gymProps(gym, s.gymmick, { spider: ride.spider, x: at.x, z: at.z }) } });
+  }
+
   function enterMap(s: State, e: Entity): void {
     s.area = e.area;
+    // Triggers fire on a step, as the original's coordinate events: arriving on one (a load, a door, a warp) does not run it,
+    // walking over a map's edge onto one does (matrix tiles are shared across the overworld's maps).
+    // shortcut: a warp between two maps whose tiles happen to touch counts as a step; tell warps apart if one shows up.
+    const t = tileOf(e);
+    const [x, z] = (s.tile.split(":")[1] ?? "").split(",").map(Number);
+    if (x === undefined || z === undefined || Number.isNaN(x) || Math.abs(x - t.x) + Math.abs(z - t.z) > 1) s.tile = `${e.area}:${t.x},${t.z}`;
     s.shown.clear();
     s.moved.clear();
     s.strength = false;
@@ -864,7 +1020,7 @@ export function createScripts(options: ScriptsOptions) {
 
   return {
     join(who: Storyteller): void {
-      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false, strength: false, changes: [] };
+      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", walkedFrom: undefined, shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false, strength: false, gymmick: undefined, ride: undefined, changes: [] };
       states.set(who.playerId, s);
       // Spec 024: a story not yet started runs _std_init to its end before any map, as RunInitScript does.
       const init = who.init && data.newGame ? data.resolve(data.newGame.initScript, data.newGame.map) : undefined;
@@ -963,6 +1119,8 @@ export function createScripts(options: ScriptsOptions) {
         if (!e) continue;
         if (e.area !== s.area) enterMap(s, e);
         if (s.runner) {
+          s.walkedFrom = undefined;
+          if (s.ride) glide(s, e, s.ride);
           const state = s.runner.state;
           if (s.waitUntil !== undefined && tick >= s.waitUntil) {
             s.waitUntil = undefined;
@@ -986,9 +1144,31 @@ export function createScripts(options: ScriptsOptions) {
           start(s, { file: INTRO_SCRIPT.file, entry: 0 }, false, INTRO_SCRIPT);
           continue;
         }
+        // Spec 029.4: the distance walked on the same map, outside scripts, is the eggs' step counter.
+        const from = s.walkedFrom;
+        s.walkedFrom = { area: e.area, x: e.x, y: e.y };
+        if (from?.area === e.area && (from.x !== e.x || from.y !== e.y)) {
+          const party = s.who.progress.party;
+          const speedsUp = cyclesToSubtract(party, (id) => options.progression?.species(id)?.abilities ?? []) === 2;
+          const walked = eggWalk(s.who.progress.eggWalk, Math.hypot(e.x - from.x, e.y - from.y), party, speedsUp);
+          s.who.progress.eggWalk = walked.px;
+          if (walked.hatch !== undefined) {
+            const ref = data.resolve(HATCH_SCRIPT, Number(e.area));
+            if (ref && start(s, ref)) continue;
+            options.log(`Player ${s.who.playerId}: an egg is due to hatch but the hatch script is not in the extraction`);
+          }
+        }
         const t = tileOf(e);
         const key = `${e.area}:${t.x},${t.z}`;
         if (key !== s.tile) {
+          // Spec 029: a tile walked on the same map is a step for the Day Care (HandleDaycareStep); a warp is not.
+          // shortcut: a tile left during a cutscene counts as one step once it ends; count none when scripted moves report their tiles.
+          if (s.tile.startsWith(`${e.area}:`)) {
+            const d = s.who.progress.daycare;
+            daycareStep(d);
+            // HandleDaycareStep: the egg roll on the second Pokémon's 255th step of every 256.
+            if (eggCheckDue(d, s.who.progress.daycareEgg) && eggRoll(daycareCompatibility(s.who), rng.nextInt(0x10000))) s.who.progress.daycareEgg = true;
+          }
           s.tile = key;
           const trigger = eventsOf(e.area)?.triggers.find((g) => g.script && t.x >= g.x && t.x < g.x + g.w && t.z >= g.z && t.z < g.z + g.h && triggerMet(s, g));
           if (trigger?.script && start(s, trigger.script)) continue;

@@ -56,6 +56,8 @@ export interface CommandContext {
   menu: MenuState;
   /** The scripted Pokégear call SetPhoneCall picked, as "caller:call:arg", for RunPhoneCall (spec 024). */
   phone: { call: { caller: number; script: number } | undefined };
+  /** Spec 029: the party slot the player picked (ScrCmd_551), read by ScrCmd_552; 255 when cancelled. */
+  party: { picked: number };
   /** The file's message bank as a text id prefix; numbers stay numbers when the file has none. */
   text(index: number): string;
   /** Blocks the script; `then` runs on resume with the client's answer. */
@@ -111,6 +113,7 @@ export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Han
   const buffers: Record<number, TextBuffer> = {};
   const menu: MenuState = { into: 0, cancel: false, std: false, items: [] };
   const phone = { call: undefined as { caller: number; script: number } | undefined };
+  const party = { picked: 255 };
   const contexts: Context[] = [];
   let state: RunState = { kind: "running" };
   let then: ((answer: number, text?: string) => void) | undefined;
@@ -207,6 +210,7 @@ export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Han
       buffers,
       menu,
       phone,
+      party,
       text(index) {
         const bank = ctx.file.messageBank;
         return bank === null ? String(index) : formatTextId(bank, index);

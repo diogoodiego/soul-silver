@@ -1,5 +1,9 @@
 <!--
 Sync Impact Report
+- Versão: 1.4.0 → 1.5.0 (MINOR): o Fluxo de Desenvolvimento troca o Spec Kit pelos itens do
+  roadmap, com estado em `docs/STATUS.md` e regras em `CLAUDE.md`; typecheck, lint e suíte
+  inteira passam a ser exigidos no item de verificação de cada bloco. Templates do Spec Kit ficam
+  como histórico e não são mais atualizados.
 - Versão: 1.3.0 → 1.4.0 (MINOR: orientação materialmente expandida)
 - Princípio modificado: V (Test-first na lógica) — "Camadas de verificação" ganha a ordem de
   escolha: servidor sem interface sempre que possível; app só para o que o servidor não
@@ -225,13 +229,15 @@ qualquer ponto em que pare.
 
 ## Fluxo de Desenvolvimento
 
-- Desenvolvimento solo com agentes de IA. Toda feature MUST seguir spec → plan → tasks do Spec
-  Kit.
-- Uma task MUST NOT ser marcada como concluída sem typecheck, lint e testes passando.
+- Desenvolvimento solo com agentes de IA. Toda feature MUST seguir um item do roadmap, com o
+  estado registrado em `docs/STATUS.md` e as regras de execução em `CLAUDE.md`. O Spec Kit não é
+  mais usado: onde esta constituição fala em spec, leia bloco do roadmap; onde fala em
+  `tasks.md`, leia `docs/STATUS.md` e o relatório entregue ao fim do item.
+- Um item MUST NOT ser marcado como concluído sem os testes do que ele mudou passando. Um bloco
+  MUST NOT ser concluído sem typecheck, lint e a suíte inteira passando no seu item de verificação.
 - Código gerado por agentes MUST seguir as mesmas regras e MUST ser revisado pelo desenvolvedor
   antes do merge.
-- Todo plano MUST incluir um "Constitution Check" que confirme a conformidade com cada
-  princípio, ou justifique explicitamente o desvio.
+- Todo plano de item MUST respeitar cada princípio, ou justificar explicitamente o desvio.
 
 ## Governança
 
@@ -245,4 +251,4 @@ qualquer ponto em que pare.
   MUST verificar a conformidade com esta constituição. Desvios MUST ser justificados no plano
   da feature.
 
-**Version**: 1.4.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-02
+**Version**: 1.5.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-15

@@ -5,8 +5,8 @@ import { PROTOCOL_VERSION } from "../../src/protocol-version.ts";
 // Spec 028.5 (contracts/protocol-v24.md): the duel's messages.
 
 describe("protocol v24", () => {
-  it("is version 24", () => {
-    expect(PROTOCOL_VERSION).toBe(24);
+  it("is version 24 or later", () => {
+    expect(PROTOCOL_VERSION).toBeGreaterThanOrEqual(24);
   });
 
   it("accepts the duel requests", () => {

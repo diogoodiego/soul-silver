@@ -11,6 +11,7 @@ import { expForLevel, memberStats } from "@soulsilver/shared/progression";
 import { applyNewGame, badgeCount, migrate, type Save } from "@soulsilver/shared/save";
 import { SCRIPT_HANDLERS } from "@soulsilver/shared/script";
 import { prize } from "@soulsilver/shared/trainer";
+import { wildMoves } from "@soulsilver/shared/wild";
 import { createMemoryConnectionPair, createReferenceBot, createSession, SOLID, type Combatant, type WildData } from "@soulsilver/server";
 import { expect, it } from "vitest";
 import { readNewGameStart } from "../src/server-host/extracted";
@@ -475,13 +476,17 @@ type Pilot = ReturnType<typeof pilot>;
 
 /**
  * The pilot again from its latest save, with the party at BOOST_LEVEL (full HP) and BOOST_POTIONS more Potions;
- * what the first pilot recorded (maps, commands, stuck scripts) carries over.
+ * what the first pilot recorded (maps, commands, stuck scripts) carries over. Each member knows the moves a Pokémon
+ * levelled to BOOST_LEVEL would (the last four learnt): with its starting Tackle alone, the rival's Gastly at Azalea
+ * (spec 030.6) could not be hurt.
  */
 function boosted(p: Pilot): Pilot {
   const save = p.fresh();
   const party = save.party.map((m) => {
     const rate = p.data.progression?.species(m.species)?.growthRate;
-    const up = { ...m, level: BOOST_LEVEL, experience: rate ? expForLevel(rate, BOOST_LEVEL) : m.experience };
+    const levelUp = p.data.progression?.levelUp(m.species) ?? [];
+    const moves = levelUp.length > 0 ? wildMoves(levelUp, BOOST_LEVEL) : m.moves;
+    const up = { ...m, level: BOOST_LEVEL, moves, experience: rate ? expForLevel(rate, BOOST_LEVEL) : m.experience };
     return { ...up, hp: p.hpMax(up) };
   });
   const bag = [...save.bag.filter((b) => b.item !== POTION), { item: POTION, count: p.count(save, POTION) + BOOST_POTIONS }];
@@ -681,7 +686,7 @@ function pc(p: Pilot): Check {
     return p.lastService("pcOpen");
   };
   const opened = pcOpen();
-  if (!opened) return fail("o PC não abriu");
+  if (!opened) return fail(`o PC não abriu (falas: ${p.says.slice(-3).join(", ")}; mensagens: ${p.recent().join(", ")}; respostas sobrando: ${p.answers.join(",")}; time ${party.length}; posição ${JSON.stringify(p.tile())}, olhando ${p.me().facing}, em combate ${p.inCombat()}, último log ${p.logs.slice(-3).join(" / ")}, script ${p.failure(MILESTONES[0]!, "").lastScript}, anda ${(() => { const a = JSON.stringify(p.tile()); p.walk("south", 1); return a !== JSON.stringify(p.tile()); })()})`);
   const move = (from: PcSlot, to: PcSlot) => {
     const n = p.services.length;
     p.send({ type: "pc-move", from, to });
@@ -702,6 +707,22 @@ function pc(p: Pilot): Check {
   return { name: `${name}: espécie ${party.at(-1)!.species} capturada, depositada e retirada` };
 }
 
+/** Spec 030.2: the SlowpokeTail seller on Route 32 (232:3), turned down then accepted; neither touches money or the bag. */
+function slowpokeTail(p: Pilot): Check {
+  const name = "vendedor de SlowpokeTail (Rota 32)";
+  const before = p.fresh();
+  const said = p.says.length;
+  for (const answer of [1, 0]) {
+    p.answers.push(answer);
+    if (!p.talkTo(36, 10)) return { name, failed: "o vendedor não está na extração" };
+  }
+  p.answers.length = 0;
+  const after = p.fresh();
+  if (p.says.length - said < 2) return { name, failed: `falou ${p.says.length - said} vez(es), esperado 2` };
+  if (after.money !== before.money || JSON.stringify(after.bag) !== JSON.stringify(before.bag)) return { name, failed: "dinheiro ou bolsa mudaram" };
+  return { name: `${name}: recusado e aceito, sem cobrar nem dar nada` };
+}
+
 /** Trains for a leader: the lead two levels over the trainer's strongest, then healed. */
 const ready = (p: Pilot, trainer: number) => p.train(Math.max(...(p.data.trainers?.trainer(trainer)?.team ?? []).map((m) => m.level)) + 2);
 
@@ -712,6 +733,60 @@ const ready = (p: Pilot, trainer: number) => p.train(Math.max(...(p.data.trainer
 function keep(p: Pilot, name: string): void {
   const dir = process.env["GOLDEN_SAVES"];
   if (dir) writeFileSync(join(dir, `${name}.json`), JSON.stringify(p.fresh(), null, 2));
+}
+
+const ILEX = 117;
+
+/**
+ * Spec 030.7: walks tile by tile to (tx, tz) of the current map by the shortest way that steps on no armed trigger (the forest's
+ * branches) but the target's, no warp, no person's tile where the map puts them and none of `taken` ("x,z", where a script
+ * moved someone); ends facing `face`.
+ */
+function route(p: Pilot, tx: number, tz: number, face?: Direction, taken: string[] = []): void {
+  const area = p.me().area;
+  const o = p.data.world!(area)?.origin ?? { tx: 0, ty: 0 };
+  const events = p.data.scripts?.events(Number(area));
+  const avoid = new Set(taken);
+  for (const n of [...(events?.npcs ?? []), ...(events?.warps ?? [])]) avoid.add(`${n.x},${n.z}`);
+  // The target's own trigger is free all over: the branches lie across the only way into the Farfetch'd loops.
+  const inside = (t: { x: number; z: number; w: number; h: number }) => tx >= t.x && tx < t.x + t.w && tz >= t.z && tz < t.z + t.h;
+  const vars = p.fresh().vars;
+  const armed = (t: { variable: number; value: number }) => (vars[t.variable] ?? 0) === t.value;
+  for (const t of events?.triggers ?? []) if (armed(t) && !inside(t)) for (let dx = 0; dx < t.w; dx++) for (let dz = 0; dz < t.h; dz++) avoid.add(`${t.x + dx},${t.z + dz}`);
+  avoid.delete(`${tx},${tz}`);
+  const free = (x: number, z: number) => !avoid.has(`${x},${z}`) && !SOLID.has(tileAt(p.data.world!, area, 0, (x - o.tx) * 16 + 8, (z - o.ty) * 16 + 8)?.category ?? "blocked");
+  /** The first step of the shortest way from where the player stands; a script stopping a step midway is walked around again. */
+  const next = (): Direction | undefined => {
+    const from = p.tile();
+    const back = new Map<string, Direction | null>([[`${from.tx},${from.ty}`, null]]);
+    const queue: [number, number][] = [[from.tx, from.ty]];
+    for (let i = 0; i < queue.length && !back.has(`${tx},${tz}`); i++) {
+      const [x, z] = queue[i]!;
+      for (const dir of Object.keys(VECTORS) as Direction[]) {
+        const [nx, nz] = [x + VECTORS[dir].x, z + VECTORS[dir].y];
+        if (back.has(`${nx},${nz}`) || !free(nx, nz)) continue;
+        back.set(`${nx},${nz}`, back.get(`${x},${z}`) ?? dir);
+        queue.push([nx, nz]);
+      }
+    }
+    return back.get(`${tx},${tz}`) ?? undefined;
+  };
+  for (let n = 0; n < 200; n++) {
+    const at = p.tile();
+    if (at.map !== area) throw new Error(`o jogador saiu do mapa ${area} para o ${at.map} a caminho de (${tx}, ${tz})`);
+    if (at.tx === tx && at.ty === tz) {
+      if (face) p.tick(face);
+      return;
+    }
+    const dir = next();
+    if (!dir) throw new Error(`sem caminho de (${at.tx}, ${at.ty}) a (${tx}, ${tz}) no mapa ${area}`);
+    // Centered across the way first: off center, the player rubs the walls beside the forest's one-tile paths.
+    const across = dir === "north" || dir === "south";
+    const off = () => ((across ? p.me().x : p.me().y) % 16) - 8;
+    for (let i = 0; i < 8 && Math.abs(off()) > 2; i++) p.tick(across ? (off() > 0 ? "west" : "east") : off() > 0 ? "north" : "south");
+    p.walk(dir, 1);
+  }
+  throw new Error(`o jogador não chegou a (${tx}, ${tz}) do mapa ${area}; está em (${p.tile().tx}, ${p.tile().ty})`);
 }
 
 /** Checks of specs 020–023 made on the way, in order. */
@@ -814,9 +889,226 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     p.talk("north");
     checks.push(p.battle("luta Falkner (ginásio de Violet)", [20], money, () => p.talk("north")));
   },
+  // Spec 030.1. Out of the gym door (479, 257) into Violet City: Elm calls (857:0).
+  11: (p) => {
+    keep(p, "depois-falkner");
+    p.warp(73, 479, 258);
+  },
+  // The assistant in the Violet Poké Mart (person 4 at 6, 8): "yes" to the egg, with a party of five at most.
+  12: (p) => {
+    keep(p, "antes-ovo");
+    if (!p.talkTo(157, 4)) throw new Error("o assistente do Poké Mart de Violet não está na extração");
+  },
+  // Out of the mart door (469, 257): the Kimono Girl (857:4).
+  13: (p) => {
+    keep(p, "antes-kimono");
+    p.warp(73, 469, 258);
+  },
+  // Walking in Violet City until the egg hatches (Togepi: 10 cycles of 255 steps, spec 029.4).
+  14: (p) => {
+    keep(p, "antes-eclosao");
+    const egg = () => p.fresh().party.some((m) => m.egg);
+    for (let lap = 0; lap < 400 && egg(); lap++) {
+      p.walk("east", 10);
+      p.walk("west", 10);
+    }
+  },
+  // Togepi to the lead, then Elm in the lab: the map's entry script (843:10) has moved him to (4, 5).
+  15: (p) => {
+    keep(p, "antes-everstone");
+    const party = p.fresh().party;
+    const togepi = party.findIndex((m) => m.species === 175 && !m.egg);
+    if (togepi > 0) p.send({ type: "reorder-party", from: togepi, to: 0 });
+    p.settle();
+    p.warp(61, 4, 6);
+    p.talk("north");
+  },
+  // Spec 030.2. South from Violet onto Route 32's north trigger (475, 305): the Miracle Seed man (232:2).
+  16: (p) => {
+    keep(p, "antes-rota-32");
+    // Togepi led for Elm; the trained member leads again for Route 32's trainers.
+    const party = p.fresh().party;
+    const strongest = party.reduce((best, m, i) => (!m.egg && m.level > party[best]!.level ? i : best), 0);
+    if (strongest > 0) p.send({ type: "reorder-party", from: strongest, to: 0 });
+    p.settle();
+    p.warp(36, 475, 304);
+    p.walk("south", 1);
+  },
+  // Route 32's trainers and the SlowpokeTail seller, then the fisherman in its Pokémon Center (person 4 of map 169, 233:1).
+  17: (p) => {
+    for (const npc of [3, 4, 5, 6, 7, 8, 9, 11]) checks.push(p.routeTrainer(`treinador ${npc} (Rota 32)`, 36, npc));
+    checks.push(slowpokeTail(p));
+    if (!p.talkTo(169, 4)) throw new Error("o pescador do Centro Pokémon da Rota 32 não está na extração");
+  },
+  // Into Union Cave from Route 32 (462, 430), then onto its exit to Route 33 (27, 93).
+  18: (p) => {
+    keep(p, "antes-union-cave");
+    p.warp(36, 462, 431);
+    p.walk("north", 1);
+    if (p.fresh().area !== "99") throw new Error(`a entrada da Union Cave não levou ao mapa 99 (está ${p.fresh().area})`);
+    p.warp(99, 27, 92);
+    p.walk("south", 1);
+  },
+  // Spec 030.3. Through Route 32's gate (454, 293) to the Ruins of Alph (113), past the trigger at (441, 286) (only an event Arceus starts it) into the Research Center.
+  19: (p) => {
+    keep(p, "antes-ruinas");
+    p.warp(36, 455, 293);
+    p.walk("west", 1);
+    if (p.fresh().area !== "98") throw new Error(`o portão da Rota 32 não levou ao mapa 98 (está ${p.fresh().area})`);
+    p.warp(98, 2, 7);
+    p.walk("west", 1);
+    if (p.fresh().area !== "113") throw new Error(`o portão não levou às Ruins of Alph (está ${p.fresh().area})`);
+    p.warp(113, 441, 287);
+    p.walk("north", 2);
+    for (const npc of [0, 1, 2]) if (!p.talkTo(321, npc)) throw new Error(`a pessoa ${npc} do centro de pesquisa não está na extração`);
+  },
+  // Route 31's cave mouth (565, 269) into the Dark Cave.
+  20: (p) => {
+    p.warp(35, 565, 270);
+    p.walk("north", 1);
+  },
+  // Spec 030.4. Azalea from Route 33, onto the trigger at (434, 466) by the well: the Rockets' scene (866:3).
+  21: (p) => {
+    keep(p, "antes-azalea");
+    p.warp(74, 434, 467);
+    p.walk("north", 1);
+  },
+  // Kurt in his house (person 0 of map 164, 874:1).
+  22: (p) => {
+    if (!p.talkTo(164, 0)) throw new Error("o Kurt não está na extração");
+  },
+  // Down the well (433, 454) past Kurt at its entrance (map 114) to B1F (177): its Rockets, then Proton (person 4, 60:2).
+  23: (p) => {
+    keep(p, "antes-slowpoke-well");
+    p.warp(74, 433, 455);
+    p.walk("north", 1);
+    if (p.fresh().area !== "114") throw new Error(`o poço não levou ao mapa 114 (está ${p.fresh().area})`);
+    p.warp(114, 11, 7);
+    p.walk("north", 1);
+    if (p.fresh().area !== "177") throw new Error(`a escada do poço não levou ao mapa 177 (está ${p.fresh().area})`);
+    for (const npc of [1, 2, 3]) checks.push(p.routeTrainer(`Rocket ${npc} (Slowpoke Well)`, 177, npc));
+    ready(p, 486);
+    const money = p.fresh().money;
+    if (!p.talkTo(177, 4)) throw new Error("o Proton não está na extração");
+    checks.push(p.battle("luta Proton (Slowpoke Well)", [486], money, () => undefined));
+  },
+  // Out of Kurt's house to the gym door (405, 471), where the Rocket stood.
+  24: (p) => {
+    p.warp(74, 405, 472);
+    p.walk("north", 1);
+  },
+  // Spec 030.5. Through the entrance (136) into the gym (180), then by Spinarak only (azalea-gym.json): stop 0 → 4, 7 → 9,
+  // lever 0 at (4, 7), 9 → 6, lever 1 at (2, 18), 6 → 10, and up to Bugsy (person 5 at (9, 5)). The trainers who watch
+  // the way (person 1, and the twins, persons 2 and 3) are fought first.
+  25: (p) => {
+    keep(p, "antes-ginasio-azalea");
+    p.warp(136, 7, 4);
+    p.walk("north", 1);
+    if (p.fresh().area !== "180") throw new Error(`a entrada do ginásio não levou ao mapa 180 (está ${p.fresh().area})`);
+    for (const npc of [1, 2]) checks.push(p.routeTrainer(`treinador ${npc} (ginásio de Azalea)`, 180, npc));
+    const o = p.data.world!("180")?.origin ?? { tx: 0, ty: 0 };
+    const here = () => ({ x: Math.floor(p.me().x / 16) + o.tx, z: Math.floor(p.me().y / 16) + o.ty });
+    const expectAt = (x: number, z: number, what: string) => {
+      const at = here();
+      if (p.me().area !== "180" || at.x !== x || at.z !== z) throw new Error(`${what}: o jogador devia estar em (${x}, ${z}) e está em (${at.x}, ${at.z}) do mapa ${p.me().area}`);
+    };
+    // Tile by tile, then idle until a ride the last tile started is over (the pilot's walk would go on past the landing).
+    const go = (dir: Direction, tiles: number) => {
+      for (let k = 0; k < tiles; k++) {
+        const from = here();
+        for (let i = 0; i < 40 && here().x === from.x && here().z === from.z; i++) p.tick(dir);
+      }
+      p.settle();
+    };
+    // Each ride ends with the player stepping off the cart, which hangs a tile south of the thread's end.
+    p.warp(180, 3, 33);
+    go("north", 1);
+    expectAt(9, 24, "Spinarak 0 → 4");
+    go("north", 7);
+    expectAt(3, 9, "Spinarak 7 → 9");
+    go("north", 1);
+    go("east", 1);
+    p.talk("north");
+    go("west", 1);
+    go("south", 1);
+    expectAt(3, 18, "alavanca 0, Spinarak 9 → 6");
+    p.talk("west");
+    go("north", 1);
+    expectAt(9, 9, "alavanca 1, Spinarak 6 → 10");
+    go("north", 3);
+    expectAt(9, 6, "até o Bugsy");
+  },
+  // Spec 030.6. Bugsy (person 5 of map 180, 869:1, trainer 21), from the tile below him that step 25 reached by the
+  // threads; training takes the player away, so back there.
+  26: (p) => {
+    ready(p, 21);
+    keep(p, "antes-bugsy");
+    const money = p.fresh().money;
+    p.warp(180, 9, 6);
+    p.talk("north");
+    checks.push(p.battle("luta Bugsy (ginásio de Azalea)", [21], money, () => p.talk("north")));
+  },
+  // Out to Azalea and west onto the exit trigger (395, 462–466, 866:2): the rival, by the player's starter.
+  27: (p) => {
+    const rival = [266, 269, 1];
+    ready(p, Math.max(...rival));
+    keep(p, "antes-rival-azalea");
+    const money = p.fresh().money;
+    p.warp(74, 396, 463);
+    p.walk("west", 1);
+    checks.push(
+      p.battle("luta do rival (saída de Azalea)", rival, money, () => {
+        p.warp(74, 396, 463);
+        p.walk("west", 1);
+      }),
+    );
+  },
+  // Spec 030.7. Through Azalea's west gate (map 100) into Ilex Forest, the apprentice (person 3, 92:10), then the Farfetch'd at
+  // (25, 62): the branch south of it turns it south (92:3), and the player goes round its loop to catch it from the north.
+  28: (p) => {
+    keep(p, "antes-ilex");
+    p.warp(ILEX, 15, 79);
+    if (p.fresh().area !== String(ILEX)) throw new Error(`a entrada do Ilex Forest não levou ao mapa ${ILEX} (está ${p.fresh().area})`);
+    if (!p.talkTo(ILEX, 3)) throw new Error("o aprendiz do carvoeiro não está na extração");
+    route(p, 25, 66);
+    route(p, 25, 61, "south");
+    p.talk("south");
+  },
+  // The one at (41, 54): from the front (south, facing north) it flees east to (49, 54) uncaught; the branch east of it at
+  // (52, 53) turns it east (92:7), and from the west it is caught (92:5); the charcoal man then gives HM01.
+  29: (p) => {
+    keep(p, "antes-segundo-farfetchd");
+    route(p, 41, 55, "north");
+    p.talk("north");
+    const caught = p.fresh().flags.includes(126);
+    checks.push({ name: "Farfetch'd do Ilex abordado pela frente (spec 030.7)", ...(caught ? { failed: "foi pego pela frente" } : {}) });
+    route(p, 52, 53, undefined, ["49,54"]);
+    route(p, 48, 54, "east", ["49,54"]);
+    p.talk("east");
+  },
+  // HM01 taught to the member that learns it, then the tree at (16, 62) cut from (16, 63) and the forest's north exit (12, 17).
+  30: (p) => {
+    const save = p.fresh();
+    const machine = 420 - 327;
+    const who = save.party.findIndex((m) => !m.egg && p.data.progression?.machines(m.species).includes(machine));
+    if (who === -1) throw new Error("ninguém do time aprende o HM01");
+    p.send({ type: "use-item", item: 420, partyIndex: who });
+    p.settle();
+    if (!p.fresh().party[who]!.moves.includes(15)) throw new Error(`o membro ${who} não aprendeu Cut (golpes ${p.fresh().party[who]!.moves.join(", ")})`);
+    keep(p, "antes-cut");
+    route(p, 16, 63, "north");
+    p.talk("north");
+    // Through where the tree stood: this visit it is gone (146:0 hides it), as in the original until the map loads again.
+    p.walk("north", 1);
+    if (p.tile().ty !== 62) throw new Error(`a árvore em (16, 62) ainda bloqueia depois do Cut (jogador em (${p.tile().tx}, ${p.tile().ty}))`);
+    // The trigger at (40–41, 20) spans the way north: the lost Kimono Girl's scene (92:15) plays on it.
+    route(p, 40, 20);
+    route(p, 12, 19);
+    p.walk("north", 1);
+  },
 };
 
-it("goes from the bedroom to the Zephyr Badge", () => {
+it("goes from the bedroom through Ilex Forest with Cut, past the Zephyr and Hive Badges", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;

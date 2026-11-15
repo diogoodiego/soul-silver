@@ -13,6 +13,13 @@ describe("findDuplicates", () => {
     expect(ids(findDuplicates(objects, all))).toEqual([[4, 8]]);
   });
 
+  // Spec 030.6: Azalea's four Slowpokes (sprite 1015, script 866:1) come back together once the well is cleared (flag 427).
+  it("ignores a herd: the same sprite and script all shown and hidden by one flag", () => {
+    const slowpokes = [5, 6, 7, 8].map((id) => object(id, 1015, 1, 427));
+    expect(findDuplicates(slowpokes, all)).toEqual([]);
+    expect(ids(findDuplicates([...slowpokes, object(9, 1015, 1, 428)], all))).toEqual([[5, 6, 7, 8, 9]]);
+  });
+
   it("does not count an object the filter hides", () => {
     const objects = [object(4, 101, 5, 418), object(8, 101, 5, 744)];
     expect(findDuplicates(objects, (o) => o.id !== 8)).toEqual([]);
