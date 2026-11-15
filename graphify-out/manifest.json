@@ -3786,9 +3786,9 @@
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/flags.ts": {
-    "mtime": 1794066842.56488,
-    "seen": 1794078503.3974104,
-    "ast_hash": "f75d10bff9159f6299e02c117264ec2d",
+    "mtime": 1794737316.8992715,
+    "seen": 1794738121.8397558,
+    "ast_hash": "c0a835114a3d1b05ab9c14e63d9ea6ac",
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/flow.ts": {
@@ -3804,9 +3804,9 @@
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/message.ts": {
-    "mtime": 1793217395.808884,
-    "seen": 1793218474.8755755,
-    "ast_hash": "e4e94e2fcf26882229027bf0837c79c1",
+    "mtime": 1794737324.8997376,
+    "seen": 1794738121.8397622,
+    "ast_hash": "64c884228e1eecf3c538ee29e71161a0",
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/pokemon.ts": {
@@ -3864,9 +3864,9 @@
     "semantic_hash": ""
   },
   "packages/shared/test/script/groups.test.ts": {
-    "mtime": 1794053530.7084863,
-    "seen": 1794055227.5010943,
-    "ast_hash": "18f4ff3f90367d72fdb8f51cc029d729",
+    "mtime": 1794737301.4413867,
+    "seen": 1794738121.8399503,
+    "ast_hash": "06515f8959cb3df61bc0cc743c663999",
     "semantic_hash": ""
   },
   "packages/shared/test/script/runner.test.ts": {
@@ -4050,9 +4050,9 @@
     "semantic_hash": ""
   },
   ".specify/memory/constitution.md": {
-    "mtime": 1793689550.7556872,
-    "seen": 1793693064.637106,
-    "ast_hash": "c00960ab1b64544c9c2413912d53472e",
+    "mtime": 1794735545.176268,
+    "seen": 1794738121.8400307,
+    "ast_hash": "8ed6692da0186c997834a5f0bd03622d",
     "semantic_hash": ""
   },
   ".specify/templates/checklist-template.md": {
@@ -4092,9 +4092,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1793053951.5859113,
-    "seen": 1793057018.3925362,
-    "ast_hash": "8a6643a420fdad6bfb583523bc6cef16",
+    "mtime": 1794736134.521471,
+    "seen": 1794738121.8400383,
+    "ast_hash": "0425df63269df0e4f2efc97998bcaeff",
     "semantic_hash": ""
   },
   "README.md": {
@@ -6090,15 +6090,15 @@
     "semantic_hash": ""
   },
   "packages/app/golden/campaign.golden.ts": {
-    "mtime": 1794732071.0129244,
-    "seen": 1794732935.6412153,
-    "ast_hash": "6821d6911b48cbf8eefbf475ae1721c3",
+    "mtime": 1794737995.5337155,
+    "seen": 1794738121.8389432,
+    "ast_hash": "f352aefdf043fefeedffce00dfe16e16",
     "semantic_hash": ""
   },
   "packages/app/golden/milestones.ts": {
-    "mtime": 1794730850.8315225,
-    "seen": 1794732935.6412275,
-    "ast_hash": "e1b6c197369451813e3b6c9a6d7a105e",
+    "mtime": 1794737745.8678868,
+    "seen": 1794738121.8389533,
+    "ast_hash": "31fc9b332ecc8af5ecfce96a7ae590d1",
     "semantic_hash": ""
   },
   "packages/app/golden/report.ts": {
@@ -7419,6 +7419,48 @@
     "mtime": 1794677224.6014922,
     "seen": 1794732935.6422942,
     "ast_hash": "9ef95d480b43bd1188bfef90baa8bb0f",
+    "semantic_hash": ""
+  },
+  ".claude/skills/rodar-prompts/scripts/proximos.mjs": {
+    "mtime": 1794736272.987482,
+    "seen": 1794738121.8388712,
+    "ast_hash": "773739294f181f79eeed49abb20471a7",
+    "semantic_hash": ""
+  },
+  ".claude/skills/rodar-prompts/SKILL.md": {
+    "mtime": 1794736122.167478,
+    "seen": 1794738121.8400142,
+    "ast_hash": "746d25043bf0d75a4a472077403cf5a1",
+    "semantic_hash": ""
+  },
+  "docs/STATUS.md": {
+    "mtime": 1794736265.7482438,
+    "seen": 1794738121.8400414,
+    "ast_hash": "8fb5ffafd6249cc539836c2b2c7cb4ba",
+    "semantic_hash": ""
+  },
+  "docs/roadmap/marco-4.md": {
+    "mtime": 1794736257.759078,
+    "seen": 1794738121.8400438,
+    "ast_hash": "2bde88eee8e252a41397d51fc7bbbfd8",
+    "semantic_hash": ""
+  },
+  "docs/roadmap/marco-5.md": {
+    "mtime": 1794736257.9973874,
+    "seen": 1794738121.840045,
+    "ast_hash": "2b72841c14ee424ee2a28839f7fe384b",
+    "semantic_hash": ""
+  },
+  "docs/roadmap/marco-6.md": {
+    "mtime": 1794736258.292972,
+    "seen": 1794738121.8400462,
+    "ast_hash": "6220e0b65e11c119cc8a39a2569f3a4a",
+    "semantic_hash": ""
+  },
+  "docs/roadmap/marco-7.md": {
+    "mtime": 1794736258.5862947,
+    "seen": 1794738121.840047,
+    "ast_hash": "ae276c13f1a5a777af120fb4d3b167dc",
     "semantic_hash": ""
   }
 }

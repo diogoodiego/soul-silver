@@ -125,4 +125,19 @@ export const MILESTONES: Milestone[] = [
   { n: 29, name: "Segundo Farfetch'd e HM01 Cut", checks: { map: 117, flags: [126, 424, 128], items: { 420: 1 } } },
   // The tree at (16, 62) (person 5, 146:0) is the only way north: Cut, then the forest's north exit into Route 34's gate (map 171).
   { n: 30, name: "Travessia do Ilex com Cut", checks: { map: 171 } },
+  // Spec 030.8. Route 34 north: the trigger at (365–371, 413) (237:3, VAR 0x408E = 0) spans the way, the friend's Day-Care
+  // scene plays on it; then north into Goldenrod City (map 76).
+  { n: 31, name: "Rota 34 até Goldenrod", checks: { map: 76 } },
+  // 890:0, the bike shop (map 182): "yes" twice, the Bicycle (item 450, std 2033) and flag 137.
+  { n: 32, name: "Bicicleta da loja de Goldenrod", checks: { flags: [137], items: { 450: 1 } } },
+  // 29:2, the quiz at the Radio Tower 1F (map 112): five right answers give the Radio Card (flag 138); Whitney, watching, runs
+  // back to her gym and flag 792 hides the girl blocking its door (person 20 of Goldenrod).
+  { n: 33, name: "Radio Card no quiz da Torre de Rádio", checks: { flags: [138, 792] } },
+  // The gym (map 137) by its maze: its four trainers (5, 22, 70, 71, each checked on the way), then the tile below Whitney at (13, 4).
+  { n: 34, name: "Ginásio de Goldenrod: labirinto até a Whitney", checks: { map: 137, vars: { 0x410a: 0 } } },
+  // 886:0, Whitney (trainer 30): she cries instead of handing the badge (886 L15): VAR 0x410A = 1, flag 132.
+  { n: 35, name: "Whitney vencida e chorando", checks: { flags: [132], vars: { 0x410a: 1 }, beaten: [30] } },
+  // The trigger at (13, 11) (886:1, VAR 0x410A = 1): the girl stops the player (flag 183); Whitney spoken to again gives the
+  // Plain Badge (badge 2), VAR 0x410A = 2, then TM45 (item 372, std 2033) and flag 133.
+  { n: 36, name: "Whitney de novo e Insígnia Plain", checks: { badges: 3, flags: [183, 133], vars: { 0x410a: 2 }, items: { 372: 1 } } },
 ];

@@ -4,7 +4,7 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 030.8 Goldenrod e Whitney**
+**Próximo item: 030.9 Routes 35 e 36, National Park e Sudowoodo**
 
 Versões atuais: protocolo 29, save 15.
 
@@ -22,7 +22,7 @@ Versões atuais: protocolo 29, save 15.
 
 ## Marco 4 · Johto completo (em andamento)
 
-O trabalho de M4.0 a 030.7 ainda não foi commitado (o último commit é `434794b`).
+M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 
 - [x] M4.0 Tabela de mapas por bloco (`content/roadmap/map-blocks.json`, `npm run maps:blocks`)
 - [x] 029.1 Creche
@@ -38,7 +38,7 @@ O trabalho de M4.0 a 030.7 ainda não foi commitado (o último commit é `434794
 - [x] 030.5 Ginásio de Azalea
 - [x] 030.6 Bugsy e o rival
 - [x] 030.7 Ilex Forest
-- [ ] 030.8 Goldenrod e Whitney
+- [x] 030.8 Goldenrod e Whitney
 - [ ] 030.9 Routes 35 e 36, National Park e Sudowoodo
 - [ ] 030.10 Verificação
 - [ ] 031.1–031.7 Ecruteak até Cianwood
@@ -64,6 +64,12 @@ assunto, ou quando o desenvolvedor pedir.
 - 027: seletor rápido com gamepad (roteiro manual; impedir o Pokémon de andar com o D-pad).
 - 027: item escondido 8001 no tile (572,390), fora da grade dos mapas 33 e 34; sonda do Dowsing.
 - 027: captura do seletor de apricorns do Kurt (`06b-kurt-choice.png`).
+- 030.8: elevador da loja de departamentos (mapa 441, comandos de dynamic warp/elevator) sem implementação; escadas cobrem os andares.
+- 030.8: troca Drowzee→Machop (mapa 195) sem os comandos de NPC trade, como a de Violet (162).
+- 030.8: Name Rater (206), Game Corner (183, 536), GetPartySlotWithFatefulEncounter (184) e ScrCmd_722 (519) sem implementação.
+- 030.8: ScrCmd_522 (mapas 137 e 196) só roda com a flag 2404 de revanche do pós-jogo; ficou de fora.
+- 030.8: Torre de Rádio 1F (112) está no bloco 033 em `map-blocks.json`, mas o quiz roda no 030; comandos faltantes lá (Loto, BufferIntEx etc.) não estão no caminho do quiz.
+- 030.8: `trainer-perf.test.ts` e `perf.test.ts` falham sob carga paralela (passam sozinhos).
 
 ## Decisões
 
@@ -74,3 +80,4 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - O bloco 030 começa na página 6 do detonado e inclui o ovo do Togepi (depende do 029).
 - A cobertura de mapas por bloco está em `content/roadmap/map-blocks.json`; um bloco só fecha
   sem comandos faltantes nos seus mapas.
+- O quiz da Radio Card (112, 29:2) é obrigatório antes do ginásio de Goldenrod: libera a porta pela flag 792.

@@ -45,6 +45,12 @@ describe("flags and variables", () => {
     expect(Object.fromEntries(host.vars)).toEqual({ [0x4010]: 4, [0x4001]: 19, [0x4002]: 0xffff, [0x4003]: 19, [0x4004]: 4 });
   });
 
+  it("Random writes the host's random number modulo the bound (spec 030.8, Goldenrod's 6F)", () => {
+    const host = fakeHost({ random16: () => 1234 });
+    start([["Random", { arg0: 0x4001, arg1: 100 }], ["End"]], host);
+    expect(host.vars.get(0x4001)).toBe(34);
+  });
+
   it("keeps special variables out of the save", () => {
     const { host } = start([["SetVar", { var: v(VAR_RESULT), val: 3 }], ["End"]]);
     expect(host.vars.size).toBe(0);
@@ -56,6 +62,11 @@ describe("flags and variables", () => {
 });
 
 describe("messages", () => {
+  it("BufferInt puts a number in the slot (spec 030.8, the drawing's prize number)", () => {
+    const { state } = start([["BufferInt", { slot: 0, value: 3 }], ["NPCMsg", { msg_id: { text: "0542:3" } }], ["End"]]);
+    expect(state).toMatchObject({ request: { buffers: { 0: { kind: "number", value: 3 } } } });
+  });
+
   it("NPCMsg waits for the player with the buffers filled so far", () => {
     const { state } = start([["BufferPlayersName", { slot: 0 }], ["BufferSpeciesName", { slot: 1, species: { species: 155 }, arg2: 0, arg3: 0 }], ["NPCMsg", { msg_id: { text: "0542:3" } }], ["End"]]);
     expect(state).toEqual({ kind: "blocked", request: { kind: "say", text: "0542:3", buffers: { 0: { kind: "player" }, 1: { kind: "species", id: 155 } } } });

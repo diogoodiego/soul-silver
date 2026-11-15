@@ -32,6 +32,7 @@ export const MESSAGE: Record<string, Handler> = {
   TouchscreenMenuShow: nothing,
   TouchscreenMenuHide: nothing,
   BufferPlayersName: (c) => void (c.buffers[c.raw("slot")] = { kind: "player" }),
+  BufferInt: (c) => void (c.buffers[c.raw("slot")] = { kind: "number", value: c.get("value") }),
   BufferSpeciesName: (c) => void (c.buffers[c.raw("slot")] = { kind: "species", id: c.get("species") }),
   BufferMonSpeciesName: (c) => void (c.buffers[c.raw("slot")] = { kind: "species", id: c.host.partySpecies(c.get("party_pos")) }),
   GetPlayerGender: (c) => c.writeVar(c.ptr("var"), c.host.character === "male" ? 0 : 1),

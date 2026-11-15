@@ -723,6 +723,57 @@ function slowpokeTail(p: Pilot): Check {
   return { name: `${name}: recusado e aceito, sem cobrar nem dar nada` };
 }
 
+/**
+ * Spec 030.8: a clerk of the Goldenrod Department Store (person `npc` of `map`), whose script sets 0x8004 = n for std 2052:
+ * the shop that opens is special list n + 1 with the extracted stock; left at once.
+ */
+function deptClerk(p: Pilot, map: number, npc: number, list: number): Check {
+  const name = `balcão ${npc} do mapa ${map} (loja de departamentos de Goldenrod)`;
+  const n = p.services.length;
+  p.answers.push(0, CANCEL);
+  if (!p.talkTo(map, npc)) return { name, failed: "o atendente não está na extração" };
+  p.until(() => p.services.slice(n).some((m) => m.type === "shopOpen"));
+  const open = p.services.slice(n).find((m): m is Got<"shopOpen"> => m.type === "shopOpen");
+  p.send({ type: "shop-leave" });
+  p.settle();
+  p.answers.length = 0;
+  if (open?.mode !== "buy" || open.shopId !== list + 1) return { name, failed: `esperada a loja ${list + 1} para compra (${JSON.stringify(open)})` };
+  const expected = (p.data.shops?.shop(open.shopId)?.items ?? []).filter((i) => i.minBadges <= badgeCount(p.fresh().badgeSet)).map((i) => i.item);
+  const offered = open.stock.map((s) => s.item);
+  if (JSON.stringify(offered) !== JSON.stringify(expected)) return { name, failed: `estoque oferecido ${offered.join(", ")}, extraído ${expected.join(", ")}` };
+  return { name: `${name}: loja ${open.shopId}, ${offered.length} itens` };
+}
+
+/** Spec 030.8: the 6F (map 196) Daily Drawing (person 2, 904:4): ¥300 for a prize drawn by Random, one more item in the bag. */
+function dailyDrawing(p: Pilot): Check {
+  const name = "sorteio diário do 6º andar (loja de departamentos de Goldenrod)";
+  const before = p.fresh();
+  p.answers.push(0);
+  // Across the counter (column 22) from the west, as a player stands.
+  p.warp(196, 21, 7);
+  p.talk("east");
+  p.answers.length = 0;
+  const after = p.fresh();
+  const total = (s: Save) => s.bag.reduce((n, b) => n + b.count, 0);
+  if (after.money !== before.money - 300 || total(after) !== total(before) + 1) return { name, failed: `dinheiro ${after.money - before.money}, itens ${total(after) - total(before)}` };
+  return { name: `${name}: ¥300, um prêmio na bolsa` };
+}
+
+/** Spec 030.8: the 6F vending machine (sign at (12, 3), 904:3): a Fresh Water (item 30) for ¥200, a second one on Random's bonus, then quit. */
+function vendingMachine(p: Pilot): Check {
+  const name = "máquina de bebidas do 6º andar (loja de departamentos de Goldenrod)";
+  const FRESH_WATER = 30;
+  const before = p.fresh();
+  p.answers.push(0, 3);
+  p.warp(196, 12, 4);
+  p.talk("north");
+  p.answers.length = 0;
+  const after = p.fresh();
+  const got = p.count(after, FRESH_WATER) - p.count(before, FRESH_WATER);
+  if (after.money !== before.money - 200 || got < 1 || got > 2) return { name, failed: `dinheiro ${after.money - before.money}, Fresh Water +${got}` };
+  return { name: `${name}: Fresh Water +${got} por ¥200` };
+}
+
 /** Trains for a leader: the lead two levels over the trainer's strongest, then healed. */
 const ready = (p: Pilot, trainer: number) => p.train(Math.max(...(p.data.trainers?.trainer(trainer)?.team ?? []).map((m) => m.level)) + 2);
 
@@ -1106,9 +1157,75 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     route(p, 12, 19);
     p.walk("north", 1);
   },
+  // Spec 030.8. Out of the gate's north door (5, 2) onto Route 34, up to its trigger at (368, 413): the friend's Day-Care scene
+  // (237:3) takes the player inside (map 331); then from Route 34's north end (358, 390) into Goldenrod.
+  31: (p) => {
+    keep(p, "antes-goldenrod");
+    p.warp(171, 5, 3);
+    p.walk("north", 1);
+    if (p.fresh().area !== "38") throw new Error(`a porta norte do portão não levou à Rota 34 (está ${p.fresh().area})`);
+    route(p, 368, 414);
+    p.walk("north", 1);
+    if (p.fresh().area !== "331") throw new Error(`a cena da creche não levou ao mapa 331 (está ${p.fresh().area})`);
+    p.settle();
+    p.warp(38, 358, 390);
+    p.walk("north", 8);
+  },
+  // The bike shop (person 0 of map 182): "yes" to advertising, "yes" to the loan. Then the department store: the special
+  // shops of 2F to 5F (std 2052 with lists 3 to 7) and 6F's drawing and vending machine.
+  32: (p) => {
+    keep(p, "antes-bicicleta");
+    p.answers.push(0, 0);
+    if (!p.talkTo(182, 0)) throw new Error("o dono da loja de bicicletas não está na extração");
+    p.answers.length = 0;
+    for (const [map, npc, list] of [[192, 0, 3], [192, 1, 4], [193, 0, 5], [194, 0, 6], [195, 0, 7]] as const) checks.push(deptClerk(p, map, npc, list));
+    checks.push(dailyDrawing(p), vendingMachine(p));
+  },
+  // The Radio Tower 1F (map 112): the quiz at the counter (person 2, 29:2), "yes" to playing, then yes, yes, no, yes, no.
+  33: (p) => {
+    keep(p, "antes-radio-card");
+    p.answers.push(0, 0, 0, 1, 0, 1);
+    // Across the counter (row 11) from the north: the scene then walks the player north and Whitney up beside them.
+    p.warp(112, 13, 10);
+    p.talk("south");
+    p.answers.length = 0;
+  },
+  // Into the gym (366, 334 of Goldenrod, map 137); its trainers fought by their lines of sight, then the maze walked from the
+  // entrance (6, 24) to the tile below Whitney.
+  34: (p) => {
+    keep(p, "antes-ginasio-goldenrod");
+    p.warp(76, 366, 335);
+    p.walk("north", 1);
+    if (p.fresh().area !== "137") throw new Error(`a porta do ginásio não levou ao mapa 137 (está ${p.fresh().area})`);
+    for (const npc of [1, 2, 3, 4]) checks.push(p.routeTrainer(`treinador ${npc} (ginásio de Goldenrod)`, 137, npc));
+    p.warp(137, 6, 24);
+    route(p, 13, 5, "north");
+  },
+  // Whitney (person 0 of map 137, 886:0, trainer 30); spoken to again she only cries (886 L15).
+  35: (p) => {
+    ready(p, 30);
+    keep(p, "antes-whitney");
+    const money = p.fresh().money;
+    p.warp(137, 13, 5);
+    p.talk("north");
+    checks.push(p.battle("luta Whitney (ginásio de Goldenrod)", [30], money, () => p.talk("north")));
+  },
+  // South onto the trigger at (13, 11): the girl (person 1, moved to (13, 15) by Whitney's script) walks up and sends the
+  // player back north (886:1); then Whitney again.
+  36: (p) => {
+    keep(p, "antes-insignia-plain");
+    p.warp(137, 13, 5);
+    // One step onto it: the scene puts the player back at (13, 10), and the trigger stays armed until Whitney is spoken to.
+    route(p, 13, 10);
+    p.walk("south", 1);
+    const back = p.tile();
+    if (back.ty !== 10 || !p.fresh().flags.includes(183)) throw new Error(`a menina não mandou o jogador de volta (está em (${back.tx}, ${back.ty}))`);
+    route(p, 13, 5, "north", ["13,15"]);
+    p.talk("north");
+  },
 };
 
-it("goes from the bedroom through Ilex Forest with Cut, past the Zephyr and Hive Badges", () => {
+it("goes from the bedroom to the Plain Badge in Goldenrod, past the Zephyr and Hive Badges and Ilex Forest", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;

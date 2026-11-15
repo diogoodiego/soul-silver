@@ -13,6 +13,7 @@ export const FLAGS: Record<string, Handler> = {
   SubVar: (c) => c.writeVar(c.ptr("var"), c.readVar(c.ptr("var")) - c.get("var_or_addend")),
   // Save_VarsFlags_SetLotoId in retail writes both halves to VAR_LOTO_NUMBER_LO; the high half stays.
   LotoIDSet: (c) => c.host.setVar(VAR_LOTO_NUMBER_LO, c.host.random16()),
+  Random: (c) => c.writeVar(c.ptr("arg0"), c.host.random16() % c.get("arg1")),
 };
 
 const VAR_LOTO_NUMBER_LO = 0x403c;
