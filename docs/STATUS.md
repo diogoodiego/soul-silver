@@ -4,7 +4,7 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 030.9 Routes 35 e 36, National Park e Sudowoodo**
+**Próximo item: 030.10 Verificação**
 
 Versões atuais: protocolo 29, save 15.
 
@@ -39,7 +39,7 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] 030.6 Bugsy e o rival
 - [x] 030.7 Ilex Forest
 - [x] 030.8 Goldenrod e Whitney
-- [ ] 030.9 Routes 35 e 36, National Park e Sudowoodo
+- [x] 030.9 Routes 35 e 36, National Park e Sudowoodo
 - [ ] 030.10 Verificação
 - [ ] 031.1–031.7 Ecruteak até Cianwood
 - [ ] 032.1–032.7 Olivine, Mahogany e Lake of Rage
@@ -70,6 +70,11 @@ assunto, ou quando o desenvolvedor pedir.
 - 030.8: ScrCmd_522 (mapas 137 e 196) só roda com a flag 2404 de revanche do pós-jogo; ficou de fora.
 - 030.8: Torre de Rádio 1F (112) está no bloco 033 em `map-blocks.json`, mas o quiz roda no 030; comandos faltantes lá (Loto, BufferIntEx etc.) não estão no caminho do quiz.
 - 030.8: `trainer-perf.test.ts` e `perf.test.ts` falham sob carga paralela (passam sozinhos).
+- 030.9: treinadores fora do golden (`shortcut:`): Route 35 nº 5 e National Park 22–24 não iniciam luta; nº 13 dá +0 de dinheiro (teto 999999?); Route 35 nº 0 só à noite (ScrCmd_379); Route 36 nº 3 não inicia luta.
+- 030.9: GetItemQuantity (mapa 40, pessoa 0) sem implementação; ScrCmd_607 nos mapas 102/104 (concurso) pendente.
+- 030.9: o selvagem do encontro fixo é entidade comum (outros jogadores o veem e atacam); só flags e resultado são por jogador.
+- 030.9: faltam testes de servidor dos resultados 2 (blackout), 4 (captura) e 5 (fuga) do encontro fixo.
+- 030.9: após nocaute, o corpo segue capturável por `faintedSeconds`, mas o script já fechou como vitória e a flag 361 não liga.
 
 ## Decisões
 
@@ -81,3 +86,5 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - A cobertura de mapas por bloco está em `content/roadmap/map-blocks.json`; um bloco só fecha
   sem comandos faltantes nos seus mapas.
 - O quiz da Radio Card (112, 29:2) é obrigatório antes do ginásio de Goldenrod: libera a porta pela flag 792.
+- WildBattle (encontro fixo) é um selvagem real-time por jogador; BattleOutcome 1/2/4/5 = nocaute/blackout/captura/fuga, e o `onLoad` do mapa roda antes de o script retomar.
+- Route 36 passou para o bloco 030 em `map-blocks.json`; o Bug-Catching Contest segue fora.

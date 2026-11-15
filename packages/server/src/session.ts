@@ -75,6 +75,8 @@ const SAVE_INTERVAL_TICKS = 600;
 const RESERVE_TICKS = 2400;
 /** The final saves get 3 s to be acknowledged before the session closes (FR-021). */
 const CLOSE_WAIT_TICKS = 60;
+/** Spec 030.9: BattleOutcome of the original (pokeheartgold battle.h), as GetStaticEncounterOutcome reads it. */
+const OUTCOME = { won: 1, lost: 2, caught: 4, fled: 5 } as const;
 
 export interface Spawn {
   area: string;
@@ -264,6 +266,14 @@ export function createSession(options: SessionOptions): Session {
           const c = wilds?.ai.get(id);
           if (c) Object.assign(c, { home: { x: center.x, y: center.y }, leashPx: radiusPx });
         },
+        onBlackout: (playerId) => {
+          for (const [wildId, fighter] of statics) {
+            if (fighter !== playerId) continue;
+            statics.delete(wildId);
+            wilds?.remove(wildId);
+            scripts?.wildBattleEnded(playerId, OUTCOME.lost);
+          }
+        },
         log: (message) => options.log(message),
       })
     : undefined;
@@ -274,6 +284,14 @@ export function createSession(options: SessionOptions): Session {
   const ai = options.ai ?? buildAiData(BUNDLED_AI_CONTENT);
   const aiDebugEvery = Math.max(1, Math.round(TICKS_PER_S / ai.tuning.debug.hz));
   const aiDebugRadiusPx = ai.tuning.debug.radiusTiles * MAP_TILE_PX;
+  /** Spec 030.9: static encounters under way, by wild entity: the player fighting it. Others may hit it too, as any wild one. */
+  const statics = new Map<number, number>();
+  const endStatic = (wildId: number, outcome: number) => {
+    const playerId = statics.get(wildId);
+    if (playerId === undefined) return;
+    statics.delete(wildId);
+    scripts?.wildBattleEnded(playerId, outcome);
+  };
   const wilds =
     options.wild && combat && options.combat
       ? createWilds({
@@ -297,8 +315,15 @@ export function createSession(options: SessionOptions): Session {
             return Math.round(radioCap * Math.min(1, ...here.map((p) => items.density(p.id))));
           },
           onDecision: options.onDecision,
-          onFaint: (id, species, level) => progression?.faint(id, species, level),
-          onRemove: (id) => progression?.forget(id),
+          onFaint: (id, species, level) => {
+            progression?.faint(id, species, level);
+            endStatic(id, OUTCOME.won);
+          },
+          onRemove: (id: number): void => {
+            progression?.forget(id);
+            // Still fought when it leaves the world: caught (out of a ball that held), else the player got away from it.
+            endStatic(id, wilds?.get(id)?.capturing ? OUTCOME.caught : OUTCOME.fled);
+          },
           log: (message) => options.log(message),
         })
       : undefined;
@@ -397,6 +422,16 @@ export function createSession(options: SessionOptions): Session {
           if (p) p.beforeScript = capture(p);
         },
         battle: (playerId, trainer, partner): boolean => trainerBattles?.startScripted(playerId, trainer, partner) ?? false,
+        wildBattle: (playerId, species, level, at): boolean => {
+          if (!wilds || !options.wild) return false;
+          try {
+            statics.set(wilds.place(at.area, at.x, at.y, { species, level, moves: wildMoves(options.wild.levelUp(species), level) }, tick), playerId);
+            return true;
+          } catch (error) {
+            options.log(`Static encounter ${species} on map ${at.area} not spawned: ${(error as Error).message}`);
+            return false;
+          }
+        },
         shop: (playerId, shop, sell): boolean => shops?.open(playerId, shop, sell) ?? false,
         pc: (playerId): boolean => pcs.open(playerId),
         fieldWild:

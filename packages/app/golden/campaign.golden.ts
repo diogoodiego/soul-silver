@@ -1223,9 +1223,68 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     route(p, 13, 5, "north", ["13,15"]);
     p.talk("north");
   },
+  // Spec 030.9. The flower shop (person 0 of map 184): the SquirtBottle once the Plain Badge is in.
+  37: (p) => {
+    keep(p, "antes-squirtbottle");
+    if (!p.talkTo(184, 0)) throw new Error("a florista não está na extração");
+  },
+  // Goldenrod's north door (358, 325) into the gate (map 101), its north door (5, 2) onto Route 35 (map 39); its trainers by
+  // their lines of sight, then the park's gate (362, 266; map 102) and its north door (25, 2) into the National Park (map 96).
+  38: (p) => {
+    keep(p, "antes-rota-35");
+    const through = (map: number, x: number, y: number, dir: Direction, to: number) => {
+      p.warp(map, x, y);
+      p.walk(dir, 1);
+      if (p.fresh().area !== String(to)) throw new Error(`a porta (${x}, ${y}) do mapa ${map} não levou ao mapa ${to} (está ${p.fresh().area})`);
+    };
+    through(76, 358, 326, "north", 101);
+    through(101, 5, 3, "north", 39);
+    // shortcut: 0 shows only at night (ScrCmd_379, flag 462); 5 and 13 do not pass routeTrainer yet (see 030.10).
+    for (const npc of [1, 2, 3, 4, 6, 7]) checks.push(p.routeTrainer(`treinador ${npc} (Rota 35)`, 39, npc));
+    through(39, 362, 267, "north", 102);
+    route(p, 25, 3);
+    p.walk("north", 1);
+  },
+  // The park's trainers, then its east door (75, 39) into the gate (map 104) and the gate's east door (10, 7) onto Route 36.
+  39: (p) => {
+    keep(p, "antes-rota-36");
+    // shortcut: 22 to 24 do not pass routeTrainer yet (see 030.10).
+    checks.push(p.routeTrainer("treinador 21 (National Park)", 96, 21));
+    p.warp(96, 74, 39);
+    p.walk("east", 1);
+    if (p.fresh().area !== "104") throw new Error(`a porta leste do parque não levou ao mapa 104 (está ${p.fresh().area})`);
+    p.warp(104, 9, 7);
+    p.walk("east", 1);
+    // shortcut: 3 does not pass routeTrainer yet (see 030.10).
+    checks.push(p.routeTrainer("treinador 2 (Rota 36)", 40, 2));
+  },
+  // North of the Sudowoodo (person 4 at (415, 246), across the one-tile way down from the park's side), facing it: "yes"
+  // to the SquirtBottle, then the bot fights the wild one.
+  40: (p) => {
+    keep(p, "antes-sudowoodo");
+    p.warp(40, 415, 245);
+    p.answers.push(0);
+    p.talk("south");
+    p.answers.length = 0;
+    if (!p.engage()) throw new Error("o Sudowoodo selvagem não apareceu para a luta");
+    p.until(() => !p.inCombat() && !p.session.world.all().some((e) => e.kind === "pokemon" && e.data["species"] === 185 && p.session.combat?.get(e.id)?.hp), 3000);
+    if (p.inCombat()) {
+      p.tick(null, BUTTON.recall);
+      p.until(() => !p.inCombat(), 100);
+    }
+    p.settle();
+  },
+  // Through the Sudowoodo's tile and on east: Route 36's Violet gate (447, 246; map 149).
+  41: (p) => {
+    p.warp(40, 415, 245);
+    p.walk("south", 2);
+    if (p.tile().ty !== 247) throw new Error(`o caminho do Sudowoodo segue fechado (está em (${p.tile().tx}, ${p.tile().ty}))`);
+    route(p, 446, 246);
+    p.walk("east", 1);
+  },
 };
 
-it("goes from the bedroom to the Plain Badge in Goldenrod, past the Zephyr and Hive Badges and Ilex Forest", () => {
+it("goes from the bedroom past the Sudowoodo on Route 36, past the Zephyr, Hive and Plain Badges", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;

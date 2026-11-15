@@ -7,7 +7,7 @@ describe("missing commands", () => {
   it.each([
     ["an unknown name", ["NotImplementedYet"]],
     ["a raw command", { raw: true as const, id: 999 }],
-    ["a bridge nothing implements", ["WildBattle", { species: { species: 1 }, level: 5, arg2: 0 }]],
+    ["a bridge nothing implements", ["SealMart", { arg0: 0 }]],
   ])("%s ends the script within the tick, unlocks the player and is logged", (_, command) => {
     const file = scriptFile(100, ["L1:", ["NPCMsg", { msg_id: { text: "0007:1" } }], command as never, ["SetFlag", { flag: { flag: 500 } }], ["End"]]);
     const missing: unknown[] = [];

@@ -140,4 +140,16 @@ export const MILESTONES: Milestone[] = [
   // The trigger at (13, 11) (886:1, VAR 0x410A = 1): the girl stops the player (flag 183); Whitney spoken to again gives the
   // Plain Badge (badge 2), VAR 0x410A = 2, then TM45 (item 372, std 2033) and flag 133.
   { n: 36, name: "Whitney de novo e Insígnia Plain", checks: { badges: 3, flags: [183, 133], vars: { 0x410a: 2 }, items: { 372: 1 } } },
+  // Spec 030.9. 896:0, the Goldenrod flower shop (map 184): with the Plain Badge (badge 2) the SquirtBottle (item 477, std 2033).
+  { n: 37, name: "SquirtBottle da floricultura de Goldenrod", checks: { items: { 477: 1 } } },
+  // Goldenrod's north gate (map 101), Route 35 (map 39) and its trainers, the park's gate (102), into the National Park (96).
+  { n: 38, name: "Rota 35 até o National Park", checks: { map: 96 } },
+  // The park's trainers, then its east gate (104) to Route 36 (map 40), its trainers west of the Sudowoodo.
+  { n: 39, name: "National Park até a Rota 36", checks: { map: 40 } },
+  // 243:0, the Sudowoodo (person 4 at (415, 246)): the SquirtBottle, "yes", then the wild battle (species 185, level 20) fought
+  // by the bot; the map's onLoad (243:10) sees flag 164 and sets 450, which hides it. Flag 181, then the girl's gifts (std 2033):
+  // item 470, and three each of items 155 and 151; flag 463 hides her.
+  { n: 40, name: "Sudowoodo vencido", checks: { map: 40, flags: [181, 450, 463], items: { 470: 1, 155: 3, 151: 3 } } },
+  // Through the Sudowoodo's tile and east along Route 36 to its Violet gate (map 149).
+  { n: 41, name: "Rota 36 livre até o portão de Violet", checks: { map: 149 } },
 ];

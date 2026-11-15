@@ -436,8 +436,29 @@ describe("marts (spec 023)", () => {
   });
 });
 
+describe("static encounters (spec 030.9, the Sudowoodo of Route 36)", () => {
+  it("WildBattle blocks on a server-side wild battle, then CheckBattleWon reads the result", () => {
+    const host = fakeHost();
+    const { runner, state } = start([["WildBattle", { species: { species: 185 }, level: 20, shiny: 0 }], ["CheckBattleWon", { var: v(0x4002) }], ["End"]], host);
+    expect(state).toEqual({ kind: "blocked", request: { kind: "wild", species: 185, level: 20 } });
+    host.won = true;
+    expect(runner.resume()).toEqual({ kind: "done" });
+    expect(host.vars.get(0x4002)).toBe(1);
+  });
+
+  it.each([
+    [1, 1],
+    [4, 1],
+    [5, 0],
+  ])("GetStaticEncounterOutcome reads outcome %i; StaticWildWonOrCaughtCheck gives %i", (outcome, wonOrCaught) => {
+    const host = fakeHost({ battleOutcome: () => outcome });
+    start([["GetStaticEncounterOutcome", { arg0: 0x4001 }], ["StaticWildWonOrCaughtCheck", { arg0: 0x4000, arg1: 0 }], ["End"]], host);
+    expect([host.vars.get(0x4001), host.vars.get(0x4000)]).toEqual([outcome, wonOrCaught]);
+  });
+});
+
 describe("bridges to later specs", () => {
-  it.each(["WildBattle", "SealMart"])("%s goes to the host and ends the script when nothing implements it", (name) => {
+  it.each(["DecorationMart", "SealMart"])("%s goes to the host and ends the script when nothing implements it", (name) => {
     const { host, state } = start([[name, { arg0: 0 }], ["End"]]);
     expect(host.bridged).toEqual([name]);
     expect(state).toMatchObject({ kind: "missing", command: name });
@@ -445,7 +466,7 @@ describe("bridges to later specs", () => {
 
   it("goes on when the host implements it", () => {
     const host = fakeHost();
-    host.supported.add("WildBattle");
-    expect(start([["WildBattle", { arg0: 0 }], ["End"]], host).state).toEqual({ kind: "done" });
+    host.supported.add("SealMart");
+    expect(start([["SealMart", { arg0: 0 }], ["End"]], host).state).toEqual({ kind: "done" });
   });
 });

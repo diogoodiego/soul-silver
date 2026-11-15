@@ -23,6 +23,8 @@ export type ScriptRequest =
   | { kind: "wait"; ticks: number }
   /** Spec 022: a trainer battle, run by the server; `partner` is the second trainer of a tag battle, 0 for none. */
   | { kind: "battle"; trainer: number; partner: number }
+  /** Spec 030.9: a scripted wild battle (a static encounter), run by the server for this player alone. */
+  | { kind: "wild"; species: number; level: number }
   /** Spec 023: a choice list after the last message; the answer is the index picked, past the end to cancel. */
   | { kind: "menu"; items: string[]; cancel: boolean; buffers: Record<number, TextBuffer> }
   /** Spec 023: the Pokémon storage, run by the server. */
@@ -109,6 +111,8 @@ export interface ScriptHost {
   setTrainerFlag(trainer: number, on: boolean): void;
   /** Whether the player won the last trainer battle. */
   battleWon(): boolean;
+  /** Spec 030.9, GetStaticEncounterOutcome: the last wild battle's BattleOutcome (1 won, 2 lost, 4 caught, 5 fled). */
+  battleOutcome?(): number;
   hasBadge(badge: number): boolean;
   giveBadge(badge: number): void;
   /** Spec 025: who uses a field move (the companion when it knows it); the party size when no one does. */

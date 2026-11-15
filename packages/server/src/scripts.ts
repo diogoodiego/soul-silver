@@ -52,7 +52,7 @@ const MAPTEMP_FLAGS = { from: 0x1, to: 0x40 };
 /** A script waits this long for an answer before the player is let go: 60 s at 20 Hz. */
 export const SCRIPT_TIMEOUT_TICKS = 1200;
 /** Requests the server ends itself, never timed out: waits, trainer battles, shops and the PC (spec 024). */
-const OPEN_ENDED = new Set(["wait", "battle", "shop", "pc"]);
+const OPEN_ENDED = new Set(["wait", "battle", "wild", "shop", "pc"]);
 const STEP: Record<Direction, [number, number]> = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
 const OPPOSITE: Record<Direction, Direction> = { north: "south", south: "north", west: "east", east: "west" };
 const BAG_MAX = 999;
@@ -225,6 +225,8 @@ export interface ScriptsOptions {
   onStart?: ((playerId: number) => void) | undefined;
   /** Starts a scripted trainer battle (spec 022); false when there is none to start. The script waits for battleEnded. */
   battle?: ((playerId: number, trainer: number, partner: number) => boolean) | undefined;
+  /** Spec 030.9: a static encounter, a wild Pokémon at (x, y) of `area` for this player to fight; false when none could appear. The script waits for wildBattleEnded. */
+  wildBattle?: ((playerId: number, species: number, level: number, at: { area: string; x: number; y: number }) => boolean) | undefined;
   /** Opens a Poké Mart (spec 023); false when there is none. The script waits for serviceClosed. */
   shop?: ((playerId: number, shop: number, sell: boolean) => boolean) | undefined;
   /** Opens the Pokémon PC (spec 023); the script waits for serviceClosed. */
@@ -317,6 +319,9 @@ interface State {
   inService: boolean;
   /** Result of the last trainer battle, for CheckBattleWon. */
   won: boolean;
+  /** Spec 030.9: the last wild battle's BattleOutcome (GetStaticEncounterOutcome), and the map it was fought on. */
+  outcome: number;
+  wildArea: string | undefined;
   /** Strength is on for this visit of the map (spec 025). */
   strength: boolean;
   /** Spec 030.5: the Azalea Gym's spiders and levers, set by AzaleaGymInit on entering the gym. */
@@ -330,6 +335,8 @@ interface State {
 type DebugView = Extract<ServerMessage, { type: "script-debug" }>;
 type FlagChange = DebugView["changes"][number];
 const HISTORY = 64;
+/** BattleOutcome of the original (pokeheartgold battle.h): a loss. */
+const OUTCOME_LOST = 2;
 const hex = (n: number) => `0x${n.toString(16)}`;
 const scriptName = (file: number, entry: number) => `${String(file).padStart(4, "0")}:${entry}`;
 
@@ -644,6 +651,7 @@ export function createScripts(options: ScriptsOptions) {
       trainerFlag: (t) => who.flags.has(trainerFlagBase + t),
       setTrainerFlag: (t, on) => writeFlag(s, trainerFlagBase + t, on),
       battleWon: () => s.won,
+      battleOutcome: () => s.outcome,
       hasBadge: (b) => hasBadgeBit(who.progress.badgeSet, b),
       giveBadge: (b) => void (b >= 0 && b < 16 && (who.progress.badgeSet |= 1 << b)),
       // The original answers PARTY_SIZE, not the party's length, and the scripts compare against 6.
@@ -775,6 +783,22 @@ export function createScripts(options: ScriptsOptions) {
           }
           s.inBattle = true;
           // The player controls their Pokémon until the battle ends.
+          lock(s, false);
+          return;
+        } else if (state.request.kind === "wild") {
+          // Out of the person talked to (the overworld Sudowoodo), else the tile ahead.
+          const me = world.get(s.who.entityId);
+          const talked = s.talkedTo === undefined ? undefined : world.get(s.talkedTo);
+          const at = talked ?? (me && { area: me.area, x: me.x + STEP[me.facing][0] * MAP_TILE_PX, y: me.y + STEP[me.facing][1] * MAP_TILE_PX });
+          if (!at || !options.wildBattle?.(s.who.playerId, state.request.species, state.request.level, { area: at.area, x: at.x, y: at.y })) {
+            options.log(`Ended a script of player ${s.who.playerId}: wild battle ${state.request.species} could not start`);
+            break;
+          }
+          s.wildArea = at.area;
+          // The battle replaced the overworld one in the original: it is not there beside the wild one.
+          const person = talked?.data["person"];
+          if (typeof person === "number") s.shown.set(person, false);
+          s.inBattle = true;
           lock(s, false);
           return;
         } else if (state.request.kind === "call") {
@@ -1020,7 +1044,7 @@ export function createScripts(options: ScriptsOptions) {
 
   return {
     join(who: Storyteller): void {
-      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", walkedFrom: undefined, shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false, strength: false, gymmick: undefined, ride: undefined, changes: [] };
+      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", walkedFrom: undefined, shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false, outcome: 0, wildArea: undefined, strength: false, gymmick: undefined, ride: undefined, changes: [] };
       states.set(who.playerId, s);
       // Spec 024: a story not yet started runs _std_init to its end before any map, as RunInitScript does.
       const init = who.init && data.newGame ? data.resolve(data.newGame.initScript, data.newGame.map) : undefined;
@@ -1076,6 +1100,23 @@ export function createScripts(options: ScriptsOptions) {
       s.won = won;
       if (!s.inBattle) return;
       s.inBattle = false;
+      s.runner!.resume();
+      settle(s);
+    },
+    /**
+     * Spec 030.9: the wild battle a script waited on is over (`outcome` as BattleOutcome). The original's field comes back
+     * from the battle before the script goes on: the map's onLoad runs first (it hides a static Pokémon by its flag).
+     */
+    wildBattleEnded(playerId: number, outcome: number): void {
+      const s = states.get(playerId);
+      if (!s?.inBattle) return;
+      s.inBattle = false;
+      s.won = outcome !== OUTCOME_LOST;
+      s.outcome = outcome;
+      const onLoad = s.wildArea === undefined ? undefined : eventsOf(s.wildArea)?.levelScripts.onLoad;
+      const file = onLoad && data.file(onLoad.file);
+      // shortcut: a blocking command in it would just stop it there; none of the onLoad scripts after battles block.
+      if (onLoad && file) createRunner(hostFor(s), SCRIPT_HANDLERS, { file, entry: onLoad.entry }).step();
       s.runner!.resume();
       settle(s);
     },

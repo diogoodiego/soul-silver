@@ -83,6 +83,8 @@ export interface CompanionOptions {
   launchable?(playerId: number, species: number): boolean;
   /** Spec 027: what a member brings into combat besides its stats: its held item and its PP Ups. */
   extras?(m: PartyMember): Pick<CombatantSpec, "held" | "cooldownMul">;
+  /** Spec 030.9: the player blacked out (a static encounter they were fighting is lost). */
+  onBlackout?(playerId: number): void;
   /** A wild Pokémon now fights inside this circle: its AI makes it home, so it does not walk off to its spawn. */
   pin?(entityId: number, center: Point, radiusPx: number): void;
   log(message: string): void;
@@ -243,6 +245,7 @@ export function createCompanions(options: CompanionOptions) {
     s.lastArea = to.area;
     s.trainer.send({ type: "blackout", moneyLost: lost, area: to.area });
     endCombat(s);
+    options.onBlackout?.(s.trainer.playerId);
   }
 
   function stepCombat(s: State, tick: number): void {
