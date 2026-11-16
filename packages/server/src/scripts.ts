@@ -782,6 +782,11 @@ export function createScripts(options: ScriptsOptions) {
         const o = origin(area);
         world.update({ ...me(), area, x: center(x - o.tx), y: center(z - o.ty), level: 0, facing: SCRIPT_DIRECTIONS[facing] ?? me().facing });
       },
+      dynamicWarpMap() {
+        const map = Number(String(me().data["dynamicWarp"] ?? "").split(":")[0]);
+        return Number.isInteger(map) && map > 0 ? map : undefined;
+      },
+      setDynamicWarp: (map, anchor) => world.update({ ...me(), data: { ...me().data, dynamicWarp: `${map}:${anchor}` } }),
       ride: (path, spider) => void (s.ride = { path, spider, from: tick }),
       placePlayer(x, z, facing) {
         s.ride = undefined;

@@ -14,6 +14,9 @@ const STARTER_BALL_AT = [
 ] as const;
 const FLAG_GOT_TM51_FROM_FALKNER = 0x73;
 const FLAG_MET_PASSERBY_BOY = 0x99;
+/** Floor numbers of the maps an elevator's dynamic warp leads to, as its script counts them. */
+// shortcut: the Olivine Lighthouse's 1F and 6F only (the original reads a table by map); add Goldenrod's store with its elevator.
+const ELEVATOR_FLOOR: Record<number, number> = { 115: 0, 225: 1 };
 
 export const WORLD: Record<string, Handler> = {
   PlaceStarterBallsInElmsLab: (c) => {
@@ -25,6 +28,11 @@ export const WORLD: Record<string, Handler> = {
   MoveWarp: nothing,
   PlayerOnBikeCheck: (c) => c.writeVar(c.ptr("arg0"), c.host.onBike?.() ? 1 : 0),
   Warp: (c) => c.host.warp(c.get("arg0"), c.get("arg2"), c.get("arg3"), c.get("arg4")),
+  // Item 031.5: arg1 is the warp anchor of the map; with one, the original ignores the coordinates.
+  SetDynamicWarp: (c) => c.host.setDynamicWarp?.(c.get("arg0"), c.get("arg1")),
+  GetDynamicWarpFloorNo: (c) => c.writeVar(c.ptr("arg0"), ELEVATOR_FLOOR[c.host.dynamicWarpMap?.() ?? -1] ?? 0),
+  // The car moving `distance` times; the client draws no elevator yet.
+  ElevatorAnim: (c) => c.block({ kind: "wait", ticks: framesToTicks(30 * c.get("distance")) }),
   FadeScreen: (c) => c.host.emit({ kind: "fade", type: c.raw("direction"), color: c.raw("color"), duration: c.raw("arg0") }),
   WaitFade: (c) => c.block({ kind: "wait-fade" }),
   Wait: (c) => {

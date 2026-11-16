@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Entity } from "../../src/game/entity.ts";
 import {
+  DYNAMIC_WARP_MAP,
   HOP_TICKS,
   MOVE_SPEED_PX,
   RUN_SPEED_PX,
@@ -271,6 +272,20 @@ describe("stepMovement: warps", () => {
     e = repeat(e, null, WARP_TICKS, houses);
     expect(e).toMatchObject({ area: "street", x: 24, y: 40, facing: "south" });
     expect(e.data["warping"]).toBeUndefined();
+  });
+
+  // Item 031.5: an elevator's door leads to map 4095, the dynamic warp; it starts as the warp the player came in by.
+  it("leaves an elevator by the dynamic warp: where the player came from, or where a script set it", () => {
+    const floor1 = mapOf("f1", ["....", "....", "...."], { warps: [{ tx: 0, ty: 0, destMap: "x", destAnchor: 0 }, { tx: 1, ty: 0, destMap: "lift", destAnchor: 0 }] });
+    const floor6 = mapOf("f6", ["....", "....", "...."], { warps: [{ tx: 3, ty: 2, destMap: "lift", destAnchor: 0 }] });
+    const lift = mapOf("lift", ["....", "....", "...."], { warps: [{ tx: 2, ty: 2, destMap: DYNAMIC_WARP_MAP, destAnchor: 256 }] });
+    const tower = lookup(floor1, floor6, lift);
+    const ride = (e: Entity) => repeat(repeat(e, go(0, -1), 6, tower), go(0, 1), 8 + WARP_TICKS, tower);
+    let e = repeat(at(24, 24, { area: "f1" }), go(0, -1), 3, tower);
+    e = repeat(e, null, WARP_TICKS, tower);
+    expect(e).toMatchObject({ area: "lift", data: { dynamicWarp: "f1:1" } });
+    expect(ride(e)).toMatchObject({ area: "f1", x: 24 });
+    expect(ride({ ...e, data: { ...e.data, dynamicWarp: "f6:0" } })).toMatchObject({ area: "f6", x: 3 * 16 + 8 });
   });
 
   it("stays put when the destination is unknown", () => {

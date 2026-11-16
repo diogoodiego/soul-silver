@@ -31,6 +31,8 @@ export const HOP_TICKS = 6;
 const HOP_PX = 5;
 /** Fade out, swap maps half way, fade in: 0.3 s + 0.3 s. */
 export const WARP_TICKS = 12;
+/** A warp to this map leads to the player's dynamic warp (elevator doors): `data.dynamicWarp`, "map:anchor". */
+export const DYNAMIC_WARP_MAP = "4095";
 
 /** Half side of the square footprint around the feet position. */
 const HALF_BOX = 6;
@@ -143,20 +145,22 @@ function afterMove(world: WorldLookup, e: Entity, px: number, py: number, hits: 
   if (feet?.category === "levelTransition" && feet.targetLevel !== undefined) next = { ...next, level: feet.targetLevel };
   const sameTile = next.area === e.area && tileOf(next.x) === tileOf(px) && tileOf(next.y) === tileOf(py);
   const warpTicks = withCounter(next.data, "warping", WARP_TICKS);
-  if ((!sameTile || hits.length > 0) && destinationOf(world, next.area, tileOf(next.x), tileOf(next.y))) return { ...next, data: warpTicks };
+  if ((!sameTile || hits.length > 0) && destinationOf(world, next, tileOf(next.x), tileOf(next.y))) return { ...next, data: warpTicks };
   if (next.area !== e.area) return next;
   // Only the tile straight ahead of the feet: a footprint corner brushing a door does not enter it.
   const [sx, sy] = STEP[next.facing];
-  const door = hits.find((b) => b.tx === tileOf(next.x) + sx && b.ty === tileOf(next.y) + sy && destinationOf(world, next.area, b.tx, b.ty));
+  const door = hits.find((b) => b.tx === tileOf(next.x) + sx && b.ty === tileOf(next.y) + sy && destinationOf(world, next, b.tx, b.ty));
   if (door) return { ...next, x: center(door.tx), y: center(door.ty), data: warpTicks };
   return next;
 }
 
-/** The warp on a tile and the anchor it leads to, when both exist. */
-function destinationOf(world: WorldLookup, area: string, tx: number, ty: number) {
-  const warp = world(area)?.warps.find((w) => w.tx === tx && w.ty === ty);
-  const anchor = warp && world(warp.destMap)?.warps[warp.destAnchor];
-  return warp && anchor ? { warp, anchor } : undefined;
+/** The warp on a tile and the map and anchor it leads to, when both exist. */
+function destinationOf(world: WorldLookup, e: Entity, tx: number, ty: number) {
+  const warp = world(e.area)?.warps.find((w) => w.tx === tx && w.ty === ty);
+  if (!warp) return undefined;
+  const [map = "", index = ""] = warp.destMap === DYNAMIC_WARP_MAP ? String(e.data["dynamicWarp"] ?? "").split(":") : [warp.destMap, String(warp.destAnchor)];
+  const anchor = map === "" ? undefined : world(map)?.warps[Number(index)];
+  return anchor ? { warp, map, anchor } : undefined;
 }
 
 /**
@@ -164,10 +168,12 @@ function destinationOf(world: WorldLookup, area: string, tx: number, ty: number)
  * below it, facing away. Stays put if the destination is gone.
  */
 function arrive(world: WorldLookup, e: Entity): Entity {
-  const dest = destinationOf(world, e.area, tileOf(e.x), tileOf(e.y));
+  const dest = destinationOf(world, e, tileOf(e.x), tileOf(e.y));
   if (!dest) return e;
-  const { warp, anchor } = dest;
-  const onAnchor: Entity = { ...e, area: warp.destMap, x: center(anchor.tx), y: center(anchor.ty), level: 0 };
+  const { warp, map, anchor } = dest;
+  // The way back out of an elevator is the warp the player came in by (the original's dynamic warp), until a script sets another.
+  const data = warp.destMap === DYNAMIC_WARP_MAP ? e.data : { ...e.data, dynamicWarp: `${e.area}:${world(e.area)!.warps.indexOf(warp)}` };
+  const onAnchor: Entity = { ...e, area: map, x: center(anchor.tx), y: center(anchor.ty), level: 0, data };
   if (blockers(world, onAnchor, onAnchor.x, onAnchor.y).length === 0) return onAnchor;
   return unstick({ ...onAnchor, y: center(anchor.ty + 1), facing: "south" }, world);
 }

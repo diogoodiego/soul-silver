@@ -130,6 +130,9 @@ export interface ScriptHost {
   /** In matrix tiles, as the scripts compare them; facing as SCRIPT_DIRECTIONS indexes. */
   playerPosition(): { x: number; z: number; facing: number };
   warp(map: number, x: number, z: number, facing: number): void;
+  /** Item 031.5: the map the player's dynamic warp leads to (an elevator's door), and setting it to a map's warp anchor. */
+  dynamicWarpMap?(): number | undefined;
+  setDynamicWarp?(map: number, anchor: number): void;
   /** Spec 030.5: moves the player on this map, in its own tiles, without it counting as a step onto a trigger. */
   placePlayer?(x: number, z: number, facing: number): void;
   /** Spec 030.5: the Azalea Gym's threads (azalea-gym.json); undefined without the file. */

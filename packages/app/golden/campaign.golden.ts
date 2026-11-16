@@ -1366,9 +1366,46 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     p.talk("north");
     checks.push(p.battle("luta Morty (ginásio de Ecruteak)", [31], money, () => p.talk("north")));
   },
+  // Item 031.5. Route 39's south end (279, 222), then south across the border into Olivine.
+  48: (p) => {
+    keep(p, "antes-olivine");
+    p.warp(43, 279, 222);
+    p.walk("south", 2);
+  },
+  // West along the road toward the gym, onto the rival's trigger at (272, 241).
+  49: (p) => {
+    route(p, 273, 241);
+    p.walk("west", 1);
+  },
+  // The lighthouse door (301, 263) into 1F (map 115); the trainers by their lines of sight; then the elevator's mat (8, 4) of
+  // 1F into map 446: its script walks the player in and sets the way out to 6F; south through its door (3, 6) to 6F.
+  50: (p) => {
+    keep(p, "antes-farol");
+    p.warp(77, 301, 264);
+    p.walk("north", 1);
+    if (p.fresh().area !== "115") throw new Error(`a porta do farol não levou ao 1F (está ${p.fresh().area})`);
+    for (const [map, npcs] of [
+      [220, [0, 1]],
+      [222, [0, 1, 2]],
+      [223, [0, 1]],
+      [224, [0, 1]],
+    ] as const) {
+      for (const npc of npcs) checks.push(p.routeTrainer(`treinador ${npc} (farol, mapa ${map})`, map, npc));
+    }
+    p.warp(115, 8, 5);
+    p.walk("north", 1);
+    if (p.fresh().area !== "446") throw new Error(`o tapete do elevador não levou ao mapa 446 (está ${p.fresh().area})`);
+    // The script walks the player two tiles north of the door, facing it.
+    p.walk("south", 2);
+  },
+  // Jasmine (person 1 of map 225), beside Amphy.
+  51: (p) => {
+    keep(p, "antes-jasmine");
+    if (!p.talkTo(225, 1)) throw new Error("a Jasmine não está na extração");
+  },
 };
 
-it("goes from the bedroom through the Ecruteak Gym, past the Zephyr, Hive, Plain and Fog Badges", () => {
+it("goes from the bedroom past the Zephyr, Hive, Plain and Fog Badges to Jasmine at the top of the Olivine Lighthouse", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;

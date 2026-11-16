@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseEventsJson } from "@soulsilver/shared/events";
-import { buildWorldMap, type WorldLookup, type WorldMap } from "@soulsilver/shared/game";
+import { buildWorldMap, DYNAMIC_WARP_MAP, type WorldLookup, type WorldMap } from "@soulsilver/shared/game";
 import { parseMapJson, type MapArea, type MapFileKind, type MapHeader } from "@soulsilver/shared/maps";
 
 // Reads the world from an extraction (features 006 and 008). Maps load on first use and stay
@@ -60,6 +60,8 @@ export function loadWorld(stagesDir: string, log: (message: string) => void): Wo
     // Every warp is kept: destAnchor indexes this list. Movement skips warps that lead nowhere.
     const warps = warpsOf(id) ?? [];
     warps.forEach((w, i) => {
+      // Map 4095 is the player's dynamic warp (elevator doors), resolved while walking.
+      if (String(w.destMap) === DYNAMIC_WARP_MAP) return;
       const count = warpCount(w.destMap);
       if (count === undefined || w.destAnchor >= count) log(`Map ${id}: warp ${i} to map ${w.destMap} anchor ${w.destAnchor} has no destination; ignored`);
     });

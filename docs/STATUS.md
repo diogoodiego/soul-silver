@@ -4,7 +4,7 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 031.5 Olivine e o farol**
+**Próximo item: 031.6 Routes 40 e 41 e Cianwood**
 
 Versões atuais: protocolo 31, save 17.
 
@@ -62,7 +62,7 @@ assunto, ou quando o desenvolvedor pedir.
 - 027: seletor rápido com gamepad (roteiro manual; impedir o Pokémon de andar com o D-pad).
 - 027: item escondido 8001 no tile (572,390), fora da grade dos mapas 33 e 34; sonda do Dowsing.
 - 027: captura do seletor de apricorns do Kurt (`06b-kurt-choice.png`).
-- 030.8: elevador da loja de departamentos (mapa 441, comandos de dynamic warp/elevator) sem implementação; escadas cobrem os andares.
+- 030.8: elevador da loja de departamentos (mapa 441): faltam BufferDeptStoreFloorNo e ElevatorCurFloorBox, e a tabela de andares {200: 0, 191–196: 1–6}; escadas cobrem os andares.
 - 030.8: Name Rater (206), Game Corner (183, 536) e ScrCmd_722 (519) sem implementação.
 - 030.8: Torre de Rádio 1F (112) está no bloco 033 em `map-blocks.json`, mas o quiz roda no 030; comandos faltantes lá (Loto, BufferIntEx etc.) não estão no caminho do quiz.
 - 030.8: `trainer-perf.test.ts`, `perf.test.ts` e `extractor/test/sprites/stage.test.ts` falham sob carga paralela (passam sozinhos).
@@ -76,7 +76,6 @@ assunto, ou quando o desenvolvedor pedir.
 - 030.10: devolução do Kenya na Route 31 (mapa 35: KenyaCheck, MonGiveMail, ReturnLoanMon) é do bloco 024; correio não vai à caixa do PC.
 - 030.10 (`shortcut:`): trocas sem animação e sem nome/ID do treinador original; Pichu de orelha espetada sem forma; cena do Celebi não desenhada; IsBugContestantRegistered sempre 0; giveMon não guarda item.
 - 031.1 (`shortcut:`): saltos dos cães (MoveAction_105–110) sem arco no cliente; golden pula os treinadores da Route 37 por warp.
-- 031.1: mapas 86 (teatro, MakeObjectVisible/ScrCmd_374) e 80 (EcruteakGymInit) com comandos faltantes; ficam para 031.3/031.4.
 - 031.2 (`shortcut:`): errante salta para rota aleatória (sem grafo de vizinhas); Latias/Latios ignorados até o Marco 5; saltos do Suicune parados no cliente.
 - 031.2: errante é entidade comum (outros jogadores veem/capturam); status volta com duração nova e confusão não é guardada; HP se perde se desconectar com ele no mapa.
 - 031.2: CreateRoamer da Burned Tower sondado só com fixture sintético, não com a ROM real.
@@ -84,6 +83,9 @@ assunto, ou quando o desenvolvedor pedir.
 - 031.3: cena de entrada do ginásio (var 0x4079 = 0) fora do golden.
 - 031.4: flags diárias (2720+, ex. 2744 do Lapras) nunca zeram; Lapras não volta depois de capturado/derrotado (precisa do dia no save).
 - 031.4: chegada surfando ao Lapras e o percurso de Surf na Union Cave/Ruins não sondados (save não guarda estado de surf).
+- 031.5 (`shortcut:`): tabela de andares do elevador só com o farol (1F/6F); destino do elevador fora do save (salvar dentro perde a saída).
+- 031.5: ElevatorAnim, MakeObjectVisible, ScrCmd_374 e ScrCmd_459 sem desenho no cliente; golden pula treinadores das Routes 38/39 e o gatilho da Route 39 (278,171).
+- 031.5: interiores de Olivine (226–231, 240, 330, 367) seguem pending; 229, 240 e 330 com comandos faltando.
 
 ## Decisões
 
@@ -101,3 +103,5 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Comandos só visuais das cenas de lendários (ScrCmd_523, MoveAction dos saltos) não fazem nada no servidor (COSMETIC).
 - Errantes ficam em `save.roamers` por jogador, mudam de rota a cada troca de mapa e aparecem na grama como selvagens "skittish"; nocaute grava var 0x4045+id = 2.
 - Route 42 (44, 132) e Mt. Mortar 1F (119) passaram para o bloco 031: o HM04 vem do gatilho da Route 42 (var 0x4091).
+- Warp com destino 4095 é o destino dinâmico do jogador (`data.dynamicWarp`, "mapa:âncora"); todo warp comum grava a origem.
+- Farol (115, 220–225, 446) e Olivine City (77) passaram para o bloco 031; o ginásio de Olivine (138) segue no 032.

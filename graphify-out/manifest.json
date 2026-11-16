@@ -2688,9 +2688,9 @@
     "semantic_hash": "c805963c795e484de3ff4b946b3c948f"
   },
   "packages/shared/src/game/movement.ts": {
-    "mtime": 1793914006.5099192,
-    "seen": 1794034401.552161,
-    "ast_hash": "6164ba023b15409b64441a2139501cc3",
+    "mtime": 1794796950.9656358,
+    "seen": 1794797619.3035333,
+    "ast_hash": "ae5765837dc73c3738fb9c7ff4347c2d",
     "semantic_hash": ""
   },
   "packages/shared/src/game/protocol.ts": {
@@ -3240,10 +3240,10 @@
     "semantic_hash": "4089ea2d1ede5fc10cc3316af65c6b0a"
   },
   "packages/shared/test/game/movement.test.ts": {
-    "mtime": 1792876463.9850707,
-    "seen": 1793053700.0060263,
-    "ast_hash": "d20d16e9e0b6d8fb746613d37c875c87",
-    "semantic_hash": "d20d16e9e0b6d8fb746613d37c875c87"
+    "mtime": 1794796983.0961385,
+    "seen": 1794797619.3038924,
+    "ast_hash": "16adefe494caa51a83b6eb3aee836183",
+    "semantic_hash": ""
   },
   "packages/shared/test/game/protocol-v11.test.ts": {
     "mtime": 1793028175.019132,
@@ -3726,9 +3726,9 @@
     "semantic_hash": ""
   },
   "packages/server/src/scripts.ts": {
-    "mtime": 1794795422.3353517,
-    "seen": 1794796142.1641297,
-    "ast_hash": "f760a522318ba47e755f0fb1c1d471f7",
+    "mtime": 1794797066.549005,
+    "seen": 1794797619.303212,
+    "ast_hash": "402f596f8735abefb08bbd5ee2830cc4",
     "semantic_hash": ""
   },
   "packages/server/test/scripts-blocking.test.ts": {
@@ -3816,15 +3816,15 @@
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/world.ts": {
-    "mtime": 1794638175.190032,
-    "seen": 1794638547.7948842,
-    "ast_hash": "8a9b16302736eaca7f288f989752af21",
+    "mtime": 1794797003.3687017,
+    "seen": 1794797619.3036768,
+    "ast_hash": "b6ac420bd1a291d6762ebd206e5f9e94",
     "semantic_hash": ""
   },
   "packages/shared/src/script/host.ts": {
-    "mtime": 1794794399.976205,
-    "seen": 1794794955.0115044,
-    "ast_hash": "5eb0a07fe9965667a42c094d91c713ca",
+    "mtime": 1794797001.6210139,
+    "seen": 1794797619.303679,
+    "ast_hash": "10bde00491a1db270cacadac8d616c2c",
     "semantic_hash": ""
   },
   "packages/shared/src/script/index.ts": {
@@ -5604,9 +5604,9 @@
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/cutscene.ts": {
-    "mtime": 1794794817.4064043,
-    "seen": 1794794955.0114818,
-    "ast_hash": "c6fbfd9b45c9196bf9ca8425c2194204",
+    "mtime": 1794797011.803217,
+    "seen": 1794797619.303642,
+    "ast_hash": "a4284e9962623aae1bc6b2975440a5ab",
     "semantic_hash": ""
   },
   "packages/shared/test/script/cutscene.test.ts": {
@@ -6090,15 +6090,15 @@
     "semantic_hash": ""
   },
   "packages/app/golden/campaign.golden.ts": {
-    "mtime": 1794795942.259599,
-    "seen": 1794796142.163154,
-    "ast_hash": "9b0eec3c8303cd4d4505dc9c3a6e4c62",
+    "mtime": 1794797194.9016113,
+    "seen": 1794797619.3022823,
+    "ast_hash": "25eb34aa1fe818c949afec0edac96876",
     "semantic_hash": ""
   },
   "packages/app/golden/milestones.ts": {
-    "mtime": 1794795462.2594779,
-    "seen": 1794796142.163174,
-    "ast_hash": "ebdaf5b6424e8920d8ecc06f9f6363d5",
+    "mtime": 1794797179.9254565,
+    "seen": 1794797619.3023,
+    "ast_hash": "dd9c0288c302c408fed3c7a8231b2ef5",
     "semantic_hash": ""
   },
   "packages/app/golden/report.ts": {
@@ -7026,9 +7026,9 @@
     "semantic_hash": ""
   },
   "packages/app/src/server-host/world-loader.ts": {
-    "mtime": 1794052697.5068307,
-    "seen": 1794601268.773502,
-    "ast_hash": "35ebee484447d6b74e19133c31558c4f",
+    "mtime": 1794797073.7609606,
+    "seen": 1794797619.3023708,
+    "ast_hash": "e1b6e885b25d63528c96b2e8cc7ebbe8",
     "semantic_hash": ""
   },
   "packages/app/test/route-warps.test.ts": {
@@ -7194,9 +7194,9 @@
     "semantic_hash": ""
   },
   "content/roadmap/map-blocks.json": {
-    "mtime": 1794796458.6794624,
-    "seen": 1794796509.0730512,
-    "ast_hash": "a0c9c7deb9b3375aed75c1c0042d3bfe",
+    "mtime": 1794797088.1274233,
+    "seen": 1794797619.3022494,
+    "ast_hash": "35a7e6774533584dc6fe0c56c2dd2065",
     "semantic_hash": ""
   },
   "scripts/map-blocks.ts": {
@@ -7434,9 +7434,9 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1794796180.6875477,
-    "seen": 1794796509.0746632,
-    "ast_hash": "8408f21ca23b02a78927787847cb6c9b",
+    "mtime": 1794796553.4983249,
+    "seen": 1794797619.3042643,
+    "ast_hash": "cec0f1a03bf73e94c53a76050f31a459",
     "semantic_hash": ""
   },
   "docs/roadmap/marco-4.md": {
@@ -7524,9 +7524,9 @@
     "semantic_hash": ""
   },
   "packages/shared/test/script/block031-commands.test.ts": {
-    "mtime": 1794794817.4074042,
-    "seen": 1794794955.0117228,
-    "ast_hash": "0cd7cdda98bd1c519eaeb64d9b48fa47",
+    "mtime": 1794797046.1274464,
+    "seen": 1794797619.3040867,
+    "ast_hash": "84ed270d923489740d0d8ede265579c3",
     "semantic_hash": ""
   },
   "packages/app/golden/suicune.golden.ts": {

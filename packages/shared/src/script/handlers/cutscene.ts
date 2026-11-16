@@ -70,6 +70,12 @@ export const CUTSCENE: Record<string, Handler> = {
   FollowMonInteract: nothing,
   // Opens 291 scripts right before LockAll, with no arguments; a follower toggle in the original.
   ScrCmd_609: nothing,
+  // Item 031.5: the draw-only visibility bit of a fieldmap object (the player after falling into the lighthouse's 2F, people of the
+  // Ecruteak theater); who is on the map is the hide flags', so the server has nothing to do.
+  MakeObjectVisible: nothing,
+  ScrCmd_374: nothing,
+  // The lighthouse lamp lighting up once Amphy is cured (225 L6); not drawn.
+  ScrCmd_459: nothing,
   // No follower-specific event ever triggers: the result variable reads 0.
   FollowerPokeIsEventTrigger: (c) => {
     const into = c.raw("arg2");

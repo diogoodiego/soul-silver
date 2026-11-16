@@ -168,4 +168,14 @@ export const MILESTONES: Milestone[] = [
   { n: 46, name: "Ginásio de Ecruteak: caminho invisível até o Morty", checks: { map: 80 } },
   // 922:1, Morty (person 1, trainer 31): the Fog Badge (badge 3), flag 2456, then TM30 (item 357, std 2033) and flag 166.
   { n: 47, name: "Morty vencido e Insígnia Fog", checks: { badges: 4, flags: [2456, 166], items: { 357: 1 }, beaten: [31] } },
+  // Item 031.5. Route 39's south end (x 277–281) into Olivine City (map 77).
+  { n: 48, name: "Rota 39 até Olivine", checks: { map: 77 } },
+  // 911:1, the trigger at (272, 239–243) on the way west to the gym (VAR 0x4078 = 0): the rival comes out of the gym, talks
+  // and leaves; 0x4078 = 1, flag 470 hides him.
+  { n: 49, name: "Rival em Olivine", checks: { map: 77, vars: { 0x4078: 1 }, flags: [470] } },
+  // The lighthouse door (301, 263) into 1F (map 115); its trainers floor by floor (maps 220, 222, 223, 224); then the elevator
+  // (map 446, scr_seq 67): floor 0 sets the dynamic warp to 6F (map 225), and its door leads there.
+  { n: 50, name: "Farol: treinadores e elevador até o 6F", checks: { map: 225 } },
+  // 66:0, Jasmine (person 1 of map 225): without the SecretPotion (flag 185) she asks for it; VAR 0x40A5 = 1, flag 472.
+  { n: 51, name: "Jasmine pede o remédio do Amphy", checks: { map: 225, vars: { 0x40a5: 1 }, flags: [472] } },
 ];
