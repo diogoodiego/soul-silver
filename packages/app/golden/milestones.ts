@@ -178,4 +178,19 @@ export const MILESTONES: Milestone[] = [
   { n: 50, name: "Farol: treinadores e elevador até o 6F", checks: { map: 225 } },
   // 66:0, Jasmine (person 1 of map 225): without the SecretPotion (flag 185) she asks for it; VAR 0x40A5 = 1, flag 472.
   { n: 51, name: "Jasmine pede o remédio do Amphy", checks: { map: 225, vars: { 0x40a5: 1 }, flags: [472] } },
+  // Item 031.6. The Dance Theater (map 86): its frame (0x410C = 0) brings the Rocket on; beaten (trainer 601) he leaves (570),
+  // and the trigger at (3, 8) (928:11, 0x410C = 2) has the gentleman hand over HM03 (item 422, flag 162); 0x410C = 3.
+  { n: 52, name: "Teatro de Ecruteak: Rocket e HM03", checks: { map: 86, items: { 422: 1 }, flags: [162, 570], vars: { 0x410c: 3 }, beaten: [601] } },
+  // A Sentret taught Surf; from Route 40's beach across Routes 40 and 41 (map 95) by water, a whirlpool still in the way,
+  // onto Cianwood's beach (map 75).
+  { n: 53, name: "Surf pelas Rotas 40 e 41 até Cianwood", checks: { map: 75 } },
+  // 875:2, the trigger at (176, 334) (0x4076 = 1): Suicune flees (481, 0x4076 = 2), Eusine (trainer 498) battles and
+  // leaves (482); 0x4092 = 1.
+  { n: 54, name: "Suicune e Eusine em Cianwood", checks: { map: 75, flags: [481, 482], vars: { 0x4076: 2, 0x4092: 1 }, beaten: [498] } },
+  // 877:0, Chuck (person 0 of map 139, trainer 34) once the winch stopped the waterfall: the Storm Badge (badge 4), then
+  // TM01 (item 328, flag 186).
+  { n: 55, name: "Chuck vencido e Insígnia Storm", checks: { badges: 5, flags: [186], items: { 328: 1 }, beaten: [34] } },
+  // Out of the gym, Chuck's wife (875:6, 0x4116 = 1): HM02 (item 421, flag 187). The pharmacy (map 233, 881:0): with
+  // Jasmine's request (0x40A5 = 1) the SecretPotion (item 464, flag 185).
+  { n: 56, name: "Remédio da farmácia de Cianwood", checks: { map: 233, items: { 464: 1, 421: 1 }, flags: [185, 187] } },
 ];

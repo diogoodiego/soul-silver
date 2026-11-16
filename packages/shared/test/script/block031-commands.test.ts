@@ -57,6 +57,16 @@ describe("block 031 commands (item 031.1)", () => {
     }
   });
 
+  it("the Cianwood Gym's winch (item 031.6): Init changes nothing, TurnWinch flips the variable it is given", () => {
+    const h = fakeHost();
+    // The shape of the gym's winch sign (scr_seq 877): only with the variable at 0 is the winch turned.
+    const file = makeScript([["CianwoodGymInit"], ["CianwoodGymTurnWinch", { arg0: 16384 }], ["SetVar", { var: { variable: 16385 }, val: 0 }], ["CompareVarToValue", { var: { variable: 16384 }, val: 1 }], ["GoToIf", { condition: 1, dest: { label: "L2" } }], ["End"], "L2:", ["SetVar", { var: { variable: 16385 }, val: 1 }], ["CianwoodGymTurnWinch", { arg0: 16384 }], ["End"]]);
+    expect(createRunner(h, SCRIPT_HANDLERS, { file, entry: 0 }).step().kind).toBe("done");
+    expect(h.vars.get(16385)).toBe(1);
+    expect(h.vars.get(16384)).toBe(0);
+    expect(h.events).toEqual([]);
+  });
+
   it("the beasts' leaps (MoveAction_105 to 110) and Suicune's (111, 112, item 031.2) play as looks only: the steps after them stay", () => {
     for (let n = 105; n <= 112; n++) {
       const steps = movementSteps({ person: 2 }, [{ action: `MoveAction_${n}`, count: 1 }, { action: "SetInvisible", count: 1 }]);

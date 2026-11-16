@@ -4,7 +4,7 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 031.6 Routes 40 e 41 e Cianwood**
+**Próximo item: 031.7 Verificação**
 
 Versões atuais: protocolo 31, save 17.
 
@@ -86,6 +86,9 @@ assunto, ou quando o desenvolvedor pedir.
 - 031.5 (`shortcut:`): tabela de andares do elevador só com o farol (1F/6F); destino do elevador fora do save (salvar dentro perde a saída).
 - 031.5: ElevatorAnim, MakeObjectVisible, ScrCmd_374 e ScrCmd_459 sem desenho no cliente; golden pula treinadores das Routes 38/39 e o gatilho da Route 39 (278,171).
 - 031.5: interiores de Olivine (226–231, 240, 330, 367) seguem pending; 229, 240 e 330 com comandos faltando.
+- 031.6 (`shortcut:`): cachoeira do ginásio de Cianwood não desenhada; manivela em variável temporária (volta a 0 ao reentrar).
+- 031.6: golden pula os nadadores das Routes 40/41 e faz warp até o Sentret quando o caminho trava; cena do Rocket no teatro sem teste de servidor.
+- 031.6: mapas 232 (CheckReturnLoanMon, ReturnLoanMon) e 236 (CountPCEmptySpace, ScrCmd_815) com comandos faltando; fechar no 031.7.
 
 ## Decisões
 
@@ -105,3 +108,4 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Route 42 (44, 132) e Mt. Mortar 1F (119) passaram para o bloco 031: o HM04 vem do gatilho da Route 42 (var 0x4091).
 - Warp com destino 4095 é o destino dinâmico do jogador (`data.dynamicWarp`, "mapa:âncora"); todo warp comum grava a origem.
 - Farol (115, 220–225, 446) e Olivine City (77) passaram para o bloco 031; o ginásio de Olivine (138) segue no 032.
+- O HM03 (Dance Theater, mapa 86) faz parte do caminho dourado do 031; um Sentret capturado na Route 29 usa o Surf.

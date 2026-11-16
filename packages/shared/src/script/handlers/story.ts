@@ -92,6 +92,10 @@ export const STORY: Record<string, Handler> = {
   // Item 031.3: the Ecruteak Gym's fall is the map's own (void triggers, 922:2, warp to the entrance); Init only lights it.
   // shortcut: the dark floor and the candle light around the player and trainers (EcruteakGymInit, Bind/UnbindEcruteakGymCandle…) are not drawn; draw them when the client lights maps.
   EcruteakGymInit: nothing,
+  // Item 031.6: the Cianwood Gym's winch stops the waterfall over Chuck; his script reads the variable (0 = still falling).
+  // shortcut: the waterfall is not drawn and its state is the map's temporary variable (back on at each entry); draw it with the client's gym props.
+  CianwoodGymInit: nothing,
+  CianwoodGymTurnWinch: (c) => c.writeVar(c.ptr("arg0"), c.get("arg0") ? 0 : 1),
   // Spec 030.5: the Azalea Gym's Spinarak and levers (field/azalea-gym.ts). The carts are script props; the server glides the rider.
   AzaleaGymInit: (c) => {
     const gym = c.host.azaleaGym?.();

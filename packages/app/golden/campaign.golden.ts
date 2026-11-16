@@ -5,7 +5,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
-import { BUTTON, createRng, findDuplicates, tileAt, type PcSlot, type ServerMessage } from "@soulsilver/shared/game";
+import { BUTTON, createRng, findDuplicates, surfable, tileAt, type PcSlot, type ServerMessage } from "@soulsilver/shared/game";
 import type { Direction } from "@soulsilver/shared/maps";
 import { expForLevel, memberStats } from "@soulsilver/shared/progression";
 import { applyNewGame, badgeCount, migrate, type Save } from "@soulsilver/shared/save";
@@ -825,7 +825,15 @@ function route(p: Pilot, tx: number, tz: number, face?: Direction, taken: string
   const armed = (t: { variable: number; value: number }) => (vars[t.variable] ?? 0) === t.value;
   for (const t of events?.triggers ?? []) if (armed(t) && !inside(t)) for (let dx = 0; dx < t.w; dx++) for (let dz = 0; dz < t.h; dz++) avoid.add(`${t.x + dx},${t.z + dz}`);
   avoid.delete(`${tx},${tz}`);
-  const free = (x: number, z: number) => !avoid.has(`${x},${z}`) && !SOLID.has(tileAt(p.data.world!, area, 0, (x - o.tx) * 16 + 8, (z - o.ty) * 16 + 8)?.category ?? "blocked");
+  // Item 031.6: a surfer goes by the water (whirlpools stop it); the way stays in this map, its neighbours' tiles are only looked at.
+  const surfing = p.me().data["mode"] === "surf";
+  const map = p.data.world!(area);
+  const within = (x: number, z: number) => !map || (x >= o.tx && z >= o.ty && x < o.tx + map.widthPx / 16 && z < o.ty + map.heightPx / 16);
+  const ground = (x: number, z: number) => {
+    const cell = tileAt(p.data.world!, area, 0, (x - o.tx) * 16 + 8, (z - o.ty) * 16 + 8);
+    return surfing ? surfable(cell) : !SOLID.has(cell?.category ?? "blocked");
+  };
+  const free = (x: number, z: number) => !avoid.has(`${x},${z}`) && within(x, z) && ground(x, z);
   /** The first step of the shortest way from where the player stands; a script stopping a step midway is walked around again. */
   const next = (): Direction | undefined => {
     const from = p.tile();
@@ -858,6 +866,63 @@ function route(p: Pilot, tx: number, tz: number, face?: Direction, taken: string
     p.walk(dir, 1);
   }
   throw new Error(`o jogador não chegou a (${tx}, ${tz}) do mapa ${area}; está em (${p.tile().tx}, ${p.tile().ty})`);
+}
+
+/**
+ * Item 031.6: the tiles from which the current map's trainers could spot the player, whichever way they turn ("x,z", for
+ * route's `taken`). The swimmers are passed by: from the water the party's terrestrial lead cannot be sent out.
+ */
+const sightLines = (p: Pilot) =>
+  (p.data.scripts?.events(Number(p.me().area))?.npcs ?? []).filter((n) => n.trainer).flatMap((n) => [...Array(n.param[0] ?? 1).keys()].flatMap((i) => Object.values(VECTORS).map((v) => `${n.x + v.x * (i + 1)},${n.z + v.y * (i + 1)}`)));
+
+/** Item 031.6: a wild `species` caught in Route 29's grass (map 33) as a player would, weakened first; its party index (-1 if none). */
+function catchSpecies(p: Pilot, species: number): number {
+  const index = () => (p.save?.party ?? []).findIndex((m) => m.species === species);
+  p.send({ type: "select-ball", item: POKE_BALL });
+  for (let i = 0; i < 40 && index() === -1 && p.count(p.save ?? p.fresh(), POKE_BALL) > 0; i++) {
+    p.warp(33, 635, 397);
+    p.setWild(true);
+    const target = () => p.session.world.all().find((e) => e.kind === "pokemon" && e.area === p.me().area && e.data["species"] === species && p.session.combat?.get(e.id)?.owner === "wild");
+    p.until(() => !!target(), 400);
+    const t = target();
+    if (t) p.approach(t.id, 64, 600);
+    // The walk straight at it stops behind ledges and trees: there, a warp onto its tile, as over the golden path's long walks.
+    const w = t && p.session.world.get(t.id);
+    if (w && !p.inCombat() && Math.hypot(w.x - p.me().x, w.y - p.me().y) > 64) {
+      const o = p.data.world!(w.area)?.origin ?? { tx: 0, ty: 0 };
+      p.warp(33, Math.floor(w.x / 16) + o.tx, Math.floor(w.y / 16) + o.ty);
+    }
+    // As the PC check's catch: the Pokémon sent out weakens it, then a ball; both aim at the nearest wild one, so only that one.
+    if (t && !p.inCombat() && p.nearestWild(1)?.id === t.id) {
+      p.tick(null, BUTTON.combat);
+      p.tick();
+    }
+    const mine = p.session.world.all().find((x) => x.kind === "pokemon" && p.session.combat?.get(x.id)?.owner === p.playerId);
+    if (t && mine && p.nearestWild(1, mine)?.id === t.id) {
+      p.until(() => {
+        const f = p.session.combat?.get(t.id);
+        return !f || f.hp <= f.stats.hp * 0.6 || !p.inCombat();
+      }, 1500);
+      // A knocked-out wild one stays catchable where it fell (faintedSeconds).
+      if (p.session.combat?.get(t.id) && p.nearestWild(1)?.id === t.id) {
+        p.setHold(true);
+        p.tick(null, BUTTON.throw);
+        p.tick();
+        p.until(() => index() !== -1, 300);
+        p.setHold(false);
+      }
+    }
+    if (p.inCombat()) {
+      p.tick(null, BUTTON.recall);
+      p.until(() => !p.inCombat(), 100);
+    }
+    p.setWild(false);
+    p.settle();
+  }
+  // The fights over (the one caught leaves the field once its knock-out time runs out), the party healed at the Center.
+  p.until(() => !p.inCombat(), 1200);
+  p.heal();
+  return index();
 }
 
 /** Checks of specs 020–023 made on the way, in order. */
@@ -1403,9 +1468,92 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     keep(p, "antes-jasmine");
     if (!p.talkTo(225, 1)) throw new Error("a Jasmine não está na extração");
   },
+  // Item 031.6. Ecruteak's Dance Theater door (397, 173) into map 86: its frame (0x410C = 0, 928:15) plays the Rocket's scene;
+  // the grunt (person 9, 928:3) where the scene left him; then the trigger at (3, 8) (0x410C = 2), the gentleman's HM03.
+  52: (p) => {
+    keep(p, "antes-teatro");
+    p.warp(78, 397, 174);
+    p.walk("north", 1);
+    if (p.fresh().area !== "86") throw new Error(`a porta do teatro não levou ao mapa 86 (está ${p.fresh().area})`);
+    const grunt = p.session.world.all().find((e) => e.kind === "npc" && e.area === "86" && e.data["person"] === 9);
+    if (!grunt) throw new Error("o Rocket do teatro não está no mapa");
+    const at = { x: Math.floor(grunt.x / 16), z: Math.floor(grunt.y / 16) };
+    const money = p.fresh().money;
+    p.warp(86, at.x, at.z + 1);
+    p.talk("north");
+    checks.push(p.battle("luta Rocket (teatro de Ecruteak)", [601], money, () => p.talk("north")));
+    route(p, 3, 8);
+  },
+  // A Surf user, as a player brings one: a Sentret (species 161, which learns HM03) caught on Route 29 and taught Surf from
+  // the bag. Then Route 40's beach (250, 274), surfing off it east with the field move; south across the map edge at
+  // (240, 319–320) into Route 41 (map 95), by the swimmers' lines of sight; a whirlpool (214–216, 331–333) still stops the
+  // surfer; west across the edge at (191–192, 345) into Cianwood's water (map 75), and off it onto the beach (190, 348).
+  53: (p) => {
+    keep(p, "antes-surf");
+    const surfer = catchSpecies(p, 161);
+    if (surfer === -1) throw new Error("nenhum Sentret capturado na Rota 29");
+    // Taught on the beach where the surf starts.
+    p.warp(94, 250, 274);
+    p.send({ type: "use-item", item: 422, partyIndex: surfer });
+    p.settle();
+    if (!p.fresh().party[surfer]?.moves.includes(57)) throw new Error(`o Sentret não aprendeu Surf (golpes ${p.fresh().party[surfer]?.moves.join(", ")})`);
+    p.tick("east");
+    p.send({ type: "field-mount", mode: "surf" });
+    p.settle();
+    if (p.me().data["mode"] !== "surf") throw new Error(`o Surf não começou na praia da Rota 40 (${p.recent().join(", ")})`);
+    route(p, 240, 319, undefined, sightLines(p));
+    p.walk("south", 1);
+    if (p.fresh().area !== "95") throw new Error(`o mar ao sul da Rota 40 não levou à Rota 41 (está ${p.fresh().area})`);
+    route(p, 215, 330, undefined, sightLines(p));
+    p.walk("south", 1);
+    const stopped = p.tile();
+    const name = "redemoinho da Rota 41 sem Whirlpool";
+    checks.push(stopped.map === "95" && stopped.tx === 215 && stopped.ty === 330 ? { name: `${name}: o surfista para diante dele` } : { name, failed: `o surfista passou para (${stopped.tx}, ${stopped.ty}) do mapa ${stopped.map}` });
+    route(p, 192, 345, undefined, sightLines(p));
+    p.walk("west", 1);
+    if (p.fresh().area !== "75") throw new Error(`o mar a oeste da Rota 41 não levou a Cianwood (está ${p.fresh().area})`);
+    route(p, 190, 347, "south");
+    p.send({ type: "field-dismount" });
+    p.settle();
+    if (p.me().data["mode"] === "surf") throw new Error("o jogador não desceu na praia de Cianwood");
+  },
+  // North to the trigger at (176, 334) (875:2, 0x4076 = 1): Suicune shows and flees, then Eusine (trainer 498) battles.
+  54: (p) => {
+    keep(p, "antes-suicune-cianwood");
+    const money = p.fresh().money;
+    route(p, 176, 334);
+    checks.push(p.battle("luta Eusine (Cianwood)", [498], money, () => undefined));
+  },
+  // The gym door (172, 357) into map 139; its trainers by their lines of sight; the winch at (10, 2) (877:2) stops the
+  // waterfall over Chuck (0x4000 = 1 while in the gym), then Chuck (person 0, 877:0, trainer 34) from the pool south of him.
+  55: (p) => {
+    keep(p, "antes-chuck");
+    p.warp(75, 172, 358);
+    p.walk("north", 1);
+    if (p.fresh().area !== "139") throw new Error(`a porta do ginásio não levou ao mapa 139 (está ${p.fresh().area})`);
+    for (const npc of [1, 2, 3, 4]) checks.push(p.routeTrainer(`treinador ${npc} (ginásio de Cianwood)`, 139, npc));
+    p.warp(139, 10, 3);
+    p.talk("north");
+    if (p.fresh().vars[0x4000] !== 1) throw new Error("a manivela não parou a cachoeira do ginásio (0x4000)");
+    const money = p.fresh().money;
+    if (!p.talkTo(139, 0)) throw new Error("o Chuck não está na extração");
+    checks.push(p.battle("luta Chuck (ginásio de Cianwood)", [34], money, () => p.talk("north")));
+  },
+  // Out of the gym, the frame (0x4116 = 1, 875:6) of Chuck's wife (HM02); then the pharmacy door (179, 370) into map 233 and
+  // its clerk (person 0, 881:0): with Jasmine's request (0x40A5 = 1) he hands over the SecretPotion.
+  56: (p) => {
+    keep(p, "antes-farmacia");
+    p.warp(139, 13, 18);
+    p.walk("south", 1);
+    if (p.fresh().area !== "75") throw new Error(`a porta do ginásio não levou de volta a Cianwood (está ${p.fresh().area})`);
+    p.warp(75, 179, 371);
+    p.walk("north", 1);
+    if (p.fresh().area !== "233") throw new Error(`a porta da farmácia não levou ao mapa 233 (está ${p.fresh().area})`);
+    if (!p.talkTo(233, 0)) throw new Error("o farmacêutico não está na extração");
+  },
 };
 
-it("goes from the bedroom past the Zephyr, Hive, Plain and Fog Badges to Jasmine at the top of the Olivine Lighthouse", () => {
+it("goes from the bedroom past the Zephyr, Hive, Plain, Fog and Storm Badges to the SecretPotion at Cianwood", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;

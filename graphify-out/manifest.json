@@ -6006,9 +6006,9 @@
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/story.ts": {
-    "mtime": 1794795299.4641585,
-    "seen": 1794796142.164503,
-    "ast_hash": "6409065329abafe9f23c8d21b80e9c42",
+    "mtime": 1794798165.8550906,
+    "seen": 1794799129.1438923,
+    "ast_hash": "b9bb3df4133812f75ac3e6c202d00583",
     "semantic_hash": ""
   },
   "packages/shared/test/script/story.test.ts": {
@@ -6090,15 +6090,15 @@
     "semantic_hash": ""
   },
   "packages/app/golden/campaign.golden.ts": {
-    "mtime": 1794797194.9016113,
-    "seen": 1794797619.3022823,
-    "ast_hash": "25eb34aa1fe818c949afec0edac96876",
+    "mtime": 1794799721.4937153,
+    "seen": 1794799954.5754223,
+    "ast_hash": "f737018e0e9ae5b8fd9d936193398d17",
     "semantic_hash": ""
   },
   "packages/app/golden/milestones.ts": {
-    "mtime": 1794797179.9254565,
-    "seen": 1794797619.3023,
-    "ast_hash": "dd9c0288c302c408fed3c7a8231b2ef5",
+    "mtime": 1794798566.3149757,
+    "seen": 1794799129.1426728,
+    "ast_hash": "f2bf6b50eaf3cd1ddc90f59380efbf4a",
     "semantic_hash": ""
   },
   "packages/app/golden/report.ts": {
@@ -7434,9 +7434,9 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1794796553.4983249,
-    "seen": 1794797619.3042643,
-    "ast_hash": "cec0f1a03bf73e94c53a76050f31a459",
+    "mtime": 1794797662.69757,
+    "seen": 1794799129.1442204,
+    "ast_hash": "46314b925110818ee8213de39c7a2430",
     "semantic_hash": ""
   },
   "docs/roadmap/marco-4.md": {
@@ -7524,9 +7524,9 @@
     "semantic_hash": ""
   },
   "packages/shared/test/script/block031-commands.test.ts": {
-    "mtime": 1794797046.1274464,
-    "seen": 1794797619.3040867,
-    "ast_hash": "84ed270d923489740d0d8ede265579c3",
+    "mtime": 1794798148.73068,
+    "seen": 1794799129.1441088,
+    "ast_hash": "29ccb70e1a632e037c4c7f769f13b8e4",
     "semantic_hash": ""
   },
   "packages/app/golden/suicune.golden.ts": {
