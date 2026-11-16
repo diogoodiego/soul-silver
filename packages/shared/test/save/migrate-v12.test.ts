@@ -34,7 +34,7 @@ const v11 = {
   phone: newPhone(),
   ...newItemState(),
 };
-const v12 = (daycare: object[]) => ({ ...v11, schemaVersion: 15, daycare, daycareEgg: false, eggWalk: 0, photos: [] });
+const v12 = (daycare: object[]) => ({ ...v11, schemaVersion: 16, daycare, daycareEgg: false, eggWalk: 0, photos: [] });
 
 describe("save v12", () => {
   it("is version 12 or later", () => {

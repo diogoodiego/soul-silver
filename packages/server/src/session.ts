@@ -1468,7 +1468,7 @@ export function createSession(options: SessionOptions): Session {
       for (const p of players.values()) p.conn?.send(msg);
     },
     join: (name, spawn) => {
-      const base: Save = { schemaVersion: 15, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
+      const base: Save = { schemaVersion: 16, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
       return add(base, undefined, spawn, "").id;
     },
     leave(playerId) {

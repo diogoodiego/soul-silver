@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eventsStage } from "../../src/events/stage.ts";
-import { APRICORN_TREES, AZALEA_GYM, BERRY_DATA, CLASS_MUSIC, FLY_POINTS, HIDDEN_ITEMS, NEW_GAME_LOCATION, PHONE, PRIZE_TABLE, SHOPS, STD_MESSAGES, TRAINER_CLASS_COUNT } from "../../src/events/layout.ts";
+import { APRICORN_TREES, AZALEA_GYM, BERRY_DATA, NPC_TRADES, CLASS_MUSIC, FLY_POINTS, HIDDEN_ITEMS, NEW_GAME_LOCATION, PHONE, PRIZE_TABLE, SHOPS, STD_MESSAGES, TRAINER_CLASS_COUNT } from "../../src/events/layout.ts";
 import { SEQ } from "../../src/events/trainer-classes.ts";
 import { MAP_HEADER_OFFSET, MAP_HEADER_SIZE } from "../../src/maps/header.ts";
 import type { StageContext } from "../../src/pipeline/stage.ts";
@@ -71,6 +71,12 @@ async function fakeRom(options: Options = {}): Promise<StageContext> {
   await narc("a/2/5/3", [new Uint8Array([0, 0, 0, 0]), new Uint8Array([20, 0, 1, 0])]);
   // Spec 027: two berries' growth data (Cheri 3 h a stage, Chesto 4 h).
   await narc(BERRY_DATA, [Uint8Array.from([20, 0, 2, 1, 3, 15, 10, 0, 0, 0, 0, 25]), Uint8Array.from([80, 0, 5, 1, 4, 15, 0, 10, 0, 0, 0, 25])]);
+
+  // Item 030.10: one in-game trade, species 16 for 19 (NPCTrade: 21 u32, give first, ask at field 19).
+  const trade = new Uint8Array(0x54);
+  new DataView(trade.buffer).setUint32(0, 16, true);
+  new DataView(trade.buffer).setUint32(19 * 4, 19, true);
+  await narc(NPC_TRADES.narc, [trade]);
 
   // Two trainer lines for trainer 1: the challenge and the one when it loses.
   await narc("a/0/5/7", [new Uint8Array([1, 0, 0, 0, 1, 0, 1, 0])]);
@@ -205,6 +211,7 @@ describe("events stage", () => {
     const gym = await read("azalea-gym", "azalea-gym.json");
     expect(gym.routes[0]![0]).toEqual({ to: 1, path: [{ x: 0, z: 0 }, { x: 1, z: 0 }] });
     expect(gym.spiders).toEqual([0, 1, 2, 7]);
+    expect((await read("npc-trades", "npc-trades.json")).records).toEqual([expect.objectContaining({ id: 0, give: 16, ask: 19, nickname: "0200:0", ot: "0200:13" })]);
     const messages = await read("trainer-messages", "trainer-messages.json");
     expect(messages.records).toEqual([
       { trainer: 1, kind: 0, text: "0728:0" },

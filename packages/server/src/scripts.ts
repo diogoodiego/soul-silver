@@ -1,4 +1,4 @@
-import type { EncounterRecord, EncounterSlot, MapEventsFile, FieldItemsFile, FlyPointsFile, HeadbuttRecord, NewGameFile, RockSmashRecord, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
+import type { EncounterRecord, EncounterSlot, MapEventsFile, FieldItemsFile, FlyPointsFile, HeadbuttRecord, NewGameFile, NpcTradeRecord, RockSmashRecord, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
 import { headbuttTree, pickUser, RIDER_OFFSET_PX, rideAt, gymProps, type AzaleaGym, type AzaleaGymState, type FieldMovesRules, type GymTile } from "@soulsilver/shared/field";
 import { rollLevel, rollSlot } from "@soulsilver/shared/wild";
 import { createRng, stepMovement, tileAt, unstick, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
@@ -21,6 +21,9 @@ import type { World } from "./world";
 // progress, and which people each player sees. The interpreter itself is @soulsilver/shared/script.
 
 /** The extracted scripts and events; the host reads them from disk (server-host/scripts-loader.ts). */
+/** Item 030.10: an in-game trade as the server uses it; the nickname is the ROM's text, read when the scripts load. */
+export type NpcTrade = Omit<NpcTradeRecord, "nickname" | "ot"> & { nickname: string };
+
 export interface ScriptData {
   file(id: number): ScriptFile | undefined;
   events(map: number): MapEventsFile | undefined;
@@ -44,6 +47,8 @@ export interface ScriptData {
   fieldItems?: Omit<FieldItemsFile, "kind" | "formatVersion"> | undefined;
   /** Spec 030.5: the Azalea Gym's Spinarak threads; absent in older extractions. */
   azaleaGym?: AzaleaGym | undefined;
+  /** Item 030.10: the in-game trades by id; absent in older extractions. */
+  npcTrades?: ReadonlyMap<number, NpcTrade> | undefined;
 }
 
 /** Temporary variables and map flags the game clears on every map change (vars.h, flags.h). */
@@ -479,6 +484,34 @@ export function createScripts(options: ScriptsOptions) {
       const npc = s.talkedTo === undefined ? undefined : world.get(s.talkedTo);
       return npc ? eventsOf(npc.area)?.npcs.find((n) => n.id === npc.data["person"])?.param[0] : undefined;
     };
+    /** Item 030.10, _CreateTradeMon: the trade's IVs, personality (nature, gender), item and nickname at `level`; never shiny. */
+    const tradeMember = (id: number, level: number): PartyMember | undefined => {
+      const t = data.npcTrades?.get(id);
+      const info = t && options.progression?.species(t.give);
+      if (!t || !info) {
+        options.log(`Script trade ${id} has no trade or species data; nothing given`);
+        return undefined;
+      }
+      const ratio = info.gender?.raw ?? 255;
+      const gender = ratio === 255 ? undefined : ratio === 0 ? "male" : ratio === 254 ? "female" : (t.pid & 0xff) < ratio ? "female" : "male";
+      const m: PartyMember = {
+        ...starterMember(info, options.progression!.levelUp(t.give), rng, Math.max(1, Math.min(100, level))),
+        ivs: t.ivs,
+        nature: t.pid % 25,
+        trade: id,
+        ...(t.nickname ? { nickname: t.nickname.slice(0, 10) } : {}),
+        ...(t.heldItem ? { held: t.heldItem } : {}),
+        ...(gender ? { gender } : {}),
+      };
+      return { ...m, hp: options.hpMax(m) };
+    };
+    /** UpdatePokedexWithReceivedSpecies. */
+    const received = (species: number) => {
+      const dex = who.progress.pokedex;
+      if (!dex.seen.includes(species)) dex.seen.push(species);
+      if (!dex.caught.includes(species)) dex.caught.push(species);
+      options.changed(who.playerId, "party");
+    };
     return {
       character: who.character,
       flag: (id) => (id === KURT_DAILY_FLAG && apricorns ? apricorns.kurtWaiting() : who.flags.has(id)),
@@ -598,6 +631,39 @@ export function createScripts(options: ScriptsOptions) {
         options.changed(who.playerId, "party");
       },
       partyIsEgg: (slot) => who.progress.party[slot]?.egg !== undefined,
+      npcTrade: (id) => {
+        const t = data.npcTrades?.get(id);
+        return t && { give: t.give, ask: t.ask };
+      },
+      tradeMon: (id, slot) => {
+        const old = who.progress.party[slot];
+        const m = old && tradeMember(id, old.level);
+        if (!m) return;
+        who.progress.party[slot] = m;
+        received(m.species);
+      },
+      giveLoanMon: (id, level, mail) => {
+        const m = who.progress.party.length < 6 ? tradeMember(id, level) : undefined;
+        if (!m) return;
+        who.progress.party.push(mail ? { ...m, mail: id } : m);
+        received(m.species);
+      },
+      // shortcut: the mail stays with the member when its item is taken; the original moves it to the PC mailbox, where this check finds it too. Look there when the save has a mailbox.
+      hasTradeMail: (id) => who.progress.party.some((m) => m.mail === id),
+      partyMoves: (slot) => who.progress.party[slot]?.moves ?? [],
+      // PartyMonSetMoveInSlot: the move in the slot (or the first free one), its PP Ups cleared.
+      setPartyMove: (slot, moveSlot, move) => {
+        const m = who.progress.party[slot];
+        if (!m || moveSlot > 3) return;
+        const at = Math.min(moveSlot, m.moves.length);
+        m.moves[at] = move;
+        if (m.ppUps?.[at]) m.ppUps[at] = 0;
+        options.changed(who.playerId, "party");
+      },
+      tutorMoves: (slot, npc) => {
+        const m = who.progress.party[slot];
+        return m && !m.egg ? (options.progression?.tutorMoves(m.species, npc) ?? []) : [];
+      },
       giveEgg: (species, move) => {
         const data = options.progression;
         if (!data?.species(species)) {

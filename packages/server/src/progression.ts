@@ -1,6 +1,6 @@
 import type { Stats } from "@soulsilver/shared/combat";
 import type { ClientMessage, ServerMessage } from "@soulsilver/shared/game";
-import type { EvolutionRecord, ItemRecord, LearnsetRecord, MachineRecord, SpeciesRecord } from "@soulsilver/shared/game-data";
+import type { EvolutionRecord, ItemRecord, LearnsetRecord, MachineRecord, SpeciesRecord, TutorRecord } from "@soulsilver/shared/game-data";
 import { addEvs, expForLevel, expGain, friendshipOnLevelUp, levelFor, levelUpItems, memberStats } from "@soulsilver/shared/progression";
 import type { PartyMember, ProgressionItem, Save } from "@soulsilver/shared/save";
 import { markCaught } from "@soulsilver/shared/wild";
@@ -12,12 +12,14 @@ import { markCaught } from "@soulsilver/shared/wild";
 export interface ExtractedForProgression {
   /** `abilities` only feeds the party screen (spec 017); `gender`, `eggGroups` and `hatchCycles`, the Day Care (spec 029). */
   species: (Pick<SpeciesRecord, "id" | "baseStats" | "baseExperience" | "evYield" | "growthRate" | "baseFriendship"> & Partial<Pick<SpeciesRecord, "abilities" | "gender" | "eggGroups" | "hatchCycles">>)[];
-  learnsets: (Pick<LearnsetRecord, "id" | "levelUp"> & Partial<Pick<LearnsetRecord, "machines" | "egg">>)[];
+  learnsets: (Pick<LearnsetRecord, "id" | "levelUp"> & Partial<Pick<LearnsetRecord, "machines" | "egg" | "tutors">>)[];
   evolutions: Pick<EvolutionRecord, "id" | "evolutions">[];
   /** Spec 027: TMs and HMs; without them no machine teaches anything. */
   machines?: MachineRecord[] | undefined;
   /** Spec 030.1: the items' hold effects, for the Everstone; without them no item stops an evolution. */
   items?: Pick<ItemRecord, "id" | "holdEffect">[] | undefined;
+  /** Item 030.10: the move tutors; without them no tutor teaches anything. */
+  tutors?: TutorRecord[] | undefined;
 }
 
 export interface ProgressionData {
@@ -32,6 +34,8 @@ export interface ProgressionData {
   preEvolution(species: number): number | undefined;
   /** Spec 030.1: the hold effect id of an item, 0 for none. */
   holdEffect(item: number): number;
+  /** Item 030.10: the moves tutors of `area` (tutors.json) teach a species. */
+  tutorMoves(species: number, area: number): number[];
 }
 
 export function buildProgressionData(extracted: ExtractedForProgression): ProgressionData {
@@ -43,6 +47,8 @@ export function buildProgressionData(extracted: ExtractedForProgression): Progre
   const eggMoves = new Map(extracted.learnsets.map((l) => [l.id, l.egg ?? []]));
   const from = new Map(extracted.evolutions.flatMap((e) => e.evolutions.map((v) => [v.into, e.id] as const)));
   const holds = new Map((extracted.items ?? []).map((i) => [i.id, i.holdEffect.id]));
+  const tutors = new Map((extracted.tutors ?? []).map((t) => [t.id, t]));
+  const tutorsOf = new Map(extracted.learnsets.map((l) => [l.id, (l.tutors ?? []).flatMap((id) => tutors.get(id) ?? [])]));
   return {
     species: (id) => species.get(id),
     levelUp: (id) => learnsets.get(id) ?? [],
@@ -52,6 +58,7 @@ export function buildProgressionData(extracted: ExtractedForProgression): Progre
     eggMoves: (id) => eggMoves.get(id) ?? [],
     preEvolution: (id) => from.get(id),
     holdEffect: (item) => holds.get(item) ?? 0,
+    tutorMoves: (id, area) => (tutorsOf.get(id) ?? []).filter((t) => t.area === area).map((t) => t.move),
   };
 }
 

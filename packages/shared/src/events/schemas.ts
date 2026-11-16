@@ -327,6 +327,34 @@ export const azaleaGymFile = z
   .refine((f) => [...f.spiders, ...f.routes.flat().map((r) => r?.to ?? 0)].every((stop) => stop < f.stations.length), "parada inexistente");
 export type AzaleaGymFile = z.infer<typeof azaleaGymFile>;
 
+/**
+ * Item 030.10: the in-game trades (NARC a/1/1/2, one 0x54-byte NPCTrade per trade, npc_trade.c). Names are
+ * text ids into the trade names bank: the nickname, then the original trainer.
+ */
+const textRef = z.string().regex(/^\d{4}:\d+$/);
+const ivs = z.strictObject({ hp: int(0, 31), attack: int(0, 31), defense: int(0, 31), speed: int(0, 31), specialAttack: int(0, 31), specialDefense: int(0, 31) });
+export const npcTradesFile = z.strictObject({
+  kind: z.literal("npc-trades"),
+  formatVersion: z.literal(EVENTS_FORMAT_VERSION),
+  records: z.array(
+    z.strictObject({
+      id: u16(),
+      /** The species the NPC gives, and the one it asks for (0 for a loan, such as Kenya). */
+      give: int(1, 493),
+      ask: int(0, 493),
+      ivs,
+      pid: int(0, 0xffffffff),
+      otId: int(0, 0xffffffff),
+      heldItem: u16(),
+      otGender: int(0, 1),
+      nickname: textRef,
+      ot: textRef,
+    }),
+  ),
+});
+export type NpcTradesFile = z.infer<typeof npcTradesFile>;
+export type NpcTradeRecord = NpcTradesFile["records"][number];
+
 export const SCRIPT_ARG_TYPES =["number", "text", "species", "move", "item", "trainer", "flag", "variable", "jump", "movement"] as const;
 
 /** An argument is present only when an earlier one has (or lacks) certain values. */
@@ -411,6 +439,7 @@ const codec = createGameDataCodec({
   "fly-points": flyPointsFile,
   "field-items": fieldItemsFile,
   "azalea-gym": azaleaGymFile,
+  "npc-trades": npcTradesFile,
   "script-commands": scriptCommandsFile,
   "events-report": eventsReportFile,
 });
@@ -430,6 +459,7 @@ export type EventsFileKind =
   | "fly-points"
   | "field-items"
   | "azalea-gym"
+  | "npc-trades"
   | "script-commands"
   | "events-report";
 export const parseEventsFile = codec.parseGameDataFile;

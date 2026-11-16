@@ -21,6 +21,7 @@ export const FIELD: Record<string, Handler> = {
   ScrCmd_598: nothing,
   ScrCmd_600: nothing,
   ScrCmd_606: nothing,
+  ScrCmd_607: nothing,
   ScrCmd_728: nothing,
   ScrCmd_731: nothing,
   ScrCmd_732: nothing,

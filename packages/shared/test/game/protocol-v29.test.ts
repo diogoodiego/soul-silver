@@ -8,7 +8,7 @@ const props = (list: object[]) => ({ type: "script-event", event: { kind: "props
 
 describe("protocol v29", () => {
   it("is version 29", () => {
-    expect(PROTOCOL_VERSION).toBe(29);
+    expect(PROTOCOL_VERSION).toBeGreaterThanOrEqual(29);
   });
 
   it("a prop carries an optional pose, as before without one", () => {

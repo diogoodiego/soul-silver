@@ -30,6 +30,12 @@ describe.skipIf(!existsSync(join(stages, "events", "events", "scripts")))("scrip
     expect(logs).toEqual([]);
   });
 
+  it("reads the in-game trades, each with its nickname from the game's text (item 030.10)", () => {
+    expect(data.npcTrades?.size).toBe(13);
+    expect(data.npcTrades?.get(1)).toMatchObject({ give: 66, ask: 96 });
+    for (const t of data.npcTrades!.values()) expect(t.nickname.length).toBeGreaterThan(0);
+  });
+
   it("a sign of New Bark Town shows its text", () => {
     const sign = data.events(60)!.signs.find((s) => s.script)!;
     const host = new Proxy({ character: "male" }, { get: (t, k) => (k in t ? t[k as keyof typeof t] : () => 0) }) as unknown as ScriptHost;
@@ -48,7 +54,7 @@ describe.skipIf(!existsSync(join(stages, "events", "events", "scripts")))("scrip
     client.onMessage((m) => got.push(m as ServerMessage));
     session.connect(server);
     // Standing just north of them, facing south.
-    const save = { schemaVersion: 15, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], name: "Gold", character: "male", area: "34", x: (person.x - o.tx) * 16 + 8, y: (person.z - 1 - o.ty) * 16 + 8, facing: "south", playTimeMs: 0, savedAt: "2026-10-26T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), pending: [], flags: [], vars: {}, npcPlacement: {} };
+    const save = { schemaVersion: 16, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], name: "Gold", character: "male", area: "34", x: (person.x - o.tx) * 16 + 8, y: (person.z - 1 - o.ty) * 16 + 8, facing: "south", playTimeMs: 0, savedAt: "2026-10-26T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), pending: [], flags: [], vars: {}, npcPlacement: {} };
     client.send({ type: "hello", protocolVersion: PROTOCOL_VERSION, save });
     session.step();
     client.send({ type: "input", seq: 1, move: { x: 0, y: 0 }, run: false, buttons: BUTTON.interact });

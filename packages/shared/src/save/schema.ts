@@ -5,7 +5,7 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 15;
+export const SAVE_SCHEMA_VERSION = 16;
 
 /** Photos Cameron's album holds (PhotoAlbumIsFull). */
 export const PHOTO_ALBUM_MAX = 36;
@@ -48,6 +48,10 @@ export const partyMember = z.strictObject({
   egg: z.strictObject({ cycles: z.number().int().min(0).max(255) }).optional(),
   /** Spec 030.2: ribbon ids (0 to 79) the member holds (MonHasRibbon, GiveRibbon); absent is none. */
   ribbons: z.array(z.number().int().min(0).max(79)).refine((l) => new Set(l).size === l.length, "fita repetida").optional(),
+  /** Item 030.10: the in-game trade (npc-trades.json id) it came from; absent for the player's own. */
+  trade: z.number().int().min(0).max(255).optional(),
+  /** Item 030.10: it holds the mail the trainer of this in-game trade wrote (Kenya's Spearow); absent for no such mail. */
+  mail: z.number().int().min(0).max(255).optional(),
 });
 export type PartyMember = z.infer<typeof partyMember>;
 

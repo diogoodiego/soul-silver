@@ -6,7 +6,7 @@ import { newBoxes, newCollection, newProgress } from "../../src/save/schema.ts";
 // Spec 030, item 030.2: the save the host sends carries ribbons on party members and the photo album (save v15).
 
 const member = { species: 155, level: 5, moves: [33], hp: 20, friendship: 70, experience: 135, ivs: { hp: 1, attack: 1, defense: 1, speed: 1, specialAttack: 1, specialDefense: 1 }, evs: { hp: 0, attack: 0, defense: 0, speed: 0, specialAttack: 0, specialDefense: 0 }, nature: 0 };
-const save = (over: object) => ({ schemaVersion: 15, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name: "Ana", character: "female", area: "36", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-11-14T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), ...over });
+const save = (over: object) => ({ schemaVersion: 16, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name: "Ana", character: "female", area: "36", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-11-14T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), ...over });
 
 describe("protocol v28", () => {
   it("is version 28", () => {

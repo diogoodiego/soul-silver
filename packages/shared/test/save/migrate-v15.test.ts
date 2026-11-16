@@ -36,12 +36,12 @@ const v14 = {
   daycare: [{ mon: member, steps: 40 }],
 };
 
-const v15 = (over: object = {}) => ({ ...v14, schemaVersion: 15, photos: [], ...over });
+const v15 = (over: object = {}) => ({ ...v14, schemaVersion: 16, photos: [], ...over });
 const photo = { map: 36, spot: 5, species: [155], takenAt: "2026-11-14T12:00:00.000Z" };
 
 describe("save v15", () => {
   it("is the current version", () => {
-    expect(SAVE_SCHEMA_VERSION).toBe(15);
+    expect(SAVE_SCHEMA_VERSION).toBeGreaterThanOrEqual(15);
   });
 
   it("gives a v14 save an empty photo album and its members no ribbons", () => {

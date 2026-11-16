@@ -4,9 +4,9 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 030.10 Verificação**
+**Próximo item: 031.1 Ecruteak e Burned Tower**
 
-Versões atuais: protocolo 29, save 15.
+Versões atuais: protocolo 30, save 16.
 
 ## Concluídos
 
@@ -40,7 +40,7 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] 030.7 Ilex Forest
 - [x] 030.8 Goldenrod e Whitney
 - [x] 030.9 Routes 35 e 36, National Park e Sudowoodo
-- [ ] 030.10 Verificação
+- [x] 030.10 Verificação
 - [ ] 031.1–031.7 Ecruteak até Cianwood
 - [ ] 032.1–032.7 Olivine, Mahogany e Lake of Rage
 - [ ] 033.1–033.8 Torre de Rádio até Lugia nas Whirl Islands
@@ -58,23 +58,23 @@ Itens dados como concluídos com algo ainda em aberto. Resolva quando o item atu
 assunto, ou quando o desenvolvedor pedir.
 
 - 024: jogada humana do `walkthrough.md` sem comandos de desenvolvimento (manual).
-- 024: erros de lint em `GameSession.svelte`, `audio/reactions.ts`, `StarterChoice.svelte`,
-  `server/src/session.ts` e `shared/test/save/migrate-v7.test.ts` (conferir se ainda existem).
 - 025: captura `04-fishing-bite.png` e roteiro manual do tempo de reação na pesca.
 - 027: seletor rápido com gamepad (roteiro manual; impedir o Pokémon de andar com o D-pad).
 - 027: item escondido 8001 no tile (572,390), fora da grade dos mapas 33 e 34; sonda do Dowsing.
 - 027: captura do seletor de apricorns do Kurt (`06b-kurt-choice.png`).
 - 030.8: elevador da loja de departamentos (mapa 441, comandos de dynamic warp/elevator) sem implementação; escadas cobrem os andares.
-- 030.8: troca Drowzee→Machop (mapa 195) sem os comandos de NPC trade, como a de Violet (162).
-- 030.8: Name Rater (206), Game Corner (183, 536), GetPartySlotWithFatefulEncounter (184) e ScrCmd_722 (519) sem implementação.
-- 030.8: ScrCmd_522 (mapas 137 e 196) só roda com a flag 2404 de revanche do pós-jogo; ficou de fora.
+- 030.8: Name Rater (206), Game Corner (183, 536) e ScrCmd_722 (519) sem implementação.
 - 030.8: Torre de Rádio 1F (112) está no bloco 033 em `map-blocks.json`, mas o quiz roda no 030; comandos faltantes lá (Loto, BufferIntEx etc.) não estão no caminho do quiz.
-- 030.8: `trainer-perf.test.ts` e `perf.test.ts` falham sob carga paralela (passam sozinhos).
+- 030.8: `trainer-perf.test.ts`, `perf.test.ts` e `extractor/test/sprites/stage.test.ts` falham sob carga paralela (passam sozinhos).
 - 030.9: treinadores fora do golden (`shortcut:`): Route 35 nº 5 e National Park 22–24 não iniciam luta; nº 13 dá +0 de dinheiro (teto 999999?); Route 35 nº 0 só à noite (ScrCmd_379); Route 36 nº 3 não inicia luta.
-- 030.9: GetItemQuantity (mapa 40, pessoa 0) sem implementação; ScrCmd_607 nos mapas 102/104 (concurso) pendente.
+- 030.9: GetItemQuantity (mapa 40, pessoa 0) sem implementação.
 - 030.9: o selvagem do encontro fixo é entidade comum (outros jogadores o veem e atacam); só flags e resultado são por jogador.
 - 030.9: faltam testes de servidor dos resultados 2 (blackout), 4 (captura) e 5 (fuga) do encontro fixo.
 - 030.9: após nocaute, o corpo segue capturável por `faintedSeconds`, mas o script já fechou como vitória e a flag 361 não liga.
+- 030.10: comparar capturas de `.evidence/030/` com as páginas 6–14 do detonado; faltam capturas de Route 32/Union Cave, Bugsy e rival.
+- 030.10: mapa 158 em `pending` (Union Room com o multiplayer; Primo/Easy Chat em bloco posterior).
+- 030.10: devolução do Kenya na Route 31 (mapa 35: KenyaCheck, MonGiveMail, ReturnLoanMon) é do bloco 024; correio não vai à caixa do PC.
+- 030.10 (`shortcut:`): trocas sem animação e sem nome/ID do treinador original; Pichu de orelha espetada sem forma; cena do Celebi não desenhada; IsBugContestantRegistered sempre 0; giveMon não guarda item.
 
 ## Decisões
 
@@ -88,3 +88,4 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - O quiz da Radio Card (112, 29:2) é obrigatório antes do ginásio de Goldenrod: libera a porta pela flag 792.
 - WildBattle (encontro fixo) é um selvagem real-time por jogador; BattleOutcome 1/2/4/5 = nocaute/blackout/captura/fuga, e o `onLoad` do mapa roda antes de o script retomar.
 - Route 36 passou para o bloco 030 em `map-blocks.json`; o Bug-Catching Contest segue fora.
+- Trocas com NPC vêm de `npc-trades.json` (a/1/1/2, estágio de eventos); o membro guarda `trade`/`mail` (save 16).

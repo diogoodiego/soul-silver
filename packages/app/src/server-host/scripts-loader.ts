@@ -1,23 +1,36 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseEventsJson, resolveScript, type MapEventsFile, type ScriptFile } from "@soulsilver/shared/events";
+import { parseEventsJson, resolveScript, type MapEventsFile, type NpcTradesFile, type ScriptFile } from "@soulsilver/shared/events";
 import { parseMapJson } from "@soulsilver/shared/maps";
 import { parsePhoneFile, type PhoneBook } from "@soulsilver/shared/phone";
-import { parseTextJson } from "@soulsilver/shared/text";
-import type { ScriptData } from "@soulsilver/server";
+import { parseTextId, parseTextJson } from "@soulsilver/shared/text";
+import type { NpcTrade, ScriptData } from "@soulsilver/server";
 
 // Reads the extracted event scripts for the game server (spec 020): files load on first use and stay cached.
 
 /** FIRST_DEFAULT_NAME_RIVAL in SoulSilver (naming_screen.c), the only version the extractor takes. */
 const DEFAULT_RIVAL_TEXT = { bank: 254, id: 85 };
 
-function readDefaultRival(stagesDir: string, log: (message: string) => void): string | undefined {
-  const path = join(stagesDir, "text-catalog", "catalog", "en", `${String(DEFAULT_RIVAL_TEXT.bank).padStart(4, "0")}.json`);
+/** A text bank of the catalog by record id; undefined when the extraction lacks it. */
+function readBank(stagesDir: string, bank: number, log: (message: string) => void): Map<number, string> | undefined {
+  const path = join(stagesDir, "text-catalog", "catalog", "en", `${String(bank).padStart(4, "0")}.json`);
   if (!existsSync(path)) return undefined;
   const parsed = parseTextJson("text-bank", readFileSync(path, "utf8"), path);
-  if (parsed.ok) return parsed.data.records.find((r) => r.id === DEFAULT_RIVAL_TEXT.id)?.text;
+  if (parsed.ok) return new Map(parsed.data.records.map((r) => [r.id, r.text]));
   log(`${parsed.error.file}: ${parsed.error.path}: ${parsed.error.problem}`);
   return undefined;
+}
+
+/** Item 030.10: the in-game trades, their nicknames read from the game's text; undefined in older extractions. */
+function readNpcTrades(file: NpcTradesFile | undefined, stagesDir: string, log: (message: string) => void): Map<number, NpcTrade> | undefined {
+  if (!file) return undefined;
+  const banks = new Map<number, Map<number, string> | undefined>();
+  const text = (id: string) => {
+    const { bank, index } = parseTextId(id);
+    if (!banks.has(bank)) banks.set(bank, readBank(stagesDir, bank, log));
+    return banks.get(bank)?.get(index) ?? "";
+  };
+  return new Map(file.records.map(({ nickname, ot: _ot, ...t }) => [t.id, { ...t, nickname: text(nickname) }]));
 }
 
 /** The phone book (spec 026); an extraction from before it has no file, and an invalid one is logged and left out. */
@@ -49,7 +62,7 @@ export function loadScripts(stagesDir: string, log: (message: string) => void): 
   const refs = new Map(headers.data.records.map((h) => [h.id, h.refs]));
   const files = new Map<number, ScriptFile | undefined>();
   const events = new Map<number, MapEventsFile | undefined>();
-  function read<K extends "script-file" | "map-events" | "new-game" | "std-messages" | "fly-points" | "headbutt" | "rock-smash" | "field-items" | "azalea-gym">(kind: K, path: string) {
+  function read<K extends "script-file" | "map-events" | "new-game" | "std-messages" | "fly-points" | "headbutt" | "rock-smash" | "field-items" | "azalea-gym" | "npc-trades">(kind: K, path: string) {
     if (!existsSync(path)) return undefined;
     const parsed = parseEventsJson(kind, readFileSync(path, "utf8"), path);
     if (parsed.ok) return parsed.data;
@@ -79,7 +92,8 @@ export function loadScripts(stagesDir: string, log: (message: string) => void): 
     flyPoints: fly?.points,
     headbutt: (map) => headbutt.get(map),
     rockSmash: (map) => rockSmash.get(map),
-    defaultRival: readDefaultRival(stagesDir, log),
+    defaultRival: readBank(stagesDir, DEFAULT_RIVAL_TEXT.bank, log)?.get(DEFAULT_RIVAL_TEXT.id),
+    npcTrades: readNpcTrades(read("npc-trades", join(eventsDir, "npc-trades.json")), stagesDir, log),
     file(id) {
       if (!files.has(id)) files.set(id, read("script-file", join(eventsDir, "scripts", `${padded(id)}.json`)));
       return files.get(id);

@@ -39,6 +39,7 @@ import {
   INIT_SCRIPT,
   LEVEL_SCRIPT_FIELD,
   NEW_GAME_LOCATION,
+  NPC_TRADES,
   PRIZE_TABLE,
   SCRIPT_BANKS,
   SHOPS,
@@ -63,6 +64,7 @@ import { readApricornTrees, readBerryGrowth, readHiddenItems } from "./field-ite
 import { readPhoneBook } from "./phone.ts";
 import { PHONE_FORMAT_VERSION, serializePhoneFile } from "@soulsilver/shared/phone";
 import { readNewGameStart, readStdMessageBanks } from "./new-game.ts";
+import { readNpcTrade } from "./npc-trades.ts";
 import { readShops } from "./shops.ts";
 import { readTrainerClasses, readTrainerMessages } from "./trainer-classes.ts";
 import { resolveScript, trainerOfScript, type MapScripts } from "./refs.ts";
@@ -196,6 +198,9 @@ async function run(ctx: StageContext): Promise<void> {
     ...readAzaleaGym(await readOverlay(ctx, AZALEA_GYM.overlay), AZALEA_GYM),
     levers: gymLevers(gymCells, AZALEA_GYM.levers),
   });
+  // In-game trades (item 030.10).
+  const trades = await Promise.all((await listNarcIndices(ctx, NPC_TRADES.narc)).map(async (id) => readNpcTrade(await readNarcMember(ctx, NPC_TRADES.narc, id), id, NPC_TRADES.namesBank)));
+  await write("npc-trades.json", "npc-trades", { kind: "npc-trades", formatVersion: EVENTS_FORMAT_VERSION, records: trades });
   // Hidden items, apricorn trees and Berry Pot growth (spec 027).
   const berryData = await Promise.all((await listNarcIndices(ctx, BERRY_DATA)).map((id) => readNarcMember(ctx, BERRY_DATA, id)));
   await write("field-items.json", "field-items", {

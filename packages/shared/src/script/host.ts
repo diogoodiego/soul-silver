@@ -203,6 +203,18 @@ export interface ScriptHost {
   /** Spec 030.2, PhotoAlbumIsFull and CameronPhoto: the photo album, and a photo of the party at `spot`. */
   photoAlbumFull?(): boolean;
   takePhoto?(spot: number): void;
+  /** Item 030.10, the Ilex Forest tutor: a party member's moves, one replaced (or added to a free slot), and the moves tutor `npc` (tutors.json area) can teach it. */
+  partyMoves?(slot: number): number[];
+  setPartyMove?(slot: number, moveSlot: number, move: number): void;
+  tutorMoves?(slot: number, npc: number): number[];
+  /** Item 030.10, in-game trades (npc-trades.json): the species a trade gives and asks for, undefined for no such trade. */
+  npcTrade?(id: number): { give: number; ask: number } | undefined;
+  /** NPCTradeExec: the party member in `slot` leaves, the trade's Pokémon takes its place at its level. */
+  tradeMon?(id: number, slot: number): void;
+  /** GiveLoanMon: the trade's Pokémon joins at `level`; `mail`, holding its trainer's mail (Kenya). */
+  giveLoanMon?(id: number, level: number, mail: boolean): void;
+  /** KenyaCheckPartyOrMailbox: a member holds the mail of trade `id`'s trainer. */
+  hasTradeMail?(id: number): boolean;
   /** Spec 030.3, PlayerOnBikeCheck: the player rides the bike. */
   onBike?(): boolean;
   /** Spec 030.3, ScrCmd_545 and CheckSeenAllLetterUnown: how many Unown forms the Pokédex holds. */

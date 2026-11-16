@@ -45,6 +45,8 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   13: (save) => ({ ...save, eggWalk: 0, schemaVersion: 14 }),
   // Spec 030.2: an empty photo album; members carry no ribbons until given one.
   14: (save) => ({ ...save, photos: [], schemaVersion: 15 }),
+  // Item 030.10: no member came from an in-game trade yet (both fields optional).
+  15: (save) => ({ ...save, schemaVersion: 16 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

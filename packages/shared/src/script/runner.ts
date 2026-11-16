@@ -56,8 +56,10 @@ export interface CommandContext {
   menu: MenuState;
   /** The scripted Pokégear call SetPhoneCall picked, as "caller:call:arg", for RunPhoneCall (spec 024). */
   phone: { call: { caller: number; script: number } | undefined };
-  /** Spec 029: the party slot the player picked (ScrCmd_551), read by ScrCmd_552; 255 when cancelled. */
-  party: { picked: number };
+  /** Spec 029: the party slot the player picked (ScrCmd_551), read by ScrCmd_552; 255 when cancelled. Item 030.10: `move`, the move slot picked (PokemonSummaryScreen), 4 for none. */
+  party: { picked: number; move: number };
+  /** Item 030.10: the in-game trade LoadNPCTrade loaded, until NPCTradeEnd. */
+  npcTrade: { id: number | undefined };
   /** The file's message bank as a text id prefix; numbers stay numbers when the file has none. */
   text(index: number): string;
   /** Blocks the script; `then` runs on resume with the client's answer. */
@@ -113,7 +115,8 @@ export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Han
   const buffers: Record<number, TextBuffer> = {};
   const menu: MenuState = { into: 0, cancel: false, std: false, items: [] };
   const phone = { call: undefined as { caller: number; script: number } | undefined };
-  const party = { picked: 255 };
+  const party = { picked: 255, move: 4 };
+  const npcTrade = { id: undefined as number | undefined };
   const contexts: Context[] = [];
   let state: RunState = { kind: "running" };
   let then: ((answer: number, text?: string) => void) | undefined;
@@ -211,6 +214,7 @@ export function createRunner(host: ScriptHost, handlers: ReadonlyMap<string, Han
       menu,
       phone,
       party,
+      npcTrade,
       text(index) {
         const bank = ctx.file.messageBank;
         return bank === null ? String(index) : formatTextId(bank, index);

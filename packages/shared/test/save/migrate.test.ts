@@ -60,7 +60,7 @@ describe("migrate", () => {
   });
 
   it("refuses a save newer than the app", () => {
-    expect(migrate({ ...v1, schemaVersion: 16 })).toMatchObject({ ok: false, code: "save-too-new" });
+    expect(migrate({ ...v1, schemaVersion: 17 })).toMatchObject({ ok: false, code: "save-too-new" });
   });
 
   it("fails when a step is missing", () => {

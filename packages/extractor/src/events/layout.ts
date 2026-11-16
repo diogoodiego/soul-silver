@@ -97,3 +97,5 @@ export const HIDDEN_ITEMS = { offset: 0xfa558, count: 231 } as const;
 export const APRICORN_TREES = { offset: 0x108413, count: 31 } as const;
 /** Spec 027: berry data, 64 records of 12 bytes; byte 4 is the hours each growth stage takes. */
 export const BERRY_DATA = "a/0/6/6";
+/** Item 030.10: the in-game trades (NPCTrade, npc_trade.c), and the bank of their nicknames and trainers' names (msg_0200). */
+export const NPC_TRADES = { narc: "a/1/1/2", namesBank: 200 } as const;

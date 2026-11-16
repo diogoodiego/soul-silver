@@ -117,6 +117,16 @@ export const STORY: Record<string, Handler> = {
       c.host.emit({ kind: "props", props: gymProps(gym, ride.state) });
     });
   },
+  // Item 030.10. Code overlays (the bug contest's among them): nothing to load here.
+  ScriptOverlayCmd: nothing,
+  // shortcut: the Bug-Catching Contest is not in the game yet (Marco 6), so no one is registered; ask the contest when it exists.
+  IsBugContestantRegistered: (c) => c.writeVar(c.ptr("arg1"), 0),
+  // Field_GetHour, for the Goldenrod rematch calls.
+  ScrCmd_522: (c) => c.writeVar(c.ptr("arg0"), c.host.hour()),
+  // shortcut: no Pokémon in this game comes from an event, so none has a fateful encounter; read it from the member when events give one.
+  GetPartySlotWithFatefulEncounter: (c) => c.writeVar(c.ptr("arg0"), 255),
+  // shortcut: Celebi's time-travel scene (only after the GS Ball event) is not drawn; the script fades and warps on its own.
+  ScrCmd_810: nothing,
   // Script sounds are not played yet (WORLD's PlaySE), so there is nothing to stop.
   StopSE: nothing,
 };
