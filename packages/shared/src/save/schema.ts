@@ -5,7 +5,12 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 17;
+export const SAVE_SCHEMA_VERSION = 18;
+
+/** Seals of one kind the Seal Case holds (the Moomoo farm's "Seal Case is full" at 99). */
+export const SEAL_MAX = 99;
+/** Seal kinds, ids 1 to 80. */
+export const SEAL_KINDS = 80;
 
 /** Photos Cameron's album holds (PhotoAlbumIsFull). */
 export const PHOTO_ALBUM_MAX = 36;
@@ -210,6 +215,8 @@ export const saveSchema = z.strictObject({
     .max(4)
     .refine((l) => unique(l.map((r) => r.id)), "errante repetido")
     .optional(),
+  /** Item 031.7: the Seal Case, how many of each seal (id 1 to 80, the seal-names bank) it holds. Absent is empty. */
+  seals: z.record(z.string().regex(/^([1-9]|[1-7]\d|80)$/), z.number().int().min(1).max(SEAL_MAX)).optional(),
 });
 export type Save = z.infer<typeof saveSchema>;
 export type Photo = z.infer<typeof photo>;

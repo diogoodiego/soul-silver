@@ -220,6 +220,13 @@ export interface ScriptHost {
   giveLoanMon?(id: number, level: number, mail: boolean): void;
   /** KenyaCheckPartyOrMailbox: a member holds the mail of trade `id`'s trainer. */
   hasTradeMail?(id: number): boolean;
+  /** Item 031.7, CheckReturnLoanMon: 0 the member in `slot` is trade `id`'s loan and can go back, 1 it is not, 2 it holds an item, 4 it is the only member. */
+  loanMonCheck?(id: number, slot: number): number;
+  /** ReturnLoanMon: the party member in `slot` leaves. */
+  returnLoanMon?(slot: number): void;
+  /** Item 031.7, the Seal Case: how many of seal `id` it holds, and `amount` more (or fewer, below 0) of it, kept within 0 to 99. */
+  sealCount?(id: number): number;
+  giveSeal?(id: number, amount: number): void;
   /** Spec 030.3, PlayerOnBikeCheck: the player rides the bike. */
   onBike?(): boolean;
   /** Spec 030.3, ScrCmd_545 and CheckSeenAllLetterUnown: how many Unown forms the Pokédex holds. */

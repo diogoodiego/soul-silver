@@ -4,7 +4,7 @@ import { checkCoherence, COHERENCE_RULES, flyPointsRule, type CoherenceRule } fr
 import { newBoxes, newItemState, type Save } from "../../src/save/schema.ts";
 
 const save: Save = {
-  schemaVersion: 17, daycare: [], daycareEgg: false, eggWalk: 0, photos: [],
+  schemaVersion: 18, daycare: [], daycareEgg: false, eggWalk: 0, photos: [],
   rivalName: "",
   storyRev: 1,
   phone: { contacts: [], seeking: [], called: [], pending: [], log: [] },

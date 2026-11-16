@@ -36,7 +36,7 @@ const v14 = {
   daycare: [{ mon: member, steps: 40 }],
 };
 
-const v15 = (over: object = {}) => ({ ...v14, schemaVersion: 17, photos: [], ...over });
+const v15 = (over: object = {}) => ({ ...v14, schemaVersion: 18, photos: [], ...over });
 const photo = { map: 36, spot: 5, species: [155], takenAt: "2026-11-14T12:00:00.000Z" };
 
 describe("save v15", () => {

@@ -5,7 +5,7 @@ const all = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAtt
 const stats = { experience: 125, ivs: all(31), evs: all(0), nature: 0 };
 
 const valid = {
-  schemaVersion: 17, daycare: [], daycareEgg: false, eggWalk: 0, photos: [],
+  schemaVersion: 18, daycare: [], daycareEgg: false, eggWalk: 0, photos: [],
   name: "Gold",
   character: "male",
   area: "60",

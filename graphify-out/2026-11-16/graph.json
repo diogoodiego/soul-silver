@@ -101002,7 +101002,7 @@
       "file_type": "code",
       "norm_label": "checks",
       "source_file": "packages/app/golden/campaign.golden.ts",
-      "source_location": "L923"
+      "source_location": "L929"
     },
     {
       "id": "packages_app_golden_campaign_golden_second",
@@ -101024,7 +101024,7 @@
       "file_type": "code",
       "norm_label": "steps",
       "source_file": "packages/app/golden/campaign.golden.ts",
-      "source_location": "L926"
+      "source_location": "L932"
     },
     {
       "id": "packages_app_golden_campaign_golden_vectors",
@@ -111980,7 +111980,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/campaign.golden.ts",
-      "source_location": "L1567",
+      "source_location": "L1573",
       "weight": 1.0
     },
     {
@@ -111992,7 +111992,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/campaign.golden.ts",
-      "source_location": "L1577",
+      "source_location": "L1583",
       "weight": 1.0
     },
     {
@@ -112100,7 +112100,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/campaign.golden.ts",
-      "source_location": "L890",
+      "source_location": "L896",
       "weight": 1.0
     },
     {
@@ -112112,7 +112112,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/campaign.golden.ts",
-      "source_location": "L891",
+      "source_location": "L897",
       "weight": 1.0
     },
     {
@@ -112124,7 +112124,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/campaign.golden.ts",
-      "source_location": "L914",
+      "source_location": "L920",
       "weight": 1.0
     },
     {
@@ -112136,7 +112136,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/campaign.golden.ts",
-      "source_location": "L918",
+      "source_location": "L924",
       "weight": 1.0
     },
     {
@@ -283899,7 +283899,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/app/golden/campaign.golden.ts",
-      "source_location": "L923",
+      "source_location": "L929",
       "weight": 1.0
     },
     {
@@ -283910,7 +283910,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/app/golden/campaign.golden.ts",
-      "source_location": "L926",
+      "source_location": "L932",
       "weight": 1.0
     },
     {

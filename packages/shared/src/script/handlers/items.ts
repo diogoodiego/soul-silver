@@ -1,4 +1,8 @@
+import { formatTextId } from "../../text/ids.ts";
 import type { Handler } from "../runner.ts";
+
+/** Text bank of the seal names in the plural, by seal id (record 0 is empty). */
+const SEAL_NAMES_PLURAL = 16;
 
 const answer = (ok: boolean) => (ok ? 1 : 0);
 const RED_APRICORN = 485;
@@ -23,4 +27,12 @@ export const ITEMS: Record<string, Handler> = {
   ScrCmd_737: (c) => c.writeVar(c.ptr("arg0"), c.host.kurtBall?.() ?? 0),
   ScrCmd_739: (c) => c.block({ kind: "apricorn", counts: c.host.apricorns?.() ?? [0, 0, 0, 0, 0, 0, 0] }, (color) => color < APRICORN_COLOURS && c.host.giveKurt?.(color)),
   ClearKurtApricorn: (c) => c.host.clearKurt?.(),
+  // Item 031.7, the Seal Case (the Moomoo farm's gift): a host without one reads it empty and keeps nothing.
+  GetSealQuantity: (c) => c.writeVar(c.ptr("arg1"), c.host.sealCount?.(c.get("arg0")) ?? 0),
+  // The amount is an s16 in the original: above 0x7fff it takes seals away.
+  GiveOrTakeSeal: (c) => {
+    const n = c.get("arg1");
+    c.host.giveSeal?.(c.get("arg0"), n > 0x7fff ? n - 0x10000 : n);
+  },
+  BufferSealNamePlural: (c) => void (c.buffers[c.raw("arg0")] = { kind: "text", text: formatTextId(SEAL_NAMES_PLURAL, c.get("arg1")) }),
 };

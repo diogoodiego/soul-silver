@@ -4,9 +4,9 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 031.7 Verificação**
+**Próximo item: 032.1 Remédio do Amphy e Jasmine**
 
-Versões atuais: protocolo 31, save 17.
+Versões atuais: protocolo 32, save 18.
 
 ## Concluídos
 
@@ -41,7 +41,7 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] 030.8 Goldenrod e Whitney
 - [x] 030.9 Routes 35 e 36, National Park e Sudowoodo
 - [x] 030.10 Verificação
-- [ ] 031.1–031.7 Ecruteak até Cianwood
+- [x] 031.1–031.7 Ecruteak até Cianwood
 - [ ] 032.1–032.7 Olivine, Mahogany e Lake of Rage
 - [ ] 033.1–033.8 Torre de Rádio até Lugia nas Whirl Islands
 - [ ] 034.1–034.6 Victory Road e Liga
@@ -88,7 +88,9 @@ assunto, ou quando o desenvolvedor pedir.
 - 031.5: interiores de Olivine (226–231, 240, 330, 367) seguem pending; 229, 240 e 330 com comandos faltando.
 - 031.6 (`shortcut:`): cachoeira do ginásio de Cianwood não desenhada; manivela em variável temporária (volta a 0 ao reentrar).
 - 031.6: golden pula os nadadores das Routes 40/41 e faz warp até o Sentret quando o caminho trava; cena do Rocket no teatro sem teste de servidor.
-- 031.6: mapas 232 (CheckReturnLoanMon, ReturnLoanMon) e 236 (CountPCEmptySpace, ScrCmd_815) com comandos faltando; fechar no 031.7.
+- 031.7 (`shortcut:`): CheckReturnLoanMon nunca dá 3 (sem Ball Capsule); ordem das checagens não conferida com o pokeheartgold.
+- 031.7: selos só no save, sem tela de Seal Case/Ball Capsule; Shuckle (232) e selos (215) só com testes sintéticos, fora do golden.
+- 031.7: comparação com as páginas 6–20 do detonado pendente (sem capturas; verificação só no servidor); roteiro manual em `.evidence/031/roteiro-manual.md`.
 
 ## Decisões
 
@@ -109,3 +111,5 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Warp com destino 4095 é o destino dinâmico do jogador (`data.dynamicWarp`, "mapa:âncora"); todo warp comum grava a origem.
 - Farol (115, 220–225, 446) e Olivine City (77) passaram para o bloco 031; o ginásio de Olivine (138) segue no 032.
 - O HM03 (Dance Theater, mapa 86) faz parte do caminho dourado do 031; um Sentret capturado na Route 29 usa o Surf.
+- Seal Case é `save.seals` (id 1–80 → 1–99; nomes do banco 16 em runtime); a tela de Ball Capsule parte dele.
+- Verificação só pelo servidor (golden, sondas, harness): não abrir o app nem fazer capturas (pedido do desenvolvedor).

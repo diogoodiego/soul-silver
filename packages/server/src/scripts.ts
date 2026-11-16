@@ -5,7 +5,7 @@ import { createRng, stepMovement, tileAt, unstick, type Entity, type PlayerInput
 import { isCounter, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { starterMember } from "@soulsilver/shared/progression";
 import { store } from "@soulsilver/shared/pc";
-import { canFight, hasBadgeBit, PHOTO_ALBUM_MAX, type PartyMember, type Save } from "@soulsilver/shared/save";
+import { canFight, hasBadgeBit, PHOTO_ALBUM_MAX, SEAL_KINDS, SEAL_MAX, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { npcOccupied, type CutsceneActor, type CutsceneStep } from "@soulsilver/shared/npc";
 import { createRunner, SCRIPT_DIRECTIONS, SCRIPT_HANDLERS, type MissingCommand, type Runner, type ScriptHost } from "@soulsilver/shared/script";
 import { POCKET_KEYS } from "@soulsilver/shared/game-data";
@@ -195,7 +195,7 @@ export interface Storyteller {
   intro?: boolean | undefined;
   /** The story has not started (a new save, or one restarted, spec 024): _std_init runs once on joining. */
   init?: boolean | undefined;
-  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badgeSet" | "pokedex" | "respawn" | "daycare" | "daycareEgg" | "eggWalk" | "photos">;
+  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badgeSet" | "pokedex" | "respawn" | "daycare" | "daycareEgg" | "eggWalk" | "photos" | "seals">;
   /** The save's rival name (spec 024); mutated in place, the session saves it. */
   rival?: Pick<Save, "rivalName"> | undefined;
   send(msg: ServerMessage): void;
@@ -652,6 +652,26 @@ export function createScripts(options: ScriptsOptions) {
       },
       // shortcut: the mail stays with the member when its item is taken; the original moves it to the PC mailbox, where this check finds it too. Look there when the save has a mailbox.
       hasTradeMail: (id) => who.progress.party.some((m) => m.mail === id),
+      // Item 031.7. shortcut: no Ball Capsules yet, so result 3 (a capsule on its ball) never comes; check it with the capsules.
+      loanMonCheck: (id, slot) => {
+        const m = who.progress.party[slot];
+        if (m?.trade !== id) return 1;
+        if (m.held !== undefined) return 2;
+        return who.progress.party.length === 1 ? 4 : 0;
+      },
+      returnLoanMon: (slot) => {
+        if (!who.progress.party[slot]) return;
+        who.progress.party.splice(slot, 1);
+        options.changed(who.playerId, "party");
+      },
+      sealCount: (id) => who.progress.seals?.[String(id)] ?? 0,
+      giveSeal: (id, amount) => {
+        if (id < 1 || id > SEAL_KINDS) return;
+        const seals = (who.progress.seals ??= {});
+        const n = Math.max(0, Math.min(SEAL_MAX, (seals[String(id)] ?? 0) + amount));
+        if (n === 0) delete seals[String(id)];
+        else seals[String(id)] = n;
+      },
       partyMoves: (slot) => who.progress.party[slot]?.moves ?? [],
       // PartyMonSetMoveInSlot: the move in the slot (or the first free one), its PP Ups cleared.
       setPartyMove: (slot, moveSlot, move) => {

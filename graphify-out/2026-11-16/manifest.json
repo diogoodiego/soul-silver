@@ -6090,9 +6090,9 @@
     "semantic_hash": ""
   },
   "packages/app/golden/campaign.golden.ts": {
-    "mtime": 1794799055.570295,
-    "seen": 1794799129.1425962,
-    "ast_hash": "6c3a50fe1e1821e9098b1e522904571d",
+    "mtime": 1794799721.4937153,
+    "seen": 1794799954.5754223,
+    "ast_hash": "f737018e0e9ae5b8fd9d936193398d17",
     "semantic_hash": ""
   },
   "packages/app/golden/milestones.ts": {

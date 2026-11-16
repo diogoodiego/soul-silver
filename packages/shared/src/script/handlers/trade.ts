@@ -28,4 +28,7 @@ export const TRADE: Record<string, Handler> = {
     c.host.giveLoanMon?.(id, c.raw("arg1"), id === KENYA);
   },
   KenyaCheckPartyOrMailbox: (c) => c.writeVar(c.ptr("arg0"), c.host.hasTradeMail?.(KENYA) ? 1 : 0),
+  // Item 031.7, the Cianwood Shuckle's owner (NPCTrade_CanGiveUpLoanMon): a host without loans reads "not my Pokémon" (1).
+  CheckReturnLoanMon: (c) => c.writeVar(c.ptr("arg2"), c.host.loanMonCheck?.(c.raw("arg0"), c.get("arg1")) ?? 1),
+  ReturnLoanMon: (c) => c.host.returnLoanMon?.(c.get("arg0")),
 };

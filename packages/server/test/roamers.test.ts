@@ -45,7 +45,7 @@ describe("roamers (item 031.2)", () => {
     t.step(2);
     t.press(a);
     goTo(t, a, "61");
-    expect(lastSave(a).roamers).toEqual([{ id: 0, area: expect.any(String) }]);
+    expect(lastSave(a).roamers).toEqual([{ id: 0, area: expect.any(String) as unknown }]);
     expect(ROAMER_ROUTES).toContain(lastSave(a).roamers![0]!.area);
     goTo(t, b, "61");
     expect(lastSave(b).roamers).toEqual([]);
@@ -64,7 +64,7 @@ describe("roamers (item 031.2)", () => {
     // Leaving the route takes it off the map with its HP.
     goTo(t, a, "61");
     expect(raikous(t)).toEqual([]);
-    expect(lastSave(a).roamers).toEqual([{ id: 0, area: expect.any(String), hp: left }]);
+    expect(lastSave(a).roamers).toEqual([{ id: 0, area: expect.any(String) as unknown, hp: left }]);
     const again = findRaikou(t, a);
     expect(again.id).not.toBe(first.id);
     expect(t.session.combat!.get(again.id)!.hp).toBe(left);

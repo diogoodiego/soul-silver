@@ -191,7 +191,7 @@ interface Player {
   /** Asked for the AI debug overlay (spec 019). */
   debugAi: boolean;
   /** Party, money, badges and respawn point, changed in place by the companion rules; bag, Pokédex and PC boxes by capture. */
-  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints" | "escape" | "phone" | "daycare" | "daycareEgg" | "eggWalk" | "photos"> & ItemState & { roamers: Roamer[] };
+  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints" | "escape" | "phone" | "daycare" | "daycareEgg" | "eggWalk" | "photos" | "seals"> & ItemState & { roamers: Roamer[] };
   /** Story flags and variables (spec 020), changed by this player's scripts only. */
   flags: Set<number>;
   vars: Map<number, number>;
@@ -783,6 +783,7 @@ export function createSession(options: SessionOptions): Session {
         daycareEgg: base.daycareEgg,
         eggWalk: base.eggWalk,
         photos: structuredClone(base.photos),
+        ...(base.seals ? { seals: { ...base.seals } } : {}),
         roamers: structuredClone(base.roamers ?? []),
         ...itemStateOf(base),
       },
@@ -854,6 +855,7 @@ export function createSession(options: SessionOptions): Session {
       phone: structuredClone(p.progress.phone),
       daycare: structuredClone(p.progress.daycare),
       roamers: structuredClone(p.progress.roamers),
+      ...(p.progress.seals ? { seals: { ...p.progress.seals } } : {}),
       ...itemStateOf(p.progress),
       flags: [...p.flags].sort((a, b) => a - b),
       vars: Object.fromEntries([...p.vars].map(([k, v]) => [String(k), v])),

@@ -54,7 +54,7 @@ describe.skipIf(!existsSync(join(stages, "events", "events", "scripts")))("scrip
     client.onMessage((m) => got.push(m as ServerMessage));
     session.connect(server);
     // Standing just north of them, facing south.
-    const save = { schemaVersion: 17, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], name: "Gold", character: "male", area: "34", x: (person.x - o.tx) * 16 + 8, y: (person.z - 1 - o.ty) * 16 + 8, facing: "south", playTimeMs: 0, savedAt: "2026-10-26T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), pending: [], flags: [], vars: {}, npcPlacement: {} };
+    const save = { schemaVersion: 18, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], name: "Gold", character: "male", area: "34", x: (person.x - o.tx) * 16 + 8, y: (person.z - 1 - o.ty) * 16 + 8, facing: "south", playTimeMs: 0, savedAt: "2026-10-26T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), pending: [], flags: [], vars: {}, npcPlacement: {} };
     client.send({ type: "hello", protocolVersion: PROTOCOL_VERSION, save });
     session.step();
     client.send({ type: "input", seq: 1, move: { x: 0, y: 0 }, run: false, buttons: BUTTON.interact });

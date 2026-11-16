@@ -73,4 +73,50 @@ describe("block 031 commands (item 031.1)", () => {
       expect(steps).toEqual([{ kind: "hide", actor: { person: 2 } }]);
     }
   });
+  it("the Cianwood Shuckle (item 031.7): CheckReturnLoanMon reads the host, 1 (not mine) without one; ReturnLoanMon gives the slot", () => {
+    const h = fakeHost();
+    const asked: number[][] = [];
+    const returned: number[] = [];
+    h.loanMonCheck = (id, slot) => (asked.push([id, slot]), 2);
+    h.returnLoanMon = (slot) => void returned.push(slot);
+    const file = makeScript([["SetVar", { var: { variable: 16384 }, val: 3 }], ["CheckReturnLoanMon", { arg0: 6, arg1: 16384, arg2: 16390 }], ["ReturnLoanMon", { arg0: 16384 }], ["End"]]);
+    expect(createRunner(h, SCRIPT_HANDLERS, { file, entry: 0 }).step().kind).toBe("done");
+    expect([asked, returned, h.vars.get(16390)]).toEqual([[[6, 3]], [3], 2]);
+    const bare = fakeHost();
+    createRunner(bare, SCRIPT_HANDLERS, { file, entry: 0 }).step();
+    expect(bare.vars.get(16390)).toBe(1);
+  });
+
+  it("CountPCEmptySpace is the 540 box slots less the Pokémon in them; ScrCmd_815 does nothing (item 031.7)", () => {
+    const h = fakeHost();
+    h.boxMonCount = () => 7;
+    const file = makeScript([["ScrCmd_815", { arg0: 0 }], ["CountPCEmptySpace", { arg0: 16390 }], ["End"]]);
+    expect(createRunner(h, SCRIPT_HANDLERS, { file, entry: 0 }).step().kind).toBe("done");
+    expect(h.vars.get(16390)).toBe(533);
+    expect(h.events).toEqual([]);
+  });
+
+  it("the Moomoo farm seals (item 031.7): counts and gifts through the host, an s16 amount takes away, the plural name from bank 16", () => {
+    const h = fakeHost();
+    const seals = new Map<number, number>([[29, 4]]);
+    h.sealCount = (id) => seals.get(id) ?? 0;
+    h.giveSeal = (id, n) => void seals.set(id, (seals.get(id) ?? 0) + n);
+    const file = makeScript([
+      ["SetVar", { var: { variable: 32772 }, val: 29 }],
+      ["SetVar", { var: { variable: 32768 }, val: 3 }],
+      ["SetVar", { var: { variable: 32769 }, val: 0xfffe }],
+      ["GiveOrTakeSeal", { arg0: 32772, arg1: 32768 }],
+      ["GiveOrTakeSeal", { arg0: 32772, arg1: 32769 }],
+      ["GetSealQuantity", { arg0: 32772, arg1: 16390 }],
+      ["BufferSealNamePlural", { arg0: 0, arg1: 32772 }],
+      ["NPCMsg", { msg_id: 1 }],
+      ["End"],
+    ]);
+    const state = createRunner(h, SCRIPT_HANDLERS, { file, entry: 0 }).step();
+    expect(state).toMatchObject({ kind: "blocked", request: { kind: "say", buffers: { 0: { kind: "text", text: "0016:29" } } } });
+    expect(h.vars.get(16390)).toBe(5);
+    const bare = fakeHost();
+    createRunner(bare, SCRIPT_HANDLERS, { file, entry: 0 }).step();
+    expect(bare.vars.get(16390) ?? 0).toBe(0);
+  });
 });

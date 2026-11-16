@@ -32,7 +32,7 @@ const v9 = {
   storyRev: 1,
 };
 
-const v10 = (phone: unknown) => ({ ...v9, schemaVersion: 17, daycare: [], daycareEgg: false, eggWalk: 0, photos: [], phone, ...newItemState() });
+const v10 = (phone: unknown) => ({ ...v9, schemaVersion: 18, daycare: [], daycareEgg: false, eggWalk: 0, photos: [], phone, ...newItemState() });
 
 describe("save v10", () => {
   it("gives a v9 save an empty phone and leaves the rest alone", () => {

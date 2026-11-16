@@ -1,4 +1,5 @@
 import { STARTER_LEVEL, STARTERS } from "../../progression/starter.ts";
+import { BOX_COUNT, BOX_SLOTS } from "../../save/schema.ts";
 import type { Handler } from "../runner.ts";
 
 /** VAR_PLAYER_STARTER (vars.h), where SetStarterChoice keeps the species. */
@@ -25,6 +26,8 @@ export const POKEMON: Record<string, Handler> = {
   GetStarterChoice: (c) => c.writeVar(c.ptr("var"), c.readVar(VAR_PLAYER_STARTER)),
   HealParty: (c) => c.host.healParty(),
   GetPartyCount: (c) => c.writeVar(c.ptr("var"), c.host.partyCount()),
+  // Item 031.7: free PC box slots (the Cianwood Tentacool goes only to a player with an empty PC, 540).
+  CountPCEmptySpace: (c) => c.writeVar(c.ptr("arg0"), BOX_COUNT * BOX_SLOTS - (c.host.boxMonCount?.() ?? 0)),
   // An egg reads as species 0 (spec 029.2), as the Day Care script expects.
   GetPartyMonSpecies: (c) => c.writeVar(c.ptr("var"), c.host.partyIsEgg?.(c.get("slot")) ? 0 : c.host.partySpecies(c.get("slot"))),
   GetPartyLeadAlive: (c) => c.writeVar(c.ptr("arg0"), c.host.partyLeadAlive()),

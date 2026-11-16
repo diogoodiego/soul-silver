@@ -49,6 +49,8 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   15: (save) => ({ ...save, schemaVersion: 16 }),
   // Item 031.2: nothing roams yet (roamers is optional).
   16: (save) => ({ ...save, schemaVersion: 17 }),
+  // Item 031.7: the Seal Case is empty (seals is optional).
+  17: (save) => ({ ...save, schemaVersion: 18 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });
