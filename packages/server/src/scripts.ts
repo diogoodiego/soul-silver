@@ -841,7 +841,7 @@ export function createScripts(options: ScriptsOptions) {
         const e = personOf(area, id);
         if (!e || !who.placement) return;
         s.moved.delete(id);
-        (who.placement[area] ??= {})[String(id)] = { x, z, facing: SCRIPT_DIRECTIONS[facing] ?? e.facing };
+        (who.placement[area] ??= {})[String(id)] = { x, z, facing: (facing === undefined ? undefined : SCRIPT_DIRECTIONS[facing]) ?? e.facing };
       },
       weekday: () => options.weekday(),
       hour: () => options.hour(),

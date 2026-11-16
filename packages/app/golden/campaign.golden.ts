@@ -510,7 +510,11 @@ function boosted(p: Pilot): Pilot {
     return { ...up, hp: p.hpMax(up) };
   });
   const bag = [...save.bag.filter((b) => b.item !== POTION), { item: POTION, count: p.count(save, POTION) + BOOST_POTIONS }];
-  const next = pilot({ ...save, party, bag });
+  return carried(p, pilot({ ...save, party, bag }));
+}
+
+/** `next` with what pilot `p` recorded (maps, commands, stuck scripts). */
+function carried(p: Pilot, next: Pilot): Pilot {
   next.missing.push(...p.missing);
   next.stuck.push(...p.stuck);
   for (const m of p.visited) next.visited.add(m);
@@ -1627,9 +1631,110 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     if (!p.talkTo(88, 8)) throw new Error("o Lance não está na extração");
     if (p.fresh().flags.includes(504)) throw new Error("o Lance não foi para a loja de Mahogany (flag 504 ligada)");
   },
+  // Item 032.4. Mahogany's shop door (528, 174) into map 116, whose frame (0x40A8 = 1) runs Lance's scene there.
+  62: (p) => {
+    keep(p, "antes-loja-mahogany");
+    p.warp(87, 528, 175);
+    p.walk("north", 1);
+    if (p.fresh().area !== "116") throw new Error(`a porta da loja de Mahogany não levou ao mapa 116 (está ${p.fresh().area})`);
+  },
+  // The stairs (6, 3) down to B1F (map 247, at (51, 4)); west into the Persian statue's eye at (44, 4) (89:0): grunts 223 and
+  // 224 come running. Then a floor trap at (13, 16) (89:14, Voltorb level 23), fought, and down the stairs at (10, 29).
+  63: (p) => {
+    keep(p, "antes-esconderijo");
+    // The stairs go down eastward (behaviour 0x5E): from (5, 3), where the clerk stood.
+    route(p, 5, 3);
+    p.walk("east", 1);
+    if (p.fresh().area !== "247") throw new Error(`a escada da loja não levou ao esconderijo (está ${p.fresh().area})`);
+    const money = p.fresh().money;
+    const since = p.battles.size;
+    route(p, 44, 4);
+    checks.push(p.battle("alarme da estátua do Persian (esconderijo B1F)", [224], money, () => undefined, since));
+    p.warp(247, 13, 15);
+    p.walk("south", 1);
+    knockOut(p, 100, "247");
+  },
+  // B1F's stairs (10, 29) to B2F (map 248, at (10, 29)): its frame heals the party.
+  64: (p) => {
+    keep(p, "antes-esconderijo-b2");
+    route(p, 11, 29);
+    p.walk("west", 1);
+    if (p.fresh().area !== "248") throw new Error(`a escada do B1F não levou ao B2F (está ${p.fresh().area})`);
+  },
+  // B2F's stairs (51, 29) to B3F (map 249): Lance again (frame 0x40AC = 0). The password grunts 222 and 404, then out and back
+  // in (the onTransition sets 0x40AC = 2 once both are beaten); the rival's trigger (20, 18); the password door (23–24, 15)
+  // talked to, through it onto the Murkrow's trigger (23, 12) and Petrel's battle.
+  65: (p) => {
+    keep(p, "antes-esconderijo-b3");
+    p.warp(248, 50, 29);
+    p.walk("east", 1);
+    if (p.fresh().area !== "249") throw new Error(`a escada do B2F não levou ao B3F (está ${p.fresh().area})`);
+    checks.push(p.routeTrainer("senha do esconderijo B3F", 249, 3));
+    checks.push(p.routeTrainer("senha do esconderijo B3F", 249, 4));
+    p.warp(248, 50, 29);
+    p.warp(249, 21, 18);
+    p.walk("west", 1);
+    if (p.fresh().vars[0x40ac] !== 3) throw new Error(`o rival não apareceu no B3F (0x40AC = ${p.fresh().vars[0x40ac]})`);
+    p.warp(249, 23, 16);
+    p.talk("north");
+    const money = p.fresh().money;
+    p.walk("north", 4);
+    checks.push(p.battle("executivo Petrel (esconderijo B3F)", [488], money, () => undefined));
+  },
+  // The doors in turn: B2F (11, 4) (0x40AC = 4), B3F (50, 4) (5), B2F (50, 29) (6), and B2F (30, 27) (7), where the generator's
+  // shutters open.
+  66: (p) => {
+    keep(p, "antes-portas-esconderijo");
+    p.warp(249, 11, 4);
+    p.walk("west", 1);
+    p.walk("east", 1);
+    p.warp(248, 50, 4);
+    p.walk("east", 1);
+    p.walk("west", 1);
+    p.warp(249, 50, 29);
+    p.walk("east", 1);
+    p.walk("west", 1);
+    route(p, 30, 27);
+    const vars = p.fresh().vars;
+    if (vars[0x40ac] !== 8) throw new Error(`as portas do esconderijo pararam em 0x40AC = ${vars[0x40ac]}`);
+  },
+  // The generator's three Electrodes (persons 9–11 of map 248), each knocked out (Lance's battle before them: see pastLanceBattle).
+  67: (p) => {
+    keep(p, "antes-gerador");
+    for (const person of [9, 10, 11]) {
+      if (!p.talkTo(248, person)) throw new Error(`o Electrode ${person} não está no gerador`);
+      knockOut(p, 101, "248");
+    }
+  },
 };
 
-it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm and Mineral Badges to Lance at the Lake of Rage", () => {
+/** Fights the wild `species` a script just placed on map `area` with the bot until it is knocked out and gone, then settles. */
+function knockOut(p: Pilot, species: number, area: string): void {
+  const foe = () => p.session.world.all().find((e) => e.kind === "pokemon" && e.data["species"] === species && e.area === area && p.session.combat?.get(e.id)?.owner === "wild");
+  if (!foe()) throw new Error(`o ${species} selvagem não apareceu no mapa ${area}`);
+  if (!p.engage()) throw new Error(`a luta com o ${species} não começou`);
+  p.until(() => !p.inCombat() && !p.session.combat?.get(foe()?.id ?? -1)?.hp, 3000);
+  if (p.inCombat()) {
+    p.tick(null, BUTTON.recall);
+    p.until(() => !p.inCombat(), 100);
+  }
+  // Knocked out, it lies there catchable for faintedSeconds; the script goes on (as won) once it is gone.
+  p.until(() => !foe(), 1200);
+  p.settle();
+}
+
+/**
+ * Item 032.4 (`shortcut:`): Lance's double battle at the generator's door (90:3, MultiBattle) is item 032.5's. The pilot goes
+ * on from the save with what that scene leaves when won: 0x40AC = 9, 0x40A9 = 4, the grunts gone (498, 499, 488), flag 2456,
+ * Lance shown (485 clear; B2F's onResume puts him by the generator). Fight the battle once 032.5 brings MultiBattle.
+ */
+function pastLanceBattle(p: Pilot): Pilot {
+  const save = p.fresh();
+  const flags = [...new Set([...save.flags, 498, 499, 488, 2456])].filter((f) => f !== 485);
+  return carried(p, pilot({ ...save, flags, vars: { ...save.vars, [0x40ac]: 9, [0x40a9]: 4 } }));
+}
+
+it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm and Mineral Badges through the Rocket HQ to its generator", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;
@@ -1645,6 +1750,7 @@ it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm and Mineral B
     // From the starter on (milestone 3), the boosted party; again before the lake's Gyarados (milestone 60), for the Pidgey
     // caught after the first boost, the one member that may go out from the water.
     if (m.n === 4 || m.n === 60) p = boosted(p);
+    if (m.n === 67) p = pastLanceBattle(p);
     const step = STEPS[m.n];
     const check = step ? (step(p), p.check(m)) : "passos do marco não escritos";
     const apart = p.isolation();

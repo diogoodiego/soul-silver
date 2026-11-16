@@ -20,6 +20,11 @@ describe("findDuplicates", () => {
     expect(ids(findDuplicates([...slowpokes, object(9, 1015, 1, 428)], all))).toEqual([[5, 6, 7, 8, 9]]);
   });
 
+  // Item 032.4: the Rocket HQ B2F's generator shutters (map 248, persons 5 and 6: sprite 257, script 90:1), always there.
+  it("ignores one object in parts: the same sprite and script, never hidden", () => {
+    expect(findDuplicates([object(5, 257, 2), object(6, 257, 2)], all)).toEqual([]);
+  });
+
   it("does not count an object the filter hides", () => {
     const objects = [object(4, 101, 5, 418), object(8, 101, 5, 744)];
     expect(findDuplicates(objects, (o) => o.id !== 8)).toEqual([]);

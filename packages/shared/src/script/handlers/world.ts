@@ -62,6 +62,15 @@ export const WORLD: Record<string, Handler> = {
   ShowPerson: (c) => c.host.showPerson(c.get("arg0")),
   // The original reads x, height, depth in that order; the table names the last two z and y.
   MovePersonFacing: (c) => c.host.movePerson(c.get("person"), c.get("x"), c.get("y"), c.get("facing")),
+  // Item 032.4: person arg0 to (arg1, arg2), facing as it was.
+  MovePerson: (c) => c.host.movePerson(c.get("arg0"), c.get("arg1"), c.get("arg2")),
+  // Item 032.4: the Rocket HQ's trap (arg0: which one goes off) and Persian-statue alarm effects (map 247); not drawn.
+  ScrCmd_708: nothing,
+  ScrCmd_709: nothing,
+  // shortcut: no arguments and no result, run by the Rocket HQ B2F's onResume (map 248); nothing the server models. Draw it if a capture shows what it is.
+  ScrCmd_710: nothing,
+  // shortcut: run once the Rocket HQ is cleared (map 248, arg0 0, arg1 1) with no result; its effect is unknown. Revisit if a later scene depends on it.
+  ScrCmd_530: nothing,
   GetPlayerCoords: (c) => {
     const p = c.host.playerPosition();
     c.writeVar(c.ptr("arg0"), p.x);

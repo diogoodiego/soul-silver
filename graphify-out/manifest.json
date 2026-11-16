@@ -3726,9 +3726,9 @@
     "semantic_hash": ""
   },
   "packages/server/src/scripts.ts": {
-    "mtime": 1794806328.2226593,
-    "seen": 1794807719.9572663,
-    "ast_hash": "7634782dce1a831fd9eb3f9c9c316de8",
+    "mtime": 1794808309.2971132,
+    "seen": 1794809017.01626,
+    "ast_hash": "0d1bf0ed21d2b61f59da5edc0ee47889",
     "semantic_hash": ""
   },
   "packages/server/test/scripts-blocking.test.ts": {
@@ -3816,15 +3816,15 @@
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/world.ts": {
-    "mtime": 1794797003.3687017,
-    "seen": 1794797619.3036768,
-    "ast_hash": "b6ac420bd1a291d6762ebd206e5f9e94",
+    "mtime": 1794808307.5439706,
+    "seen": 1794809017.0166125,
+    "ast_hash": "d4c659737557f51c0d6530ff77843e45",
     "semantic_hash": ""
   },
   "packages/shared/src/script/host.ts": {
-    "mtime": 1794806328.2206573,
-    "seen": 1794807719.9576724,
-    "ast_hash": "bb0d6fd1441fc62e49909faffda39fe9",
+    "mtime": 1794808308.4411898,
+    "seen": 1794809017.016614,
+    "ast_hash": "49939dd0dc2b087bde47c6865a2b6397",
     "semantic_hash": ""
   },
   "packages/shared/src/script/index.ts": {
@@ -3864,9 +3864,9 @@
     "semantic_hash": ""
   },
   "packages/shared/test/script/groups.test.ts": {
-    "mtime": 1794806309.5992424,
-    "seen": 1794807719.9578745,
-    "ast_hash": "a911f2d43e5d42d96dc482310f94cffd",
+    "mtime": 1794808274.338924,
+    "seen": 1794809017.0168233,
+    "ast_hash": "bc6f8ba5b6ea1ed3080d2b4ff16ac1d5",
     "semantic_hash": ""
   },
   "packages/shared/test/script/runner.test.ts": {
@@ -5436,9 +5436,9 @@
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/trainer.ts": {
-    "mtime": 1794806328.2206573,
-    "seen": 1794807719.9576685,
-    "ast_hash": "240bd3351449dde6888376dd86053ef0",
+    "mtime": 1794808306.6985404,
+    "seen": 1794809017.0166104,
+    "ast_hash": "a56ae0b85afc871e5c1d6c5b7e81e0a6",
     "semantic_hash": ""
   },
   "packages/shared/src/trainer/decide.ts": {
@@ -6030,15 +6030,15 @@
     "semantic_hash": ""
   },
   "packages/shared/src/game/duplicates.ts": {
-    "mtime": 1794679138.2439744,
-    "seen": 1794732935.6420522,
-    "ast_hash": "9d4831be578242a4e64411061948fa96",
+    "mtime": 1794808802.900403,
+    "seen": 1794809017.0165167,
+    "ast_hash": "f564b8a0e96fdffd6816e4c04c435165",
     "semantic_hash": ""
   },
   "packages/shared/test/game/duplicates.test.ts": {
-    "mtime": 1794679130.3369157,
-    "seen": 1794732935.6422627,
-    "ast_hash": "e1e07f04dc008280c1c08157256af576",
+    "mtime": 1794808794.6563275,
+    "seen": 1794809017.0167155,
+    "ast_hash": "7994199c67934f4317131541e5821f02",
     "semantic_hash": ""
   },
   "packages/server/test/story-commands.test.ts": {
@@ -6090,15 +6090,15 @@
     "semantic_hash": ""
   },
   "packages/app/golden/campaign.golden.ts": {
-    "mtime": 1794807538.7831278,
-    "seen": 1794807719.9565706,
-    "ast_hash": "8d403777b3e7400920f4bb53938c5dc3",
+    "mtime": 1794808832.7062874,
+    "seen": 1794809017.015713,
+    "ast_hash": "5566fe48a5165a36eb4a30e28fa92761",
     "semantic_hash": ""
   },
   "packages/app/golden/milestones.ts": {
-    "mtime": 1794806394.1827185,
-    "seen": 1794807719.9566126,
-    "ast_hash": "2a27863b9d1a9f8d545853fe7c5d3441",
+    "mtime": 1794808496.0239134,
+    "seen": 1794809017.0157251,
+    "ast_hash": "e537ba98d6eed86bae0d784d6476b276",
     "semantic_hash": ""
   },
   "packages/app/golden/report.ts": {
@@ -7434,9 +7434,9 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1794805844.3723216,
-    "seen": 1794807719.9579673,
-    "ast_hash": "67c9c3340bec17fbfac513094ed7d88d",
+    "mtime": 1794807756.056432,
+    "seen": 1794809017.0169196,
+    "ast_hash": "36a2a477817eae0b37142f34d22132d7",
     "semantic_hash": ""
   },
   "docs/roadmap/marco-4.md": {
@@ -7602,9 +7602,15 @@
     "semantic_hash": ""
   },
   "packages/shared/test/script/block032-commands.test.ts": {
-    "mtime": 1794806091.9363556,
-    "seen": 1794807719.9578657,
-    "ast_hash": "d8ac0f0f197ed37b767db9d71973e8af",
+    "mtime": 1794808252.7139053,
+    "seen": 1794809017.0168142,
+    "ast_hash": "524657e12f7fb7df1edb6f0dd0bc558e",
+    "semantic_hash": ""
+  },
+  "packages/server/test/rocket-hq.test.ts": {
+    "mtime": 1794808369.4589033,
+    "seen": 1794809017.0163891,
+    "ast_hash": "c648243ced7e70db3a53835b016eedf6",
     "semantic_hash": ""
   }
 }

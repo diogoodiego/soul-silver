@@ -4,7 +4,7 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 032.4 Esconderijo Rocket**
+**Próximo item: 032.5 Batalha dupla com NPC aliado**
 
 Versões atuais: protocolo 32, save 18.
 
@@ -66,6 +66,9 @@ assunto, ou quando o desenvolvedor pedir.
 - 032.3 (`shortcut:`): o golden refaz o boost do time antes do Gyarados para o Pidgey lutar da água e reensina Surf.
 - 032.3: jogador só com Pokémon terrestres não consegue lutar com o Gyarados obrigatório no meio do lago (regra de envio da spec 025 + IA passiva); decidir.
 - 032.3: ScrCmd_775 (voo do Lance) não é desenhado no cliente.
+- 032.4 (`shortcut:`): a sonda pula a luta dupla do Lance com `pastLanceBattle`; o 032.5 deve trocar pela luta real.
+- 032.4: efeito de `ScrCmd_710` (onResume do B2F) e `ScrCmd_530` desconhecido; hoje são no-op.
+- 032.4: armadilhas de warp do B1F e desligar as estátuas pelo computador (89:4, flag 214) sem sonda.
 - 025: captura `04-fishing-bite.png` e roteiro manual do tempo de reação na pesca.
 - 027: seletor rápido com gamepad (roteiro manual; impedir o Pokémon de andar com o D-pad).
 - 027: item escondido 8001 no tile (572,390), fora da grade dos mapas 33 e 34; sonda do Dowsing.
@@ -105,6 +108,8 @@ assunto, ou quando o desenvolvedor pedir.
 Só o que muda o rumo de itens futuros, uma linha cada.
 
 - WildBattle com shiny 1 gera o selvagem fixo shiny (`wilds.place(..., shiny)`), sem mudar protocolo nem save.
+- `StaticWildWonOrCaughtCheck` dá 1 quando o Pokémon fugiu (necessário para os Electrodes do mapa 248).
+- O HM 424 (Whirlpool) é entregue no fim do esconderijo (032.4), não no 032.6.
 - O Spec Kit não é mais usado. `specs/` é histórico; o trabalho segue os itens do roadmap.
 - Só o SoulSilver (EUA) é aceito: Lugia é obrigatório nas Whirl Islands (033.7); Ho-Oh fica no pós-jogo (039.4).
 - O bloco 030 começa na página 6 do detonado e inclui o ovo do Togepi (depende do 029).

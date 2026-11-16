@@ -204,4 +204,16 @@ export const MILESTONES: Milestone[] = [
   { n: 60, name: "Gyarados vermelho e Red Scale", checks: { map: 88, flags: [201, 483], items: { 478: 1 } } },
   // 938:3, Lance after the Gyarados: yes to him; he leaves (flag 484) for Mahogany (0x40A8 = 1).
   { n: 61, name: "Lance no Lake of Rage", checks: { map: 88, flags: [484], vars: { 0x40a8: 1 } } },
+  // Item 032.4. Map 116, Mahogany's shop: its frame (0x40A8 = 1, 88:6) has Lance open the stairs; he leaves (flag 504), 0x40A8 = 2.
+  { n: 62, name: "Lance abre a escada da loja de Mahogany", checks: { map: 116, flags: [504], vars: { 0x40a8: 2 } } },
+  // Map 247, the HQ's B1F: a Persian statue's alarm (89:0) calls grunts 223 and 224 (0x40AD = 2); a floor trap (89:14) a Voltorb (0x40B3 = 1).
+  { n: 63, name: "Alarme e armadilha do subsolo 1 do esconderijo", checks: { map: 247, vars: { 0x40ad: 2, 0x40b3: 1 }, beaten: [224] } },
+  // Map 248, B2F: its frame (0x40A9 = 0, 90:0) has Lance heal the party; he leaves (flag 485), 0x40A9 = 1.
+  { n: 64, name: "Lance cura o time no subsolo 2", checks: { map: 248, flags: [485], vars: { 0x40a9: 1 } } },
+  // Map 249, B3F: Lance again (91:1, flag 486), the password grunts 222 and 404, the rival (91:2) and Petrel (trainer 488, 91:3): 0x40AC = 4.
+  { n: 65, name: "Senhas, rival e executivo no subsolo 3", checks: { map: 249, flags: [486], vars: { 0x40ac: 4 }, beaten: [488] } },
+  // The doors between B2F and B3F (90:13, 91:7, 90:14) and the generator's shutters (90:11): 0x40AC = 8, 0x40A9 = 3, flag 211.
+  { n: 66, name: "Portas até o gerador", checks: { map: 248, flags: [211], vars: { 0x40ac: 8, 0x40a9: 3 } } },
+  // The three Electrodes of the generator (90:4–6, flags 203–205; hidden by 501–503), then Lance's HM (item 424): flag 202, 0x40AC = 10.
+  { n: 67, name: "Electrodes do gerador", checks: { map: 248, flags: [202, 203, 204, 205, 501, 502, 503], vars: { 0x40ac: 10 }, items: { 424: 1 } } },
 ];

@@ -148,7 +148,7 @@ export interface ScriptHost {
   showPerson(id: number): void;
   /** Undefined when the object is not on the map. */
   personPosition(id: number): { x: number; z: number } | undefined;
-  movePerson(id: number, x: number, z: number, facing: number): void;
+  movePerson(id: number, x: number, z: number, facing?: number): void;
   /** 0 Sunday to 6 Saturday. */
   weekday(): number;
   /** The session hour, 0 to 23. */

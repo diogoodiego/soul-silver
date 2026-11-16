@@ -456,10 +456,12 @@ describe("static encounters (spec 030.9, the Sudowoodo of Route 36)", () => {
     expect(state).toEqual({ kind: "blocked", request: { kind: "wild", species: 130, level: 30, shiny: true } });
   });
 
+  // Item 032.4: 1 when the Pokémon got away (neither knocked out nor caught), as the Rocket HQ's Electrodes read it (map
+  // 248): a 1 leaves the Electrode standing and uncounted.
   it.each([
-    [1, 1],
-    [4, 1],
-    [5, 0],
+    [1, 0],
+    [4, 0],
+    [5, 1],
   ])("GetStaticEncounterOutcome reads outcome %i; StaticWildWonOrCaughtCheck gives %i", (outcome, wonOrCaught) => {
     const host = fakeHost({ battleOutcome: () => outcome });
     start([["GetStaticEncounterOutcome", { arg0: 0x4001 }], ["StaticWildWonOrCaughtCheck", { arg0: 0x4000, arg1: 0 }], ["End"]], host);
