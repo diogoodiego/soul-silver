@@ -229,7 +229,7 @@ export interface ScriptsOptions {
   /** A script is about to run for this player: the state as it is now is what saves keep until it ends (spec 024). */
   onStart?: ((playerId: number) => void) | undefined;
   /** Starts a scripted trainer battle (spec 022); false when there is none to start. The script waits for battleEnded. */
-  battle?: ((playerId: number, trainer: number, partner: number) => boolean) | undefined;
+  battle?: ((playerId: number, trainer: number, partner: number, ally: number) => boolean) | undefined;
   /** Spec 030.9: a static encounter, a wild Pokémon at (x, y) of `area` for this player to fight; false when none could appear. The script waits for wildBattleEnded. */
   wildBattle?: ((playerId: number, species: number, level: number, at: { area: string; x: number; y: number }, shiny?: boolean) => boolean) | undefined;
   /** Item 031.2: roamer `id` starts roaming for this player (CreateRoamer). */
@@ -872,7 +872,7 @@ export function createScripts(options: ScriptsOptions) {
         if (state.request.kind === "wait") {
           s.waitUntil = tick + state.request.ticks;
         } else if (state.request.kind === "battle") {
-          if (!options.battle?.(s.who.playerId, state.request.trainer, state.request.partner)) {
+          if (!options.battle?.(s.who.playerId, state.request.trainer, state.request.partner, state.request.ally ?? 0)) {
             options.log(`Ended a script of player ${s.who.playerId}: trainer battle ${state.request.trainer} could not start`);
             break;
           }

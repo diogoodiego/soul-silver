@@ -10,6 +10,8 @@ const OUTCOME_CAUGHT = 4;
 export const TRAINER: Record<string, Handler> = {
   // The common trainer script passes both trainers through variables (0x8004, 0x8005).
   TrainerBattle: (c) => c.block({ kind: "battle", trainer: c.get("trainer"), partner: c.get("arg1") }),
+  // Item 032.5: the trainer arg0 fights beside the player against arg1 and arg2 (Lance in the Rocket HQ, 90:3); arg3 is unused.
+  MultiBattle: (c) => c.block({ kind: "battle", trainer: c.get("arg1"), partner: c.get("arg2"), ally: c.get("arg0") }),
   // Spec 030.9: a static encounter; the shiny argument is ignored (always 0 in the scripts that use it so far).
   // Item 032.3: shiny 1 is the Lake of Rage's red Gyarados.
   WildBattle: (c) => c.block({ kind: "wild", species: c.get("species"), level: c.get("level"), ...(c.get("shiny") ? { shiny: true as const } : {}) }),

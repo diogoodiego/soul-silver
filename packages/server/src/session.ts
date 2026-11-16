@@ -442,7 +442,7 @@ export function createSession(options: SessionOptions): Session {
           const p = players.get(playerId);
           if (p) p.beforeScript = capture(p);
         },
-        battle: (playerId, trainer, partner): boolean => trainerBattles?.startScripted(playerId, trainer, partner) ?? false,
+        battle: (playerId, trainer, partner, ally): boolean => trainerBattles?.startScripted(playerId, trainer, partner, undefined, ally) ?? false,
         createRoamer: (playerId, id) => {
           const p = players.get(playerId);
           if (p) createRoamer(p.progress.roamers, id, rng);

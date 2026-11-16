@@ -2088,9 +2088,9 @@
     "semantic_hash": "996626a8795790e73355f1e67b5b98c5"
   },
   "packages/server/src/session.ts": {
-    "mtime": 1794807225.762426,
-    "seen": 1794807719.957268,
-    "ast_hash": "f6fe08edfbc18575029ec1bb99ba1071",
+    "mtime": 1794809265.4000483,
+    "seen": 1794809455.487485,
+    "ast_hash": "254721ee84523b679edbfe3456a4e665",
     "semantic_hash": ""
   },
   "packages/server/src/start.ts": {
@@ -3726,9 +3726,9 @@
     "semantic_hash": ""
   },
   "packages/server/src/scripts.ts": {
-    "mtime": 1794808309.2971132,
-    "seen": 1794809017.01626,
-    "ast_hash": "0d1bf0ed21d2b61f59da5edc0ee47889",
+    "mtime": 1794809269.332893,
+    "seen": 1794809455.4874835,
+    "ast_hash": "c2da475cfec6c616f548e92d453a8c9a",
     "semantic_hash": ""
   },
   "packages/server/test/scripts-blocking.test.ts": {
@@ -3822,9 +3822,9 @@
     "semantic_hash": ""
   },
   "packages/shared/src/script/host.ts": {
-    "mtime": 1794808308.4411898,
-    "seen": 1794809017.016614,
-    "ast_hash": "49939dd0dc2b087bde47c6865a2b6397",
+    "mtime": 1794809262.8822856,
+    "seen": 1794809455.4878273,
+    "ast_hash": "d9a9d0faf0ca3ed446adacdfe6b6a1e3",
     "semantic_hash": ""
   },
   "packages/shared/src/script/index.ts": {
@@ -5370,9 +5370,9 @@
     "semantic_hash": ""
   },
   "packages/server/src/trainer-battle.ts": {
-    "mtime": 1794780052.8719218,
-    "seen": 1794781380.5693958,
-    "ast_hash": "ac7c6f3c7607aa9bb11f49021ab0b87f",
+    "mtime": 1794809336.685018,
+    "seen": 1794809455.4874918,
+    "ast_hash": "054394ed79207c54f555da226714ed25",
     "semantic_hash": ""
   },
   "packages/server/src/trainer-loader.ts": {
@@ -5436,9 +5436,9 @@
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/trainer.ts": {
-    "mtime": 1794808306.6985404,
-    "seen": 1794809017.0166104,
-    "ast_hash": "a56ae0b85afc871e5c1d6c5b7e81e0a6",
+    "mtime": 1794809263.7370198,
+    "seen": 1794809455.4878237,
+    "ast_hash": "4ba908ba1e40a6a477e3eb3d057d9d28",
     "semantic_hash": ""
   },
   "packages/shared/src/trainer/decide.ts": {
@@ -6090,9 +6090,9 @@
     "semantic_hash": ""
   },
   "packages/app/golden/campaign.golden.ts": {
-    "mtime": 1794808832.7062874,
-    "seen": 1794809017.015713,
-    "ast_hash": "5566fe48a5165a36eb4a30e28fa92761",
+    "mtime": 1794809605.0251186,
+    "seen": 1794809768.7283185,
+    "ast_hash": "5e0b6419c969de89c41fa9bdee7b639f",
     "semantic_hash": ""
   },
   "packages/app/golden/milestones.ts": {
@@ -7434,9 +7434,9 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1794807756.056432,
-    "seen": 1794809017.0169196,
-    "ast_hash": "36a2a477817eae0b37142f34d22132d7",
+    "mtime": 1794809054.671146,
+    "seen": 1794809455.4881153,
+    "ast_hash": "27eb65252b5fc858910163a8e36f4963",
     "semantic_hash": ""
   },
   "docs/roadmap/marco-4.md": {
@@ -7611,6 +7611,12 @@
     "mtime": 1794808369.4589033,
     "seen": 1794809017.0163891,
     "ast_hash": "c648243ced7e70db3a53835b016eedf6",
+    "semantic_hash": ""
+  },
+  "packages/server/test/trainer-battle-multi.test.ts": {
+    "mtime": 1794809355.37657,
+    "seen": 1794809455.4876518,
+    "ast_hash": "a9b88713917b73fd9cd392f4b229fee1",
     "semantic_hash": ""
   }
 }

@@ -1698,8 +1698,18 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     const vars = p.fresh().vars;
     if (vars[0x40ac] !== 8) throw new Error(`as portas do esconderijo pararam em 0x40AC = ${vars[0x40ac]}`);
   },
-  // The generator's three Electrodes (persons 9–11 of map 248), each knocked out (Lance's battle before them: see pastLanceBattle).
+  // Lance's scene at the generator's door (trigger (30–31, 19), 90:3): MultiBattle, Lance (675) beside the player against
+  // the executive 479 and grunt 499 (item 032.5); won, he goes to the generator (0x40AC = 9). Then its three Electrodes
+  // (persons 9–11 of map 248), each knocked out.
   67: (p) => {
+    keep(p, "antes-lance");
+    const money = p.fresh().money;
+    // The shutters (persons 5 and 6 at (30–31, 22)) stand in the extraction where the opened door was: route would go around them.
+    p.warp(248, 30, 20);
+    p.walk("north", 1);
+    checks.push(multiBattle(p, "luta dupla com o Lance (esconderijo B2F)", [479, 499], money));
+    const vars = p.fresh().vars;
+    if (vars[0x40ac] !== 9 || vars[0x40a9] !== 4) throw new Error(`a cena do Lance parou em 0x40AC = ${vars[0x40ac]}, 0x40A9 = ${vars[0x40a9]}`);
     keep(p, "antes-gerador");
     for (const person of [9, 10, 11]) {
       if (!p.talkTo(248, person)) throw new Error(`o Electrode ${person} não está no gerador`);
@@ -1723,15 +1733,21 @@ function knockOut(p: Pilot, species: number, area: string): void {
   p.settle();
 }
 
-/**
- * Item 032.4 (`shortcut:`): Lance's double battle at the generator's door (90:3, MultiBattle) is item 032.5's. The pilot goes
- * on from the save with what that scene leaves when won: 0x40AC = 9, 0x40A9 = 4, the grunts gone (498, 499, 488), flag 2456,
- * Lance shown (485 clear; B2F's onResume puts him by the generator). Fight the battle once 032.5 brings MultiBattle.
- */
-function pastLanceBattle(p: Pilot): Pilot {
+/** Item 032.5: a battle beside an ally trainer against `foes`, won by the bot: each foe's defeated flag, the prizes of both paid. */
+function multiBattle(p: Pilot, name: string, foes: number[], moneyBefore: number): Check {
+  const b = [...p.battles.values()].findLast((x) => x.trainer === foes[0]);
+  if (!b) return { name, failed: "a luta não começou" };
+  if (b.result !== "won") return { name, failed: `luta ${b.result ?? "sem fim"}` };
+  const trainers = p.data.trainers!;
   const save = p.fresh();
-  const flags = [...new Set([...save.flags, 498, 499, 488, 2456])].filter((f) => f !== 485);
-  return carried(p, pilot({ ...save, flags, vars: { ...save.vars, [0x40ac]: 9, [0x40a9]: 4 } }));
+  const off = foes.filter((t) => !save.flags.includes(trainers.tuning.trainerFlagBase + t));
+  const owed = foes.reduce((sum, t) => {
+    const r = trainers.trainer(t)!;
+    return sum + prize({ prizeBase: trainers.trainerClass(r.class.id)?.prizeBase ?? 0, team: r.team, double: r.doubleBattle });
+  }, 0);
+  if (off.length) return { name, failed: `flags de treinador derrotado desligadas: ${off.join(", ")}` };
+  if (b.prize !== owed || save.money - moneyBefore !== owed) return { name, failed: `prêmio ${b.prize}, dinheiro +${save.money - moneyBefore}, fórmula ${owed}` };
+  return { name: `${name}: treinadores ${foes.join(" e ")}, prêmio ${owed}` };
 }
 
 it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm and Mineral Badges through the Rocket HQ to its generator", () => {
@@ -1750,7 +1766,6 @@ it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm and Mineral B
     // From the starter on (milestone 3), the boosted party; again before the lake's Gyarados (milestone 60), for the Pidgey
     // caught after the first boost, the one member that may go out from the water.
     if (m.n === 4 || m.n === 60) p = boosted(p);
-    if (m.n === 67) p = pastLanceBattle(p);
     const step = STEPS[m.n];
     const check = step ? (step(p), p.check(m)) : "passos do marco não escritos";
     const apart = p.isolation();
