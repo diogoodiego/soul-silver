@@ -163,4 +163,9 @@ export const MILESTONES: Milestone[] = [
   // Down the hole at (22, 16) into B1F (map 217), the trigger at (20, 16–17) (24:0, VAR 0x40A1 = 0): the three beasts wake
   // and flee (457–459), Eusine shows and leaves (456), Morty (460) and Eusine (455) leave 1F; 0x40A1 = 1, 0x4076 = 1, 0x4079 = 2.
   { n: 45, name: "Despertar dos cães lendários", checks: { map: 217, flags: [455, 456, 457, 458, 459, 460], vars: { 0x40a1: 1, 0x4076: 1, 0x4079: 2 } } },
+  // Item 031.3. Ecruteak's gym door (376, 183) into the gym (map 80, at (16, 49)): the path over the void, where every walkable
+  // tile beside it is a trigger (922:2) that spins the player and warps them back to (16, 49); its trainers (persons 2–5).
+  { n: 46, name: "Ginásio de Ecruteak: caminho invisível até o Morty", checks: { map: 80 } },
+  // 922:1, Morty (person 1, trainer 31): the Fog Badge (badge 3), flag 2456, then TM30 (item 357, std 2033) and flag 166.
+  { n: 47, name: "Morty vencido e Insígnia Fog", checks: { badges: 4, flags: [2456, 166], items: { 357: 1 }, beaten: [31] } },
 ];

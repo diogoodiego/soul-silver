@@ -89,6 +89,9 @@ export const STORY: Record<string, Handler> = {
   // Violet Gym's lift (InitVioletGym, VioletGymmick_ElevatorAction): its floors are one collision level here, so Falkner is a walk away.
   VioletGymInit: nothing,
   VioletGymElevator: nothing,
+  // Item 031.3: the Ecruteak Gym's fall is the map's own (void triggers, 922:2, warp to the entrance); Init only lights it.
+  // shortcut: the dark floor and the candle light around the player and trainers (EcruteakGymInit, Bind/UnbindEcruteakGymCandle…) are not drawn; draw them when the client lights maps.
+  EcruteakGymInit: nothing,
   // Spec 030.5: the Azalea Gym's Spinarak and levers (field/azalea-gym.ts). The carts are script props; the server glides the rider.
   AzaleaGymInit: (c) => {
     const gym = c.host.azaleaGym?.();

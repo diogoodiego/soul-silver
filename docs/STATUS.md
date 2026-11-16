@@ -4,7 +4,7 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 031.3 Ginásio de Ecruteak**
+**Próximo item: 031.4 Strength e exploração com Surf**
 
 Versões atuais: protocolo 31, save 17.
 
@@ -80,6 +80,8 @@ assunto, ou quando o desenvolvedor pedir.
 - 031.2 (`shortcut:`): errante salta para rota aleatória (sem grafo de vizinhas); Latias/Latios ignorados até o Marco 5; saltos do Suicune parados no cliente.
 - 031.2: errante é entidade comum (outros jogadores veem/capturam); status volta com duração nova e confusão não é guardada; HP se perde se desconectar com ele no mapa.
 - 031.2: CreateRoamer da Burned Tower sondado só com fixture sintético, não com a ROM real.
+- 031.3 (`shortcut:`): escuridão e velas do ginásio de Ecruteak não desenhadas (EcruteakGymInit no-op); o caminho não fica invisível no cliente.
+- 031.3: cena de entrada do ginásio (var 0x4079 = 0) fora do golden.
 
 ## Decisões
 

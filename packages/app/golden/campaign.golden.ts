@@ -311,7 +311,10 @@ function pilot(from?: Save) {
     const toward = (Object.keys(VECTORS) as Direction[]).find((d) => VECTORS[d].x === -look.x && VECTORS[d].y === -look.y)!;
     const o = data.world!(String(map))?.origin ?? { tx: 0, ty: 0 };
     const people = new Set(session.world.all().filter((e) => e.kind === "npc" && e.area === String(map)).map((e) => `${Math.floor(e.x / 16) + o.tx},${Math.floor(e.y / 16) + o.ty}`));
-    const free = (tx: number, ty: number) => !people.has(`${tx},${ty}`) && !SOLID.has(tileAt(data.world!, String(map), 0, (tx - o.tx) * 16 + 8, (ty - o.ty) * 16 + 8)?.category ?? "blocked");
+    // Item 031.3: a player walking by stands on no armed trigger (the Ecruteak Gym's void beside its path).
+    const vars = fresh().vars;
+    const armed = (tx: number, ty: number) => data.scripts?.events(map)?.triggers.some((t) => (vars[t.variable] ?? 0) === t.value && tx >= t.x && tx < t.x + t.w && ty >= t.z && ty < t.z + t.h);
+    const free = (tx: number, ty: number) => !people.has(`${tx},${ty}`) && !armed(tx, ty) && !SOLID.has(tileAt(data.world!, String(map), 0, (tx - o.tx) * 16 + 8, (ty - o.ty) * 16 + 8)?.category ?? "blocked");
     const sight = person.param[0] ?? 1;
     const d = [...Array(sight).keys()].map((i) => sight + 1 - i).find((k) => free(person.x + look.x * k, person.z + look.y * k) && free(person.x + look.x * (k - 1), person.z + look.y * (k - 1)));
     // Its sight blocked (by people of a scene still standing, say), a player walks up beside it and talks.
@@ -1338,9 +1341,34 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     route(p, 21, 16);
     p.walk("west", 1);
   },
+  // Item 031.3. The gym door (376, 183 of Ecruteak) into map 80; its trainers by their lines of sight; one step off the path
+  // north of (16, 38) to fall back to the entrance; then the path walked from there to the tile below Morty, on no trigger.
+  46: (p) => {
+    keep(p, "antes-ginasio-ecruteak");
+    p.warp(78, 376, 184);
+    p.walk("north", 1);
+    if (p.fresh().area !== "80") throw new Error(`a porta do ginásio não levou ao mapa 80 (está ${p.fresh().area})`);
+    for (const npc of [2, 3, 4, 5]) checks.push(p.routeTrainer(`treinador ${npc} (ginásio de Ecruteak)`, 80, npc));
+    p.warp(80, 16, 38);
+    p.walk("north", 1);
+    const fell = p.tile();
+    const name = "queda fora do caminho (ginásio de Ecruteak)";
+    // The walk's last ticks to the tile center carry on north past the entrance (16, 49), onto the path's first tile.
+    checks.push(p.fresh().area === "80" && fell.tx === 16 && fell.ty === 48 ? { name } : { name, failed: `depois do passo no vazio o jogador está em (${fell.tx}, ${fell.ty}) do mapa ${p.fresh().area}, não logo depois da entrada (16, 49)` });
+    route(p, 10, 9, "north");
+  },
+  // Morty (person 1 of map 80, 922:1, trainer 31).
+  47: (p) => {
+    ready(p, 31);
+    keep(p, "antes-morty");
+    const money = p.fresh().money;
+    p.warp(80, 10, 9);
+    p.talk("north");
+    checks.push(p.battle("luta Morty (ginásio de Ecruteak)", [31], money, () => p.talk("north")));
+  },
 };
 
-it("goes from the bedroom through the Burned Tower, past the Zephyr, Hive and Plain Badges", () => {
+it("goes from the bedroom through the Ecruteak Gym, past the Zephyr, Hive, Plain and Fog Badges", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;

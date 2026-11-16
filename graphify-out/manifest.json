@@ -3726,8 +3726,8 @@
     "semantic_hash": ""
   },
   "packages/server/src/scripts.ts": {
-    "mtime": 1794794414.8501177,
-    "seen": 1794794955.0110815,
+    "mtime": 1794795422.3353517,
+    "seen": 1794796142.1641297,
     "ast_hash": "f760a522318ba47e755f0fb1c1d471f7",
     "semantic_hash": ""
   },
@@ -6006,9 +6006,9 @@
     "semantic_hash": ""
   },
   "packages/shared/src/script/handlers/story.ts": {
-    "mtime": 1794794399.976205,
-    "seen": 1794794955.0114973,
-    "ast_hash": "853c733c8edd142d9d57e8dd2ae84c47",
+    "mtime": 1794795299.4641585,
+    "seen": 1794796142.164503,
+    "ast_hash": "6409065329abafe9f23c8d21b80e9c42",
     "semantic_hash": ""
   },
   "packages/shared/test/script/story.test.ts": {
@@ -6090,15 +6090,15 @@
     "semantic_hash": ""
   },
   "packages/app/golden/campaign.golden.ts": {
-    "mtime": 1794793532.4840412,
-    "seen": 1794793818.497112,
-    "ast_hash": "e2aa9ae8ceb3ac9e20c485970e3eb9b3",
+    "mtime": 1794795942.259599,
+    "seen": 1794796142.163154,
+    "ast_hash": "9b0eec3c8303cd4d4505dc9c3a6e4c62",
     "semantic_hash": ""
   },
   "packages/app/golden/milestones.ts": {
-    "mtime": 1794793427.0868077,
-    "seen": 1794793818.497124,
-    "ast_hash": "d07723db7efc90e8dc14ed400364c13d",
+    "mtime": 1794795462.2594779,
+    "seen": 1794796142.163174,
+    "ast_hash": "ebdaf5b6424e8920d8ecc06f9f6363d5",
     "semantic_hash": ""
   },
   "packages/app/golden/report.ts": {
@@ -7434,9 +7434,9 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1794793857.6153078,
-    "seen": 1794794955.0118418,
-    "ast_hash": "ecc8a6be33f7c82c47e080b58e7736f8",
+    "mtime": 1794794994.2026834,
+    "seen": 1794795028.0410821,
+    "ast_hash": "44971d9c7cf8304b88de767a88ca0e72",
     "semantic_hash": ""
   },
   "docs/roadmap/marco-4.md": {
@@ -7563,6 +7563,12 @@
     "mtime": 1794794306.2688136,
     "seen": 1794794955.0117757,
     "ast_hash": "866f2aebe8f28882870572c32166ef8d",
+    "semantic_hash": ""
+  },
+  "packages/server/test/ecruteak-gym.test.ts": {
+    "mtime": 1794795422.6059482,
+    "seen": 1794796142.1641977,
+    "ast_hash": "2b31f76ca5d4826d81f1f1aba6fda46f",
     "semantic_hash": ""
   }
 }
