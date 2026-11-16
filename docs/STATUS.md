@@ -4,7 +4,7 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 031.4 Strength e exploração com Surf**
+**Próximo item: 031.5 Olivine e o farol**
 
 Versões atuais: protocolo 31, save 17.
 
@@ -82,6 +82,8 @@ assunto, ou quando o desenvolvedor pedir.
 - 031.2: CreateRoamer da Burned Tower sondado só com fixture sintético, não com a ROM real.
 - 031.3 (`shortcut:`): escuridão e velas do ginásio de Ecruteak não desenhadas (EcruteakGymInit no-op); o caminho não fica invisível no cliente.
 - 031.3: cena de entrada do ginásio (var 0x4079 = 0) fora do golden.
+- 031.4: flags diárias (2720+, ex. 2744 do Lapras) nunca zeram; Lapras não volta depois de capturado/derrotado (precisa do dia no save).
+- 031.4: chegada surfando ao Lapras e o percurso de Surf na Union Cave/Ruins não sondados (save não guarda estado de surf).
 
 ## Decisões
 
@@ -98,3 +100,4 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Trocas com NPC vêm de `npc-trades.json` (a/1/1/2, estágio de eventos); o membro guarda `trade`/`mail` (save 16).
 - Comandos só visuais das cenas de lendários (ScrCmd_523, MoveAction dos saltos) não fazem nada no servidor (COSMETIC).
 - Errantes ficam em `save.roamers` por jogador, mudam de rota a cada troca de mapa e aparecem na grama como selvagens "skittish"; nocaute grava var 0x4045+id = 2.
+- Route 42 (44, 132) e Mt. Mortar 1F (119) passaram para o bloco 031: o HM04 vem do gatilho da Route 42 (var 0x4091).
