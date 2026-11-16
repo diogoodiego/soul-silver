@@ -1,5 +1,5 @@
 import { parseEventsFile } from "@soulsilver/shared/events";
-import { buildWorldMap, type WorldLookup, type WorldMap } from "@soulsilver/shared/game";
+import { buildWorldMap, ringMap, ringMesh, ringSource, type WorldLookup, type WorldMap } from "@soulsilver/shared/game";
 import { MESH_VERTEX_FLOATS, mapCells, parseMapFile, type MapArea, type MapFileKind, type MapHeader, type MapMeshFile } from "@soulsilver/shared/maps";
 
 // The extraction as the renderer sees it, through the read-only assets:// protocol (spec 011, T010).
@@ -59,8 +59,14 @@ export interface MapMesh {
   textures: (ImageBitmap | undefined)[];
 }
 
-/** The map's 3D scene (shared/maps/mesh.ts), or undefined when it was not extracted. */
-export const loadMapMesh = (mapId: string) => loadMesh(mapDir(mapId));
+/** The map's 3D scene (shared/maps/mesh.ts), or undefined when it was not extracted; a ring's from its building (item V.3). */
+export async function loadMapMesh(mapId: string): Promise<MapMesh | undefined> {
+  const source = ringSource(mapId);
+  if (source === undefined) return loadMesh(mapDir(mapId));
+  const building = await loadMesh(mapDir(source));
+  const ring = building && ringMesh(building.file, building.vertices);
+  return ring && { ...ring, textures: building.textures };
+}
 /** A building model a script places (spec 024), drawn from its own origin; `pose`, in an animation pose (spec 030.5). */
 export const loadPropMesh = (model: number, pose?: number) => loadMesh(`${STAGES}/maps/maps/props/${padded(model)}${pose === undefined ? "" : `-${pose}`}`);
 
@@ -90,6 +96,7 @@ export function createClientWorld(log: (message: string) => void) {
   })();
 
   async function load(mapId: string): Promise<WorldMap | undefined> {
+    if (ringSource(mapId) !== undefined) return ringMap(mapId);
     const id = Number(mapId);
     const { headers, areas } = await index;
     const header = headers.get(id);
@@ -111,7 +118,7 @@ export function createClientWorld(log: (message: string) => void) {
     lookup: ((mapId) => maps.get(mapId)) as WorldLookup,
     /** The map header (music, area type), once the index is loaded. */
     async header(mapId: string): Promise<MapHeader | undefined> {
-      return (await index).headers.get(Number(mapId));
+      return (await index).headers.get(Number(ringSource(mapId) ?? mapId));
     },
     /** Spec 026: the map's matrix and its rectangle of matrix cells, for the Pokégear's region map. */
     async extent(mapId: string): Promise<{ matrix: number; x: number; z: number; w: number; h: number } | undefined> {

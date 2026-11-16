@@ -5,6 +5,8 @@ import {
   clientMessage,
   createRng,
   protocolMismatchMessage,
+  ringMap,
+  ringSource,
   stepMovement,
   unstick,
   type CloseReason,
@@ -237,7 +239,7 @@ const nameKey = (name: string) => name.trim().toLocaleLowerCase("en");
 
 export function createSession(options: SessionOptions): Session {
   const world = createWorld();
-  const lookup: WorldLookup = (id) => (id === ARENA_AREA ? ARENA_MAP : options.world(id));
+  const lookup: WorldLookup = (id) => (id === ARENA_AREA ? ARENA_MAP : ringSource(id) !== undefined ? ringMap(id) : options.world(id));
   const rng = createRng(options.seed);
   /** Spec 029.2: genders rolled on join, apart from the world's sequence, so a join does not change it. */
   const genderRng = createRng((options.seed ^ 0x029) >>> 0);
@@ -844,7 +846,8 @@ export function createSession(options: SessionOptions): Session {
 
   /** The save state but the rev, the time and the PC, which change apart from scripts. */
   function capture(p: Player): BeforeScript {
-    const e = world.get(p.entityId)!;
+    // Item V.3: in a ring, the place the player left for it.
+    const e = trainerBattles?.returnOf(p.id) ?? world.get(p.entityId)!;
     return {
       ...p.base,
       ...p.progress,
@@ -1497,7 +1500,8 @@ export function createSession(options: SessionOptions): Session {
       const seen = hits.filter((h) => world.get(h.target)?.area === entity.area);
       if (seen.length > 0) p.conn?.send({ type: "combat-event", tick, events: seen } satisfies ServerMessage);
       if (p.debugAi && wilds && tick % aiDebugEvery === 0) p.conn?.send({ type: "aiDebug", tick, ais: wilds.ai.debug(entity.area, entity, aiDebugRadiusPx) } satisfies ServerMessage);
-      if (entity.area !== p.lastArea) changedMap(p, entity.area);
+      // A trip to a ring and back (item V.3) is no change of map: roamers stay put.
+      if (entity.area !== p.lastArea && ringSource(entity.area) === undefined && ringSource(p.lastArea) === undefined) changedMap(p, entity.area);
       // Periodically and on every map change (FR-006).
       if (entity.area !== p.lastArea || (tick - p.joinTick) % SAVE_INTERVAL_TICKS === 0) sendSave(p);
       p.lastArea = entity.area;

@@ -2,7 +2,7 @@ import { blocksSight, lineOfSight, type AiHooks, type AiTick, type SkillProfile 
 import { computeStats, effectiveness, toTicks, type Point, type StatOptions } from "@soulsilver/shared/combat";
 import { leadIndex } from "@soulsilver/shared/companion";
 import type { TrainerMusic, TrainerRecord } from "@soulsilver/shared/events";
-import { hpRestore, tileAt, type Entity, type HitEvent, type Rng, type ServerMessage, type WorldLookup } from "@soulsilver/shared/game";
+import { hpRestore, RING_RADIUS_PX, RING_SPOTS, ringArea, tileAt, type Entity, type HitEvent, type Rng, type ServerMessage, type WorldLookup } from "@soulsilver/shared/game";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { canFight, type PartyMember, type Save } from "@soulsilver/shared/save";
 import type { HeldItem } from "@soulsilver/shared/items";
@@ -119,6 +119,10 @@ interface Battle {
   lastSwitchS: number | undefined;
   ally: { index: number; entityId: number } | undefined;
   music: TrainerMusic;
+  /** The trainer's person in the world, when known: its sprite stands in for it in a ring. */
+  npcId: number | undefined;
+  /** Item V.3: fought in a ring, where the player stood before it and the trainer's stand-in. */
+  ring: { back: Pick<Entity, "area" | "x" | "y" | "level" | "facing">; standIn: number | undefined } | undefined;
 }
 
 const VECTORS: Record<Direction, Point> = { north: { x: 0, y: -1 }, south: { x: 0, y: 1 }, east: { x: 1, y: 0 }, west: { x: -1, y: 0 } };
@@ -297,6 +301,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
       }
       fighter.progress.money = Math.min(999999, fighter.progress.money + money);
     }
+    leaveRing(b);
     // A blackout already ended the fight on a loss.
     if (b.fightAt === undefined) companions.leaveBattle(fighter.playerId);
     const defeat = result === "won" ? data.lines(b.trainer.id).defeat : undefined;
@@ -306,8 +311,42 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     if (offer) options.offerNumber?.(fighter.playerId, b.trainer.id, false);
   }
 
+  /** The person a trainer battle is with: the one given, the trainer's own in the area, or the nearest one to the player (a script's talker). */
+  function trainerPerson(b: Battle): Entity | undefined {
+    const me = world.get(b.fighter.entityId)!;
+    const given = b.npcId === undefined ? undefined : world.get(b.npcId);
+    if (given) return given;
+    const people = world.all().filter((e) => e.kind === "npc" && e.area === me.area && options.visible(b.fighter.playerId, e));
+    // shortcut: a scripted battle takes the closest person within 2 tiles as the trainer; name it from the script if a gym shows the wrong one.
+    const near = people.map((e) => ({ e, d: Math.hypot(e.x - me.x, e.y - me.y) })).filter((n) => n.d <= 2 * MAP_TILE_PX).sort((x, y) => x.d - y.d)[0]?.e;
+    return people.find((e) => options.trainerOf(e)?.trainer === b.trainer.id) ?? near;
+  }
+
+  /** Item V.3: indoors, the fight moves to a ring of its own, the trainer's stand-in across from the player. */
+  function enterRing(b: Battle): void {
+    const me = world.get(b.fighter.entityId)!;
+    if (options.lookup(me.area)?.areaType !== "indoor") return;
+    const area = ringArea(me.area, b.id);
+    const person = trainerPerson(b);
+    const standIn = person && world.add({ kind: "npc", area, ...RING_SPOTS.trainer, level: 0, facing: "west", data: { sprite: person.data["sprite"] } }).id;
+    b.ring = { back: { area: me.area, x: me.x, y: me.y, level: me.level, facing: me.facing }, standIn };
+    world.update({ ...me, area, ...RING_SPOTS.player, level: 0, facing: "east" });
+    b.arena = { area, ...RING_SPOTS.center, radiusPx: RING_RADIUS_PX };
+    b.side = { ...RING_SPOTS.side };
+  }
+
+  /** Back where the player stood, unless a blackout already took them away. */
+  function leaveRing(b: Battle): void {
+    if (!b.ring) return;
+    if (b.ring.standIn !== undefined) world.remove(b.ring.standIn);
+    const me = world.get(b.fighter.entityId);
+    if (me?.area === b.arena.area) world.update({ ...me, ...b.ring.back });
+    b.ring = undefined;
+  }
+
   function begin(b: Battle): void {
     b.fightAt = undefined;
+    enterRing(b);
     const party = b.fighter.progress.party;
     const lead = leadIndex(party);
     // Beside an ally trainer the player sends one Pokémon only.
@@ -467,6 +506,8 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
       lastSwitchS: undefined,
       ally: undefined,
       music: data.trainerClass(trainer.class.id)?.music ?? "trainer",
+      npcId: undefined,
+      ring: undefined,
     };
   }
 
@@ -490,6 +531,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     if (!b) return false;
     const me = world.get(f.entityId)!;
     if (npc) {
+      b.npcId = npc.id;
       const d = Math.hypot(npc.x - me.x, npc.y - me.y);
       place(b, d < 0.01 ? VECTORS[me.facing] : { x: (npc.x - me.x) / d, y: (npc.y - me.y) / d });
       const { intro } = data.lines(trainerId);
@@ -543,6 +585,8 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
       if (b) b.readyBy = undefined;
     },
     inBattle: (playerId: number) => battles.has(playerId),
+    /** Item V.3: in a ring, where the player stood before it (what a save keeps). */
+    returnOf: (playerId: number) => battles.get(playerId)?.ring?.back,
     /** "!" and approach: the player cannot move. */
     locked: (playerId: number) => battles.get(playerId)?.fightAt !== undefined,
     /** Whether an entity is a Pokémon of some trainer battle (balls do nothing to it). */

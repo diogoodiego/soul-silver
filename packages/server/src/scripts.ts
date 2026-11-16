@@ -1,7 +1,7 @@
 import type { EncounterRecord, EncounterSlot, MapEventsFile, FieldItemsFile, FlyPointsFile, HeadbuttRecord, NewGameFile, NpcTradeRecord, RockSmashRecord, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
 import { headbuttTree, pickUser, RIDER_OFFSET_PX, rideAt, gymProps, type AzaleaGym, type AzaleaGymState, type FieldMovesRules, type GymTile } from "@soulsilver/shared/field";
 import { rollLevel, rollSlot } from "@soulsilver/shared/wild";
-import { createRng, stepMovement, tileAt, unstick, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
+import { createRng, ringSource, stepMovement, tileAt, unstick, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
 import { isCounter, isIce, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { starterMember } from "@soulsilver/shared/progression";
 import { store } from "@soulsilver/shared/pc";
@@ -1255,7 +1255,8 @@ export function createScripts(options: ScriptsOptions) {
       for (const s of states.values()) {
         const e = world.get(s.who.entityId);
         if (!e) continue;
-        if (e.area !== s.area) enterMap(s, e);
+        // A ring (item V.3) is no new map: back from it, the building's people, flags and level scripts are as they were.
+        if (e.area !== s.area && ringSource(e.area) === undefined) enterMap(s, e);
         if (s.runner) {
           s.walkedFrom = undefined;
           if (s.ride) glide(s, e, s.ride);

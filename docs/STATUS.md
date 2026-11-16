@@ -6,7 +6,7 @@ cada item (ver `CLAUDE.md`).
 
 **Próximo item: 033.1 Torre de Rádio**
 
-Versões atuais: protocolo 32, save 18.
+Versões atuais: protocolo 33, save 18.
 
 ## Concluídos
 
@@ -45,6 +45,7 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] 032.1–032.7 Olivine, Mahogany e Lake of Rage
 - [x] V.1 Visual HD-2D: pós-processamento (avulso; roteiro manual pendente)
 - [x] V.2 Visual HD-2D: sombras projetadas (avulso; roteiro manual pendente)
+- [x] V.3 Ringue para lutas de treinador em interiores (avulso; roteiro manual pendente)
 - [ ] 033.1–033.8 Torre de Rádio até Lugia nas Whirl Islands
 - [ ] 034.1–034.6 Victory Road e Liga
 
@@ -60,6 +61,8 @@ Itens dados como concluídos com algo ainda em aberto. Resolva quando o item atu
 assunto, ou quando o desenvolvedor pedir.
 
 - V.1/V.2: roteiro manual em `.evidence/V.1/roteiro.md` (visual, ajuste das forças em `MAX`/`BLOOM_THRESHOLD`/`MAX_SHADE`, `shadow.bias`, FPS em Alta).
+- V.3: mapa 306 sem piso reconhecível (ringue invisível, colisão ok); 4 interiores só com piso, sem parede. Roteiro manual: ida/volta do ringue, texturas, câmera perto das paredes.
+- V.3: batalha roteirizada usa a pessoa mais próxima (até 2 tiles) como sprite do treinador no ringue (`shortcut:` em `trainer-battle.ts`).
 - V.2: testes de tempo do servidor (`perf`, `trainer-perf`) falham às vezes na suíte cheia e passam isolados; não é do V.2.
 - 024: jogada humana do `walkthrough.md` sem comandos de desenvolvimento (manual).
 - 032.1: o golden entra direto ao lado da Jasmine; os gatilhos do ginásio de Olivine (z = 23 e 15, 0x410E 1→2→3) não são exercitados.
@@ -145,3 +148,4 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - O HM03 (Dance Theater, mapa 86) faz parte do caminho dourado do 031; um Sentret capturado na Route 29 usa o Surf.
 - Seal Case é `save.seals` (id 1–80 → 1–99; nomes do banco 16 em runtime); a tela de Ball Capsule parte dele.
 - Verificação só pelo servidor (golden, sondas, harness): não abrir o app nem fazer capturas (pedido do desenvolvedor).
+- V.3: luta de treinador em mapa `indoor` vai para a área `ring:<mapa>:<batalha>` (18×18, só o lutador); scripts e roamers ignoram a ida e a volta; o save guarda a posição de antes.

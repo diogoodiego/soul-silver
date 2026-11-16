@@ -49,7 +49,7 @@ export function trainerNpc(person: number, x: number, z: number, id: number, fac
 
 type Npc = ReturnType<typeof trainerNpc>;
 
-export function arenaSetup(o: { trainers: TrainerRecord[]; npcs?: Npc[]; walls?: [number, number][]; party?: PartyMember[]; script?: Parameters<typeof scriptFile>[1]; spawns?: { x: number; y: number }[]; phone?: PhoneBook }) {
+export function arenaSetup(o: { trainers: TrainerRecord[]; npcs?: Npc[]; walls?: [number, number][]; party?: PartyMember[]; script?: Parameters<typeof scriptFile>[1]; spawns?: { x: number; y: number }[]; phone?: PhoneBook; indoor?: boolean }) {
   const walls = new Set((o.walls ?? []).map(([x, y]) => `${x},${y}`));
   const grid: CollisionMap = { width: 16, height: 16, tiles: Array.from({ length: 256 }, (_, i) => ({ category: walls.has(`${i % 16},${Math.floor(i / 16)}`) ? ("blocked" as const) : ("free" as const), raw: 0 })) };
   const files = o.script ? [scriptFile(100, o.script)] : [];
@@ -62,7 +62,7 @@ export function arenaSetup(o: { trainers: TrainerRecord[]; npcs?: Npc[]; walls?:
   const trainers = buildTrainerData({ trainers: o.trainers, classes: [{ id: 5, prizeBase: 4, music: "trainer" }], messages, learnsets: [] }, ai.profiles.map((p) => p.id));
   const spawns = o.spawns ?? [{ x: at(1), y: at(1) }];
   const t = setup({
-    world: flatWorld(grid),
+    world: o.indoor ? (id) => ({ ...flatWorld(grid)(id)!, areaType: "indoor" }) : flatWorld(grid),
     scripts: data,
     combat: combatData(),
     companion: buildCompanionData(BUNDLED_COMPANION_CONTENT),
