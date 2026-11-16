@@ -11664,7 +11664,7 @@
       "file_type": "code",
       "norm_label": "play()",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L23"
+      "source_location": "L29"
     },
     {
       "id": "packages_app_golden_time_golden_flagof",
@@ -88885,7 +88885,7 @@
       "node_kind": "heading",
       "norm_label": "decisoes",
       "source_file": "docs/STATUS.md",
-      "source_location": "L95"
+      "source_location": "L97"
     },
     {
       "id": "docs_status_estado_do_projeto",
@@ -114201,7 +114201,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L26",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -114213,7 +114213,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L27",
+      "source_location": "L33",
       "weight": 1.0
     },
     {
@@ -114225,7 +114225,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L29",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
@@ -114237,7 +114237,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L30",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -114249,7 +114249,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L32",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -114261,7 +114261,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L33",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -114273,7 +114273,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L33",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -114285,7 +114285,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L34",
+      "source_location": "L40",
       "weight": 1.0
     },
     {
@@ -151245,7 +151245,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L23",
+      "source_location": "L29",
       "weight": 1.0
     },
     {
@@ -167578,198 +167578,6 @@
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_server_src_connection_creatememoryconnectionpair",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_server_src_index_creatememoryconnectionpair",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_server_src_index_createsession",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_server_src_session_createsession",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_app_src_server_host_extracted_readnewgamestart",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L12",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_app_src_server_host_server_data_loadserverdata",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L13",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_index_protocol_version",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_protocol_version_protocol_version",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_game_index_button",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_game_index_createrng",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_game_index_servermessage",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_game_protocol_button",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_game_protocol_servermessage",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_game_rng_createrng",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_progression_index_startermember",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_progression_starter_startermember",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_app_golden_strength_surf_golden",
       "target": "packages_shared_src_save_index_applynewgame",
       "relation": "imports",
       "_origin": "ast",
@@ -167777,7 +167585,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L9",
+      "source_location": "L10",
       "weight": 1.0
     },
     {
@@ -167789,7 +167597,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L9",
+      "source_location": "L10",
       "weight": 1.0
     },
     {
@@ -167801,12 +167609,204 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L9",
+      "source_location": "L10",
       "weight": 1.0
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
       "target": "packages_shared_src_save_new_game_applynewgame",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L10",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_server_src_connection_creatememoryconnectionpair",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_server_src_index_creatememoryconnectionpair",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_server_src_index_createsession",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_server_src_session_createsession",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_app_src_server_host_extracted_readnewgamestart",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_app_src_server_host_server_data_loadserverdata",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L14",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_shared_src_index_protocol_version",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_shared_src_protocol_version_protocol_version",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_shared_src_game_index_button",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_shared_src_game_index_createrng",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_shared_src_game_index_servermessage",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_shared_src_game_protocol_button",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_shared_src_game_protocol_servermessage",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_shared_src_game_rng_createrng",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L8",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_shared_src_progression_index_startermember",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "packages/app/golden/strength-surf.golden.ts",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_app_golden_strength_surf_golden",
+      "target": "packages_shared_src_progression_starter_startermember",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -240340,7 +240340,7 @@
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_server_src_index",
+      "target": "packages_shared_src_save_index",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -240352,7 +240352,7 @@
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "ref_vitest",
+      "target": "packages_server_src_index",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -240364,7 +240364,7 @@
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_app_src_server_host_extracted",
+      "target": "ref_vitest",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -240376,7 +240376,7 @@
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_app_src_server_host_server_data",
+      "target": "packages_app_src_server_host_extracted",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -240388,19 +240388,19 @@
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "ref_node_fs",
+      "target": "packages_app_src_server_host_server_data",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "packages/app/golden/strength-surf.golden.ts",
-      "source_location": "L4",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "ref_node_path",
+      "target": "ref_node_fs",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -240412,7 +240412,7 @@
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_index",
+      "target": "ref_node_path",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -240424,7 +240424,7 @@
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_game_index",
+      "target": "packages_shared_src_index",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -240436,7 +240436,7 @@
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_progression_index",
+      "target": "packages_shared_src_game_index",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -240448,7 +240448,7 @@
     },
     {
       "source": "packages_app_golden_strength_surf_golden",
-      "target": "packages_shared_src_save_index",
+      "target": "packages_shared_src_progression_index",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -284221,7 +284221,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/STATUS.md",
-      "source_location": "L95",
+      "source_location": "L97",
       "weight": 1.0
     },
     {
@@ -381737,5 +381737,5 @@
       "source_file": "packages/extractor/src/viewer/index.html"
     }
   ],
-  "built_at_commit": "893544471619656cc3529bc58f2e9980c9c32b42"
+  "built_at_commit": "e3f480f5c33a2ed353f94d157b21518e0623d750"
 }

@@ -1,7 +1,7 @@
 # Graph Report - soul-silver  (2026-11-16)
 
 ## Corpus Check
-- 1258 files · ~807,892 words
+- 1258 files · ~808,330 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 5, .graphify-bak 1, .css 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a6ce66cb`
+- Built from commit: `89354447`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1962,7 +1962,7 @@ Nodes (5): CLI, Contrato: API de sprites (`shared` e `extractor`), `extractor` (
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `vitest` connect `vitest` to `duel.ts`, `campaign.golden.ts`, `game-data/index.ts`, `src/field.ts`, `effects.ts`, `maps/stage.ts`, `t`, `types.test.ts`, `combat-loader.ts`, `sprites/schemas.ts`, `SoulSilverApi`, `input.ts`, `stages.ts`, `progression.ts`, `session-controller.ts`, `trainer/schemas.ts`, `companion-loader.ts`, `render/cutscene.ts`, `createRegistry`, `world-loader.test.ts`, `sprites/stage.test.ts`, `field/schemas.ts`, `main/discovery.ts`, `createCombat`, `session.ts`, `pipeline/run.ts`, `breeding.ts`, `radio.ts`, `companion/reactions.ts`, `battle.ts`, `combat.ts`, `createRunner`, `cli.ts`, `forbidden-files.ts`, `text/stage.ts`, `code-decompress.test.ts`, `ByteWriter`, `shop.ts`, `trainer-battle.ts`, `game/index.ts`, `data/helpers.ts`, `Rng`, `trade-ws.test.ts`, `sseq.ts`, `schema.ts`, `daycare/index.ts`, `overworld.ts`, `readU16`, `ai.ts`, `scriptData`, `rom-unpack.test.ts`, `calls.ts`, `nsbmd.ts`, `held-world.test.ts`, `trade-atomic.test.ts`, `fixtures.ts`, `world-map.ts`, `ref_node_fs`, `combat-coverage.ts`, `src/items.ts`, `events/stage.ts`, `trainer-fixture.ts`, `events/schemas.test.ts`, `input/menu.ts`, `scriptFile`, `wild/capture.test.ts`, `text/index.ts`, `Pesquisa: Itens`, `map-blocks.ts`, `story`, `DialogBox.svelte`, `wild-loader.ts`, `maps/header.ts`, `music-follow.test.ts`, `roamers.test.ts`, `decide.test.ts`, `synth.ts`, `game-renderer.ts`, `package.json`, `combat/schemas.ts`, `createGameRenderer`, `prediction-server.test.ts`, `wav.ts`, `new-game-visibility.test.ts`, `migrate.ts`, `items/schemas.ts`, `formatTextId`, `title.test.ts`, `movement.ts`, `assets-controller.ts`, `save-store.test.ts`, `remote-connection.ts`, `audio/schemas.ts`, `UpdateState`, `animations.ts`, `manifest.ts`, `extractor-host-protocol.ts`, `trainer-loader.ts`, `Tasks: Pokémon companheiro e regras do combate no mundo`, `map-assets.ts`, `Tasks: Tempo e Pokégear`, `events/report.ts`, `field-fixture.ts`, `canAdd`, `events/phone.ts`, `combat-fx.ts`, `main/index.ts`, `handlers/cutscene.ts`, `time/schemas.ts`, `schemas-us2.test.ts`, `migrate.test.ts`, `battle-fx.ts`, `pc.test.ts`, `audio/stage.test.ts`, `npc-trade.test.ts`, `entity.ts`, `createTrainerBattles`, `release-notes.ts`, `controller.ts`, `boxes.ts`, `markCaught`, `static-encounter.test.ts`, `server-host-protocol.ts`, `trail.ts`, `story.ts`, `field/azalea-gym.ts`, `test/daycare.test.ts`, `hatch.test.ts`, `audio/reactions.ts`, `validateReleaseTag`, `server-host.ts`, `png.ts`, `heal.test.ts`, `move-tutor.test.ts`, `test/ribbons-photos.test.ts`, `tick-metrics.ts`, `createGameServer`, `migrate-v9.test.ts`, `locomotion.test.ts`?**
-  _High betweenness centrality (0.343) - this node is a cross-community bridge._
+  _High betweenness centrality (0.345) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `createSession()` (e.g. with `scriptedCallOf()` and `close()`) actually correct?**
   _`createSession()` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@types/node`, `eslint`, `typescript` to the rest of the system?**

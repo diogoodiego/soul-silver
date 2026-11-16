@@ -7434,9 +7434,9 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1794801563.603428,
-    "seen": 1794805563.5984368,
-    "ast_hash": "c684b4ea15432602c1a12c229f849a78",
+    "mtime": 1794805616.009771,
+    "seen": 1794805819.1521566,
+    "ast_hash": "0151b8752900a95beb268f743400a995",
     "semantic_hash": ""
   },
   "docs/roadmap/marco-4.md": {
@@ -7572,9 +7572,9 @@
     "semantic_hash": ""
   },
   "packages/app/golden/strength-surf.golden.ts": {
-    "mtime": 1794796449.1882184,
-    "seen": 1794796509.0730865,
-    "ast_hash": "65fa6cb3f5b69d029b0ae25e0f5ed268",
+    "mtime": 1794805782.4714537,
+    "seen": 1794805819.1498864,
+    "ast_hash": "37ca9da31645ca06102afcb7091c0388",
     "semantic_hash": ""
   },
   "packages/server/test/loan-return.test.ts": {

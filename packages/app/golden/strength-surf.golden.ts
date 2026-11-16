@@ -1,6 +1,7 @@
 // Strength and Surf places (item 031.4), on the real extraction: Route 42's coord trigger (scr_seq 252, var 0x4091)
 // hands over HM04 at Mt. Mortar's entrance, and Union Cave B2F's Lapras (scr_seq 58) shows only on Fridays and
-// starts its wild battle. Local only: `npm run golden`.
+// starts its wild battle. Mt. Mortar's Karate King (scr_seq 98, item 032.2) fights, then gives Tyrogue once beaten.
+// Local only: `npm run golden`.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
@@ -19,8 +20,13 @@ const HM04 = 423;
 const UNION_CAVE_B2F = 154;
 const LAPRAS_HIDDEN = 778;
 const LAPRAS = 131;
+const MT_MORTAR_B1F = 252;
+const KARATE_KING = 158;
+const KARATE_KING_BEATEN = 269;
+const TYROGUE_GIVEN = 268;
+const TYROGUE = 236;
 
-function play(opts: { now: Date; map: number; tile: { x: number; z: number }; facing: "north" | "west"; move: { x: number; y: number }; vars?: Record<number, number>; interact?: boolean }) {
+function play(opts: { now: Date; map: number; tile: { x: number; z: number }; facing: "north" | "west"; move: { x: number; y: number }; vars?: Record<number, number>; flags?: number[]; interact?: boolean }) {
   if (!existsSync(join(stages, "events", "events", "new-game.json"))) throw new Error(`Sem extração em ${stages}. Aponte SOULSILVER_DATA para a pasta stages.`);
   const logs: string[] = [];
   const data = loadServerData(stages, (m) => void logs.push(m));
@@ -37,7 +43,7 @@ function play(opts: { now: Date; map: number; tile: { x: number; z: number }; fa
   session.connect(server);
   const o = data.world!(String(opts.map))!.origin!;
   const at = { area: String(opts.map), x: (opts.tile.x - o.tx) * 16 + 8, y: (opts.tile.z - o.ty) * 16 + 8, facing: opts.facing, playTimeMs: 1000, rev: 1 };
-  client.send({ type: "hello", protocolVersion: PROTOCOL_VERSION, save: { ...game, ...at, party: [member], badgeSet: 15, vars: { ...game.vars, ...opts.vars } } });
+  client.send({ type: "hello", protocolVersion: PROTOCOL_VERSION, save: { ...game, ...at, party: [member], badgeSet: 15, vars: { ...game.vars, ...opts.vars }, flags: [...game.flags, ...(opts.flags ?? [])] } });
   if (got.find((m) => m.type === "welcome")?.type !== "welcome") throw new Error(`o servidor recusou o save: ${JSON.stringify(got.at(-1))}`);
   let seq = 0;
   let read = 0;
@@ -55,7 +61,7 @@ function play(opts: { now: Date; map: number; tile: { x: number; z: number }; fa
   session.close("closed-by-host");
   const save = got.filter((m) => m.type === "save").at(-1)?.save ?? game;
   // The probe drops the player on Lapras's water without surfing (no surf state in a save): "cannot move" is that.
-  return { save, lapras, scriptErrors: logs.filter((l) => /script/i.test(l) && !/cannot move after/.test(l)) };
+  return { save, got, lapras, scriptErrors: logs.filter((l) => /script/i.test(l) && !/cannot move after/.test(l)) };
 }
 
 it("Route 42's man hands over HM04 at Mt. Mortar's entrance (item 031.4)", () => {
@@ -75,4 +81,15 @@ it("Union Cave B2F's Lapras is there on Fridays only (item 031.4)", () => {
   expect(friday.save.flags).not.toContain(LAPRAS_HIDDEN);
   expect(friday.lapras).toBe(true);
   expect([...sunday.scriptErrors, ...friday.scriptErrors]).toEqual([]);
+});
+
+it("Mt. Mortar's Karate King fights, then gives Tyrogue once beaten (item 032.2)", () => {
+  // Person 1 at (41, 18): south of it facing north, then A.
+  const at = { now: new Date(2026, 10, 15, 12), map: MT_MORTAR_B1F, tile: { x: 41, z: 19 }, facing: "north" as const, move: { x: 0, y: 0 }, interact: true };
+  const fight = play(at);
+  expect(fight.got.some((m) => m.type === "trainerBattleStart" && m.trainerId === KARATE_KING)).toBe(true);
+  const gift = play({ ...at, flags: [KARATE_KING_BEATEN] });
+  expect(gift.save.party.map((m) => m.species)).toEqual([155, TYROGUE]);
+  expect(gift.save.flags).toContain(TYROGUE_GIVEN);
+  expect([...fight.scriptErrors, ...gift.scriptErrors]).toEqual([]);
 });
