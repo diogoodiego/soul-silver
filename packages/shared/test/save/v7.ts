@@ -7,5 +7,5 @@ import { newBoxes, newItemState, type PartyMember } from "../../src/save/schema.
 export function v7<S extends { storage: unknown[]; badges: number }>({ storage, badges, ...save }: S) {
   const boxes = newBoxes();
   storage.forEach((m, i) => (boxes[0]!.slots[i] = m as PartyMember));
-  return { ...save, schemaVersion: 16, daycare: [], daycareEgg: false, eggWalk: 0, photos: [], boxes, pcItems: [], rivalName: "", storyRev: 0, badgeSet: (1 << badges) - 1, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() };
+  return { ...save, schemaVersion: 17, daycare: [], daycareEgg: false, eggWalk: 0, photos: [], boxes, pcItems: [], rivalName: "", storyRev: 0, badgeSet: (1 << badges) - 1, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() };
 }

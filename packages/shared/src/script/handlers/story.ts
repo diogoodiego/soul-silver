@@ -131,6 +131,6 @@ export const STORY: Record<string, Handler> = {
   StopSE: nothing,
   // Item 031.1. A beast's cry animation (always between Release and Lock, after PlayCry): looks the client does not draw.
   ScrCmd_523: nothing,
-  // shortcut: Raikou (0) and Entei (1) do not roam yet; item 031.2 gives each player their roamers.
-  CreateRoamer: nothing,
+  // Item 031.2: Raikou (0) and Entei (1) start roaming for this player (wild/roamer.ts).
+  CreateRoamer: (c) => c.host.createRoamer?.(c.get("arg0")),
 };

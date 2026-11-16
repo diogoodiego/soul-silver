@@ -26,7 +26,7 @@ describe("create and list", () => {
   it("creates a save in the original's start tile, with no Pokémon and the new-game state (spec 024)", async () => {
     const s = store();
     expect(await s.create(1, " Gold ", "male", false)).toEqual({ ok: true });
-    expect(await read(slotFile(1))).toMatchObject({ schemaVersion: 16, name: "Gold", rev: 0, playTimeMs: 0, area: "64", x: 104, y: 104, facing: "south", party: [], money: 3000, badgeSet: 0, flyPoints: [], respawn: null, bag: [], pokedex: { seen: [], caught: [] }, pcItems: [], pending: [], flags: [960], vars: {}, npcPlacement: {}, rivalName: "", storyRev: 1 });
+    expect(await read(slotFile(1))).toMatchObject({ schemaVersion: 17, name: "Gold", rev: 0, playTimeMs: 0, area: "64", x: 104, y: 104, facing: "south", party: [], money: 3000, badgeSet: 0, flyPoints: [], respawn: null, bag: [], pokedex: { seen: [], caught: [] }, pcItems: [], pending: [], flags: [960], vars: {}, npcPlacement: {}, rivalName: "", storyRev: 1 });
     expect((await s.list())[0]).toMatchObject({ index: 1, status: "ok", name: "Gold", character: "male", backupAvailable: false, badges: 0 });
   });
 
@@ -217,12 +217,12 @@ describe("corruption and restore (FR-008, FR-009)", () => {
 
   it("refuses a save from a newer version, keeping the file", async () => {
     const s = await withBackup();
-    const newer = { ...(await read(slotFile(1))), schemaVersion: 17 };
+    const newer = { ...(await read(slotFile(1))), schemaVersion: 18 };
     await writeFile(slotFile(1), JSON.stringify(newer));
     const result = await s.load(1);
     expect(result.ok).toBe(false);
-    expect(!result.ok && result.reason).toContain("16");
-    expect(((JSON.parse(await readFile(slotFile(1), "utf8")) as { schemaVersion: number }).schemaVersion)).toBe(17);
+    expect(!result.ok && result.reason).toContain("17");
+    expect(((JSON.parse(await readFile(slotFile(1), "utf8")) as { schemaVersion: number }).schemaVersion)).toBe(18);
   });
 });
 

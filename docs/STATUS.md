@@ -4,9 +4,9 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 031.2 Cães errantes e Suicune**
+**Próximo item: 031.3 Ginásio de Ecruteak**
 
-Versões atuais: protocolo 30, save 16.
+Versões atuais: protocolo 31, save 17.
 
 ## Concluídos
 
@@ -77,6 +77,9 @@ assunto, ou quando o desenvolvedor pedir.
 - 030.10 (`shortcut:`): trocas sem animação e sem nome/ID do treinador original; Pichu de orelha espetada sem forma; cena do Celebi não desenhada; IsBugContestantRegistered sempre 0; giveMon não guarda item.
 - 031.1 (`shortcut:`): saltos dos cães (MoveAction_105–110) sem arco no cliente; golden pula os treinadores da Route 37 por warp.
 - 031.1: mapas 86 (teatro, MakeObjectVisible/ScrCmd_374) e 80 (EcruteakGymInit) com comandos faltantes; ficam para 031.3/031.4.
+- 031.2 (`shortcut:`): errante salta para rota aleatória (sem grafo de vizinhas); Latias/Latios ignorados até o Marco 5; saltos do Suicune parados no cliente.
+- 031.2: errante é entidade comum (outros jogadores veem/capturam); status volta com duração nova e confusão não é guardada; HP se perde se desconectar com ele no mapa.
+- 031.2: CreateRoamer da Burned Tower sondado só com fixture sintético, não com a ROM real.
 
 ## Decisões
 
@@ -92,3 +95,4 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Route 36 passou para o bloco 030 em `map-blocks.json`; o Bug-Catching Contest segue fora.
 - Trocas com NPC vêm de `npc-trades.json` (a/1/1/2, estágio de eventos); o membro guarda `trade`/`mail` (save 16).
 - Comandos só visuais das cenas de lendários (ScrCmd_523, MoveAction dos saltos) não fazem nada no servidor (COSMETIC).
+- Errantes ficam em `save.roamers` por jogador, mudam de rota a cada troca de mapa e aparecem na grama como selvagens "skittish"; nocaute grava var 0x4045+id = 2.

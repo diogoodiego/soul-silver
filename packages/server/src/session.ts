@@ -1,4 +1,4 @@
-import { timeOfDay, wildMoves } from "@soulsilver/shared/wild";
+import { createRoamer, roam, ROAMER_KNOCKED_OUT, ROAMER_LEVEL, ROAMER_SPECIES, ROAMER_STATE_VAR, timeOfDay, wildMoves, type Roamer } from "@soulsilver/shared/wild";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import {
   BUTTON,
@@ -191,7 +191,7 @@ interface Player {
   /** Asked for the AI debug overlay (spec 019). */
   debugAi: boolean;
   /** Party, money, badges and respawn point, changed in place by the companion rules; bag, Pokédex and PC boxes by capture. */
-  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints" | "escape" | "phone" | "daycare" | "daycareEgg" | "eggWalk" | "photos"> & ItemState;
+  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints" | "escape" | "phone" | "daycare" | "daycareEgg" | "eggWalk" | "photos"> & ItemState & { roamers: Roamer[] };
   /** Story flags and variables (spec 020), changed by this player's scripts only. */
   flags: Set<number>;
   vars: Map<number, number>;
@@ -292,6 +292,27 @@ export function createSession(options: SessionOptions): Session {
     statics.delete(wildId);
     scripts?.wildBattleEnded(playerId, outcome);
   };
+  /** Item 031.2: roamers out on their route, by wild entity: whose (player id) and which (roamer id). */
+  const roamersOut = new Map<number, { playerId: number; id: number }>();
+  /** A roamer left the world: caught or knocked out, it roams no more; else it keeps the HP and status it had. */
+  function settleRoamer(wildId: number, caught: boolean, fainted: boolean): void {
+    const out = roamersOut.get(wildId);
+    if (!out) return;
+    roamersOut.delete(wildId);
+    const p = players.get(out.playerId);
+    const list = p?.progress.roamers ?? [];
+    const i = list.findIndex((r) => r.id === out.id);
+    if (!p || i < 0) return;
+    if (caught || fainted) {
+      list.splice(i, 1);
+      if (!caught) p.vars.set(ROAMER_STATE_VAR + out.id, ROAMER_KNOCKED_OUT);
+      return;
+    }
+    const c = combat?.get(wildId);
+    if (!c) return;
+    const status = c.major?.id;
+    list[i] = { id: out.id, area: list[i]!.area, ...(c.hp < c.stats.hp ? { hp: c.hp } : {}), ...(status && status !== "confusion" ? { status } : {}) };
+  }
   const wilds =
     options.wild && combat && options.combat
       ? createWilds({
@@ -321,6 +342,7 @@ export function createSession(options: SessionOptions): Session {
             // A static one ends when it leaves the world: caught (out of a ball that held, even knocked out, while it
             // lay there for faintedSeconds), else won when knocked out, else the player got away from it.
             const w = wilds?.get(id);
+            settleRoamer(id, w?.capturing === true, w?.faintedTick !== undefined);
             endStatic(id, w?.capturing ? OUTCOME.caught : w?.faintedTick !== undefined ? OUTCOME.won : OUTCOME.fled);
           },
           log: (message) => options.log(message),
@@ -421,6 +443,10 @@ export function createSession(options: SessionOptions): Session {
           if (p) p.beforeScript = capture(p);
         },
         battle: (playerId, trainer, partner): boolean => trainerBattles?.startScripted(playerId, trainer, partner) ?? false,
+        createRoamer: (playerId, id) => {
+          const p = players.get(playerId);
+          if (p) createRoamer(p.progress.roamers, id, rng);
+        },
         wildBattle: (playerId, species, level, at): boolean => {
           if (!wilds || !options.wild) return false;
           try {
@@ -757,6 +783,7 @@ export function createSession(options: SessionOptions): Session {
         daycareEgg: base.daycareEgg,
         eggWalk: base.eggWalk,
         photos: structuredClone(base.photos),
+        roamers: structuredClone(base.roamers ?? []),
         ...itemStateOf(base),
       },
       flags: new Set(base.flags),
@@ -826,6 +853,7 @@ export function createSession(options: SessionOptions): Session {
       pending: p.progress.pending.map((i) => ({ ...i })),
       phone: structuredClone(p.progress.phone),
       daycare: structuredClone(p.progress.daycare),
+      roamers: structuredClone(p.progress.roamers),
       ...itemStateOf(p.progress),
       flags: [...p.flags].sort((a, b) => a - b),
       vars: Object.fromEntries([...p.vars].map(([k, v]) => [String(k), v])),
@@ -834,6 +862,31 @@ export function createSession(options: SessionOptions): Session {
       y: e.y,
       facing: e.facing,
     };
+  }
+
+  /**
+   * Item 031.2: the player changed map. Their roamer out on the last one is gone from it; every roamer then moves, and
+   * one that lands on this map is there, in its grass, as a wild Pokémon that flees (temperaments.json).
+   */
+  function changedMap(p: Player, area: string): void {
+    for (const [wildId, out] of roamersOut) if (out.playerId === p.id && !wilds?.get(wildId)?.capturing) wilds?.remove(wildId);
+    if (p.progress.roamers.length === 0 || !wilds || !options.wild || !combat) return;
+    roam(p.progress.roamers, rng);
+    for (const r of p.progress.roamers) {
+      const species = ROAMER_SPECIES[r.id];
+      if (r.area !== area || species === undefined) continue;
+      try {
+        const wildId = wilds.placeInGrass(area, { species, level: ROAMER_LEVEL, moves: wildMoves(options.wild.levelUp(species), ROAMER_LEVEL) }, tick);
+        if (wildId === undefined) continue;
+        roamersOut.set(wildId, { playerId: p.id, id: r.id });
+        const c = combat.get(wildId)!;
+        if (r.hp !== undefined) c.hp = Math.min(r.hp, c.stats.hp);
+        wilds.get(wildId)!.lastHp = c.hp;
+        if (r.status) combat.inflict(wildId, r.status, tick);
+      } catch (error) {
+        options.log(`Roamer ${species} on map ${area} not spawned: ${(error as Error).message}`);
+      }
+    }
   }
 
   /** The rev of the save sent, if one was. */
@@ -1442,6 +1495,7 @@ export function createSession(options: SessionOptions): Session {
       const seen = hits.filter((h) => world.get(h.target)?.area === entity.area);
       if (seen.length > 0) p.conn?.send({ type: "combat-event", tick, events: seen } satisfies ServerMessage);
       if (p.debugAi && wilds && tick % aiDebugEvery === 0) p.conn?.send({ type: "aiDebug", tick, ais: wilds.ai.debug(entity.area, entity, aiDebugRadiusPx) } satisfies ServerMessage);
+      if (entity.area !== p.lastArea) changedMap(p, entity.area);
       // Periodically and on every map change (FR-006).
       if (entity.area !== p.lastArea || (tick - p.joinTick) % SAVE_INTERVAL_TICKS === 0) sendSave(p);
       p.lastArea = entity.area;
@@ -1468,7 +1522,7 @@ export function createSession(options: SessionOptions): Session {
       for (const p of players.values()) p.conn?.send(msg);
     },
     join: (name, spawn) => {
-      const base: Save = { schemaVersion: 16, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
+      const base: Save = { schemaVersion: 17, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
       return add(base, undefined, spawn, "").id;
     },
     leave(playerId) {

@@ -47,6 +47,8 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   14: (save) => ({ ...save, photos: [], schemaVersion: 15 }),
   // Item 030.10: no member came from an in-game trade yet (both fields optional).
   15: (save) => ({ ...save, schemaVersion: 16 }),
+  // Item 031.2: nothing roams yet (roamers is optional).
+  16: (save) => ({ ...save, schemaVersion: 17 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

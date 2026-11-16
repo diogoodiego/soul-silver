@@ -203,6 +203,8 @@ export interface ScriptHost {
   /** Spec 030.2, PhotoAlbumIsFull and CameronPhoto: the photo album, and a photo of the party at `spot`. */
   photoAlbumFull?(): boolean;
   takePhoto?(spot: number): void;
+  /** Item 031.2: roamer `id` (0 Raikou, 1 Entei) starts roaming for this player (CreateRoamer). */
+  createRoamer?(id: number): void;
   /** Item 030.10, the Ilex Forest tutor: a party member's moves, one replaced (or added to a free slot), and the moves tutor `npc` (tutors.json area) can teach it. */
   partyMoves?(slot: number): number[];
   setPartyMove?(slot: number, moveSlot: number, move: number): void;

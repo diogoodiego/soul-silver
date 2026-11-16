@@ -29,6 +29,9 @@ const COSMETIC = new Set([
   "MoveAction_108",
   "MoveAction_109",
   "MoveAction_110",
+  // shortcut: Suicune's leaps at its sightings (875 M4, M5; 252 M14) stay in place too, and it hides after (item 031.2).
+  "MoveAction_111",
+  "MoveAction_112",
 ]);
 
 const actorOf = (id: number): CutsceneActor => (id === PLAYER ? "player" : id === COMPANION ? "companion" : { person: id });

@@ -7,8 +7,10 @@ import { fakeHost, makeScript } from "./fixture.ts";
 // Item 031.1: the commands the Burned Tower B1F's beasts scene lacked. Synthetic scripts and host (principle II).
 
 describe("block 031 commands (item 031.1)", () => {
-  it("ScrCmd_523 (a beast's cry animation) and CreateRoamer run without ending the script", () => {
+  it("ScrCmd_523 (a beast's cry animation) runs without ending the script; CreateRoamer gives the host each roamer (item 031.2)", () => {
     const h = fakeHost();
+    const roamers: number[] = [];
+    h.createRoamer = (id) => void roamers.push(id);
     const file = makeScript([
       ["ScrCmd_523", { arg0: 2, arg1: 2, arg2: 90, arg3: 2, arg4: 0 }],
       ["CreateRoamer", { arg0: 0 }],
@@ -19,10 +21,11 @@ describe("block 031 commands (item 031.1)", () => {
     const state = createRunner(h, SCRIPT_HANDLERS, { file, entry: 0 }).step();
     expect(state.kind).toBe("done");
     expect(h.flags.has(457)).toBe(true);
+    expect(roamers).toEqual([0, 1]);
   });
 
-  it("the beasts' leaps (MoveAction_105 to 110) play as looks only: the steps after them stay", () => {
-    for (let n = 105; n <= 110; n++) {
+  it("the beasts' leaps (MoveAction_105 to 110) and Suicune's (111, 112, item 031.2) play as looks only: the steps after them stay", () => {
+    for (let n = 105; n <= 112; n++) {
       const steps = movementSteps({ person: 2 }, [{ action: `MoveAction_${n}`, count: 1 }, { action: "SetInvisible", count: 1 }]);
       expect(steps).toEqual([{ kind: "hide", actor: { person: 2 } }]);
     }

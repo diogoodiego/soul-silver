@@ -5,7 +5,7 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 16;
+export const SAVE_SCHEMA_VERSION = 17;
 
 /** Photos Cameron's album holds (PhotoAlbumIsFull). */
 export const PHOTO_ALBUM_MAX = 36;
@@ -194,6 +194,22 @@ export const saveSchema = z.strictObject({
   eggWalk: z.number().min(0).lt(255 * 16),
   /** Spec 030.2: Cameron's photo album (CameronPhoto), oldest first. */
   photos: z.array(photo).max(PHOTO_ALBUM_MAX),
+  /**
+   * Item 031.2: Raikou (0) and Entei (1) roaming for this player (CreateRoamer): the route each is on, and the HP and
+   * major status the last encounter left (absent HP is full). Caught or knocked out, it is gone. Absent is none.
+   */
+  roamers: z
+    .array(
+      z.strictObject({
+        id: z.number().int().min(0).max(3),
+        area: z.string().min(1),
+        hp: z.number().int().min(1).optional(),
+        status: z.enum(["burn", "poison", "toxic", "paralysis", "sleep", "freeze"]).optional(),
+      }),
+    )
+    .max(4)
+    .refine((l) => unique(l.map((r) => r.id)), "errante repetido")
+    .optional(),
 });
 export type Save = z.infer<typeof saveSchema>;
 export type Photo = z.infer<typeof photo>;

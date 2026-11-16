@@ -6,7 +6,7 @@ import { SAVE_SCHEMA_VERSION } from "../../src/save/schema.ts";
 
 describe("protocol v30", () => {
   it("is version 30, with save v16", () => {
-    expect(PROTOCOL_VERSION).toBe(30);
-    expect(SAVE_SCHEMA_VERSION).toBe(16);
+    expect(PROTOCOL_VERSION).toBeGreaterThanOrEqual(30);
+    expect(SAVE_SCHEMA_VERSION).toBeGreaterThanOrEqual(16);
   });
 });

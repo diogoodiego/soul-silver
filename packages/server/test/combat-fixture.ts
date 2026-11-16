@@ -27,6 +27,7 @@ export const SPECIES = {
   rattata: { id: 19, baseStats: base(30, 56, 35, 72, 25, 35), types: [0] as [number] },
   hoothoot: { id: 163, baseStats: base(60, 30, 30, 50, 36, 56), types: [0, 2] as [number, number] },
   onix: { id: 95, baseStats: base(35, 45, 160, 70, 30, 45), types: [5, 4] as [number, number] },
+  raikou: { id: 243, baseStats: base(90, 85, 75, 115, 115, 100), types: [13] as [number] },
   /** Made up: Chikorita's stats with the Normal type, to compare effectiveness on the same rolls. */
   normalChikorita: { id: 9001, baseStats: base(45, 49, 65, 45, 49, 65), types: [0] as [number] },
 };

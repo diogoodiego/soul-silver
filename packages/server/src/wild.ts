@@ -172,6 +172,16 @@ export function createWilds(options: WildOptions) {
     remove,
     /** The dev arena: a wild Pokémon of the tester's choosing, with the AI, as a spawn would be; throws on a bad spec. */
     place: (area: string, x: number, y: number, spec: { species: number; level: number; moves: number[] }, tick: number) => add(area, x, y, spec, false, tick),
+    /** Item 031.2: a roamer in the map's grass, out of view if the map is wide enough; undefined without grass. Throws on a bad spec. */
+    placeInGrass(area: string, spec: { species: number; level: number; moves: number[] }, tick: number): number | undefined {
+      // Its own grass, whether or not the map has a table: a roamer is not one of its encounters.
+      const map = lookup(area);
+      const cells = map ? zoneCells(map) : [];
+      const here = world.all().filter((b) => b.kind === "player" && b.area === area);
+      const near = { viewHalfTiles: { x: rules.waterInViewTiles, y: rules.waterInViewTiles }, viewMarginTiles: 0, maxTries: rules.maxTries };
+      const cell = cells.length > 0 ? (pickCell(cells, here, rules, rng) ?? pickCell(cells, here, near, rng)) : undefined;
+      return cell && add(area, cell.x * MAP_TILE_PX + MAP_TILE_PX / 2, cell.y * MAP_TILE_PX + MAP_TILE_PX / 2, spec, false, tick);
+    },
     /** Whether the map has fish for this rod (spec 025); without, nothing ever bites. */
     canFish: (area: string, rod: Rod) => fishTable(area, rod) !== undefined,
     /** The hooked one (FR-012): from the rod's table, out of the water at (x, y), with its AI; counted with the water's. */

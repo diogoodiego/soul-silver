@@ -39,11 +39,11 @@ const v15 = {
   eggWalk: 0,
   photos: [],
 };
-const v16 = (over: object = {}) => ({ ...v15, schemaVersion: 16, ...over });
+const v16 = (over: object = {}) => ({ ...v15, schemaVersion: 17, ...over });
 
 describe("save v16", () => {
   it("is the current version", () => {
-    expect(SAVE_SCHEMA_VERSION).toBe(16);
+    expect(SAVE_SCHEMA_VERSION).toBeGreaterThanOrEqual(16);
   });
 
   it("keeps a v15 save as it was: no member came from a trade", () => {

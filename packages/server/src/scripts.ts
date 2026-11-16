@@ -232,6 +232,8 @@ export interface ScriptsOptions {
   battle?: ((playerId: number, trainer: number, partner: number) => boolean) | undefined;
   /** Spec 030.9: a static encounter, a wild Pokémon at (x, y) of `area` for this player to fight; false when none could appear. The script waits for wildBattleEnded. */
   wildBattle?: ((playerId: number, species: number, level: number, at: { area: string; x: number; y: number }) => boolean) | undefined;
+  /** Item 031.2: roamer `id` starts roaming for this player (CreateRoamer). */
+  createRoamer?: ((playerId: number, id: number) => void) | undefined;
   /** Opens a Poké Mart (spec 023); false when there is none. The script waits for serviceClosed. */
   shop?: ((playerId: number, shop: number, sell: boolean) => boolean) | undefined;
   /** Opens the Pokémon PC (spec 023); the script waits for serviceClosed. */
@@ -826,6 +828,7 @@ export function createScripts(options: ScriptsOptions) {
       random16: () => rng.nextInt(0x10000),
       // Props go with the map they are on: a map's onResume runs before the client draws it (spec 024).
       emit: (event) => send(s, { type: "script-event", event: event.kind === "props" ? { ...event, area: s.area ?? "" } : event }),
+      createRoamer: (id) => options.createRoamer?.(who.playerId, id),
       // Nothing implements wild battles or marts yet: each ends the script as missing (FR-008).
       bridge: () => false,
       file: (id) => data.file(id),
