@@ -4,7 +4,7 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 032.7 Verificação (automáticas ok; faltam capturas manuais pelo `.evidence/032/roteiro.md` e a decisão do recorde do Magikarp)**
+**Próximo item: 033.1 Torre de Rádio**
 
 Versões atuais: protocolo 32, save 18.
 
@@ -42,7 +42,7 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] 030.9 Routes 35 e 36, National Park e Sudowoodo
 - [x] 030.10 Verificação
 - [x] 031.1–031.7 Ecruteak até Cianwood
-- [ ] 032.1–032.7 Olivine, Mahogany e Lake of Rage
+- [x] 032.1–032.7 Olivine, Mahogany e Lake of Rage
 - [ ] 033.1–033.8 Torre de Rádio até Lugia nas Whirl Islands
 - [ ] 034.1–034.6 Victory Road e Liga
 
@@ -75,6 +75,7 @@ assunto, ou quando o desenvolvedor pedir.
 - 032.6: bloco de gelo empurrado salta ao fim do deslize e só se move para quem empurrou; exigência de Strength e reset ao reentrar não conferidos.
 - 032.6: golden confere treinadores do ginásio de Mahogany só pelo prêmio do Pryce; deslize pausado por batalha não verificado no cliente.
 - 032.7: M4.0 do bloco com 19/21 mapas limpos; 88 e 295 dependem do recorde de tamanho do Magikarp (campo novo no save).
+- 032.7: capturas manuais pelo `.evidence/032/roteiro.md` e comparação com as páginas 21–28 do detonado.
 - 025: captura `04-fishing-bite.png` e roteiro manual do tempo de reação na pesca.
 - 027: seletor rápido com gamepad (roteiro manual; impedir o Pokémon de andar com o D-pad).
 - 027: item escondido 8001 no tile (572,390), fora da grade dos mapas 33 e 34; sonda do Dowsing.
