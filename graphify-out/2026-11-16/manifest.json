@@ -504,9 +504,9 @@
     "semantic_hash": ""
   },
   "packages/client/src/render/game-renderer.ts": {
-    "mtime": 1794833190.364165,
-    "seen": 1794833270.140287,
-    "ast_hash": "728a0d8f0d2866fcca6fd6615d900e16",
+    "mtime": 1794848893.2600253,
+    "seen": 1794854275.8445904,
+    "ast_hash": "2dc83fc3bba146e72d3ef160a4ad024f",
     "semantic_hash": ""
   },
   "packages/client/src/render/grass-clearing.ts": {
@@ -7440,9 +7440,9 @@
     "semantic_hash": ""
   },
   "docs/roadmap/marco-4.md": {
-    "mtime": 1794833245.4028742,
-    "seen": 1794833270.1412857,
-    "ast_hash": "a471cd66b4e98ac1861cf3cc2f57431d",
+    "mtime": 1794848894.9132984,
+    "seen": 1794854275.8456652,
+    "ast_hash": "3601831858985f7bb4835cbd3cfe8b46",
     "semantic_hash": ""
   },
   "docs/roadmap/marco-5.md": {

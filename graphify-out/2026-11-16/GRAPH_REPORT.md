@@ -1,7 +1,7 @@
 # Graph Report - soul-silver  (2026-11-16)
 
 ## Corpus Check
-- 1265 files · ~818,188 words
+- 1265 files · ~818,325 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 5, .graphify-bak 1, .css 1)
 
@@ -1964,7 +1964,7 @@ Nodes (4): Conferência manual (com a ROM), Pré-requisitos, Quickstart: Áudio 
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `vitest` connect `vitest` to `duel.ts`, `campaign.golden.ts`, `game-data/index.ts`, `createRng`, `setup`, `maps/stage.ts`, `t`, `game-connection.ts`, `combat-loader.ts`, `sprites/schemas.ts`, `SoulSilverApi`, `combat-fixture.ts`, `input/menu.ts`, `readU16`, `game/index.ts`, `session-controller.ts`, `phone/schemas.ts`, `readU32`, `createRegistry`, `status.test.ts`, `fixtures.ts`, `forms.ts`, `events/schemas.ts`, `audio/stage.test.ts`, `combat.ts`, `scripts.ts`, `ai-loader.ts`, `pipeline/run.ts`, `breeding.ts`, `radio.ts`, `companion/schemas.ts`, `title/stage.ts`, `createRunner`, `maps/index.ts`, `Tasks: Campanha jogável até a Insígnia Zephyr`, `main/index.ts`, `forbidden-files.ts`, `text/stage.ts`, `sprites/stage.test.ts`, `ByteWriter`, `economy/trade.ts`, `createCompanions`, `script/index.ts`, `trainer-battle.ts`, `sseq.ts`, `data/report.ts`, `extractor/src/index.ts`, `protocol.ts`, `session.ts`, `synth.ts`, `hatch.test.ts`, `battle.ts`, `events/phone.test.ts`, `overworld.ts`, `scriptData`, `schema.ts`, `items/schemas.ts`, `particles.ts`, `prize`, `movement.test.ts`, `icons.ts`, `trade-atomic.test.ts`, `sprites/stage.ts`, `npcs.test.ts`, `ref_node_fs`, `world-map.ts`, `events/stage.ts`, `field/schemas.ts`, `newBoxes`, `wild/schemas.ts`, `UpdateState`, `text/index.ts`, `Pesquisa: Itens`, `obtainable.ts`, `DialogBox.svelte`, `src/phone.ts`, `trainer-loader.ts`, `decide.test.ts`, `package.json`, `camera.ts`, `wild/capture.test.ts`, `adpcm.test.ts`, `daycare/index.ts`, `animations.ts`, `combat-fx.ts`, `migrate.ts`, `npc-trade.test.ts`, `formatTextId`, `nsbmd.ts`, `movement-ice.test.ts`, `assets-controller.ts`, `server-host/entry.ts`, `CollisionCell`, `release-notes.ts`, `Phase 2 (2026-11-07)`, `extractor-host-protocol.ts`, `trail.ts`, `trainer/schemas.ts`, `canAdd`, `src/field.ts`, `world-loader.ts`, `field-fixture.ts`, `Tasks: Pokémon companheiro e regras do combate no mundo`, `perception.ts`, `wild-loader.ts`, `maps/header.ts`, `schemas-us2.test.ts`, `pc.test.ts`, `Tasks: Validação da ROM, desempacotamento e primeira execução`, `events/schemas.test.ts`, `Tasks: Tempo e Pokégear`, `audio/reactions.ts`, `boxes.ts`, `roamers.test.ts`, `world-items.test.ts`, `audio/schemas.test.ts`, `server-host.ts`, `pc/items.ts`, `markCaught`, `shops.ts`, `controller.ts`, `daycare-eggs.test.ts`, `world-session.test.ts`, `migrate.test.ts`, `field/azalea-gym.ts`, `types.test.ts`, `held-world.test.ts`, `size.ts`, `audio/schemas.ts`, `validateReleaseTag`, `server-host-protocol.ts`, `story-commands.test.ts`, `coherence.test.ts`, `createGameServer`?**
-  _High betweenness centrality (0.309) - this node is a cross-community bridge._
+  _High betweenness centrality (0.313) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `createSession()` (e.g. with `scriptedCallOf()` and `close()`) actually correct?**
   _`createSession()` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@types/node`, `eslint`, `typescript` to the rest of the system?**

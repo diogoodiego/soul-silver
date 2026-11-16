@@ -2437,7 +2437,7 @@
       "file_type": "code",
       "norm_label": "mapvisual",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L75"
+      "source_location": "L83"
     },
     {
       "id": "packages_client_src_render_map_assets_mapmesh",
@@ -4387,7 +4387,7 @@
       "file_type": "code",
       "norm_label": "effect",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L91"
+      "source_location": "L99"
     },
     {
       "id": "packages_shared_src_combat_schemas_moveparams",
@@ -4660,7 +4660,7 @@
       "file_type": "code",
       "norm_label": "actor",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L80"
+      "source_location": "L88"
     },
     {
       "id": "packages_client_src_render_game_renderer_drawview",
@@ -4673,7 +4673,7 @@
       "file_type": "code",
       "norm_label": "drawview",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L101"
+      "source_location": "L109"
     },
     {
       "id": "packages_client_src_render_game_renderer_frame",
@@ -4686,7 +4686,7 @@
       "file_type": "code",
       "norm_label": "frame",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L96"
+      "source_location": "L104"
     },
     {
       "id": "packages_client_src_render_game_renderer_gamerenderer",
@@ -4699,7 +4699,7 @@
       "file_type": "code",
       "norm_label": "gamerenderer",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L764"
+      "source_location": "L773"
     },
     {
       "id": "packages_shared_src_sprites_schemas_spriteframe",
@@ -12723,7 +12723,7 @@
       "file_type": "code",
       "norm_label": "creategamerenderer()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L136"
+      "source_location": "L144"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_clearprops",
@@ -12735,7 +12735,7 @@
       "file_type": "code",
       "norm_label": "clearprops()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L381"
+      "source_location": "L390"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_destroyvisual",
@@ -12747,7 +12747,7 @@
       "file_type": "code",
       "norm_label": "destroyvisual()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L404"
+      "source_location": "L413"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_draweffects",
@@ -12759,7 +12759,7 @@
       "file_type": "code",
       "norm_label": "draweffects()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L493"
+      "source_location": "L502"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_drawentity",
@@ -12771,7 +12771,7 @@
       "file_type": "code",
       "norm_label": "drawentity()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L538"
+      "source_location": "L547"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_drawparticles",
@@ -12783,7 +12783,7 @@
       "file_type": "code",
       "norm_label": "drawparticles()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L334"
+      "source_location": "L343"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_drawreaches",
@@ -12795,7 +12795,7 @@
       "file_type": "code",
       "norm_label": "drawreaches()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L304"
+      "source_location": "L313"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_drop",
@@ -12807,7 +12807,7 @@
       "file_type": "code",
       "norm_label": "drop()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L417"
+      "source_location": "L426"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_enterarea",
@@ -12819,7 +12819,7 @@
       "file_type": "code",
       "norm_label": "enterarea()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L423"
+      "source_location": "L432"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_framefor",
@@ -12831,7 +12831,7 @@
       "file_type": "code",
       "norm_label": "framefor()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L511"
+      "source_location": "L520"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_groundof",
@@ -12843,7 +12843,7 @@
       "file_type": "code",
       "norm_label": "groundof()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L470"
+      "source_location": "L479"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_onmoveused",
@@ -12855,7 +12855,7 @@
       "file_type": "code",
       "norm_label": "onmoveused()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L319"
+      "source_location": "L328"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_place",
@@ -12867,7 +12867,7 @@
       "file_type": "code",
       "norm_label": "place()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L409"
+      "source_location": "L418"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_rustleat",
@@ -12879,7 +12879,7 @@
       "file_type": "code",
       "norm_label": "rustleat()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L480"
+      "source_location": "L489"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_showreach",
@@ -12891,7 +12891,7 @@
       "file_type": "code",
       "norm_label": "showreach()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L291"
+      "source_location": "L300"
     },
     {
       "id": "packages_client_src_render_game_renderer_creategamerenderer_travelend",
@@ -12903,7 +12903,7 @@
       "file_type": "code",
       "norm_label": "travelend()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L275"
+      "source_location": "L284"
     },
     {
       "id": "packages_client_src_render_game_renderer_markerquad",
@@ -12915,7 +12915,7 @@
       "file_type": "code",
       "norm_label": "markerquad()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L132"
+      "source_location": "L140"
     },
     {
       "id": "packages_client_src_render_game_renderer_setquad",
@@ -12927,7 +12927,7 @@
       "file_type": "code",
       "norm_label": "setquad()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L120"
+      "source_location": "L128"
     },
     {
       "id": "packages_client_src_render_map_scene_groundat",
@@ -14607,7 +14607,7 @@
       "file_type": "code",
       "norm_label": "loadvisual()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L396"
+      "source_location": "L405"
     },
     {
       "id": "packages_client_src_render_map_assets_createclientworld",
@@ -24039,7 +24039,7 @@
       "file_type": "code",
       "norm_label": "loadset()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L206"
+      "source_location": "L215"
     },
     {
       "id": "packages_client_src_render_game_renderer_pixeltexture",
@@ -24051,7 +24051,7 @@
       "file_type": "code",
       "norm_label": "pixeltexture()",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L108"
+      "source_location": "L116"
     },
     {
       "id": "packages_client_src_render_map_assets_spriteurl",
@@ -71117,7 +71117,7 @@
       "file_type": "code",
       "norm_label": "facing",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L73"
+      "source_location": "L81"
     },
     {
       "id": "packages_client_src_render_game_renderer_roof_from",
@@ -71128,7 +71128,7 @@
       "file_type": "code",
       "norm_label": "roof_from",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L66"
+      "source_location": "L67"
     },
     {
       "id": "packages_client_src_render_game_renderer_shadow_quality",
@@ -71139,7 +71139,7 @@
       "file_type": "code",
       "norm_label": "shadow_quality",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L71"
+      "source_location": "L79"
     },
     {
       "id": "packages_client_src_render_game_renderer_sun_from",
@@ -71150,7 +71150,7 @@
       "file_type": "code",
       "norm_label": "sun_from",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L65"
+      "source_location": "L66"
     },
     {
       "id": "packages_shared_src_ai_index",
@@ -119331,7 +119331,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L174",
+      "source_location": "L183",
       "weight": 1.0
     },
     {
@@ -119343,7 +119343,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L207",
+      "source_location": "L216",
       "weight": 1.0
     },
     {
@@ -119355,7 +119355,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L208",
+      "source_location": "L217",
       "weight": 1.0
     },
     {
@@ -119367,7 +119367,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L211",
+      "source_location": "L220",
       "weight": 1.0
     },
     {
@@ -119379,7 +119379,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L254",
+      "source_location": "L263",
       "weight": 1.0
     },
     {
@@ -119391,7 +119391,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L257",
+      "source_location": "L266",
       "weight": 1.0
     },
     {
@@ -119403,7 +119403,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L397",
+      "source_location": "L406",
       "weight": 1.0
     },
     {
@@ -119415,7 +119415,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L401",
+      "source_location": "L410",
       "weight": 1.0
     },
     {
@@ -119427,7 +119427,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L472",
+      "source_location": "L481",
       "weight": 1.0
     },
     {
@@ -119439,7 +119439,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L557",
+      "source_location": "L566",
       "weight": 1.0
     },
     {
@@ -119451,7 +119451,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L612",
+      "source_location": "L621",
       "weight": 1.0
     },
     {
@@ -119463,7 +119463,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L657",
+      "source_location": "L666",
       "weight": 1.0
     },
     {
@@ -119475,7 +119475,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L658",
+      "source_location": "L667",
       "weight": 1.0
     },
     {
@@ -119487,7 +119487,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L672",
+      "source_location": "L681",
       "weight": 1.0
     },
     {
@@ -119499,7 +119499,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L675",
+      "source_location": "L684",
       "weight": 1.0
     },
     {
@@ -119511,7 +119511,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L717",
+      "source_location": "L726",
       "weight": 1.0
     },
     {
@@ -119523,7 +119523,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L505",
+      "source_location": "L514",
       "weight": 1.0
     },
     {
@@ -119535,7 +119535,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L556",
+      "source_location": "L565",
       "weight": 1.0
     },
     {
@@ -119547,7 +119547,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L557",
+      "source_location": "L566",
       "weight": 1.0
     },
     {
@@ -119559,7 +119559,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L560",
+      "source_location": "L569",
       "weight": 1.0
     },
     {
@@ -119571,7 +119571,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L560",
+      "source_location": "L569",
       "weight": 1.0
     },
     {
@@ -119583,7 +119583,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L564",
+      "source_location": "L573",
       "weight": 1.0
     },
     {
@@ -119595,7 +119595,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L574",
+      "source_location": "L583",
       "weight": 1.0
     },
     {
@@ -119607,7 +119607,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L340",
+      "source_location": "L349",
       "weight": 1.0
     },
     {
@@ -119619,7 +119619,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L419",
+      "source_location": "L428",
       "weight": 1.0
     },
     {
@@ -119631,7 +119631,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L451",
+      "source_location": "L460",
       "weight": 1.0
     },
     {
@@ -119643,7 +119643,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L454",
+      "source_location": "L463",
       "weight": 1.0
     },
     {
@@ -119655,7 +119655,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L457",
+      "source_location": "L466",
       "weight": 1.0
     },
     {
@@ -119667,7 +119667,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L460",
+      "source_location": "L469",
       "weight": 1.0
     },
     {
@@ -119679,7 +119679,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L472",
+      "source_location": "L481",
       "weight": 1.0
     },
     {
@@ -119691,7 +119691,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L207",
+      "source_location": "L216",
       "weight": 1.0
     },
     {
@@ -119703,7 +119703,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L208",
+      "source_location": "L217",
       "weight": 1.0
     },
     {
@@ -119715,7 +119715,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L211",
+      "source_location": "L220",
       "weight": 1.0
     },
     {
@@ -119727,7 +119727,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L212",
+      "source_location": "L221",
       "weight": 1.0
     },
     {
@@ -119739,7 +119739,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L397",
+      "source_location": "L406",
       "weight": 1.0
     },
     {
@@ -119751,7 +119751,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L401",
+      "source_location": "L410",
       "weight": 1.0
     },
     {
@@ -119763,7 +119763,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L320",
+      "source_location": "L329",
       "weight": 1.0
     },
     {
@@ -119775,7 +119775,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L330",
+      "source_location": "L339",
       "weight": 1.0
     },
     {
@@ -119787,7 +119787,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L299",
+      "source_location": "L308",
       "weight": 1.0
     },
     {
@@ -119799,7 +119799,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L283",
+      "source_location": "L292",
       "weight": 1.0
     },
     {
@@ -153327,7 +153327,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L206",
+      "source_location": "L215",
       "weight": 1.0
     },
     {
@@ -153339,7 +153339,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L470",
+      "source_location": "L479",
       "weight": 1.0
     },
     {
@@ -161959,7 +161959,7 @@
       "confidence_score": 1.0,
       "context": "field",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L102",
+      "source_location": "L110",
       "weight": 1.0
     },
     {
@@ -161971,7 +161971,7 @@
       "confidence_score": 1.0,
       "context": "field",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L97",
+      "source_location": "L105",
       "weight": 1.0
     },
     {
@@ -161983,7 +161983,7 @@
       "confidence_score": 1.0,
       "context": "field",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L76",
+      "source_location": "L84",
       "weight": 1.0
     },
     {
@@ -161995,7 +161995,7 @@
       "confidence_score": 1.0,
       "context": "field",
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L77",
+      "source_location": "L85",
       "weight": 1.0
     },
     {
@@ -294606,13 +294606,24 @@
     },
     {
       "source": "packages_client_src_render_game_renderer",
+      "target": "packages_client_src_render_game_renderer_frame",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/client/src/render/game-renderer.ts",
+      "source_location": "L104",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_client_src_render_game_renderer",
       "target": "packages_client_src_render_game_renderer_drawview",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L101",
+      "source_location": "L109",
       "weight": 1.0
     },
     {
@@ -294623,7 +294634,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L108",
+      "source_location": "L116",
       "weight": 1.0
     },
     {
@@ -294634,7 +294645,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L120",
+      "source_location": "L128",
       "weight": 1.0
     },
     {
@@ -294645,7 +294656,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L132",
+      "source_location": "L140",
       "weight": 1.0
     },
     {
@@ -294656,7 +294667,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L136",
+      "source_location": "L144",
       "weight": 1.0
     },
     {
@@ -294689,7 +294700,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L65",
+      "source_location": "L66",
       "weight": 1.0
     },
     {
@@ -294700,40 +294711,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L66",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_client_src_render_game_renderer",
-      "target": "packages_client_src_render_game_renderer_shadow_quality",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L71",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_client_src_render_game_renderer",
-      "target": "packages_client_src_render_game_renderer_facing",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L73",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_client_src_render_game_renderer",
-      "target": "packages_client_src_render_game_renderer_mapvisual",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L75",
+      "source_location": "L67",
       "weight": 1.0
     },
     {
@@ -294744,7 +294722,40 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L764",
+      "source_location": "L773",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_client_src_render_game_renderer",
+      "target": "packages_client_src_render_game_renderer_shadow_quality",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/client/src/render/game-renderer.ts",
+      "source_location": "L79",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_client_src_render_game_renderer",
+      "target": "packages_client_src_render_game_renderer_facing",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/client/src/render/game-renderer.ts",
+      "source_location": "L81",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_client_src_render_game_renderer",
+      "target": "packages_client_src_render_game_renderer_mapvisual",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/client/src/render/game-renderer.ts",
+      "source_location": "L83",
       "weight": 1.0
     },
     {
@@ -294755,7 +294766,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L80",
+      "source_location": "L88",
       "weight": 1.0
     },
     {
@@ -294766,18 +294777,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L91",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_client_src_render_game_renderer",
-      "target": "packages_client_src_render_game_renderer_frame",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L96",
+      "source_location": "L99",
       "weight": 1.0
     },
     {
@@ -294788,7 +294788,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L275",
+      "source_location": "L284",
       "weight": 1.0
     },
     {
@@ -294799,7 +294799,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L291",
+      "source_location": "L300",
       "weight": 1.0
     },
     {
@@ -294810,7 +294810,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L304",
+      "source_location": "L313",
       "weight": 1.0
     },
     {
@@ -294821,7 +294821,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L319",
+      "source_location": "L328",
       "weight": 1.0
     },
     {
@@ -294832,7 +294832,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L334",
+      "source_location": "L343",
       "weight": 1.0
     },
     {
@@ -294843,7 +294843,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L381",
+      "source_location": "L390",
       "weight": 1.0
     },
     {
@@ -294854,7 +294854,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L396",
+      "source_location": "L405",
       "weight": 1.0
     },
     {
@@ -294865,7 +294865,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L404",
+      "source_location": "L413",
       "weight": 1.0
     },
     {
@@ -294876,7 +294876,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L409",
+      "source_location": "L418",
       "weight": 1.0
     },
     {
@@ -294887,7 +294887,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L417",
+      "source_location": "L426",
       "weight": 1.0
     },
     {
@@ -294898,7 +294898,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L423",
+      "source_location": "L432",
       "weight": 1.0
     },
     {
@@ -294909,7 +294909,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L480",
+      "source_location": "L489",
       "weight": 1.0
     },
     {
@@ -294920,7 +294920,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L493",
+      "source_location": "L502",
       "weight": 1.0
     },
     {
@@ -294931,7 +294931,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L511",
+      "source_location": "L520",
       "weight": 1.0
     },
     {
@@ -294942,7 +294942,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L538",
+      "source_location": "L547",
       "weight": 1.0
     },
     {
