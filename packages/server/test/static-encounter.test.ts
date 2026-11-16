@@ -146,4 +146,14 @@ describe("static encounters (spec 030.9)", () => {
     expect(r.flags).not.toContain(BEATEN);
     expect(r.flags).not.toContain(ENGAGING);
   });
+
+  it("a shiny WildBattle (the red Gyarados, item 032.3) spawns a shiny wild one", () => {
+    const shiny = scriptFile(100, ["L1:", ["WildBattle", { species: { species: SPECIES.onix.id }, level: 10, shiny: 1 }], ["End"]]);
+    const events = mapEvents({ npcs: [npc(0, 1, 2, 0)] });
+    const t = story(scriptData([shiny], { 60: events }), { world: fieldWorld(), timeoutTicks: 1e9, ...wildOptions(), spawn: () => ({ area: "60", x: at(1), y: at(1) }) });
+    const a = t.connect("A", undefined, { save: { party: [mon([MOVES.tackle.id])] } });
+    t.step(2);
+    t.press(a);
+    expect(wilds(t).map((w) => w.data["shiny"])).toEqual([true]);
+  });
 });

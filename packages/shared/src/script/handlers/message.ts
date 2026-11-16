@@ -19,6 +19,10 @@ export const MESSAGE: Record<string, Handler> = {
   WaitABPress: nothing,
   WaitButtonOrDpad: nothing,
   HoldMsg: nothing,
+  // Item 032.3: opens an empty box before the Red Scale (88 L35); the item message that follows draws its own.
+  OpenMsg: nothing,
+  // After the Magikarp record sign (88 L48); an empty command in the original.
+  Dummy486: nothing,
   CloseMsg: (c) => c.host.emit({ kind: "close-msg" }),
   YesNo: (c) => {
     const into = c.ptr("arg0");

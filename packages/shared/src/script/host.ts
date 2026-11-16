@@ -24,7 +24,7 @@ export type ScriptRequest =
   /** Spec 022: a trainer battle, run by the server; `partner` is the second trainer of a tag battle, 0 for none. */
   | { kind: "battle"; trainer: number; partner: number }
   /** Spec 030.9: a scripted wild battle (a static encounter), run by the server for this player alone. */
-  | { kind: "wild"; species: number; level: number }
+  | { kind: "wild"; species: number; level: number; shiny?: true }
   /** Spec 023: a choice list after the last message; the answer is the index picked, past the end to cancel. */
   | { kind: "menu"; items: string[]; cancel: boolean; buffers: Record<number, TextBuffer> }
   /** Spec 023: the Pokémon storage, run by the server. */

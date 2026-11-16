@@ -231,7 +231,7 @@ export interface ScriptsOptions {
   /** Starts a scripted trainer battle (spec 022); false when there is none to start. The script waits for battleEnded. */
   battle?: ((playerId: number, trainer: number, partner: number) => boolean) | undefined;
   /** Spec 030.9: a static encounter, a wild Pokémon at (x, y) of `area` for this player to fight; false when none could appear. The script waits for wildBattleEnded. */
-  wildBattle?: ((playerId: number, species: number, level: number, at: { area: string; x: number; y: number }) => boolean) | undefined;
+  wildBattle?: ((playerId: number, species: number, level: number, at: { area: string; x: number; y: number }, shiny?: boolean) => boolean) | undefined;
   /** Item 031.2: roamer `id` starts roaming for this player (CreateRoamer). */
   createRoamer?: ((playerId: number, id: number) => void) | undefined;
   /** Opens a Poké Mart (spec 023); false when there is none. The script waits for serviceClosed. */
@@ -885,7 +885,7 @@ export function createScripts(options: ScriptsOptions) {
           const me = world.get(s.who.entityId);
           const talked = s.talkedTo === undefined ? undefined : world.get(s.talkedTo);
           const at = talked ?? (me && { area: me.area, x: me.x + STEP[me.facing][0] * MAP_TILE_PX, y: me.y + STEP[me.facing][1] * MAP_TILE_PX });
-          if (!at || !options.wildBattle?.(s.who.playerId, state.request.species, state.request.level, { area: at.area, x: at.x, y: at.y })) {
+          if (!at || !options.wildBattle?.(s.who.playerId, state.request.species, state.request.level, { area: at.area, x: at.x, y: at.y }, state.request.shiny)) {
             options.log(`Ended a script of player ${s.who.playerId}: wild battle ${state.request.species} could not start`);
             break;
           }

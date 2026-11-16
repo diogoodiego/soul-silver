@@ -447,10 +447,10 @@ export function createSession(options: SessionOptions): Session {
           const p = players.get(playerId);
           if (p) createRoamer(p.progress.roamers, id, rng);
         },
-        wildBattle: (playerId, species, level, at): boolean => {
+        wildBattle: (playerId, species, level, at, shiny): boolean => {
           if (!wilds || !options.wild) return false;
           try {
-            statics.set(wilds.place(at.area, at.x, at.y, { species, level, moves: wildMoves(options.wild.levelUp(species), level) }, tick), playerId);
+            statics.set(wilds.place(at.area, at.x, at.y, { species, level, moves: wildMoves(options.wild.levelUp(species), level) }, tick, shiny), playerId);
             return true;
           } catch (error) {
             options.log(`Static encounter ${species} on map ${at.area} not spawned: ${(error as Error).message}`);

@@ -451,6 +451,11 @@ describe("static encounters (spec 030.9, the Sudowoodo of Route 36)", () => {
     expect(host.vars.get(0x4002)).toBe(1);
   });
 
+  it("WildBattle with shiny 1 asks for a shiny one (the Lake of Rage's red Gyarados, item 032.3)", () => {
+    const { state } = start([["WildBattle", { species: { species: 130 }, level: 30, shiny: 1 }], ["End"]], fakeHost());
+    expect(state).toEqual({ kind: "blocked", request: { kind: "wild", species: 130, level: 30, shiny: true } });
+  });
+
   it.each([
     [1, 1],
     [4, 1],

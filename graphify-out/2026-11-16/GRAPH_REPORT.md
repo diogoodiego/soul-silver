@@ -1,7 +1,7 @@
 # Graph Report - soul-silver  (2026-11-16)
 
 ## Corpus Check
-- 1258 files · ~808,330 words
+- 1258 files · ~808,507 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 5, .graphify-bak 1, .css 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `89354447`
+- Built from commit: `e3f480f5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

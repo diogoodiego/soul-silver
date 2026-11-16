@@ -79,6 +79,8 @@ export const CUTSCENE: Record<string, Handler> = {
   // Item 031.7: always arg 0, after a heal, a fade or a party menu and before the player or follower moves (the Cianwood
   // Tentacool's naming, Pokémon Centers); a follower reset the server has no state for.
   ScrCmd_815: nothing,
+  // Item 032.3: Lance (arg0) flying off on his Dragonite (arg1) at the Lake of Rage (88 L42); both hide right after, not drawn.
+  ScrCmd_775: nothing,
   // No follower-specific event ever triggers: the result variable reads 0.
   FollowerPokeIsEventTrigger: (c) => {
     const into = c.raw("arg2");

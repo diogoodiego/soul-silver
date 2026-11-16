@@ -1567,9 +1567,69 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     if (!p.talkTo(138, 0)) throw new Error("a Jasmine não está no ginásio");
     checks.push(p.battle("luta Jasmine (ginásio de Olivine)", [33], money, () => p.talkTo(138, 0)));
   },
+  // Item 032.3. Mahogany's north door (524, 165) into its gate (map 142) and through onto Route 43 (map 45); the Rocket gate's
+  // south door (537, 143) into map 245, where its frame (0x410F = 0, 256:1) takes 1000, or all the player has.
+  59: (p) => {
+    keep(p, "antes-mahogany");
+    p.warp(87, 524, 166);
+    p.walk("north", 1);
+    if (p.fresh().area !== "142") throw new Error(`a porta norte de Mahogany não levou ao portão 142 (está ${p.fresh().area})`);
+    route(p, 5, 3);
+    p.walk("north", 1);
+    if (p.fresh().area !== "45") throw new Error(`o portão 142 não levou à Rota 43 (está ${p.fresh().area})`);
+    p.warp(45, 537, 144);
+    const money = p.fresh().money;
+    p.walk("north", 1);
+    if (p.fresh().area !== "245") throw new Error(`a porta sul do portão dos Rockets não levou ao mapa 245 (está ${p.fresh().area})`);
+    const paid = money - p.fresh().money;
+    const name = "pedágio dos Rockets no portão da Rota 43";
+    checks.push(paid === Math.min(1000, money) ? { name: `${name}: ${paid} tirados ao entrar` } : { name, failed: `tirou ${paid} de ${money}` });
+  },
+  // The lake's south shore (517, 76), surfing to the red Gyarados (person 3, 938:1, wandering a tile around (525, 71)); its
+  // WildBattle (shiny 1) is fought from the water, where only a flyer or swimmer goes out: the Pidgey, boosted with the party
+  // before this milestone. Knocked out, the Red Scale (478, flag 201).
+  60: (p) => {
+    keep(p, "antes-gyarados");
+    p.warp(88, 517, 76);
+    // The boost gave the party level-up moves only: the Sentret learns Surf again.
+    const surfer = p.fresh().party.findIndex((m) => m.species === 161);
+    p.send({ type: "use-item", item: 422, partyIndex: surfer });
+    p.settle();
+    p.tick("east");
+    p.send({ type: "field-mount", mode: "surf" });
+    p.settle();
+    if (p.me().data["mode"] !== "surf") throw new Error(`o Surf não começou na margem do Lake of Rage (${p.recent().join(", ")})`);
+    const o = p.data.world!("88")!.origin ?? { tx: 0, ty: 0 };
+    const red = () => p.session.world.all().find((e) => e.kind === "pokemon" && e.data["species"] === 130 && e.area === "88");
+    for (let tries = 0; tries < 6 && !red(); tries++) {
+      const g = p.session.world.all().find((e) => e.kind === "npc" && e.area === "88" && e.data["person"] === 3);
+      if (!g) throw new Error("o Gyarados vermelho não está no lago");
+      route(p, Math.floor(g.x / 16) + o.tx, Math.floor(g.y / 16) + o.ty + 1, "north");
+      p.talk("north");
+    }
+    const foe = red();
+    if (!foe) throw new Error("o Gyarados selvagem não apareceu para a luta");
+    if (foe.data["shiny"] !== true) checks.push({ name: "Gyarados vermelho", failed: "o Gyarados do lago não é shiny" });
+    if (!p.engage()) throw new Error("a luta com o Gyarados vermelho não começou");
+    p.until(() => !p.inCombat() && !p.session.world.all().some((e) => e.kind === "pokemon" && e.data["species"] === 130 && p.session.combat?.get(e.id)?.hp), 3000);
+    if (p.inCombat()) {
+      p.tick(null, BUTTON.recall);
+      p.until(() => !p.inCombat(), 100);
+    }
+    // Knocked out, it lies there catchable for faintedSeconds; the script goes on (as won) once it is gone.
+    p.until(() => !red(), 1200);
+    p.settle();
+  },
+  // Lance (person 8, 938:3), shown by the onLoad (938:2) once the battle ended: yes to his question; he flies off (flag 484),
+  // 0x40A8 = 1 and his place in Mahogany's shop (flag 504) cleared.
+  61: (p) => {
+    keep(p, "antes-lance-lago");
+    if (!p.talkTo(88, 8)) throw new Error("o Lance não está na extração");
+    if (p.fresh().flags.includes(504)) throw new Error("o Lance não foi para a loja de Mahogany (flag 504 ligada)");
+  },
 };
 
-it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm and Mineral Badges to Jasmine beaten at Olivine", () => {
+it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm and Mineral Badges to Lance at the Lake of Rage", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;
@@ -1582,8 +1642,9 @@ it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm and Mineral B
   };
   const extra = () => ({ checks: [...checks, ...isolation], optional: optional() });
   for (const m of MILESTONES) {
-    // From the starter on (milestone 3), the boosted party.
-    if (m.n === 4) p = boosted(p);
+    // From the starter on (milestone 3), the boosted party; again before the lake's Gyarados (milestone 60), for the Pidgey
+    // caught after the first boost, the one member that may go out from the water.
+    if (m.n === 4 || m.n === 60) p = boosted(p);
     const step = STEPS[m.n];
     const check = step ? (step(p), p.check(m)) : "passos do marco não escritos";
     const apart = p.isolation();

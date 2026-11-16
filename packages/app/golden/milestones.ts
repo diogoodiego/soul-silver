@@ -198,4 +198,10 @@ export const MILESTONES: Milestone[] = [
   { n: 57, name: "Remédio entregue à Jasmine no farol", checks: { map: 225, flags: [471, 2410], vars: { 0x40a5: 2, 0x410e: 1 } } },
   // 913:0, Jasmine (person 0 of map 138, trainer 33): the Mineral Badge (badge 5), then TM23 (item 350, flag 194).
   { n: 58, name: "Jasmine vencida e Insígnia Mineral", checks: { badges: 6, flags: [194], items: { 350: 1 }, beaten: [33] } },
+  // Item 032.3. Map 245, Route 43's Rocket gate: its frame (256:1) charges 1000 and sets 0x410F = 1 until the next entry.
+  { n: 59, name: "Pedágio dos Rockets no portão da Rota 43", checks: { map: 245, vars: { 0x410f: 1 } } },
+  // 938:1, the red Gyarados (WildBattle 130, level 30, shiny): knocked out, the Red Scale (item 478, flag 201); hidden by 483.
+  { n: 60, name: "Gyarados vermelho e Red Scale", checks: { map: 88, flags: [201, 483], items: { 478: 1 } } },
+  // 938:3, Lance after the Gyarados: yes to him; he leaves (flag 484) for Mahogany (0x40A8 = 1).
+  { n: 61, name: "Lance no Lake of Rage", checks: { map: 88, flags: [484], vars: { 0x40a8: 1 } } },
 ];

@@ -171,7 +171,7 @@ export function createWilds(options: WildOptions) {
     all: () => [...wilds.values()],
     remove,
     /** The dev arena: a wild Pokémon of the tester's choosing, with the AI, as a spawn would be; throws on a bad spec. */
-    place: (area: string, x: number, y: number, spec: { species: number; level: number; moves: number[] }, tick: number) => add(area, x, y, spec, false, tick),
+    place: (area: string, x: number, y: number, spec: { species: number; level: number; moves: number[] }, tick: number, shiny = false) => add(area, x, y, spec, shiny, tick),
     /** Item 031.2: a roamer in the map's grass, out of view if the map is wide enough; undefined without grass. Throws on a bad spec. */
     placeInGrass(area: string, spec: { species: number; level: number; moves: number[] }, tick: number): number | undefined {
       // Its own grass, whether or not the map has a table: a roamer is not one of its encounters.
