@@ -193,4 +193,9 @@ export const MILESTONES: Milestone[] = [
   // Out of the gym, Chuck's wife (875:6, 0x4116 = 1): HM02 (item 421, flag 187). The pharmacy (map 233, 881:0): with
   // Jasmine's request (0x40A5 = 1) the SecretPotion (item 464, flag 185).
   { n: 56, name: "Remédio da farmácia de Cianwood", checks: { map: 233, items: { 464: 1, 421: 1 }, flags: [185, 187] } },
+  // Item 032.1. 66:0 with the SecretPotion: TakeItem 464, Jasmine leaves the lighthouse (471) for the gym (473 cleared);
+  // 0x40A5 = 2, 0x410E = 1.
+  { n: 57, name: "Remédio entregue à Jasmine no farol", checks: { map: 225, flags: [471, 2410], vars: { 0x40a5: 2, 0x410e: 1 } } },
+  // 913:0, Jasmine (person 0 of map 138, trainer 33): the Mineral Badge (badge 5), then TM23 (item 350, flag 194).
+  { n: 58, name: "Jasmine vencida e Insígnia Mineral", checks: { badges: 6, flags: [194], items: { 350: 1 }, beaten: [33] } },
 ];

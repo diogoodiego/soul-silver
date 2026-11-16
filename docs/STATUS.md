@@ -4,7 +4,7 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 032.1 Remédio do Amphy e Jasmine**
+**Próximo item: 032.2 Route 42, Mt. Mortar e Mahogany**
 
 Versões atuais: protocolo 32, save 18.
 
@@ -58,6 +58,8 @@ Itens dados como concluídos com algo ainda em aberto. Resolva quando o item atu
 assunto, ou quando o desenvolvedor pedir.
 
 - 024: jogada humana do `walkthrough.md` sem comandos de desenvolvimento (manual).
+- 032.1: o golden entra direto ao lado da Jasmine; os gatilhos do ginásio de Olivine (z = 23 e 15, 0x410E 1→2→3) não são exercitados.
+- 032.1: ligações roteirizadas do Baoba além do índice 0 (desafios da Safari Zone) faltam em `scripted-calls.json`.
 - 025: captura `04-fishing-bite.png` e roteiro manual do tempo de reação na pesca.
 - 027: seletor rápido com gamepad (roteiro manual; impedir o Pokémon de andar com o D-pad).
 - 027: item escondido 8001 no tile (572,390), fora da grade dos mapas 33 e 34; sonda do Dowsing.

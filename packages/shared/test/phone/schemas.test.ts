@@ -56,6 +56,10 @@ describe("scripted calls", () => {
     expect(file().value.calls.find((c) => c.caller === 1)?.scripts[0]).toBe(2);
   });
 
+  it("has Baoba's call once Amphy is healed (item 032.1): Olivine's frame (911:3) rings contact 24, index 0, the Safari Zone opening (141)", () => {
+    expect(file().value.calls.find((c) => c.caller === 24)?.scripts[0]).toBe(141);
+  });
+
   it("rejects a caller listed twice", () => {
     const raw = file();
     raw.value.calls.push({ caller: 1, scripts: [2] });

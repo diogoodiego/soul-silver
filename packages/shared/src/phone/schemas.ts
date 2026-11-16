@@ -93,7 +93,7 @@ export type PhoneScript = z.infer<typeof script>;
 
 /**
  * The calls scripts place (SetPhoneCall with isScriptedCall 2), hand-written: by caller, the PHONE_SCRIPT of each
- * index (phone_scripts_prof_elm.c sPhoneCallData_ProfElm_MapScripts; phone_scripts_prof_oak.c, always 082; Mom's is 0, PHONE_SCRIPT_NONE: her savings flow, phone_scripts_mother.c). Ids only.
+ * index (phone_scripts_prof_elm.c sPhoneCallData_ProfElm_MapScripts; phone_scripts_prof_oak.c, always 082; Baoba (24) index 0 is 141, the Safari Zone opening, item 032.1; Mom's is 0, PHONE_SCRIPT_NONE: her savings flow, phone_scripts_mother.c). Ids only.
  */
 export const scriptedCalls = z.strictObject({
   calls: z.array(z.strictObject({ caller: int(0, PHONE_CONTACT_MAX), scripts: z.array(int(0, 0xffff)).min(1) })).refine((l) => new Set(l.map((c) => c.caller)).size === l.length, "contato repetido"),

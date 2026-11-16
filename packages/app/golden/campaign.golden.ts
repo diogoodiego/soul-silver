@@ -1346,7 +1346,6 @@ const STEPS: Record<number, (p: Pilot) => void> = {
   40: (p) => {
     keep(p, "antes-sudowoodo");
     p.warp(40, 415, 245);
-    p.answers.push(0);
     p.talk("south");
     p.answers.length = 0;
     if (!p.engage()) throw new Error("o Sudowoodo selvagem não apareceu para a luta");
@@ -1551,9 +1550,26 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     if (p.fresh().area !== "233") throw new Error(`a porta da farmácia não levou ao mapa 233 (está ${p.fresh().area})`);
     if (!p.talkTo(233, 0)) throw new Error("o farmacêutico não está na extração");
   },
+  // Item 032.1. Back at the lighthouse's top (map 225), Jasmine (person 1, 66:0) with the SecretPotion (flag 185): yes to her
+  // question (the default first answer) hands it over, Amphy is healed and she leaves for the gym.
+  57: (p) => {
+    keep(p, "antes-remedio");
+    if (!p.talkTo(225, 1)) throw new Error("a Jasmine não está na extração");
+  },
+  // Olivine's gym door (269, 238) into map 138; Jasmine (person 0, 913:0, trainer 33), shown once she left the lighthouse.
+  58: (p) => {
+    ready(p, 33);
+    keep(p, "antes-jasmine-ginasio");
+    p.warp(77, 269, 239);
+    p.walk("north", 1);
+    if (p.fresh().area !== "138") throw new Error(`a porta do ginásio não levou ao mapa 138 (está ${p.fresh().area})`);
+    const money = p.fresh().money;
+    if (!p.talkTo(138, 0)) throw new Error("a Jasmine não está no ginásio");
+    checks.push(p.battle("luta Jasmine (ginásio de Olivine)", [33], money, () => p.talkTo(138, 0)));
+  },
 };
 
-it("goes from the bedroom past the Zephyr, Hive, Plain, Fog and Storm Badges to the SecretPotion at Cianwood", () => {
+it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm and Mineral Badges to Jasmine beaten at Olivine", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;
