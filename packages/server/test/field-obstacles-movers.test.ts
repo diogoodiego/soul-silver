@@ -74,6 +74,33 @@ describe("Strength (spec 025)", () => {
   });
 });
 
+describe("ice blocks (item 032.6)", () => {
+  // The ice blocks of Mahogany's gym and the Ice Path: sprite 406 with no script; ice (0x20) below the player down to a wall.
+  const block = { ...obstacle(5, 1, 3, 10002), sprite: 406, script: null };
+  const ice = { "1,3": 0x20, "1,4": 0x20, "1,5": 0x20, "1,6": 0x20, "1,7": 0x8000 };
+  const scene = (raw: Record<string, number>) => {
+    const t = fieldStory([block as never], raw, { spawn: () => ({ area: "60", x: at(1), y: at(2) }) });
+    const a = t.connect("A", undefined, { save: { party: [mon([STRENGTH])] } });
+    t.step(2);
+    return { t, a };
+  };
+
+  it("walking into one pushes it without Strength, and it slides on over the ice", () => {
+    const { t, a } = scene(ice);
+    t.walk(a, { x: 0, y: 1 }, 10);
+    t.step(30);
+    expect(personTile(t, a, 5)).toEqual({ x: 1, y: 6 });
+    // The player slides after it, to the tile before it.
+    expect(tileOf(t, a)).toEqual({ x: 1, y: 5 });
+  });
+
+  it("does not move into a wall", () => {
+    const { t, a } = scene({ ...ice, "1,4": 0x8000 });
+    t.walk(a, { x: 0, y: 1 }, 10);
+    expect(personTile(t, a, 5)).toEqual({ x: 1, y: 3 });
+  });
+});
+
 describe("Rock Climb (spec 025)", () => {
   // A wall two tiles high below the player: the rock-climb behavior without the blocked flag, as in the ROM.
   const wall = { "1,2": 0x004b, "1,3": 0x004b };

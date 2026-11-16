@@ -2688,9 +2688,9 @@
     "semantic_hash": "c805963c795e484de3ff4b946b3c948f"
   },
   "packages/shared/src/game/movement.ts": {
-    "mtime": 1794796950.9656358,
-    "seen": 1794797619.3035333,
-    "ast_hash": "ae5765837dc73c3738fb9c7ff4347c2d",
+    "mtime": 1794810010.2532845,
+    "seen": 1794810177.0256128,
+    "ast_hash": "4a2f68e0aae962bb80230cb9b7c5eee5",
     "semantic_hash": ""
   },
   "packages/shared/src/game/protocol.ts": {
@@ -2772,9 +2772,9 @@
     "semantic_hash": "5c5531f1b7e8f053ee070a888371c3fb"
   },
   "packages/shared/src/maps/collision.ts": {
-    "mtime": 1793772302.215486,
-    "seen": 1793777264.5866158,
-    "ast_hash": "31af1d198858bf37e5cfe54b768ca201",
+    "mtime": 1794810007.7121494,
+    "seen": 1794810177.0256395,
+    "ast_hash": "245c1eb98b273e59e8c0d9bfa523047d",
     "semantic_hash": ""
   },
   "packages/shared/src/maps/constants.ts": {
@@ -6090,15 +6090,15 @@
     "semantic_hash": ""
   },
   "packages/app/golden/campaign.golden.ts": {
-    "mtime": 1794809416.269869,
-    "seen": 1794809455.4869673,
-    "ast_hash": "fdc7da74a9232d1d120d5ebb38aeebf7",
+    "mtime": 1794810124.4973352,
+    "seen": 1794810177.0247893,
+    "ast_hash": "777577ae32c539f15b59af87d41b1b10",
     "semantic_hash": ""
   },
   "packages/app/golden/milestones.ts": {
-    "mtime": 1794808496.0239134,
-    "seen": 1794809017.0157251,
-    "ast_hash": "e537ba98d6eed86bae0d784d6476b276",
+    "mtime": 1794810121.2272935,
+    "seen": 1794810177.0248013,
+    "ast_hash": "312c3a3f047e381cade0b412075d1755",
     "semantic_hash": ""
   },
   "packages/app/golden/report.ts": {
@@ -7434,9 +7434,9 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1794809054.671146,
-    "seen": 1794809455.4881153,
-    "ast_hash": "27eb65252b5fc858910163a8e36f4963",
+    "mtime": 1794809794.225996,
+    "seen": 1794810177.0260465,
+    "ast_hash": "98474e5ba82985429003cd483255bf85",
     "semantic_hash": ""
   },
   "docs/roadmap/marco-4.md": {
@@ -7617,6 +7617,12 @@
     "mtime": 1794809355.37657,
     "seen": 1794809455.4876518,
     "ast_hash": "a9b88713917b73fd9cd392f4b229fee1",
+    "semantic_hash": ""
+  },
+  "packages/shared/test/game/movement-ice.test.ts": {
+    "mtime": 1794810025.9822516,
+    "seen": 1794810177.025828,
+    "ast_hash": "58eff79e2ae0b77f2d50b47c9e7f631a",
     "semantic_hash": ""
   }
 }

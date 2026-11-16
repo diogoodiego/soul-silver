@@ -2,7 +2,7 @@ import type { EncounterRecord, EncounterSlot, MapEventsFile, FieldItemsFile, Fly
 import { headbuttTree, pickUser, RIDER_OFFSET_PX, rideAt, gymProps, type AzaleaGym, type AzaleaGymState, type FieldMovesRules, type GymTile } from "@soulsilver/shared/field";
 import { rollLevel, rollSlot } from "@soulsilver/shared/wild";
 import { createRng, stepMovement, tileAt, unstick, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
-import { isCounter, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
+import { isCounter, isIce, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { starterMember } from "@soulsilver/shared/progression";
 import { store } from "@soulsilver/shared/pc";
 import { canFight, hasBadgeBit, PHOTO_ALBUM_MAX, SEAL_KINDS, SEAL_MAX, type PartyMember, type Save } from "@soulsilver/shared/save";
@@ -90,6 +90,8 @@ const TILE_SCRIPTS: ReadonlyMap<number, number> = new Map([
 const FROM_WATER = new Set([0x13, 0x11]);
 /** The boulder's talk script: walking into it pushes it while Strength is on. */
 const STRENGTH_SCRIPT = 10002;
+/** The ice blocks of Mahogany's gym and the Ice Path (item 032.6): this sprite with no script; walking into one pushes it. */
+const ICE_BLOCK_SPRITE = 406;
 /** Rock Smash's move id: the companion that knows it swings at the rock itself. */
 const ROCK_SMASH = 249;
 /**
@@ -1313,11 +1315,14 @@ export function createScripts(options: ScriptsOptions) {
         if (frame) start(s, frame, true);
       }
     },
-    /** Strength (spec 025): walking into a boulder pushes it a tile, for this player only, when the tile beyond is free. */
+    /**
+     * Strength (spec 025): walking into a boulder pushes it a tile, for this player only, when the tile beyond is free.
+     * An ice block (item 032.6) needs no Strength and slides on over the ice like the player.
+     */
     push(playerId: number, input: PlayerInput | undefined): void {
       const s = states.get(playerId);
       const move = input?.move;
-      if (!s?.strength || s.runner || !move || (move.x === 0 && move.y === 0)) return;
+      if (!s || s.runner || !move || (move.x === 0 && move.y === 0)) return;
       const me = world.get(s.who.entityId)!;
       const dir: Direction = Math.abs(move.x) >= Math.abs(move.y) ? (move.x > 0 ? "east" : "west") : move.y > 0 ? "south" : "north";
       const [dx, dy] = STEP[dir];
@@ -1329,10 +1334,18 @@ export function createScripts(options: ScriptsOptions) {
       const at = (x: number, y: number) => seen.find((n) => Math.floor(n.x / MAP_TILE_PX) === x && Math.floor(n.y / MAP_TILE_PX) === y);
       const boulder = at(tx, ty);
       const person = boulder?.data["person"];
-      if (typeof person !== "number" || eventsOf(me.area)?.npcs.find((n) => n.id === person)?.script?.id !== STRENGTH_SCRIPT) return;
-      const beyond = tileAt(lookup, me.area, me.level, center(tx + dx), center(ty + dy));
-      if (!beyond || beyond.category === "blocked" || beyond.category === "water" || beyond.category === "ledge" || at(tx + dx, ty + dy)) return;
-      s.moved.set(person, { tx: tx + dx, ty: ty + dy, facing: boulder!.facing });
+      const npc = typeof person === "number" ? eventsOf(me.area)?.npcs.find((n) => n.id === person) : undefined;
+      const iceBlock = npc?.sprite === ICE_BLOCK_SPRITE && !npc.script;
+      if (!npc || !(iceBlock || (s.strength && npc.script?.id === STRENGTH_SCRIPT))) return;
+      const cell = (x: number, y: number) => tileAt(lookup, me.area, me.level, center(x), center(y));
+      const free = (x: number, y: number) => {
+        const c = cell(x, y);
+        return !!c && c.category !== "blocked" && c.category !== "water" && c.category !== "ledge" && !at(x, y);
+      };
+      if (!free(tx + dx, ty + dy)) return;
+      let [bx, by] = [tx + dx, ty + dy];
+      if (iceBlock) while (isIce(cell(bx, by)) && free(bx + dx, by + dy)) [bx, by] = [bx + dx, by + dy];
+      s.moved.set(npc.id, { tx: bx, ty: by, facing: boulder!.facing });
     },
     /** Whether this player sees the entity: people follow the player's own flags (principle VII). */
     /** Spec 027: the hidden items still there for this player on their map, at their tiles' centers (the Dowsing MCHN). */

@@ -1,5 +1,5 @@
 import type { Direction } from "../maps/areas.ts";
-import { isRockClimb, type CollisionCell } from "../maps/collision.ts";
+import { isIce, isRockClimb, type CollisionCell } from "../maps/collision.ts";
 import { MAP_TILE_PX } from "../maps/constants.ts";
 import type { Entity, EntityData } from "./entity.ts";
 import { insideMap, neighborAt, tileAt, type WorldLookup } from "./world-map.ts";
@@ -196,7 +196,29 @@ export function unstick(e: Entity, world: WorldLookup): Entity {
   return e;
 }
 
-/** One tick of movement. Input is ignored while hopping or warping. An unknown map is open ground. */
+/** shortcut: running speed; the original's slide speed is not read, read it from the field code if it shows. */
+export const SLIDE_SPEED_PX = RUN_SPEED_PX;
+
+/**
+ * One tick of sliding on ice along the facing direction, on the tile's lane; stopped (by an obstacle or off the ice) the feet
+ * rest at the center of the tile reached. Undefined when the feet do not get anywhere: the input moves them again.
+ */
+function slide(world: WorldLookup, e: Entity, occupied?: Occupied): Entity | undefined {
+  const [sx, sy] = STEP[e.facing];
+  const axis = sx !== 0 ? "x" : "y";
+  const x0 = sx !== 0 ? e.x : center(tileOf(e.x));
+  const y0 = sy !== 0 ? e.y : center(tileOf(e.y));
+  const along = slideAxis(world, e, x0, y0, (sx || sy) * SLIDE_SPEED_PX, axis, occupied);
+  let { x, y } = along;
+  if (along.hit.length > 0 || !isIce(cellAt(world, e, x, y))) {
+    if (axis === "x") x = center(tileOf(x));
+    else y = center(tileOf(y));
+  }
+  if (x === x0 && y === y0) return undefined;
+  return afterMove(world, { ...e, x, y }, e.x, e.y, along.hit);
+}
+
+/** One tick of movement. Input is ignored while hopping, warping or sliding on ice. An unknown map is open ground. */
 export function stepMovement(entity: Entity, input: MoveInput | null, world: WorldLookup, occupied?: Occupied): Entity {
   const warping = counter(entity, "warping");
   if (warping > 0) {
@@ -209,6 +231,13 @@ export function stepMovement(entity: Entity, input: MoveInput | null, world: Wor
     const [sx, sy] = STEP[entity.facing];
     const moved = { ...entity, x: entity.x + sx * HOP_PX, y: entity.y + sy * HOP_PX, data: withCounter(entity.data, "hop", hop - 1) };
     return afterMove(world, moved, entity.x, entity.y);
+  }
+
+  // Ice (item 032.6): whatever the input, the feet slide on in the facing direction until something stops them.
+  // No input at all (a script or a trainer holding the player) holds the slide where it is.
+  if (input && isIce(cellAt(world, entity, entity.x, entity.y))) {
+    const slid = slide(world, entity, occupied);
+    if (slid) return slid;
   }
 
   // The line is in the water (spec 025): the angler stands still until it comes out.

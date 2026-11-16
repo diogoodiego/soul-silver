@@ -216,4 +216,7 @@ export const MILESTONES: Milestone[] = [
   { n: 66, name: "Portas até o gerador", checks: { map: 248, flags: [211], vars: { 0x40ac: 8, 0x40a9: 3 } } },
   // The three Electrodes of the generator (90:4–6, flags 203–205; hidden by 501–503), then Lance's HM (item 424): flag 202, 0x40AC = 10.
   { n: 67, name: "Electrodes do gerador", checks: { map: 248, flags: [202, 203, 204, 205, 501, 502, 503], vars: { 0x40ac: 10 }, items: { 424: 1 } } },
+  // Item 032.6. Map 140, the last room of Mahogany's gym, over the ice: 932:1, Pryce (person 0, trainer 32): the Glacier Badge
+  // (badge 6), then TM16 (item 334, flag 210).
+  { n: 68, name: "Pryce vencido e Insígnia Glacier", checks: { badges: 7, flags: [210], items: { 334: 1 }, beaten: [32] } },
 ];

@@ -33,6 +33,8 @@ const PC_BEHAVIOR = 0x83;
 export const isPc = (cell: CollisionCell | undefined) => cell !== undefined && (cell.raw & 0xff) === PC_BEHAVIOR;
 /** A rock-climb wall (spec 025): a wall to walking, crossed only by Rock Climb; the ROM leaves it without the blocked flag. */
 export const isRockClimb = (cell: CollisionCell | undefined) => cell !== undefined && ((cell.raw & 0xff) === 0x4b || (cell.raw & 0xff) === 0x4c);
+/** Ice (item 032.6): the feet slide on over it; its rocks are ice tiles with the blocked flag (0x8020). */
+export const isIce = (cell: CollisionCell | undefined) => cell !== undefined && cell.category !== "blocked" && (cell.raw & 0xff) === 0x20;
 
 const BEHAVIORS: ReadonlyMap<number, Omit<CollisionCell, "raw">> = new Map([
   [0x00, { category: "free" }],

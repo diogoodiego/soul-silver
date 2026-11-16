@@ -6,7 +6,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import { BUTTON, createRng, findDuplicates, surfable, tileAt, type PcSlot, type ServerMessage } from "@soulsilver/shared/game";
-import type { Direction } from "@soulsilver/shared/maps";
+import { isIce, type Direction } from "@soulsilver/shared/maps";
 import { expForLevel, memberStats } from "@soulsilver/shared/progression";
 import { applyNewGame, badgeCount, migrate, type Save } from "@soulsilver/shared/save";
 import { SCRIPT_HANDLERS } from "@soulsilver/shared/script";
@@ -873,6 +873,74 @@ function route(p: Pilot, tx: number, tz: number, face?: Direction, taken: string
 }
 
 /**
+ * Item 032.6: to (tx, tz) of the current map over its ice, where a step onto it slides on until a rock, a person, a wall or the
+ * end of the ice stops it, and walking into an ice block (sprite 406, no script) pushes it to slide on the same way; planned
+ * again after each step, as a trainer who spots the player stops one midway. The blocks are where the steps pushed them.
+ */
+function iceRoute(p: Pilot, tx: number, tz: number): void {
+  const area = p.me().area;
+  const o = p.data.world!(area)?.origin ?? { tx: 0, ty: 0 };
+  const cell = (x: number, z: number) => tileAt(p.data.world!, area, 0, (x - o.tx) * 16 + 8, (z - o.ty) * 16 + 8);
+  const events = p.data.scripts?.events(Number(area));
+  const warps = new Set((events?.warps ?? []).map((w) => `${w.x},${w.z}`));
+  const isBlock = new Set((events?.npcs ?? []).filter((n) => n.sprite === 406 && !n.script).map((n) => n.id));
+  let blocks = (events?.npcs ?? []).filter((n) => isBlock.has(n.id)).map((n) => `${n.x},${n.z}`);
+  type Step = { dir: Direction; player: string; blocks: string[] };
+  const plan = (): Step | undefined => {
+    const people = new Set(p.session.world.all().filter((e) => e.kind === "npc" && e.area === area && !isBlock.has(e.data["person"] as number)).map((e) => `${Math.floor(e.x / 16) + o.tx},${Math.floor(e.y / 16) + o.ty}`));
+    const wall = (x: number, z: number) => people.has(`${x},${z}`) || warps.has(`${x},${z}`) || SOLID.has(cell(x, z)?.category ?? "blocked");
+    const from = p.tile();
+    const start = `${from.tx},${from.ty}`;
+    const keyOf = (player: string, bs: string[]) => `${player}|${[...bs].sort().join(";")}`;
+    const first = new Map<string, Step | null>([[keyOf(start, blocks), null]]);
+    const queue: [string, string[]][] = [[start, blocks]];
+    for (let i = 0; i < queue.length; i++) {
+      const [player, bs] = queue[i]!;
+      const [x, z] = player.split(",").map(Number) as [number, number];
+      const open = (a: number, b: number, others: string[]) => !wall(a, b) && !others.includes(`${a},${b}`);
+      for (const dir of Object.keys(VECTORS) as Direction[]) {
+        const { x: dx, y: dz } = VECTORS[dir];
+        let [nx, nz] = [x + dx, z + dz];
+        let after = bs;
+        const pushed = bs.indexOf(`${nx},${nz}`);
+        if (pushed >= 0) {
+          // The block slides off, then the player, still pushing, steps into its tile.
+          let [bx, bz] = [nx + dx, nz + dz];
+          if (!open(bx, bz, bs)) continue;
+          while (isIce(cell(bx, bz)) && open(bx + dx, bz + dz, bs)) [bx, bz] = [bx + dx, bz + dz];
+          after = bs.map((b, k) => (k === pushed ? `${bx},${bz}` : b));
+        } else if (!open(nx, nz, bs)) continue;
+        while (isIce(cell(nx, nz)) && open(nx + dx, nz + dz, after)) [nx, nz] = [nx + dx, nz + dz];
+        const k = keyOf(`${nx},${nz}`, after);
+        if (first.has(k)) continue;
+        const step = first.get(keyOf(player, bs)) ?? { dir, player: `${nx},${nz}`, blocks: after };
+        first.set(k, step);
+        if (nx === tx && nz === tz) return step;
+        queue.push([`${nx},${nz}`, after]);
+      }
+    }
+    return undefined;
+  };
+  for (let n = 0; n < 60; n++) {
+    const at = p.tile();
+    if (at.map !== area) throw new Error(`o jogador saiu do mapa ${area} para o ${at.map} a caminho de (${tx}, ${tz})`);
+    if (at.tx === tx && at.ty === tz) return;
+    const step = plan();
+    if (!step) throw new Error(`sem caminho pelo gelo de (${at.tx}, ${at.ty}) a (${tx}, ${tz}) no mapa ${area}`);
+    const { dir } = step;
+    blocks = step.blocks;
+    // Centered across the way first, as route does: off center, the player rubs the walls beside a one-tile way.
+    const across = dir === "north" || dir === "south";
+    const off = () => ((across ? p.me().x : p.me().y) % 16) - 8;
+    for (let i = 0; i < 8 && Math.abs(off()) > 2; i++) p.tick(across ? (off() > 0 ? "west" : "east") : off() > 0 ? "north" : "south");
+    // Pushed off the tile only: past it the ice carries the player, and a longer push would walk on where the slide ends.
+    for (let i = 0; i < 16 && p.tile().tx === at.tx && p.tile().ty === at.ty; i++) p.tick(dir);
+    p.settle();
+  }
+  throw new Error(`o jogador não chegou a (${tx}, ${tz}) do mapa ${area} pelo gelo; está em (${p.tile().tx}, ${p.tile().ty})`);
+}
+
+/**
  * Item 031.6: the tiles from which the current map's trainers could spot the player, whichever way they turn ("x,z", for
  * route's `taken`). The swimmers are passed by: from the water the party's terrestrial lead cannot be sent out.
  */
@@ -1716,6 +1784,24 @@ const STEPS: Record<number, (p: Pilot) => void> = {
       knockOut(p, 101, "248");
     }
   },
+  // Item 032.6. Mahogany's gym door (523, 183) into its first room (map 397), then over the ice of 397, 396 and 140, each
+  // left by the door at the top, to Pryce (person 0 of map 140, 932:1, trainer 32): the Glacier Badge (badge 6), TM16
+  // (item 334, flag 210). The gym's trainers spot the player on the way.
+  68: (p) => {
+    keep(p, "antes-pryce");
+    p.warp(87, 523, 184);
+    p.walk("north", 1);
+    for (const [map, tx, tz, next] of [["397", 3, 3, "396"], ["396", 6, 3, "140"]] as const) {
+      if (p.fresh().area !== map) throw new Error(`o ginásio de Mahogany não levou ao mapa ${map} (está ${p.fresh().area})`);
+      iceRoute(p, tx, tz);
+      p.walk("north", 1);
+      if (p.fresh().area !== next) throw new Error(`a porta do mapa ${map} não levou ao ${next} (está ${p.fresh().area})`);
+    }
+    iceRoute(p, 7, 5);
+    const money = p.fresh().money;
+    p.talk("north");
+    checks.push(p.battle("Pryce (ginásio de Mahogany)", [32], money, () => p.talk("north")));
+  },
 };
 
 /** Fights the wild `species` a script just placed on map `area` with the bot until it is knocked out and gone, then settles. */
@@ -1750,7 +1836,7 @@ function multiBattle(p: Pilot, name: string, foes: number[], moneyBefore: number
   return { name: `${name}: treinadores ${foes.join(" e ")}, prêmio ${owed}` };
 }
 
-it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm and Mineral Badges through the Rocket HQ to its generator", () => {
+it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm, Mineral and Glacier Badges", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;
