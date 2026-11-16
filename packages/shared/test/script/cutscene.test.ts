@@ -52,7 +52,7 @@ describe("cutscene commands (spec 021)", () => {
   });
 
   it("an unknown movement action ends the script as missing", () => {
-    expect(run([apply(1), ["End"]], { M1: [{ action: "MoveAction_105", count: 1 }] }).state).toMatchObject({ kind: "missing", command: "ApplyMovement" });
+    expect(run([apply(1), ["End"]], { M1: [{ action: "MoveAction_999", count: 1 }] }).state).toMatchObject({ kind: "missing", command: "ApplyMovement" });
   });
 
   it("ScreenShake becomes a camera step", () => {

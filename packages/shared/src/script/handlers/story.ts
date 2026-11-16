@@ -129,4 +129,8 @@ export const STORY: Record<string, Handler> = {
   ScrCmd_810: nothing,
   // Script sounds are not played yet (WORLD's PlaySE), so there is nothing to stop.
   StopSE: nothing,
+  // Item 031.1. A beast's cry animation (always between Release and Lock, after PlayCry): looks the client does not draw.
+  ScrCmd_523: nothing,
+  // shortcut: Raikou (0) and Entei (1) do not roam yet; item 031.2 gives each player their roamers.
+  CreateRoamer: nothing,
 };

@@ -10,7 +10,26 @@ const COMPANION = 253;
 const DIR = /(North|South|West|East)$/;
 const JUMP_TILES: Record<string, number> = { Near: 1, Far: 2, Farther: 3 };
 /** Actions that only change looks the client does not draw yet. */
-const COSMETIC = new Set(["LockDir", "UnlockDir", "PauseAnimation", "ResumeAnimation", "EmoteExclamationMark", "EmoteQuestionMark", "EmoteExclamation2", "NurseJoyBow", "RevealTrainer", "PlayerGive", "PlayerReceive"]);
+const COSMETIC = new Set([
+  "LockDir",
+  "UnlockDir",
+  "PauseAnimation",
+  "ResumeAnimation",
+  "EmoteExclamationMark",
+  "EmoteQuestionMark",
+  "EmoteExclamation2",
+  "NurseJoyBow",
+  "RevealTrainer",
+  "PlayerGive",
+  "PlayerReceive",
+  // shortcut: the Burned Tower beasts' leaps (24 M1–M6) stay in place, and each beast hides after; draw the arcs when the client animates jumps of their own shape.
+  "MoveAction_105",
+  "MoveAction_106",
+  "MoveAction_107",
+  "MoveAction_108",
+  "MoveAction_109",
+  "MoveAction_110",
+]);
 
 const actorOf = (id: number): CutsceneActor => (id === PLAYER ? "player" : id === COMPANION ? "companion" : { person: id });
 

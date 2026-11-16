@@ -1299,9 +1299,48 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     route(p, 446, 246);
     p.walk("east", 1);
   },
+  // Spec 031.1. Route 37's north end (391, 193), out of its trainers' sight, then north into Ecruteak.
+  42: (p) => {
+    keep(p, "antes-ecruteak");
+    p.warp(41, 391, 193);
+    p.walk("north", 2);
+  },
+  // Ecruteak's north door (376, 149) into the Burned Tower 1F (map 7, at (15, 26)), then onto Eusine's trigger at (19, 23).
+  43: (p) => {
+    keep(p, "antes-burned-tower");
+    p.warp(78, 376, 150);
+    p.walk("north", 1);
+    if (p.fresh().area !== "7") throw new Error(`a porta norte de Ecruteak não levou à Burned Tower (está ${p.fresh().area})`);
+    route(p, 19, 23);
+  },
+  // Onto the rival's trigger at (22, 19): he walks down (23:3) and fights.
+  44: (p) => {
+    const rival = [267, 270, 263];
+    ready(p, Math.max(...rival));
+    keep(p, "antes-rival-burned-tower");
+    const money = p.fresh().money;
+    p.warp(7, 22, 20);
+    p.walk("north", 1);
+    checks.push(
+      p.battle("luta do rival (Burned Tower)", rival, money, () => {
+        p.warp(7, 22, 20);
+        p.walk("north", 1);
+      }),
+    );
+  },
+  // North down the hole at (22, 16) into B1F (map 217, at (23, 16)), then west onto the trigger at (20, 16).
+  45: (p) => {
+    keep(p, "antes-caes-lendarios");
+    p.warp(7, 22, 17);
+    p.walk("north", 1);
+    if (p.fresh().area !== "217") throw new Error(`o buraco da Burned Tower não levou ao B1F (está ${p.fresh().area})`);
+    // The scene walks the player back east a step (24 M7), so the trigger is stepped on rather than routed to.
+    route(p, 21, 16);
+    p.walk("west", 1);
+  },
 };
 
-it("goes from the bedroom past the Sudowoodo on Route 36, past the Zephyr, Hive and Plain Badges", () => {
+it("goes from the bedroom through the Burned Tower, past the Zephyr, Hive and Plain Badges", () => {
   let p = pilot();
   const reached: Milestone[] = [];
   let shared = 0;

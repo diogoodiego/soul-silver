@@ -4,7 +4,7 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 031.1 Ecruteak e Burned Tower**
+**Próximo item: 031.2 Cães errantes e Suicune**
 
 Versões atuais: protocolo 30, save 16.
 
@@ -75,6 +75,8 @@ assunto, ou quando o desenvolvedor pedir.
 - 030.10: mapa 158 em `pending` (Union Room com o multiplayer; Primo/Easy Chat em bloco posterior).
 - 030.10: devolução do Kenya na Route 31 (mapa 35: KenyaCheck, MonGiveMail, ReturnLoanMon) é do bloco 024; correio não vai à caixa do PC.
 - 030.10 (`shortcut:`): trocas sem animação e sem nome/ID do treinador original; Pichu de orelha espetada sem forma; cena do Celebi não desenhada; IsBugContestantRegistered sempre 0; giveMon não guarda item.
+- 031.1 (`shortcut:`): saltos dos cães (MoveAction_105–110) sem arco no cliente; golden pula os treinadores da Route 37 por warp.
+- 031.1: mapas 86 (teatro, MakeObjectVisible/ScrCmd_374) e 80 (EcruteakGymInit) com comandos faltantes; ficam para 031.3/031.4.
 
 ## Decisões
 
@@ -89,3 +91,4 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - WildBattle (encontro fixo) é um selvagem real-time por jogador; BattleOutcome 1/2/4/5 = nocaute/blackout/captura/fuga, e o `onLoad` do mapa roda antes de o script retomar.
 - Route 36 passou para o bloco 030 em `map-blocks.json`; o Bug-Catching Contest segue fora.
 - Trocas com NPC vêm de `npc-trades.json` (a/1/1/2, estágio de eventos); o membro guarda `trade`/`mail` (save 16).
+- Comandos só visuais das cenas de lendários (ScrCmd_523, MoveAction dos saltos) não fazem nada no servidor (COSMETIC).

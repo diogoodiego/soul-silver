@@ -152,4 +152,15 @@ export const MILESTONES: Milestone[] = [
   { n: 40, name: "Sudowoodo vencido", checks: { map: 40, flags: [181, 450, 463], items: { 470: 1, 155: 3, 151: 3 } } },
   // Through the Sudowoodo's tile and east along Route 36 to its Violet gate (map 149).
   { n: 41, name: "Rota 36 livre até o portão de Violet", checks: { map: 149 } },
+  // Spec 031.1. Route 37 (map 41) north into Ecruteak City (map 78).
+  { n: 42, name: "Rota 37 até Ecruteak", checks: { map: 78 } },
+  // Ecruteak's north door (376, 149) into the Burned Tower 1F (map 7); the trigger at (19, 23) (23:0, VAR 0x40A2 = 0): Eusine
+  // walks up and talks (0x40A2 = 1).
+  { n: 43, name: "Eusine na Burned Tower", checks: { map: 7, vars: { 0x40a2: 1 } } },
+  // The trigger at (22, 19) (23:3, VAR 0x40A6 = 0): the rival by the player's starter (267 Chikorita, 270 Cyndaquil, 263
+  // Totodile), then flag 454 hides him and 0x40A6 = 1.
+  { n: 44, name: "Rival na Burned Tower", checks: { map: 7, flags: [454], vars: { 0x40a6: 1 }, beaten: [267, 270, 263] } },
+  // Down the hole at (22, 16) into B1F (map 217), the trigger at (20, 16–17) (24:0, VAR 0x40A1 = 0): the three beasts wake
+  // and flee (457–459), Eusine shows and leaves (456), Morty (460) and Eusine (455) leave 1F; 0x40A1 = 1, 0x4076 = 1, 0x4079 = 2.
+  { n: 45, name: "Despertar dos cães lendários", checks: { map: 217, flags: [455, 456, 457, 458, 459, 460], vars: { 0x40a1: 1, 0x4076: 1, 0x4079: 2 } } },
 ];
