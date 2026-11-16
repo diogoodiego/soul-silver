@@ -261,7 +261,10 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     if (!a) return;
     if (a.out) {
       const c = combat.get(a.out.entityId);
-      if (c && c.hp > 0) return ai.drive(a.out.entityId);
+      if (c && c.hp > 0) {
+        ai.drive(a.out.entityId);
+        return;
+      }
       removeNpcAlly(b);
       const next = a.team.findIndex((m) => m.hp > 0);
       if (next !== -1) a.next = { index: next, at: tick + toTicks(tuning.sendOutS) };

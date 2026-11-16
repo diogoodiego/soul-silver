@@ -1,17 +1,17 @@
 # Graph Report - soul-silver  (2026-11-16)
 
 ## Corpus Check
-- 1263 files · ~815,572 words
+- 1263 files · ~815,677 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 5, .graphify-bak 1, .css 1)
 
 ## Summary
-- 9564 nodes · 23189 edges · 387 communities (369 shown, 18 thin omitted)
-- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 1581 edges (avg confidence: 0.92)
+- 9564 nodes · 23190 edges · 387 communities (369 shown, 18 thin omitted)
+- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 1582 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e3f4da43`
+- Built from commit: `6374dfa5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -143,7 +143,7 @@
 - areaType
 - User Scenarios & Testing *(mandatory)*
 - Princípios Fundamentais
-- entity.ts
+- Arquivos
 - package.json
 - game-renderer.ts
 - src/capture.ts
@@ -274,7 +274,7 @@
 - level
 - Tasks: Servidor de jogo e protocolo
 - Research: Build, distribuição e auto-update
-- Arquivos
+- 013-realtime-combat/tasks.md
 - Tasks: Eventos, scripts, encontros e treinadores
 - Tasks: Economia, Centro Pokémon e PC
 - world-items.test.ts
@@ -472,8 +472,8 @@ Nodes (37): { question, onAnswer }, { onContinue, onBack }, { points, onFly, onB
   } (+29 more)
 
 ### Community 8 - "game-connection.ts"
-Cohesion: 0.07
-Nodes (23): createGameConnection(), receive(), GameConnection, GameConnectionOptions, GameStatus, createInterpolator(), Interpolator, Sample (+15 more)
+Cohesion: 0.05
+Nodes (36): createGameConnection(), receive(), GameConnection, GameConnectionOptions, GameStatus, createInterpolator(), Interpolator, Sample (+28 more)
 
 ### Community 9 - "003-rom-extraction-pipeline/research.md"
 Cohesion: 0.15
@@ -594,8 +594,8 @@ Cohesion: 0.05
 Nodes (58): ParseResult, AIMED, createCombat(), begin(), damageOf(), emit(), execute(), get() (+50 more)
 
 ### Community 34 - "scripts.ts"
-Cohesion: 0.04
-Nodes (20): RawZone, DebugView, FlagChange, FROM_WATER, HIDDEN_VARS, INTRO_SCRIPT, MAPTEMP_FLAGS, OPEN_ENDED (+12 more)
+Cohesion: 0.03
+Nodes (25): RawZone, DebugView, FlagChange, FROM_WATER, hex(), HIDDEN_VARS, INTRO_SCRIPT, MAPTEMP_FLAGS (+17 more)
 
 ### Community 35 - "game-data/builders.ts"
 Cohesion: 0.07
@@ -614,8 +614,8 @@ Cohesion: 0.06
 Nodes (51): AssetsCheck, CheckArgs, checkAssets(), OutputMismatch, sizeOf(), verifyOutputs(), countFiles(), digestTree() (+43 more)
 
 ### Community 39 - "breeding.ts"
-Cohesion: 0.12
-Nodes (21): breed(), daycareCompatibility(), BreedingData, compatibility, compatibilityScore(), eggCheckDue(), eggOf(), eggRoll() (+13 more)
+Cohesion: 0.14
+Nodes (17): breed(), BreedingData, eggCheckDue(), eggOf(), eggRoll(), eggSpecies(), Gender, GiftEggData (+9 more)
 
 ### Community 40 - "Pesquisa: Interpretador de scripts"
 Cohesion: 0.09
@@ -873,8 +873,8 @@ Cohesion: 0.12
 Nodes (21): variablesOf(), canonicalInt(), ESCAPE_TEXT(), MarkupError, NAMED_COMMAND_IDS, parseMarkup(), readCommand(), serializeMarkup() (+13 more)
 
 ### Community 96 - "createScripts"
-Cohesion: 0.08
-Nodes (33): Npcs, ApricornHost, createScripts(), checkFree(), companionOf(), devState(), enterMap(), finish() (+25 more)
+Cohesion: 0.09
+Nodes (32): Npcs, ApricornHost, createScripts(), checkFree(), companionOf(), daycareCompatibility(), devState(), enterMap() (+24 more)
 
 ### Community 97 - "packages_shared_src_game_index_servermessage"
 Cohesion: 0.12
@@ -996,9 +996,9 @@ Nodes (15): Assumptions, Contexto, Edge Cases, Feature Specification: Fundação
 Cohesion: 0.11
 Nodes (18): Fluxo de Desenvolvimento, Governança, I. Conteúdo fiel, mecânica livre, II. Assets nunca distribuídos, III. Conteúdo data-driven, IV. Servidor autoritativo e simulação isolada, IX. Segurança do Electron, Modelo de Confiança (+10 more)
 
-### Community 127 - "entity.ts"
-Cohesion: 0.12
-Nodes (13): isRelevant(), replicate(), diffEntity(), ENTITY_KINDS, EntityData, EntityDelta, sameData(), base (+5 more)
+### Community 127 - "Arquivos"
+Cohesion: 0.40
+Nodes (5): Effect, MoveParams, Arquivos, Contrato: dados de combate (`content/combat/`), Exemplos
 
 ### Community 128 - "package.json"
 Cohesion: 0.09
@@ -1508,9 +1508,9 @@ Nodes (20): input(), Cliente → servidor, Contract: protocolo de jogo cliente �
 Cohesion: 0.17
 Nodes (12): R10. Versão do app e validação da tag, R12. Primeira instalação e SmartScreen, R13. Teste em PC limpo, R1. Empacotamento e instalador, R2. Atualização automática, R4. Início sem atraso e instância única, R5. Publicação a partir de tag, R6. Notas de versão (+4 more)
 
-### Community 258 - "Arquivos"
-Cohesion: 0.10
-Nodes (14): Effect, MoveParams, Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Combate em tempo real, Arquivos (+6 more)
+### Community 258 - "013-realtime-combat/tasks.md"
+Cohesion: 0.13
+Nodes (9): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: Combate em tempo real, Cenários manuais (arena), Pré-requisitos, Quickstart: Combate em tempo real (+1 more)
 
 ### Community 259 - "Tasks: Eventos, scripts, encontros e treinadores"
 Cohesion: 0.13
@@ -1976,14 +1976,14 @@ Nodes (4): Conferência manual (com a ROM), Pré-requisitos, Quickstart: Áudio 
 
 ## Knowledge Gaps
 - **39 isolated node(s):** `@types/node`, `eslint`, `typescript`, `@soulsilver/extractor`, `@soulsilver/server` (+34 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 4092 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 4091 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **18 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `vitest` connect `vitest` to `duel.ts`, `save/index.ts`, `wild.ts`, `harness.ts`, `maps/index.ts`, `t`, `game-connection.ts`, `combat-loader.ts`, `sprites/schemas.ts`, `SoulSilverApi`, `companion-loader.ts`, `input.ts`, `readU16`, `progression.ts`, `main/index.ts`, `src/phone.ts`, `maps/stage.ts`, `createRegistry`, `audio/stage.test.ts`, `sprites/stage.test.ts`, `src/field.ts`, `main/discovery.ts`, `combat.ts`, `game-data/builders.ts`, `createSession`, `pipeline/run.ts`, `breeding.ts`, `radio.ts`, `companion/schemas.ts`, `battle.ts`, `createRunner`, `menu`, `golden/report.ts`, `forbidden-files.ts`, `bank.ts`, `code-decompress.test.ts`, `ByteWriter`, `shop.ts`, `companion.ts`, `npcs.ts`, `data/report.ts`, `cli.ts`, `session.ts`, `sseq.ts`, `PartyMember`, `overworld.ts`, `events/phone.test.ts`, `ai-loader.ts`, `campaign.golden.ts`, `scriptData`, `extractor/src/index.ts`, `items/schemas.ts`, `maps/stage.test.ts`, `trade-atomic.test.ts`, `parseMarkup`, `packages_shared_src_game_index_servermessage`, `ref_node_fs`, `tileAt`, `src/items.ts`, `events/stage.ts`, `trainer-fixture.ts`, `sprites/stage.ts`, `field/schemas.ts`, `manifest.ts`, `scene.test.ts`, `wild-loader.ts`, `trade-ws.test.ts`, `text/index.ts`, `Pesquisa: Itens`, `map-blocks.ts`, `DialogBox.svelte`, `combat-fixture.ts`, `save-store.test.ts`, `combat-coverage.ts`, `decide.test.ts`, `synth.ts`, `entity.ts`, `package.json`, `game-renderer.ts`, `src/capture.ts`, `createRng`, `render.test.ts`, `src/trade.ts`, `words.ts`, `int`, `render/cutscene.ts`, `combat-fx.ts`, `migrate.ts`, `npc-trade.test.ts`, `formatTextId`, `map-scene.ts`, `movement-ice.test.ts`, `movement.ts`, `assets-controller.ts`, `remote-connection.ts`, `pc.test.ts`, `calls.ts`, `events/schemas.test.ts`, `extractor-host-protocol.ts`, `trainer/schemas.ts`, `canAdd`, `game/index.ts`, `events/report.ts`, `field-fixture.ts`, `Tasks: Pokémon companheiro e regras do combate no mundo`, `movement`, `save-store.ts`, `rom-unpack.test.ts`, `time/schemas.ts`, `schemas-us2.test.ts`, `world-items.test.ts`, `Tasks: Tempo e Pokégear`, `engine.ts`, `schema.ts`, `music-follow.test.ts`, `roamers.test.ts`, `daycare-eggs.test.ts`, `Quickstart: validação de build, distribuição e auto-update`, `controller.ts`, `new-game-visibility.test.ts`, `encounter.ts`, `migrate.test.ts`, `field/azalea-gym.ts`, `packages_shared_src_save_index_partymember`, `types.test.ts`, `combat-held.test.ts`, `trainer/profile.ts`, `audio/schemas.ts`, `validateReleaseTag`, `server-host-protocol.ts`, `heal.test.ts`, `shops.ts`, `events/new-game.ts`, `dev-commands.test.ts`, `member.test.ts`, `coherence.test.ts`, `migrate-v9.test.ts`, `game-server.ts`?**
-  _High betweenness centrality (0.303) - this node is a cross-community bridge._
+- **Why does `vitest` connect `vitest` to `duel.ts`, `save/index.ts`, `wild.ts`, `harness.ts`, `maps/index.ts`, `t`, `game-connection.ts`, `combat-loader.ts`, `sprites/schemas.ts`, `SoulSilverApi`, `companion-loader.ts`, `input.ts`, `readU16`, `progression.ts`, `main/index.ts`, `src/phone.ts`, `maps/stage.ts`, `createRegistry`, `audio/stage.test.ts`, `sprites/stage.test.ts`, `src/field.ts`, `main/discovery.ts`, `combat.ts`, `game-data/builders.ts`, `createSession`, `pipeline/run.ts`, `breeding.ts`, `radio.ts`, `companion/schemas.ts`, `battle.ts`, `createRunner`, `menu`, `golden/report.ts`, `forbidden-files.ts`, `bank.ts`, `code-decompress.test.ts`, `ByteWriter`, `shop.ts`, `companion.ts`, `npcs.ts`, `data/report.ts`, `cli.ts`, `session.ts`, `sseq.ts`, `PartyMember`, `overworld.ts`, `events/phone.test.ts`, `ai-loader.ts`, `campaign.golden.ts`, `scriptData`, `extractor/src/index.ts`, `items/schemas.ts`, `maps/stage.test.ts`, `trade-atomic.test.ts`, `parseMarkup`, `packages_shared_src_game_index_servermessage`, `ref_node_fs`, `tileAt`, `src/items.ts`, `events/stage.ts`, `trainer-fixture.ts`, `sprites/stage.ts`, `field/schemas.ts`, `manifest.ts`, `scene.test.ts`, `wild-loader.ts`, `trade-ws.test.ts`, `text/index.ts`, `Pesquisa: Itens`, `map-blocks.ts`, `DialogBox.svelte`, `combat-fixture.ts`, `save-store.test.ts`, `combat-coverage.ts`, `decide.test.ts`, `synth.ts`, `package.json`, `game-renderer.ts`, `src/capture.ts`, `createRng`, `render.test.ts`, `src/trade.ts`, `words.ts`, `int`, `render/cutscene.ts`, `combat-fx.ts`, `migrate.ts`, `npc-trade.test.ts`, `formatTextId`, `map-scene.ts`, `movement-ice.test.ts`, `movement.ts`, `assets-controller.ts`, `remote-connection.ts`, `pc.test.ts`, `calls.ts`, `events/schemas.test.ts`, `extractor-host-protocol.ts`, `trainer/schemas.ts`, `canAdd`, `game/index.ts`, `events/report.ts`, `field-fixture.ts`, `Tasks: Pokémon companheiro e regras do combate no mundo`, `movement`, `save-store.ts`, `rom-unpack.test.ts`, `time/schemas.ts`, `schemas-us2.test.ts`, `world-items.test.ts`, `Tasks: Tempo e Pokégear`, `engine.ts`, `schema.ts`, `music-follow.test.ts`, `roamers.test.ts`, `daycare-eggs.test.ts`, `Quickstart: validação de build, distribuição e auto-update`, `controller.ts`, `new-game-visibility.test.ts`, `encounter.ts`, `migrate.test.ts`, `field/azalea-gym.ts`, `packages_shared_src_save_index_partymember`, `types.test.ts`, `combat-held.test.ts`, `trainer/profile.ts`, `audio/schemas.ts`, `validateReleaseTag`, `server-host-protocol.ts`, `heal.test.ts`, `shops.ts`, `events/new-game.ts`, `dev-commands.test.ts`, `member.test.ts`, `coherence.test.ts`, `migrate-v9.test.ts`, `game-server.ts`?**
+  _High betweenness centrality (0.310) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `createSession()` (e.g. with `scriptedCallOf()` and `close()`) actually correct?**
   _`createSession()` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@types/node`, `eslint`, `typescript` to the rest of the system?**

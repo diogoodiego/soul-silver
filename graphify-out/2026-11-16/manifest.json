@@ -3726,9 +3726,9 @@
     "semantic_hash": ""
   },
   "packages/server/src/scripts.ts": {
-    "mtime": 1794809269.332893,
-    "seen": 1794809455.4874835,
-    "ast_hash": "c2da475cfec6c616f548e92d453a8c9a",
+    "mtime": 1794810458.324436,
+    "seen": 1794810823.148045,
+    "ast_hash": "5cf50efc5881e8d4d95742929ed7684b",
     "semantic_hash": ""
   },
   "packages/server/test/scripts-blocking.test.ts": {
@@ -6090,9 +6090,9 @@
     "semantic_hash": ""
   },
   "packages/app/golden/campaign.golden.ts": {
-    "mtime": 1794810124.4973352,
-    "seen": 1794810177.0247893,
-    "ast_hash": "777577ae32c539f15b59af87d41b1b10",
+    "mtime": 1794810655.7253704,
+    "seen": 1794810823.1474419,
+    "ast_hash": "99ba9ca9e48099c2d082fceeb2e71164",
     "semantic_hash": ""
   },
   "packages/app/golden/milestones.ts": {
@@ -6306,9 +6306,9 @@
     "semantic_hash": ""
   },
   "packages/server/test/field-obstacles-movers.test.ts": {
-    "mtime": 1793772310.3598347,
-    "seen": 1793777264.5864565,
-    "ast_hash": "8a66c1fc2cf8264ca1029ec4589faaee",
+    "mtime": 1794810436.6567392,
+    "seen": 1794810823.1481073,
+    "ast_hash": "1e984e3c84cdba86f02b57ca842e3531",
     "semantic_hash": ""
   },
   "packages/server/test/field-obstacles.test.ts": {

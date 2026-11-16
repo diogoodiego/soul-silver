@@ -5370,9 +5370,9 @@
     "semantic_hash": ""
   },
   "packages/server/src/trainer-battle.ts": {
-    "mtime": 1794809336.685018,
-    "seen": 1794809455.4874918,
-    "ast_hash": "054394ed79207c54f555da226714ed25",
+    "mtime": 1794810947.4735496,
+    "seen": 1794811460.7288244,
+    "ast_hash": "44aab66df12785a92a9d0db3de2cd94a",
     "semantic_hash": ""
   },
   "packages/server/src/trainer-loader.ts": {
@@ -7434,9 +7434,9 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1794809794.225996,
-    "seen": 1794810177.0260465,
-    "ast_hash": "98474e5ba82985429003cd483255bf85",
+    "mtime": 1794810846.913526,
+    "seen": 1794811460.7294633,
+    "ast_hash": "e9cb166ffab04597ce650ba8e85cb430",
     "semantic_hash": ""
   },
   "docs/roadmap/marco-4.md": {

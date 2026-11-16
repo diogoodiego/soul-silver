@@ -1907,30 +1907,30 @@
       "source_location": "L72"
     },
     {
-      "id": "packages_shared_src_game_entity_entitydata",
-      "label": "EntityData",
+      "id": "packages_client_src_render_game_renderer_effect",
+      "label": "Effect",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 127,
-      "community_name": "entity.ts",
+      "community_name": "Arquivos",
       "file_type": "code",
-      "norm_label": "entitydata",
-      "source_file": "packages/shared/src/game/entity.ts",
-      "source_location": "L8"
+      "norm_label": "effect",
+      "source_file": "packages/client/src/render/game-renderer.ts",
+      "source_location": "L77"
     },
     {
-      "id": "packages_shared_src_game_entity_entitydelta",
-      "label": "EntityDelta",
+      "id": "packages_shared_src_combat_schemas_moveparams",
+      "label": "MoveParams",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 127,
-      "community_name": "entity.ts",
+      "community_name": "Arquivos",
       "file_type": "code",
-      "norm_label": "entitydelta",
-      "source_file": "packages/shared/src/game/entity.ts",
-      "source_location": "L26"
+      "norm_label": "moveparams",
+      "source_file": "packages/shared/src/combat/schemas.ts",
+      "source_location": "L110"
     },
     {
       "id": "packages_client_src_render_camera_bounds",
@@ -5248,32 +5248,6 @@
       "source_location": "L55"
     },
     {
-      "id": "packages_client_src_render_game_renderer_effect",
-      "label": "Effect",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 258,
-      "community_name": "Arquivos",
-      "file_type": "code",
-      "norm_label": "effect",
-      "source_file": "packages/client/src/render/game-renderer.ts",
-      "source_location": "L77"
-    },
-    {
-      "id": "packages_shared_src_combat_schemas_moveparams",
-      "label": "MoveParams",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 258,
-      "community_name": "Arquivos",
-      "file_type": "code",
-      "norm_label": "moveparams",
-      "source_file": "packages/shared/src/combat/schemas.ts",
-      "source_location": "L110"
-    },
-    {
       "id": "packages_server_src_ai_aioptions",
       "label": "AiOptions",
       "_callable": true,
@@ -8092,7 +8066,7 @@
       "file_type": "code",
       "norm_label": "trainerbattles",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L571"
+      "source_location": "L574"
     },
     {
       "id": "packages_server_src_wild_wild",
@@ -10433,6 +10407,32 @@
       "norm_label": "entity",
       "source_file": "packages/shared/src/game/entity.ts",
       "source_location": "L10"
+    },
+    {
+      "id": "packages_shared_src_game_entity_entitydata",
+      "label": "EntityData",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "entitydata",
+      "source_file": "packages/shared/src/game/entity.ts",
+      "source_location": "L8"
+    },
+    {
+      "id": "packages_shared_src_game_entity_entitydelta",
+      "label": "EntityDelta",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "entitydelta",
+      "source_file": "packages/shared/src/game/entity.ts",
+      "source_location": "L26"
     },
     {
       "id": "packages_shared_src_game_movement_moveinput",
@@ -15206,78 +15206,6 @@
       "norm_label": "areatype()",
       "source_file": "packages/extractor/src/maps/header.ts",
       "source_location": "L28"
-    },
-    {
-      "id": "packages_server_src_relevance_isrelevant",
-      "label": "isRelevant()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "isrelevant()",
-      "source_file": "packages/server/src/relevance.ts",
-      "source_location": "L7"
-    },
-    {
-      "id": "packages_server_src_replication_replicate",
-      "label": "replicate()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "replicate()",
-      "source_file": "packages/server/src/replication.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "packages_shared_src_game_entity_diffentity",
-      "label": "diffEntity()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "diffentity()",
-      "source_file": "packages/shared/src/game/entity.ts",
-      "source_location": "L33"
-    },
-    {
-      "id": "packages_shared_src_game_entity_samedata",
-      "label": "sameData()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "samedata()",
-      "source_file": "packages/shared/src/game/entity.ts",
-      "source_location": "L28"
-    },
-    {
-      "id": "packages_shared_test_game_movement_occupied_test_player",
-      "label": "player()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "player()",
-      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
-      "source_location": "L11"
-    },
-    {
-      "id": "packages_shared_test_game_movement_occupied_test_world",
-      "label": "world()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "world()",
-      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
-      "source_location": "L10"
     },
     {
       "id": "packages_app_golden_field_golden_ground",
@@ -29752,6 +29680,18 @@
       "source_location": "L246"
     },
     {
+      "id": "packages_server_src_scripts_hex",
+      "label": "hex()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "scripts.ts",
+      "file_type": "code",
+      "norm_label": "hex()",
+      "source_file": "packages/server/src/scripts.ts",
+      "source_location": "L349"
+    },
+    {
       "id": "packages_server_src_scripts_numberoffer",
       "label": "numberOffer()",
       "_callable": true,
@@ -29764,6 +29704,54 @@
       "source_location": "L123"
     },
     {
+      "id": "packages_server_src_scripts_register",
+      "label": "register()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "scripts.ts",
+      "file_type": "code",
+      "norm_label": "register()",
+      "source_file": "packages/server/src/scripts.ts",
+      "source_location": "L254"
+    },
+    {
+      "id": "packages_server_src_scripts_registered",
+      "label": "registered()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "scripts.ts",
+      "file_type": "code",
+      "norm_label": "registered()",
+      "source_file": "packages/server/src/scripts.ts",
+      "source_location": "L255"
+    },
+    {
+      "id": "packages_server_src_scripts_rematch",
+      "label": "rematch()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "scripts.ts",
+      "file_type": "code",
+      "norm_label": "rematch()",
+      "source_file": "packages/server/src/scripts.ts",
+      "source_location": "L256"
+    },
+    {
+      "id": "packages_server_src_scripts_rematchwon",
+      "label": "rematchWon()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "scripts.ts",
+      "file_type": "code",
+      "norm_label": "rematchwon()",
+      "source_file": "packages/server/src/scripts.ts",
+      "source_location": "L257"
+    },
+    {
       "id": "packages_server_src_scripts_scriptdata_events",
       "label": ".events()",
       "_callable": true,
@@ -29774,18 +29762,6 @@
       "norm_label": ".events()",
       "source_file": "packages/server/src/scripts.ts",
       "source_location": "L29"
-    },
-    {
-      "id": "packages_server_src_scripts_scriptdata_resolve",
-      "label": ".resolve()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "scripts.ts",
-      "file_type": "code",
-      "norm_label": ".resolve()",
-      "source_file": "packages/server/src/scripts.ts",
-      "source_location": "L31"
     },
     {
       "id": "packages_server_src_scripts_spawn",
@@ -32056,18 +32032,6 @@
       "source_location": "L463"
     },
     {
-      "id": "packages_server_src_scripts_createscripts_daycarecompatibility",
-      "label": "daycareCompatibility()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 39,
-      "community_name": "breeding.ts",
-      "file_type": "code",
-      "norm_label": "daycarecompatibility()",
-      "source_file": "packages/server/src/scripts.ts",
-      "source_location": "L457"
-    },
-    {
       "id": "packages_shared_src_daycare_breeding_breedingdata_eggmoves",
       "label": ".eggMoves()",
       "_callable": true,
@@ -32138,30 +32102,6 @@
       "norm_label": ".machinemoves()",
       "source_file": "packages/shared/src/daycare/breeding.ts",
       "source_location": "L104"
-    },
-    {
-      "id": "packages_shared_src_daycare_breeding_compatibility",
-      "label": "compatibility",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 39,
-      "community_name": "breeding.ts",
-      "file_type": "code",
-      "norm_label": "compatibility",
-      "source_file": "packages/shared/src/daycare/breeding.ts",
-      "source_location": "L62"
-    },
-    {
-      "id": "packages_shared_src_daycare_breeding_compatibilityscore",
-      "label": "compatibilityScore()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 39,
-      "community_name": "breeding.ts",
-      "file_type": "code",
-      "norm_label": "compatibilityscore()",
-      "source_file": "packages/shared/src/daycare/breeding.ts",
-      "source_location": "L73"
     },
     {
       "id": "packages_shared_src_daycare_breeding_eggcheckdue",
@@ -32246,18 +32186,6 @@
       "norm_label": "makeegg()",
       "source_file": "packages/shared/src/daycare/breeding.ts",
       "source_location": "L129"
-    },
-    {
-      "id": "packages_shared_src_daycare_breeding_makegiftegg",
-      "label": "makeGiftEgg()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 39,
-      "community_name": "breeding.ts",
-      "file_type": "code",
-      "norm_label": "makegiftegg()",
-      "source_file": "packages/shared/src/daycare/breeding.ts",
-      "source_location": "L189"
     },
     {
       "id": "packages_shared_src_daycare_breeding_motherisfirst",
@@ -37909,7 +37837,7 @@
       "file_type": "code",
       "norm_label": "begin()",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L306"
+      "source_location": "L309"
     },
     {
       "id": "packages_server_src_trainer_battle_createtrainerbattles_end",
@@ -37921,7 +37849,7 @@
       "file_type": "code",
       "norm_label": "end()",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L277"
+      "source_location": "L280"
     },
     {
       "id": "packages_server_src_trainer_battle_createtrainerbattles_hooksfor",
@@ -37969,7 +37897,7 @@
       "file_type": "code",
       "norm_label": "place()",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L474"
+      "source_location": "L477"
     },
     {
       "id": "packages_server_src_trainer_battle_createtrainerbattles_prepare",
@@ -37981,7 +37909,7 @@
       "file_type": "code",
       "norm_label": "prepare()",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L437"
+      "source_location": "L440"
     },
     {
       "id": "packages_server_src_trainer_battle_createtrainerbattles_recall",
@@ -38053,7 +37981,7 @@
       "file_type": "code",
       "norm_label": "start()",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L483"
+      "source_location": "L486"
     },
     {
       "id": "packages_server_src_trainer_battle_createtrainerbattles_stepbattle",
@@ -38065,7 +37993,7 @@
       "file_type": "code",
       "norm_label": "stepbattle()",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L344"
+      "source_location": "L347"
     },
     {
       "id": "packages_server_src_trainer_battle_createtrainerbattles_stepnpcally",
@@ -38101,7 +38029,7 @@
       "file_type": "code",
       "norm_label": "teamof()",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L422"
+      "source_location": "L425"
     },
     {
       "id": "packages_server_src_trainer_battle_facingof",
@@ -39664,6 +39592,30 @@
       "source_location": "L5"
     },
     {
+      "id": "packages_server_src_relevance_isrelevant",
+      "label": "isRelevant()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "isrelevant()",
+      "source_file": "packages/server/src/relevance.ts",
+      "source_location": "L7"
+    },
+    {
+      "id": "packages_server_src_replication_replicate",
+      "label": "replicate()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "replicate()",
+      "source_file": "packages/server/src/replication.ts",
+      "source_location": "L13"
+    },
+    {
       "id": "packages_server_src_session_session_close",
       "label": ".close()",
       "_callable": true,
@@ -39686,6 +39638,54 @@
       "norm_label": "applydelta()",
       "source_file": "packages/shared/src/game/entity.ts",
       "source_location": "L50"
+    },
+    {
+      "id": "packages_shared_src_game_entity_diffentity",
+      "label": "diffEntity()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "diffentity()",
+      "source_file": "packages/shared/src/game/entity.ts",
+      "source_location": "L33"
+    },
+    {
+      "id": "packages_shared_src_game_entity_samedata",
+      "label": "sameData()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "samedata()",
+      "source_file": "packages/shared/src/game/entity.ts",
+      "source_location": "L28"
+    },
+    {
+      "id": "packages_shared_test_game_movement_occupied_test_player",
+      "label": "player()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "player()",
+      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
+      "source_location": "L11"
+    },
+    {
+      "id": "packages_shared_test_game_movement_occupied_test_world",
+      "label": "world()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "world()",
+      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
+      "source_location": "L10"
     },
     {
       "id": "packages_client_src_arenasetup_bank",
@@ -41800,6 +41800,18 @@
       "source_location": "L972"
     },
     {
+      "id": "packages_server_src_scripts_createscripts_daycarecompatibility",
+      "label": "daycareCompatibility()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 96,
+      "community_name": "createScripts",
+      "file_type": "code",
+      "norm_label": "daycarecompatibility()",
+      "source_file": "packages/server/src/scripts.ts",
+      "source_location": "L457"
+    },
+    {
       "id": "packages_server_src_scripts_createscripts_devstate",
       "label": "devState()",
       "_callable": true,
@@ -42028,64 +42040,16 @@
       "source_location": "L423"
     },
     {
-      "id": "packages_server_src_scripts_hex",
-      "label": "hex()",
+      "id": "packages_server_src_scripts_scriptdata_resolve",
+      "label": ".resolve()",
       "_callable": true,
       "_origin": "ast",
       "community": 96,
       "community_name": "createScripts",
       "file_type": "code",
-      "norm_label": "hex()",
+      "norm_label": ".resolve()",
       "source_file": "packages/server/src/scripts.ts",
-      "source_location": "L349"
-    },
-    {
-      "id": "packages_server_src_scripts_register",
-      "label": "register()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 96,
-      "community_name": "createScripts",
-      "file_type": "code",
-      "norm_label": "register()",
-      "source_file": "packages/server/src/scripts.ts",
-      "source_location": "L254"
-    },
-    {
-      "id": "packages_server_src_scripts_registered",
-      "label": "registered()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 96,
-      "community_name": "createScripts",
-      "file_type": "code",
-      "norm_label": "registered()",
-      "source_file": "packages/server/src/scripts.ts",
-      "source_location": "L255"
-    },
-    {
-      "id": "packages_server_src_scripts_rematch",
-      "label": "rematch()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 96,
-      "community_name": "createScripts",
-      "file_type": "code",
-      "norm_label": "rematch()",
-      "source_file": "packages/server/src/scripts.ts",
-      "source_location": "L256"
-    },
-    {
-      "id": "packages_server_src_scripts_rematchwon",
-      "label": "rematchWon()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 96,
-      "community_name": "createScripts",
-      "file_type": "code",
-      "norm_label": "rematchwon()",
-      "source_file": "packages/server/src/scripts.ts",
-      "source_location": "L257"
+      "source_location": "L31"
     },
     {
       "id": "packages_server_src_scripts_scriptedcall",
@@ -42170,6 +42134,42 @@
       "norm_label": ".weekday()",
       "source_file": "packages/server/src/scripts.ts",
       "source_location": "L217"
+    },
+    {
+      "id": "packages_shared_src_daycare_breeding_compatibility",
+      "label": "compatibility",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 96,
+      "community_name": "createScripts",
+      "file_type": "code",
+      "norm_label": "compatibility",
+      "source_file": "packages/shared/src/daycare/breeding.ts",
+      "source_location": "L62"
+    },
+    {
+      "id": "packages_shared_src_daycare_breeding_compatibilityscore",
+      "label": "compatibilityScore()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 96,
+      "community_name": "createScripts",
+      "file_type": "code",
+      "norm_label": "compatibilityscore()",
+      "source_file": "packages/shared/src/daycare/breeding.ts",
+      "source_location": "L73"
+    },
+    {
+      "id": "packages_shared_src_daycare_breeding_makegiftegg",
+      "label": "makeGiftEgg()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 96,
+      "community_name": "createScripts",
+      "file_type": "code",
+      "norm_label": "makegiftegg()",
+      "source_file": "packages/shared/src/daycare/breeding.ts",
+      "source_location": "L189"
     },
     {
       "id": "packages_shared_src_maps_collision_iscounter",
@@ -42829,7 +42829,7 @@
       "file_type": "code",
       "norm_label": "sees()",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L410"
+      "source_location": "L413"
     },
     {
       "id": "packages_shared_src_ai_sight_blockssight",
@@ -49791,138 +49791,40 @@
       "source_location": "L191"
     },
     {
-      "id": "packages_server_src_relevance",
-      "label": "relevance.ts",
+      "id": "specs_013_realtime_combat_contracts_combat_data_arquivos",
+      "label": "Arquivos",
       "_origin": "ast",
       "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "relevance.ts",
-      "source_file": "packages/server/src/relevance.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_server_src_replication",
-      "label": "replication.ts",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "replication.ts",
-      "source_file": "packages/server/src/replication.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_shared_src_game_entity",
-      "label": "entity.ts",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "entity.ts",
-      "source_file": "packages/shared/src/game/entity.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_shared_src_game_entity_entity_kinds",
-      "label": "ENTITY_KINDS",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "entity_kinds",
-      "source_file": "packages/shared/src/game/entity.ts",
-      "source_location": "L5"
-    },
-    {
-      "id": "packages_shared_test_game_entity_test",
-      "label": "entity.test.ts",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "entity.test.ts",
-      "source_file": "packages/shared/test/game/entity.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_shared_test_game_entity_test_base",
-      "label": "base",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "base",
-      "source_file": "packages/shared/test/game/entity.test.ts",
-      "source_location": "L4"
-    },
-    {
-      "id": "packages_shared_test_game_movement_occupied_test",
-      "label": "movement-occupied.test.ts",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "movement-occupied.test.ts",
-      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_shared_test_game_movement_occupied_test_east",
-      "label": "east",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "east",
-      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
-      "source_location": "L12"
-    },
-    {
-      "id": "packages_shared_test_game_movement_occupied_test_field",
-      "label": "field",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "field",
-      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "packages_shared_test_game_movement_occupied_test_free",
-      "label": "free",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
-      "file_type": "code",
-      "norm_label": "free",
-      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
-      "source_location": "L8"
-    },
-    {
-      "id": "specs_011_world_movement_warps_tasks_phase_2_foundational_bloqueia_todas_as_hist\u00f3rias",
-      "label": "Phase 2: Foundational (bloqueia todas as hist\u00f3rias)",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "entity.ts",
+      "community_name": "Arquivos",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "phase 2: foundational (bloqueia todas as historias)",
-      "source_file": "specs/011-world-movement-warps/tasks.md",
-      "source_location": "L29"
+      "norm_label": "arquivos",
+      "source_file": "specs/013-realtime-combat/contracts/combat-data.md",
+      "source_location": "L13"
     },
     {
-      "id": "specs_020_script_interpreter_tasks_notas_da_implementa\u00e7\u00e3o_2026_10_26",
-      "label": "Notas da implementa\u00e7\u00e3o (2026-10-26)",
+      "id": "specs_013_realtime_combat_contracts_combat_data_contrato_dados_de_combate_content_combat",
+      "label": "Contrato: dados de combate (`content/combat/`)",
       "_origin": "ast",
       "community": 127,
-      "community_name": "entity.ts",
+      "community_name": "Arquivos",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "notas da implementacao (2026-10-26)",
-      "source_file": "specs/020-script-interpreter/tasks.md",
-      "source_location": "L145"
+      "norm_label": "contrato: dados de combate (`content/combat/`)",
+      "source_file": "specs/013-realtime-combat/contracts/combat-data.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "specs_013_realtime_combat_contracts_combat_data_exemplos",
+      "label": "Exemplos",
+      "_origin": "ast",
+      "community": 127,
+      "community_name": "Arquivos",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "exemplos",
+      "source_file": "specs/013-realtime-combat/contracts/combat-data.md",
+      "source_location": "L37"
     },
     {
       "id": "eslint_config",
@@ -75585,7 +75487,7 @@
       "label": "013-realtime-combat/tasks.md",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "frontmatter": {
         "description": "Tasks for 013-realtime-combat"
@@ -75600,7 +75502,7 @@
       "label": "013-realtime-combat/checklists/requirements.md",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "013-realtime-combat/checklists/requirements.md",
@@ -75612,7 +75514,7 @@
       "label": "Content Quality",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "content quality",
@@ -75624,7 +75526,7 @@
       "label": "Feature Readiness",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "feature readiness",
@@ -75636,7 +75538,7 @@
       "label": "Notes",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "notes",
@@ -75648,7 +75550,7 @@
       "label": "Requirement Completeness",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "requirement completeness",
@@ -75660,7 +75562,7 @@
       "label": "Specification Quality Checklist: Combate em tempo real",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "specification quality checklist: combate em tempo real",
@@ -75672,7 +75574,7 @@
       "label": "combat-data.md",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "combat-data.md",
@@ -75680,47 +75582,11 @@
       "source_location": "L1"
     },
     {
-      "id": "specs_013_realtime_combat_contracts_combat_data_arquivos",
-      "label": "Arquivos",
-      "_origin": "ast",
-      "community": 258,
-      "community_name": "Arquivos",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "arquivos",
-      "source_file": "specs/013-realtime-combat/contracts/combat-data.md",
-      "source_location": "L13"
-    },
-    {
-      "id": "specs_013_realtime_combat_contracts_combat_data_contrato_dados_de_combate_content_combat",
-      "label": "Contrato: dados de combate (`content/combat/`)",
-      "_origin": "ast",
-      "community": 258,
-      "community_name": "Arquivos",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "contrato: dados de combate (`content/combat/`)",
-      "source_file": "specs/013-realtime-combat/contracts/combat-data.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "specs_013_realtime_combat_contracts_combat_data_exemplos",
-      "label": "Exemplos",
-      "_origin": "ast",
-      "community": 258,
-      "community_name": "Arquivos",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "exemplos",
-      "source_file": "specs/013-realtime-combat/contracts/combat-data.md",
-      "source_location": "L37"
-    },
-    {
       "id": "specs_013_realtime_combat_data_model",
       "label": "013-realtime-combat/data-model.md",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "013-realtime-combat/data-model.md",
@@ -75732,7 +75598,7 @@
       "label": "013-realtime-combat/plan.md",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "013-realtime-combat/plan.md",
@@ -75744,7 +75610,7 @@
       "label": "013-realtime-combat/quickstart.md",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "013-realtime-combat/quickstart.md",
@@ -75756,7 +75622,7 @@
       "label": "Cen\u00e1rios manuais (arena)",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "cenarios manuais (arena)",
@@ -75768,7 +75634,7 @@
       "label": "Pr\u00e9-requisitos",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "pre-requisitos",
@@ -75780,7 +75646,7 @@
       "label": "Quickstart: Combate em tempo real",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "quickstart: combate em tempo real",
@@ -75792,7 +75658,7 @@
       "label": "Testes automatizados",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "testes automatizados",
@@ -75804,7 +75670,7 @@
       "label": "013-realtime-combat/research.md",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "013-realtime-combat/research.md",
@@ -75816,7 +75682,7 @@
       "label": "013-realtime-combat/spec.md",
       "_origin": "ast",
       "community": 258,
-      "community_name": "Arquivos",
+      "community_name": "013-realtime-combat/tasks.md",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "013-realtime-combat/spec.md",
@@ -90971,7 +90837,7 @@
       "node_kind": "heading",
       "norm_label": "decisoes",
       "source_file": "docs/STATUS.md",
-      "source_location": "L108"
+      "source_location": "L111"
     },
     {
       "id": "docs_status_estado_do_projeto",
@@ -101809,6 +101675,140 @@
       "source_location": "L1"
     },
     {
+      "id": "packages_server_src_relevance",
+      "label": "relevance.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "relevance.ts",
+      "source_file": "packages/server/src/relevance.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_server_src_replication",
+      "label": "replication.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "replication.ts",
+      "source_file": "packages/server/src/replication.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_shared_src_game_entity",
+      "label": "entity.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "entity.ts",
+      "source_file": "packages/shared/src/game/entity.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_shared_src_game_entity_entity_kinds",
+      "label": "ENTITY_KINDS",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "entity_kinds",
+      "source_file": "packages/shared/src/game/entity.ts",
+      "source_location": "L5"
+    },
+    {
+      "id": "packages_shared_test_game_entity_test",
+      "label": "entity.test.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "entity.test.ts",
+      "source_file": "packages/shared/test/game/entity.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_shared_test_game_entity_test_base",
+      "label": "base",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "base",
+      "source_file": "packages/shared/test/game/entity.test.ts",
+      "source_location": "L4"
+    },
+    {
+      "id": "packages_shared_test_game_movement_occupied_test",
+      "label": "movement-occupied.test.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "movement-occupied.test.ts",
+      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_shared_test_game_movement_occupied_test_east",
+      "label": "east",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "east",
+      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "packages_shared_test_game_movement_occupied_test_field",
+      "label": "field",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "field",
+      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "packages_shared_test_game_movement_occupied_test_free",
+      "label": "free",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "code",
+      "norm_label": "free",
+      "source_file": "packages/shared/test/game/movement-occupied.test.ts",
+      "source_location": "L8"
+    },
+    {
+      "id": "specs_011_world_movement_warps_tasks_phase_2_foundational_bloqueia_todas_as_hist\u00f3rias",
+      "label": "Phase 2: Foundational (bloqueia todas as hist\u00f3rias)",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "phase 2: foundational (bloqueia todas as historias)",
+      "source_file": "specs/011-world-movement-warps/tasks.md",
+      "source_location": "L29"
+    },
+    {
+      "id": "specs_020_script_interpreter_tasks_notas_da_implementa\u00e7\u00e3o_2026_10_26",
+      "label": "Notas da implementa\u00e7\u00e3o (2026-10-26)",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "notas da implementacao (2026-10-26)",
+      "source_file": "specs/020-script-interpreter/tasks.md",
+      "source_location": "L145"
+    },
+    {
       "id": "packages_client_src_arenasetup",
       "label": "ArenaSetup.svelte",
       "_origin": "ast",
@@ -107733,28 +107733,6 @@
       "type": "external"
     },
     {
-      "id": "packages_shared_src_game_index_diffentity",
-      "label": "packages_shared_src_game_index_diffentity",
-      "community": 127,
-      "community_name": "entity.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "packages_shared_src_game_index_diffentity",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "packages_shared_src_game_index_entitydelta",
-      "label": "packages_shared_src_game_index_entitydelta",
-      "community": 127,
-      "community_name": "entity.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "packages_shared_src_game_index_entitydelta",
-      "source_file": "",
-      "type": "external"
-    },
-    {
       "id": "ref_node_module",
       "label": "ref_node_module",
       "community": 128,
@@ -112221,6 +112199,17 @@
       "type": "external"
     },
     {
+      "id": "packages_shared_src_game_index_diffentity",
+      "label": "packages_shared_src_game_index_diffentity",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "packages_shared_src_game_index_diffentity",
+      "source_file": "",
+      "type": "external"
+    },
+    {
       "id": "packages_shared_src_game_index_entity",
       "label": "packages_shared_src_game_index_entity",
       "community": 8,
@@ -112228,6 +112217,17 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "packages_shared_src_game_index_entity",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "packages_shared_src_game_index_entitydelta",
+      "label": "packages_shared_src_game_index_entitydelta",
+      "community": 8,
+      "community_name": "game-connection.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "packages_shared_src_game_index_entitydelta",
       "source_file": "",
       "type": "external"
     },
@@ -140728,7 +140728,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L267",
+      "source_location": "L270",
       "weight": 1.0
     },
     {
@@ -140740,7 +140740,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L293",
+      "source_location": "L296",
       "weight": 1.0
     },
     {
@@ -140752,7 +140752,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L309",
+      "source_location": "L312",
       "weight": 1.0
     },
     {
@@ -140764,7 +140764,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L311",
+      "source_location": "L314",
       "weight": 1.0
     },
     {
@@ -140776,7 +140776,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L332",
+      "source_location": "L335",
       "weight": 1.0
     },
     {
@@ -140788,7 +140788,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L417",
+      "source_location": "L420",
       "weight": 1.0
     },
     {
@@ -140800,7 +140800,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L417",
+      "source_location": "L420",
       "weight": 1.0
     },
     {
@@ -140812,7 +140812,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L418",
+      "source_location": "L421",
       "weight": 1.0
     },
     {
@@ -140824,7 +140824,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L444",
+      "source_location": "L447",
       "weight": 1.0
     },
     {
@@ -140836,7 +140836,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L309",
+      "source_location": "L312",
       "weight": 1.0
     },
     {
@@ -140848,7 +140848,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L311",
+      "source_location": "L314",
       "weight": 1.0
     },
     {
@@ -140860,7 +140860,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L314",
+      "source_location": "L317",
       "weight": 1.0
     },
     {
@@ -140872,24 +140872,12 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L317",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_server_src_trainer_battle_createtrainerbattles_begin",
-      "target": "packages_server_src_trainer_battle_trainerbattleoptions_broadcast",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "packages/server/src/trainer-battle.ts",
       "source_location": "L320",
       "weight": 1.0
     },
     {
       "source": "packages_server_src_trainer_battle_createtrainerbattles_begin",
-      "target": "packages_server_src_trainer_battle_createtrainerbattles_nextup",
+      "target": "packages_server_src_trainer_battle_trainerbattleoptions_broadcast",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -140901,19 +140889,7 @@
     },
     {
       "source": "packages_server_src_trainer_battle_createtrainerbattles_begin",
-      "target": "packages_server_src_trainer_battle_createtrainerbattles_sendout",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L324",
-      "weight": 1.0
-    },
-    {
-      "source": "packages_server_src_trainer_battle_createtrainerbattles_begin",
-      "target": "packages_server_src_trainer_battle_createtrainerbattles_sendnpcally",
+      "target": "packages_server_src_trainer_battle_createtrainerbattles_nextup",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -140925,6 +140901,30 @@
     },
     {
       "source": "packages_server_src_trainer_battle_createtrainerbattles_begin",
+      "target": "packages_server_src_trainer_battle_createtrainerbattles_sendout",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "packages/server/src/trainer-battle.ts",
+      "source_location": "L327",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_server_src_trainer_battle_createtrainerbattles_begin",
+      "target": "packages_server_src_trainer_battle_createtrainerbattles_sendnpcally",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "packages/server/src/trainer-battle.ts",
+      "source_location": "L329",
+      "weight": 1.0
+    },
+    {
+      "source": "packages_server_src_trainer_battle_createtrainerbattles_begin",
       "target": "packages_server_src_combat_playerpic",
       "relation": "calls",
       "_origin": "ast",
@@ -140932,7 +140932,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L332",
+      "source_location": "L335",
       "weight": 1.0
     },
     {
@@ -140944,7 +140944,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L280",
+      "source_location": "L283",
       "weight": 1.0
     },
     {
@@ -140956,7 +140956,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L282",
+      "source_location": "L285",
       "weight": 1.0
     },
     {
@@ -140968,7 +140968,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L283",
+      "source_location": "L286",
       "weight": 1.0
     },
     {
@@ -140980,7 +140980,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L284",
+      "source_location": "L287",
       "weight": 1.0
     },
     {
@@ -140992,7 +140992,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L293",
+      "source_location": "L296",
       "weight": 1.0
     },
     {
@@ -141004,7 +141004,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L300",
+      "source_location": "L303",
       "weight": 1.0
     },
     {
@@ -141016,7 +141016,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L301",
+      "source_location": "L304",
       "weight": 1.0
     },
     {
@@ -141028,7 +141028,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L302",
+      "source_location": "L305",
       "weight": 1.0
     },
     {
@@ -141040,7 +141040,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L303",
+      "source_location": "L306",
       "weight": 1.0
     },
     {
@@ -141076,7 +141076,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L476",
+      "source_location": "L479",
       "weight": 1.0
     },
     {
@@ -141088,7 +141088,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L479",
+      "source_location": "L482",
       "weight": 1.0
     },
     {
@@ -141100,7 +141100,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L438",
+      "source_location": "L441",
       "weight": 1.0
     },
     {
@@ -141112,7 +141112,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L444",
+      "source_location": "L447",
       "weight": 1.0
     },
     {
@@ -141136,7 +141136,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L412",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -141148,7 +141148,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L417",
+      "source_location": "L420",
       "weight": 1.0
     },
     {
@@ -141160,7 +141160,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L417",
+      "source_location": "L420",
       "weight": 1.0
     },
     {
@@ -141172,7 +141172,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L418",
+      "source_location": "L421",
       "weight": 1.0
     },
     {
@@ -141220,7 +141220,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L485",
+      "source_location": "L488",
       "weight": 1.0
     },
     {
@@ -141232,7 +141232,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L486",
+      "source_location": "L489",
       "weight": 1.0
     },
     {
@@ -141244,7 +141244,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L491",
+      "source_location": "L494",
       "weight": 1.0
     },
     {
@@ -141256,7 +141256,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L493",
+      "source_location": "L496",
       "weight": 1.0
     },
     {
@@ -141268,7 +141268,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L496",
+      "source_location": "L499",
       "weight": 1.0
     },
     {
@@ -141280,7 +141280,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L346",
+      "source_location": "L349",
       "weight": 1.0
     },
     {
@@ -141292,7 +141292,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L352",
+      "source_location": "L355",
       "weight": 1.0
     },
     {
@@ -141304,7 +141304,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L362",
+      "source_location": "L365",
       "weight": 1.0
     },
     {
@@ -141316,7 +141316,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L363",
+      "source_location": "L366",
       "weight": 1.0
     },
     {
@@ -141328,7 +141328,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L364",
+      "source_location": "L367",
       "weight": 1.0
     },
     {
@@ -141340,7 +141340,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L389",
+      "source_location": "L392",
       "weight": 1.0
     },
     {
@@ -141352,7 +141352,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L396",
+      "source_location": "L399",
       "weight": 1.0
     },
     {
@@ -141364,7 +141364,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L401",
+      "source_location": "L404",
       "weight": 1.0
     },
     {
@@ -141376,7 +141376,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L402",
+      "source_location": "L405",
       "weight": 1.0
     },
     {
@@ -141388,7 +141388,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L405",
+      "source_location": "L408",
       "weight": 1.0
     },
     {
@@ -141400,7 +141400,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L265",
+      "source_location": "L268",
       "weight": 1.0
     },
     {
@@ -141412,7 +141412,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L267",
+      "source_location": "L270",
       "weight": 1.0
     },
     {
@@ -141424,7 +141424,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L269",
+      "source_location": "L272",
       "weight": 1.0
     },
     {
@@ -141436,7 +141436,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L426",
+      "source_location": "L429",
       "weight": 1.0
     },
     {
@@ -141448,7 +141448,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L430",
+      "source_location": "L433",
       "weight": 1.0
     },
     {
@@ -286015,17 +286015,6 @@
     },
     {
       "source": "docs_status_estado_do_projeto",
-      "target": "docs_status_decis\u00f5es",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/STATUS.md",
-      "source_location": "L108",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_status_estado_do_projeto",
       "target": "docs_status_conclu\u00eddos",
       "relation": "contains",
       "_origin": "ast",
@@ -286033,6 +286022,17 @@
       "confidence_score": 1.0,
       "source_file": "docs/STATUS.md",
       "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_status_estado_do_projeto",
+      "target": "docs_status_decis\u00f5es",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/STATUS.md",
+      "source_location": "L111",
       "weight": 1.0
     },
     {
@@ -310155,7 +310155,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L571",
+      "source_location": "L574",
       "weight": 1.0
     },
     {
@@ -310309,7 +310309,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L277",
+      "source_location": "L280",
       "weight": 1.0
     },
     {
@@ -310320,7 +310320,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L306",
+      "source_location": "L309",
       "weight": 1.0
     },
     {
@@ -310331,7 +310331,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L344",
+      "source_location": "L347",
       "weight": 1.0
     },
     {
@@ -310342,7 +310342,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L410",
+      "source_location": "L413",
       "weight": 1.0
     },
     {
@@ -310353,7 +310353,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L422",
+      "source_location": "L425",
       "weight": 1.0
     },
     {
@@ -310364,7 +310364,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L437",
+      "source_location": "L440",
       "weight": 1.0
     },
     {
@@ -310375,7 +310375,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L474",
+      "source_location": "L477",
       "weight": 1.0
     },
     {
@@ -310386,7 +310386,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L483",
+      "source_location": "L486",
       "weight": 1.0
     },
     {
@@ -365310,7 +365310,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "packages/server/src/trainer-battle.ts",
-      "source_location": "L332",
+      "source_location": "L335",
       "weight": 1.0
     },
     {
@@ -377062,6 +377062,18 @@
       "weight": 1.0
     },
     {
+      "source": "docs_status_decis\u00f5es",
+      "target": "packages_shared_src_maps_collision_isice",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "context": "isIce",
+      "source_file": "docs/STATUS.md",
+      "source_location": "L120",
+      "weight": 1.0
+    },
+    {
       "source": "specs_003_rom_extraction_pipeline_contracts_extractor_host_protocol_contrato_protocolo_processo_principal_extractor_host",
       "target": "packages_shared_src_extractor_host_protocol_ismaintoextractormessage",
       "relation": "references",
@@ -383904,5 +383916,5 @@
       "source_file": "packages/extractor/src/viewer/index.html"
     }
   ],
-  "built_at_commit": "e3f4da4399b96b5255951724c96d74bc46a0c25b"
+  "built_at_commit": "6374dfa5d39655c41bc8d7206c1ca91932cbd62f"
 }
