@@ -1,6 +1,6 @@
 ---
 name: run-soulsilver
-description: Build, run and drive the SoulSilver Desktop Electron app (game client + local game server). Use when asked to run or start the app, play or walk around the game, take a screenshot of the game, check a map/warp/movement change in the real app, or run its tests.
+description: Build, run and drive the SoulSilver Desktop Electron app (game client + local game server). Use ONLY when the developer explicitly asks to open/run the app or take a screenshot. Never use it on your own to verify changes or run tests: verification happens on the server only (vitest, harness, golden, probes).
 ---
 
 SoulSilver Desktop is an Electron app (`packages/app`) that hosts the game server in a utility

@@ -1,5 +1,7 @@
 <!--
 Sync Impact Report
+- Versão: 1.5.0 → 1.6.0 (MINOR): Princípio V — testes só pelo servidor (camadas 1 a 3); a
+  camada 4 (app e capturas) só roda quando o desenvolvedor pede; render e UI vão para a camada 5.
 - Versão: 1.4.0 → 1.5.0 (MINOR): o Fluxo de Desenvolvimento troca o Spec Kit pelos itens do
   roadmap, com estado em `docs/STATUS.md` e regras em `CLAUDE.md`; typecheck, lint e suíte
   inteira passam a ser exigidos no item de verificação de cada bloco. Templates do Spec Kit ficam
@@ -97,7 +99,7 @@ mantém a lógica testável sem a pilha gráfica.
   rede, descoberta na LAN, extrator e migrações de save MUST seguir red-green-refactor: o teste
   é escrito e falha antes da implementação.
 - Render (three.js) e UI (Svelte) ficam isentos de test-first, mas cada mudança visível MUST ser
-  verificada na camada 4 ou, se nenhuma camada a automatiza, na camada 5, antes de ser concluída.
+  verificada na camada 5 antes de ser concluída (ou na camada 4, se o desenvolvedor pedir).
 - **Camadas de verificação**: todo spec MUST ter uma seção "Como testar" que lista os casos de
   teste por camada, com o comando que roda cada um. O `tasks.md` MUST ter tarefas para cada
   camada listada. Uma camada que não se aplica MUST constar como "Não se aplica", com o motivo.
@@ -109,21 +111,21 @@ mantém a lógica testável sem a pilha gráfica.
   3. **ROM real**: o caminho dourado e sondas locais que usam a extração real (`npm run golden`
      e equivalentes). Rodam só localmente, nunca na integração contínua (Princípio II).
   4. **App**: roteiro executado pelo driver da skill `run-soulsilver`, com capturas de tela
-     nomeadas e leitura do overlay F3.
+     nomeadas e leitura do overlay F3. Só roda quando o desenvolvedor pede explicitamente.
   5. **Manual**: só para o que nenhuma camada automatiza (sensação dos controles, som,
      legibilidade), com roteiro escrito.
-- As verificações MUST ser feitas pelo servidor sem interface sempre que possível (camadas 2 e
-  3). Só o que o servidor não consegue verificar vai para o app (camada 4). No app, o agente
-  pode abrir o app e MUST usar o save do slot 3 como save de teste.
+- Os testes MUST ser feitos só pelo servidor (camadas 1 a 3). O agente MUST NOT abrir o app nem
+  fazer capturas por conta própria: o que o servidor não verifica vai para o roteiro manual
+  (camada 5). Quando o desenvolvedor pedir o app (camada 4), o agente MUST usar o save do slot 3.
 - Testes de unidade e da integração contínua MUST continuar usando apenas fixtures sintéticos
   (Princípio II). Todo spec que entrega conteúdo jogável ou depende de dados extraídos MUST
   listar a camada 3.
 - Um spec só é concluído quando, além das tarefas, as camadas 1 e 2 passam na integração
   contínua, a camada 3 listada passa localmente com o relatório anexado ao `tasks.md` e as
-  capturas da camada 4 listada estão salvas em `.evidence/<número-do-spec>/`.
+  capturas da camada 4, quando o desenvolvedor a pediu, estão salvas em `.evidence/<número-do-spec>/`.
 - A pasta `.evidence/` MUST estar no `.gitignore`, porque as capturas contêm arte do jogo
   (Princípio II).
-- Critérios de sucesso que dizem "funciona no jogo" MUST ser verificados pelas camadas 3 ou 4, e
+- Critérios de sucesso que dizem "funciona no jogo" MUST ser verificados pela camada 3, e
   MUST NOT ser dados como atendidos apenas por testes sintéticos.
 
 **Motivo**: a lógica do jogo é desenvolvida em grande parte por agentes de IA; testes escritos
@@ -251,4 +253,4 @@ qualquer ponto em que pare.
   MUST verificar a conformidade com esta constituição. Desvios MUST ser justificados no plano
   da feature.
 
-**Version**: 1.5.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-15
+**Version**: 1.6.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-16

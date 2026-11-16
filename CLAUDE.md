@@ -18,7 +18,9 @@ Dados de design em `content/`.
 
 - Faça só o que o item pede. Antes de editar, mostre um plano de até 10 linhas (arquivos e testes).
 - Test-first em lógica (combate, scripts, servidor, protocolo, extrator, saves). Render e UI
-  ficam isentos, mas toda mudança visível precisa de captura.
+  ficam isentos de teste-first.
+- Testes e verificações rodam só no servidor (vitest, harness, golden, sondas). Nunca abra o app
+  (Electron, skill `run-soulsilver`) nem faça capturas por conta própria: só se o desenvolvedor pedir.
 - Testes da CI só com fixtures sintéticos. A ROM real (na raiz, ignorada) é usada só localmente.
   ROM, assets e capturas nunca entram no git; capturas vão para `.evidence/<bloco>/`.
 - Mudou protocolo ou save: suba a versão (`packages/shared/src/protocol-version.ts`, `schemaVersion`)
@@ -35,14 +37,13 @@ Itens comuns (verificação leve, para economizar):
 - Rode só os testes do que mudou: `npx vitest related --run <arquivos alterados>` e os testes
   novos do item. Não rode `typecheck`, `lint`, a suíte inteira nem `npm run golden`.
 - Se o "Pronto quando" pedir uma sonda com a ROM real, rode só essa sonda.
-- Sem capturas, salvo se o item pedir explicitamente.
+- Sem app e sem capturas.
 
 Item de verificação (o último de cada bloco), completo:
 1. `npm run typecheck`, `npm run lint`, `npm test` (unidade e harness `packages/server/test/harness.ts`).
 2. ROM real, local: `npm run golden` e as sondas do bloco em `packages/app/golden/`.
-3. App, só para o que o servidor não verifica: skill `run-soulsilver`, save do slot 3,
-   capturas nomeadas em `.evidence/<bloco>/`.
-4. Manual, só para sensação de controle, som e legibilidade: roteiro escrito para o desenvolvedor.
+3. Manual, para o que o servidor não verifica (visual, sensação de controle, som, legibilidade):
+   roteiro escrito para o desenvolvedor em `.evidence/<bloco>/`. Não abra o app.
 - Corrija o que essas verificações revelarem nos itens do bloco, incluindo erros de tipo e de lint.
 
 ## Ao terminar um item
