@@ -7,6 +7,7 @@ import {
   Camera,
   ColorManagement,
   CircleGeometry,
+  DirectionalLight,
   DoubleSide,
   LinearSRGBColorSpace,
   Mesh,
@@ -15,13 +16,16 @@ import {
   NoColorSpace,
   Scene,
   Texture,
+  Vector3,
   WebGLRenderer,
 } from "three";
 import { clampCamera, fillView, OBLIQUE, obliqueProjection, VIEW_H, VIEW_W, type Bounds } from "./camera";
 import { loadBitmap, loadMapMesh, loadPropMesh, spriteUrl, type ClientWorld, type MapMesh } from "./map-assets";
 import { CLEARING_RADIUS_PX, clearings } from "./grass-clearing";
-import { buildMapObject, groundAt, setGrassClearings, type MapObject } from "./map-scene";
+import { buildMapObject, groundAt, SHADE, setGrassClearings, type MapObject } from "./map-scene";
 import { createParticles, effectsOf } from "./particles";
+import { createPost } from "./post";
+import { DEFAULT_SETTINGS, type AppSettings } from "@soulsilver/shared";
 
 // Draws the world (spec 011) in 3D: each map's mesh, extracted from the ROM, under the fixed oblique
 // camera, and entities as standing sprites at their ground height, so the depth buffer decides what
@@ -57,6 +61,22 @@ const HOP_ARC_PX = 12;
  * so their feet win over the ground they stand on.
  */
 const SPRITE_DEPTH_BIAS = 8;
+/** Where the light comes from (x east, y up, z south): a fixed sun from the north-west, and nearly overhead indoors and in caves. */
+// A high sun (~75°): a standing sprite's shadow is about a third of its height, pooled at the feet, not a long streak below them.
+const SUN_FROM = new Vector3(-0.4, 2.5, -0.5).normalize();
+const ROOF_FROM = new Vector3(-0.1, 1, -0.3).normalize();
+/**
+ * The sprite casts from this far north of its feet, so its shadow starts up under them: the thin legs cast
+ * little and the body's shadow lands a few pixels south of the feet. Screen pixels; raise it if a gap shows.
+ */
+const SHADOW_NUDGE_PX = 4;
+const LIGHT_DISTANCE = 500;
+/** Light-space depth kept around the player: narrow, so the bias stays under a pixel and shadows touch the feet. */
+const LIGHT_DEPTH = 400;
+/** Shadow darkness at strength 100. */
+const MAX_SHADE = 0.55;
+/** Shadow map side and PCF blur radius per quality: low is cheaper and harder-edged. */
+const SHADOW_QUALITY = { low: { size: 1024, radius: 1.5 }, high: { size: 2048, radius: 4 } } as const;
 
 const FACING: Record<Direction, string> = { north: "up", south: "down", east: "right", west: "left" };
 
@@ -67,6 +87,8 @@ interface MapVisual {
 
 interface Actor {
   sprite: Mesh<BufferGeometry, MeshBasicMaterial>;
+  /** Item V.2: the sprite at its true feet, drawing nothing on screen, only into the shadow map (SPRITE_DEPTH_BIAS would float the shadow). */
+  caster: Mesh<BufferGeometry, MeshBasicMaterial>;
   last: { x: number; y: number };
   moving: boolean;
   /** Tile it stood on last frame, "tx,ty": entering a tall grass tile plays the rustle there. */
@@ -150,15 +172,27 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   const scene = new Scene();
   const camera = new Camera();
   camera.matrixAutoUpdate = false;
+  // Item V.2: one light only for shadows (every material is unlit); it follows the player and casts while the effect is on.
+  renderer.shadowMap.enabled = true;
+  const light = new DirectionalLight();
+  // Over the 800 px depth range: under 1 px, enough against acne under a high sun.
+  light.shadow.bias = -0.001;
+  scene.add(light, light.target);
 
   // Host size -> whole-number scale, and a view as large as the host at that scale: no bars (FR-012).
   let screen = fillView(VIEW_W, VIEW_H);
   let viewTopLeft = { x: 0, y: 0 };
   /** The map and level drawn last: projected points stand on its ground, as the camera does. */
   let viewOf: { area: string; level: number } | undefined;
+  // Item V.1: with effects on, the canvas is screen-sized and post draws the native frame into it.
+  let visual: AppSettings["visual"] = DEFAULT_SETTINGS.visual;
+  let outdoor = false;
+  let post: ReturnType<typeof createPost> | undefined;
   const fit = () => {
     screen = fillView(host.clientWidth, host.clientHeight);
-    renderer.setSize(screen.w, screen.h, false);
+    const s = post ? screen.scale : 1;
+    renderer.setSize(screen.w * s, screen.h * s, false);
+    post?.setSize(screen.w, screen.h, screen.scale);
     for (const element of [canvas, tint, fade, gloom]) {
       element.style.width = `${screen.w * screen.scale}px`;
       element.style.height = `${screen.h * screen.scale}px`;
@@ -338,6 +372,16 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     return material;
   };
   const markerMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide });
+  // Item V.2: a sprite material that writes neither colour nor depth; the shadow pass still reads its map and alpha test.
+  const casters = new Map<MeshBasicMaterial, MeshBasicMaterial>();
+  const casterOf = (material: MeshBasicMaterial) => {
+    let caster = casters.get(material);
+    if (!caster) {
+      caster = new MeshBasicMaterial({ map: material.map, alphaTest: material.alphaTest, side: DoubleSide, colorWrite: false, depthWrite: false });
+      casters.set(material, caster);
+    }
+    return caster;
+  };
 
   // Script props (spec 024): models placed by the map's scripts, cleared when the player changes map.
   const propMeshes = new Map<string, Promise<MapMesh | undefined>>();
@@ -505,8 +549,12 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     if (!actor) {
       const geometry = new BufferGeometry();
       geometry.setIndex([0, 2, 1, 1, 2, 3]);
-      actor = { sprite: new Mesh(geometry, markerMaterial), last: { x: e.x, y: e.y }, moving: false, tile: "" };
+      actor = { sprite: new Mesh(geometry, markerMaterial), caster: new Mesh(geometry, markerMaterial), last: { x: e.x, y: e.y }, moving: false, tile: "" };
       actor.sprite.frustumCulled = false;
+      actor.caster.frustumCulled = false;
+      actor.caster.castShadow = true;
+      actor.caster.position.set(0, -SPRITE_DEPTH_BIAS, -SPRITE_DEPTH_BIAS * OBLIQUE - SHADOW_NUDGE_PX);
+      actor.sprite.add(actor.caster);
       scene.add(actor.sprite);
       actors.set(e.id, actor);
     }
@@ -550,6 +598,8 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     const rocking = ball && inBall.has(e.id) && now - ball.start < ball.shakes * SHAKE_MS && (now - ball.start) % SHAKE_MS < SHAKE_MS / 2;
     const shake = e.data["flash"] === true ? Math.round(Math.sin(now / 15) * 2) : rocking ? Math.round(Math.sin(now / 40) * 3) : 0;
     actor.sprite.position.set(Math.round(e.x) + shake, y, Math.round(e.y) + SPRITE_DEPTH_BIAS * OBLIQUE);
+    actor.caster.visible = actor.sprite.material !== markerMaterial;
+    if (actor.caster.visible) actor.caster.material = casterOf(actor.sprite.material);
   }
 
   return {
@@ -633,7 +683,21 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       viewOf = { area: self.area, level: self.level };
       camera.projectionMatrix.set(...(obliqueProjection(view2d.x, view2d.y, screen) as Parameters<typeof camera.projectionMatrix.set>));
       camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
-      renderer.render(scene, camera);
+      light.castShadow = SHADE.visible = post !== undefined && visual.shadows > 0;
+      if (light.castShadow) {
+        SHADE.opacity = (visual.shadows / 100) * MAX_SHADE;
+        light.target.position.set(self.x, groundOf(self), self.y);
+        light.position.copy(outdoor ? SUN_FROM : ROOF_FROM).multiplyScalar(LIGHT_DISTANCE).add(light.target.position);
+        // The view's ground spans about w by h/OBLIQUE around the player; the margin keeps casters just off screen.
+        const reach = Math.max(screen.w, screen.h / OBLIQUE) * 0.75;
+        const cam = light.shadow.camera;
+        if (cam.right !== reach) {
+          [cam.left, cam.right, cam.top, cam.bottom, cam.near, cam.far] = [-reach, reach, reach, -reach, LIGHT_DISTANCE - LIGHT_DEPTH, LIGHT_DISTANCE + LIGHT_DEPTH];
+          cam.updateProjectionMatrix();
+        }
+      }
+      if (post) post.render(scene, camera, visual, (self.y - OBLIQUE * groundOf(self) - DARK_EYE_PX - view2d.y) / screen.h, outdoor);
+      else renderer.render(scene, camera);
       // Black at the map swap, half way through the warp (data-model.md).
       const warping = typeof self.data["warping"] === "number" ? self.data["warping"] : 0;
       fade.style.opacity = String(warping > 0 ? 1 - Math.abs(warping - WARP_TICKS / 2) / (WARP_TICKS / 2) : 0);
@@ -653,6 +717,24 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     setTint(rgb: { r: number; g: number; b: number } | null): void {
       const css = rgb ? `rgb(${[rgb.r, rgb.g, rgb.b].map((c) => Math.round(Math.min(1, c) * 255)).join(",")})` : "transparent";
       if (tint.style.background !== css) tint.style.background = css;
+    },
+    /** HD-2D effects (item V.1); the fog only shows on outdoor maps. */
+    setVisual(next: AppSettings["visual"], isOutdoor: boolean): void {
+      outdoor = isOutdoor;
+      if (next.quality !== visual.quality || (next.quality !== "off") !== (post !== undefined)) {
+        post?.dispose();
+        post = next.quality === "off" ? undefined : createPost(renderer, next.quality);
+        if (next.quality !== "off") {
+          const { size, radius } = SHADOW_QUALITY[next.quality];
+          light.shadow.mapSize.set(size, size);
+          light.shadow.radius = radius;
+          // A new size needs a new map; three makes it on the next shadow pass.
+          light.shadow.map?.dispose();
+          light.shadow.map = null;
+        }
+        fit();
+      }
+      visual = next;
     },
     /** Reduced sight in a dark cave until Flash lights it. */
     setDark(on: boolean): void {
@@ -675,8 +757,11 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         r.mesh.material.dispose();
       }
       for (const m of spriteMaterials.values()) m.dispose();
+      for (const m of casters.values()) m.dispose();
       for (const p of pages) p?.dispose();
       markerMaterial.dispose();
+      post?.dispose();
+      light.dispose();
       renderer.dispose();
       canvas.remove();
       fade.remove();

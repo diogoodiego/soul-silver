@@ -16,6 +16,7 @@ import {
   NoColorSpace,
   RepeatWrapping,
   RGFormat,
+  ShadowMaterial,
   Texture,
   Vector2,
   Vector3,
@@ -29,6 +30,11 @@ import { CLEARING_RADIUS_PX, MAX_CLEARINGS } from "./grass-clearing";
 
 /** Magenta, like the extractor's placeholder, where an image did not load. */
 const MISSING = new MeshBasicMaterial({ color: 0xff00ff, side: DoubleSide });
+/**
+ * Item V.2: shadows darken the map from a second pass over each opaque group, so the ROM colors are
+ * never lit. Shared by every map; the renderer sets its opacity and hides it with the effect off.
+ */
+export const SHADE = new ShadowMaterial({ side: DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1, visible: false });
 
 function wrapping(repeat: boolean, flip: boolean): Wrapping {
   if (!repeat) return ClampToEdgeWrapping;
@@ -173,7 +179,14 @@ export function buildMapObject({ file, vertices, textures }: MapMesh, grid?: Col
     });
     if (grass) clearGrass(material, grass, file);
     if (group.frames.length > 1) animated.push({ material, group, views });
-    root.add(new Mesh(geometry, material));
+    const mesh = new Mesh(geometry, material);
+    mesh.castShadow = true;
+    root.add(mesh);
+    if (!group.translucent) {
+      const shade = new Mesh(geometry, SHADE);
+      shade.receiveShadow = true;
+      root.add(shade);
+    }
   }
 
   // Groups share one buffer and are drawn by range, so three cannot bound them; culling is off.
@@ -192,7 +205,7 @@ export function buildMapObject({ file, vertices, textures }: MapMesh, grid?: Col
       for (const t of owned) t.dispose();
       grass?.dispose();
       root.traverse((o) => {
-        if (o instanceof Mesh && o.material !== MISSING) (o.material as MeshBasicMaterial).dispose();
+        if (o instanceof Mesh && o.material !== MISSING && o.material !== SHADE) (o.material as MeshBasicMaterial).dispose();
       });
     },
   };

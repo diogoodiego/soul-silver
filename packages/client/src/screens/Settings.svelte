@@ -1,7 +1,7 @@
 <script lang="ts">
   // Settings (spec 017, US7): window size, fullscreen, text speed, interface scale and controls;
   // audio volumes (spec 018). Each change is saved by the main process and applies at once.
-  import { TEXT_SPEEDS, UI_SCALES, WINDOW_SIZES } from "@soulsilver/shared";
+  import { TEXT_SPEEDS, UI_SCALES, VISUAL_EFFECTS, VISUAL_QUALITIES, WINDOW_SIZES } from "@soulsilver/shared";
   import Confirm from "../Confirm.svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
@@ -16,6 +16,10 @@
   function nudge(key: (typeof VOLUMES)[number], by: number): void {
     const audio = $settings.audio;
     void saveSettings({ audio: { ...audio, [key]: Math.max(0, Math.min(100, audio[key] + by)) } });
+  }
+  function nudgeEffect(key: (typeof VISUAL_EFFECTS)[number], by: number): void {
+    const visual = $settings.visual;
+    void saveSettings({ visual: { ...visual, [key]: Math.max(0, Math.min(100, visual[key] + by)) } });
   }
 
 </script>
@@ -52,6 +56,24 @@
   <div class="flex flex-wrap items-center gap-2 mb-4">
     <button type="button" class="aria-pressed:bg-accent aria-pressed:text-[#111]" aria-pressed={$settings.crt} onclick={() => void saveSettings({ crt: !$settings.crt })}>{t("settings.crt")}</button>
   </div>
+
+  <div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-labelledby="quality-label">
+    <span class="min-w-48" id="quality-label">{t("settings.visual.quality")}</span>
+    {#each VISUAL_QUALITIES as quality (quality)}
+      <button type="button" class="aria-pressed:bg-accent aria-pressed:text-[#111]" aria-pressed={$settings.visual.quality === quality} onclick={() => void saveSettings({ visual: { ...$settings.visual, quality } })}>{t(`settings.visual.quality.${quality}`)}</button>
+    {/each}
+  </div>
+
+  {#if $settings.visual.quality !== "off"}
+    {#each VISUAL_EFFECTS as key (key)}
+      <div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-labelledby="{key}-label">
+        <span class="min-w-48" id="{key}-label">{t(`settings.visual.${key}`)}</span>
+        <button type="button" aria-label={t("settings.audio.down", { label: t(`settings.visual.${key}`) })} onclick={() => nudgeEffect(key, -5)}>−</button>
+        <output class="min-w-12 text-center">{$settings.visual[key]}%</output>
+        <button type="button" aria-label={t("settings.audio.up", { label: t(`settings.visual.${key}`) })} onclick={() => nudgeEffect(key, 5)}>+</button>
+      </div>
+    {/each}
+  {/if}
 
   {#each VOLUMES as key (key)}
     <div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-labelledby="{key}-label">

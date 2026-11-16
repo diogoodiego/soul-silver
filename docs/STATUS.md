@@ -43,6 +43,8 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] 030.10 Verificação
 - [x] 031.1–031.7 Ecruteak até Cianwood
 - [x] 032.1–032.7 Olivine, Mahogany e Lake of Rage
+- [x] V.1 Visual HD-2D: pós-processamento (avulso; roteiro manual pendente)
+- [x] V.2 Visual HD-2D: sombras projetadas (avulso; roteiro manual pendente)
 - [ ] 033.1–033.8 Torre de Rádio até Lugia nas Whirl Islands
 - [ ] 034.1–034.6 Victory Road e Liga
 
@@ -57,6 +59,8 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 Itens dados como concluídos com algo ainda em aberto. Resolva quando o item atual tocar no
 assunto, ou quando o desenvolvedor pedir.
 
+- V.1/V.2: roteiro manual em `.evidence/V.1/roteiro.md` (visual, ajuste das forças em `MAX`/`BLOOM_THRESHOLD`/`MAX_SHADE`, `shadow.bias`, FPS em Alta).
+- V.2: testes de tempo do servidor (`perf`, `trainer-perf`) falham às vezes na suíte cheia e passam isolados; não é do V.2.
 - 024: jogada humana do `walkthrough.md` sem comandos de desenvolvimento (manual).
 - 032.1: o golden entra direto ao lado da Jasmine; os gatilhos do ginásio de Olivine (z = 23 e 15, 0x410E 1→2→3) não são exercitados.
 - 032.1: ligações roteirizadas do Baoba além do índice 0 (desafios da Safari Zone) faltam em `scripted-calls.json`.
@@ -113,6 +117,9 @@ assunto, ou quando o desenvolvedor pedir.
 ## Decisões
 
 Só o que muda o rumo de itens futuros, uma linha cada.
+
+- V.1: com efeitos ligados, o canvas tem o tamanho da tela e a cena é desenhada num render target nativo (`render/post.ts`); quem ler pixels do canvas deve contar com isso.
+- V.2: sombra sem iluminar os materiais (camada `SHADE` sobre o mapa); um item futuro de luz real deve substituir essa camada, não somar.
 
 - WildBattle com shiny 1 gera o selvagem fixo shiny (`wilds.place(..., shiny)`), sem mudar protocolo nem save.
 - `StaticWildWonOrCaughtCheck` dá 1 quando o Pokémon fugiu (necessário para os Electrodes do mapa 248).

@@ -161,6 +161,45 @@ Verificação: completa (CLAUDE.md), depois o caminho dourado, o relatório do M
 
 ## 033 · Torre de Rádio até Lugia
 
+### V.1 Visual HD-2D: pós-processamento
+
+Item V.1 do roadmap (avulso, antes do bloco 033): Visual HD-2D, só pós-processamento.
+Fazer:
+- Configuração `visual` em `packages/shared/src/settings.ts`: `quality` ("off" | "low" | "high", padrão "low") e força de 0 a 100, de 5 em 5, para `tiltShift`, `bloom`, `vignette` e `fog` (0 desliga aquele efeito). A leitura campo a campo já cobre arquivos antigos, então não há migração. Na tela de Configurações, os botões de qualidade seguem o padrão de `uiScale` e há um slider por efeito.
+- CRT: tirar a vinheta (radial e box-shadow) do utilitário `crt` em `app.css`. Ele fica só com as scanlines, e a vinheta passa a ser o efeito novo.
+- Renderer (`packages/client/src/render/game-renderer.ts`): com qualidade "off", o caminho de hoje fica intacto (256x192 ampliado por CSS). Com "low" ou "high", a cena é desenhada num render target em resolução nativa, com filtro nearest, e composta no canvas na resolução da tela (`screen × scale`). O pós-processamento roda nessa resolução usando `three/examples/jsm` (`EffectComposer`, `UnrealBloomPass` e `ShaderPass`), sem dependência nova:
+  - tilt-shift: desfoque separável em Y, com a faixa nítida centrada na posição do jogador na tela, que vale também na borda do mapa;
+  - bloom;
+  - névoa: gradiente que se adensa no alto da tela, só quando `areaType === "outdoor"`;
+  - vinheta.
+  A diferença entre "low" e "high" fica no custo: bloom em resolução reduzida e menos amostras no desfoque.
+- As sobreposições de DOM (tint, fade, gloom) e a UI continuam acima do canvas, sem mudança.
+
+Pronto quando: os testes de `readSettings` e `settingsPatch` cobrem `visual` (ausente, inválido, limites e passo); com "off", o render não muda em relação a hoje; existe o roteiro manual em `.evidence/V.1/`.
+
+Regras do item:
+- Render e UI ficam isentos de teste-first. Só a configuração tem teste.
+- Sem luz nos materiais, sem sombras e sem luzes pontuais: isso fica para um item futuro.
+
+Verificação: leve (CLAUDE.md), mais o roteiro manual em `.evidence/V.1/` (visual de cada efeito, força 0 e 100, qualidade off/low/high, interior × exterior, foco na borda do mapa, CRT sem vinheta).
+
+### V.2 Visual HD-2D: sombras projetadas
+
+Item V.2 do roadmap (avulso, depois do V.1): sombras projetadas por todos os elementos 3D e sprites.
+Fazer:
+- Efeito `shadows` (0 a 100, padrão 50) em `visual`, na mesma tela dos outros efeitos. Só aparece com a qualidade diferente de "off".
+- Uma `DirectionalLight` só para sombras, já que os materiais continuam sem luz e as cores da ROM ficam intactas. Ao ar livre, o sol tem ângulo fixo, vindo do noroeste e do alto (cerca de 75°). Em interiores e cavernas, a luz é quase vertical e as sombras ficam curtas. A luz segue o jogador.
+- O mapa e os props projetam sombra. Cada grupo opaco ganha uma segunda passada com `ShadowMaterial` (compartilhado, `SHADE` em `map-scene.ts`), que só escurece onde há sombra.
+- Sprites: um projetor invisível na posição real dos pés (sem `SPRITE_DEPTH_BIAS`), recuado `SHADOW_NUDGE_PX` para o norte para a sombra nascer sob os pés, com material que não escreve cor nem profundidade.
+- Qualidade: na Baixa, mapa de sombra de 1024 com borda mais dura. Na Alta, 2048 com borda suave (`shadow.radius`, já que o `PCFSoftShadowMap` foi removido no three 0.186).
+
+Pronto quando: o teste de configuração cobre `shadows`, inclusive em arquivos do V.1, e o roteiro manual em `.evidence/V.1/` tem a seção de sombras.
+
+Regras do item:
+- Os sprites não recebem sombra (só projetam), e as sombras pintadas na textura da ROM continuam lá.
+
+Verificação: leve (CLAUDE.md), mais o roteiro manual.
+
 ### 033.1 Torre de Rádio
 
 Item 033.1 do roadmap (bloco 033): Torre de Rádio.

@@ -16,10 +16,20 @@ export const TEXT_FRAMES_PER_CHAR: Record<TextSpeed, number> = { slow: 8, mid: 4
 /** How much faster script text types with fastCutsceneText on. */
 export const CUTSCENE_TEXT_BOOST = 2;
 export const UI_SCALES = [0.75, 1, 1.25, 1.5] as const;
+/** V.1: post-processing cost; "off" keeps the plain upscaled canvas. */
+export const VISUAL_QUALITIES = ["off", "low", "high"] as const;
+export type VisualQuality = (typeof VISUAL_QUALITIES)[number];
+export const VISUAL_EFFECTS = ["tiltShift", "bloom", "vignette", "fog", "shadows"] as const;
+const VISUAL_DEFAULTS = { quality: "low", tiltShift: 50, bloom: 40, vignette: 50, fog: 40, shadows: 50 } as const;
 
 const windowSize = z.strictObject({ width: z.number(), height: z.number() }).refine((w) => WINDOW_SIZES.some((s) => s.width === w.width && s.height === w.height), "tamanho de janela fora da lista");
 const keys = z.array(z.string().min(1).refine((k) => !RESERVED_KEYS.has(k), "tecla reservada")).min(1);
 const volume = z.number().int().min(0).max(100).multipleOf(5);
+// An effect added later takes its default, as bindings do; 0 turns an effect off.
+const visual = z.strictObject({
+  quality: z.enum(VISUAL_QUALITIES).default(VISUAL_DEFAULTS.quality),
+  ...(Object.fromEntries(VISUAL_EFFECTS.map((e) => [e, volume.default(VISUAL_DEFAULTS[e])])) as Record<(typeof VISUAL_EFFECTS)[number], z.ZodDefault<typeof volume>>),
+});
 // An action added later takes its default key, so older settings keep their bindings.
 const bindings = z.strictObject(Object.fromEntries(ACTIONS.map((a) => [a, keys.default(() => [...DEFAULT_KEYS[a]])])) as Record<keyof Bindings, z.ZodDefault<typeof keys>>);
 
@@ -31,8 +41,10 @@ const fields = {
   /** Spec 021: script text types this many times faster than textSpeed. */
   fastCutsceneText: z.boolean(),
   uiScale: z.number().refine((n) => (UI_SCALES as readonly number[]).includes(n), "escala fora da lista"),
-  /** Scanlines and vignette over the game screen and the team panel. */
+  /** Scanlines over the game screen and the team panel. */
   crt: z.boolean(),
+  /** V.1: HD-2D post-processing over the field. */
+  visual,
   bindings,
   /** Spec 018: volumes 0–100 in steps of 5. */
   audio: z.strictObject({ master: volume, music: volume, effects: volume, muteUnfocused: z.boolean() }),
@@ -48,6 +60,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fastCutsceneText: false,
   uiScale: 1,
   crt: true,
+  visual: { ...VISUAL_DEFAULTS },
   bindings: structuredClone(DEFAULT_KEYS),
   audio: { master: 80, music: 80, effects: 80, muteUnfocused: false },
 };

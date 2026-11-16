@@ -900,6 +900,7 @@
         });
       }
       renderer.setDark(darkMap && !lit);
+      renderer.setVisual(currentSettings().visual, outdoorMap);
       const clock = game.clockAt(now);
       if (page === "gear" && clock) gearClock = { minuteOfDay: Math.floor(clock.minuteOfDay), weekday: clock.weekday };
       renderer.setTint(outdoorMap && clock ? tintAt(clock.minuteOfDay, spawnJson.value.timeBands, tintJson.value) : null);
