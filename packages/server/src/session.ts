@@ -193,7 +193,7 @@ interface Player {
   /** Asked for the AI debug overlay (spec 019). */
   debugAi: boolean;
   /** Party, money, badges and respawn point, changed in place by the companion rules; bag, Pokédex and PC boxes by capture. */
-  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints" | "escape" | "phone" | "daycare" | "daycareEgg" | "eggWalk" | "photos" | "seals"> & ItemState & { roamers: Roamer[] };
+  progress: Trainer["progress"] & Catcher["progress"] & Learner["progress"] & Pick<Save, "pcItems" | "flyPoints" | "escape" | "phone" | "daycare" | "daycareEgg" | "eggWalk" | "photos" | "seals" | "hallOfFame"> & ItemState & { roamers: Roamer[] };
   /** Story flags and variables (spec 020), changed by this player's scripts only. */
   flags: Set<number>;
   vars: Map<number, number>;
@@ -413,6 +413,7 @@ export function createSession(options: SessionOptions): Session {
     ? createScripts({
         data: options.scripts,
         rockSmashItems: fieldData.rules.rockSmashItems,
+        boulderHoles: fieldData.rules.boulderHoles,
         world,
         lookup: lookup,
         npcs,
@@ -786,6 +787,7 @@ export function createSession(options: SessionOptions): Session {
         eggWalk: base.eggWalk,
         photos: structuredClone(base.photos),
         ...(base.seals ? { seals: { ...base.seals } } : {}),
+        ...(base.hallOfFame ? { hallOfFame: structuredClone(base.hallOfFame) } : {}),
         roamers: structuredClone(base.roamers ?? []),
         ...itemStateOf(base),
       },
@@ -859,6 +861,7 @@ export function createSession(options: SessionOptions): Session {
       daycare: structuredClone(p.progress.daycare),
       roamers: structuredClone(p.progress.roamers),
       ...(p.progress.seals ? { seals: { ...p.progress.seals } } : {}),
+      ...(p.progress.hallOfFame ? { hallOfFame: structuredClone(p.progress.hallOfFame) } : {}),
       ...itemStateOf(p.progress),
       flags: [...p.flags].sort((a, b) => a - b),
       vars: Object.fromEntries([...p.vars].map(([k, v]) => [String(k), v])),
@@ -1462,7 +1465,10 @@ export function createSession(options: SessionOptions): Session {
       // Every tick, so ledge hops and warp transitions run out without input.
       scripts?.push(p.id, input);
       const me = world.get(p.entityId)!;
-      world.update(stepMovement(me, input ?? null, lookup, npcs && npcOccupied(world.all().filter((e) => scripts!.visible(p.id, e)).map((e) => scripts!.view(p.id, e)), me.area)));
+      const held = npcs && npcOccupied(world.all().filter((e) => scripts!.visible(p.id, e)).map((e) => scripts!.view(p.id, e)), me.area);
+      // Item 033.3: the Blackthorn Gym's lava, but under its platforms.
+      const lava = scripts?.lavaBlocks(p.id);
+      world.update(stepMovement(me, input ?? null, lookup, lava ? (tx, ty) => lava(tx, ty) || !!held?.(tx, ty) : held));
     }
     npcs?.step();
     const hits = combat?.step(tick, world) ?? [];

@@ -51,6 +51,8 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   16: (save) => ({ ...save, schemaVersion: 17 }),
   // Item 031.7: the Seal Case is empty (seals is optional).
   17: (save) => ({ ...save, schemaVersion: 18 }),
+  // Item 034.4: nobody is in the Hall of Fame yet (hallOfFame is optional).
+  18: (save) => ({ ...save, schemaVersion: 19 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

@@ -35,6 +35,10 @@ export const CENTER: Record<string, Handler> = {
   DebugWatch: nothing,
   SetAvatarBits: nothing,
   UpdateAvatarState: nothing,
+  // Item 033.1: the Team Rocket disguise (1 on, 0 off) of the Goldenrod Tunnel (map 199) and the Radio Tower 1F (112); the
+  // story reads var 0x4077 (16503) = 3, not this. shortcut: the player is not drawn in the uniform; keep and draw it when the
+  // client has the costume sprite.
+  RocketCostumeFlagAction: nothing,
   PokeCenAnim: nothing,
   ScrCmd_436: nothing,
   ScrCmd_599: nothing,

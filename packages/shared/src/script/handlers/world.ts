@@ -83,5 +83,11 @@ export const WORLD: Record<string, Handler> = {
     c.writeVar(c.ptr("arg1"), p.x);
     c.writeVar(c.ptr("arg2"), p.z);
   },
+  // Item 033.1: the person's facing (SCRIPT_DIRECTIONS index), 255 when it is not there. Read from the warehouse of map 200,
+  // where the worker pacing between z 15 and 16 has the container moved only facing it (0 at the top, 1 at the bottom).
+  ScrCmd_622: (c) => c.writeVar(c.ptr("arg1"), c.host.personPosition(c.get("arg0"))?.facing ?? 255),
+  // Item 033.1: a person's movement type (map 200's worker once the container moved; map 141's follower); the server keeps
+  // the extracted one. shortcut: the new movement is not applied; apply it if a scene shows a person moving wrongly after it.
+  ScrCmd_109: nothing,
   GetWeekday: (c) => c.writeVar(c.ptr("arg0"), c.host.weekday()),
 };

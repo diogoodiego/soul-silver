@@ -5,7 +5,9 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 18;
+export const SAVE_SCHEMA_VERSION = 19;
+/** Teams the Hall of Fame keeps (the original's 30 records); the oldest goes first. */
+export const HALL_OF_FAME_MAX = 30;
 
 /** Seals of one kind the Seal Case holds (the Moomoo farm's "Seal Case is full" at 99). */
 export const SEAL_MAX = 99;
@@ -217,6 +219,16 @@ export const saveSchema = z.strictObject({
     .optional(),
   /** Item 031.7: the Seal Case, how many of each seal (id 1 to 80, the seal-names bank) it holds. Absent is empty. */
   seals: z.record(z.string().regex(/^([1-9]|[1-7]\d|80)$/), z.number().int().min(1).max(SEAL_MAX)).optional(),
+  /** Item 034.4: each team that beat the League, oldest first (HallOfFameAnim): when, and its members but eggs. Absent is none. */
+  hallOfFame: z
+    .array(
+      z.strictObject({
+        at: z.string(),
+        party: z.array(z.strictObject({ species: z.number().int().min(1), level: z.number().int().min(1).max(100), nickname: z.string().min(1).max(10).optional() })).min(1).max(6),
+      }),
+    )
+    .max(HALL_OF_FAME_MAX)
+    .optional(),
 });
 export type Save = z.infer<typeof saveSchema>;
 export type Photo = z.infer<typeof photo>;

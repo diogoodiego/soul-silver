@@ -4,9 +4,9 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 033.1 Torre de Rádio**
+**Próximo item: 034.5 Balanceamento de Johto**
 
-Versões atuais: protocolo 33, save 18.
+Versões atuais: protocolo 34, save 19.
 
 ## Concluídos
 
@@ -46,8 +46,20 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] V.1 Visual HD-2D: pós-processamento (avulso; roteiro manual pendente)
 - [x] V.2 Visual HD-2D: sombras projetadas (avulso; roteiro manual pendente)
 - [x] V.3 Ringue para lutas de treinador em interiores (avulso; roteiro manual pendente)
-- [ ] 033.1–033.8 Torre de Rádio até Lugia nas Whirl Islands
-- [ ] 034.1–034.6 Victory Road e Liga
+- [x] 033.1 Torre de Rádio
+- [x] 033.2 Ice Path
+- [x] 033.3 Blackthorn e Dragon's Den
+- [x] 033.4 Oito insígnias
+- [x] 033.5 Lutas consecutivas
+- [x] 033.6 Kimono Girls
+- [x] 033.7 Whirl Islands e Lugia
+- [x] 033.8 Verificação (capturas manuais pendentes)
+- [x] 034.1 Caminho até a Victory Road
+- [x] 034.2 Victory Road e rival
+- [x] 034.3 Elite Four
+- [x] 034.4 Lance, Hall da Fama e retorno
+- [ ] 034.5–034.6 Balanceamento e verificação
+- [ ] 034.7 Pendências dos blocos 033 e 034 (lista no roadmap)
 
 ## Próximos marcos
 
@@ -82,6 +94,21 @@ assunto, ou quando o desenvolvedor pedir.
 - 032.6: bloco de gelo empurrado salta ao fim do deslize e só se move para quem empurrou; exigência de Strength e reset ao reentrar não conferidos.
 - 032.6: golden confere treinadores do ginásio de Mahogany só pelo prêmio do Pryce; deslize pausado por batalha não verificado no cliente.
 - 032.7: M4.0 do bloco com 19/21 mapas limpos; 88 e 295 dependem do recorde de tamanho do Magikarp (campo novo no save).
+- 033.1 (`shortcut:`): disfarce Rocket não desenhado (RocketCostumeFlagAction no-op); ScrCmd_109 (tipo de movimento) não aplicado; ScrCmd_622 lido como direção da pessoa (inferido do mapa 200).
+- 033.1: golden passa pelos andares 2F–5F da Torre e pelo armazém (201/202) por warp/route sem lutar com os grunts de visão; loteria, senha da Buena e Machokes do mapa 200 fora do golden.
+- 033.1: o tile do gatilho do rival no 1F (23, 5) é também a escada; depois da cena o jogador sobe para o 2F.
+- 033.2 (`shortcut:`): a pedra que cai num buraco do B1F mostra a rocha do B2F pelo buraco (`boulderHoles` em `content/field/moves.json`, casada pelo ponto de queda do jogador), não pela pedra; regra original não conferida com o pokeheartgold.
+- 033.2: a extração dos mapas subiu para v12 (cavernas sem a fileira de cima liberada; interiores seguem liberando, as viagens do Spinarak de Azalea passam por cima delas); quem tem extração antiga precisa reextrair os mapas (o app faz sozinho pela versão da etapa).
+- 033.3 (`shortcut:`): plataformas do ginásio de Blackthorn sem desenho no cliente (modelos 120/121 não enviados como props), sem animação nem som de movimento/batida; o servidor move e gira e trava a lava.
+- 033.3: no Dragon's Den (253) o extrator marca as paredes do santuário (x 27 e 29, z 43–49) como `levelTransition`; não atrapalha o caminho, mas é colisão errada.
+- 033.7 (`shortcut:`): cenas visuais do Lugia (sino, câmera, ondas, olhos, chegada, barras de cinema, ScrCmd_805, ProcessSoundplate) e a asa do monge (ShowLegendaryWing) são no-op; o golden entra nas Whirl Islands por warp no mapa 243 e vence o Lugia por nocaute (captura não exercitada).
+- 033.8: mapas do bloco 033 com comandos faltando só em atividades paralelas, sem implementação: loteria (112: LotoIDGet, LotoIDSearch, BufferIntEx, BufferBoxMonNick), senha da Buena (186: GetBuenasPassword), acessórios do Fashion Case (118: ScrCmd_403/406), lojas do subsolo (199: ScrCmd_255/155/154/256/404/492/494/553/830–833, MonAddFriendship, MonAddContestValue), casas de Blackthorn (290: MonGetGender, GetEVTotal; 291: Move Tutor/Relearner). Decidir: implementar num item próprio ou tirar esses mapas do bloco.
+- 033.8: capturas manuais pelo `.evidence/033/roteiro.md` e comparação com as páginas 29–37 e 100–104 do detonado.
+- 034.1–034.2 (`shortcut:`): o golden cruza por warp a água das Routes 26/27, o interior das Tohjo Falls e os andares da Victory Road (até a cena do rival).
+- 034.4 (`shortcut:`): animação do Hall da Fama e créditos não desenhados; HOFCredits leva o jogador ao quarto (início do jogo novo).
+- 034: capturas manuais pelo `.evidence/034/roteiro.md` (páginas 37–40 do detonado).
+- 033.3: o golden ensina o HM05 (Whirlpool) no Dragon's Den para cruzar o redemoinho (13–15, 36–38) até a porta do santuário.
+- 033.2: o golden pega o HM04 da Route 42 no começo do Ice Path (antes passava por warp) e o ensina ao líder; Sayo é empurrada na volta ao 1F.
 - 032.7: capturas manuais pelo `.evidence/032/roteiro.md` e comparação com as páginas 21–28 do detonado.
 - 025: captura `04-fishing-bite.png` e roteiro manual do tempo de reação na pesca.
 - 027: seletor rápido com gamepad (roteiro manual; impedir o Pokémon de andar com o D-pad).
@@ -124,6 +151,13 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - V.1: com efeitos ligados, o canvas tem o tamanho da tela e a cena é desenhada num render target nativo (`render/post.ts`); quem ler pixels do canvas deve contar com isso.
 - V.2: sombra sem iluminar os materiais (camada `SHADE` sobre o mapa); um item futuro de luz real deve substituir essa camada, não somar.
 
+- 033.1: Routes 44–46, Ice Path, Blackthorn, Dragon’s Den e o subsolo de Goldenrod (118, 199–202) entraram no bloco 033 em `map-blocks.json`; Dark Cave (123) segue pendente.
+- 033.1: uma pessoa parada num tile de porta (warp sólido) bloqueia a entrada (`afterMove`); o golden aceita `route` até um warp e mira treinadores pela posição atual.
+- 033.2: cavernas não liberam a fileira de cima de áreas bloqueadas altas (extração v12): a parede vale como na ROM.
+- 033.3: o ginásio de Blackthorn segue `src/field/gymmick/blackthorn.c` do pokeheartgold (`field/blackthorn-gym.ts`): estado por jogador, reiniciado pelo BlackthornGymInit a cada entrada; lava (0x2C) sem plataforma é parede só para quem tem o estado.
+- 033.5: o modo de lutas consecutivas já vinha das regras do bloco 022 (sem cura entre lutas, itens dentro e fora delas, derrota com WhiteOut no script); o item só acrescentou os testes de harness (`trainer-battle-sequence.test.ts`).
+- 034.4: o Hall da Fama fica em `save.hallOfFame` (save 19, até 30 equipes, sem ovos); protocolo 34.
+- 033.1: `GOLDEN_RESUME="<save>:<marco>"` retoma o golden de um save do `keep` (só desenvolvimento; a verificação é a corrida completa).
 - WildBattle com shiny 1 gera o selvagem fixo shiny (`wilds.place(..., shiny)`), sem mudar protocolo nem save.
 - `StaticWildWonOrCaughtCheck` dá 1 quando o Pokémon fugiu (necessário para os Electrodes do mapa 248).
 - O HM 424 (Whirlpool) é entregue no fim do esconderijo (032.4), não no 032.6.

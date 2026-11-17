@@ -36,7 +36,7 @@ const v12 = {
   daycare: [{ mon: member, steps: 40 }],
 };
 const v13 = { ...v12, schemaVersion: 13, daycareEgg: false };
-const v14 = (over: object = {}) => ({ ...v13, schemaVersion: 18, eggWalk: 0, photos: [], ...over });
+const v14 = (over: object = {}) => ({ ...v13, schemaVersion: 19, eggWalk: 0, photos: [], ...over });
 
 describe("save v14", () => {
   it("is version 14 or later", () => {

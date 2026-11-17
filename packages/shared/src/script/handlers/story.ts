@@ -96,6 +96,8 @@ export const STORY: Record<string, Handler> = {
   // shortcut: the waterfall is not drawn and its state is the map's temporary variable (back on at each entry); draw it with the client's gym props.
   CianwoodGymInit: nothing,
   CianwoodGymTurnWinch: (c) => c.writeVar(c.ptr("arg0"), c.get("arg0") ? 0 : 1),
+  // Item 033.3: the Blackthorn Gym's platforms back where InitBlackthornGym puts them (field/blackthorn-gym.ts); the server moves them.
+  BlackthornGymInit: (c) => c.host.blackthornInit?.(),
   // Spec 030.5: the Azalea Gym's Spinarak and levers (field/azalea-gym.ts). The carts are script props; the server glides the rider.
   AzaleaGymInit: (c) => {
     const gym = c.host.azaleaGym?.();
@@ -138,6 +140,40 @@ export const STORY: Record<string, Handler> = {
   StopSE: nothing,
   // Item 031.1. A beast's cry animation (always between Release and Lock, after PlayCry): looks the client does not draw.
   ScrCmd_523: nothing,
+  // Item 033.7. The Whirl Islands' looks (maps 243 and 244): the monk's view of the Silver Wing, and Lugia's arrival to the
+  // Tidal Bell (camera pans, bell shimmer, waves, Lugia's eyes and flight, the cinematic bars, ScrCmd_805, the sound plate).
+  // shortcut: none is drawn or heard; the scene's text, moves and flags run as they are.
+  ShowLegendaryWing: nothing,
+  ScrCmd_805: nothing,
+  LegendCutsceneClearBellAnimBegin: nothing,
+  LegendCutsceneClearBellRiseFromBag: nothing,
+  LegendCutsceneClearBellShimmer: nothing,
+  LegendCutsceneWavesOrLeavesEffectBegin: nothing,
+  LegendCutsceneWavesOrLeavesEffectEnd: nothing,
+  LegendCutscenePanCameraTo: nothing,
+  LegendCutsceneWaitCameraPan: nothing,
+  LegendCutsceneMoveCameraTo: nothing,
+  LegendCutsceneLugiaEyeGlimmerEffect: nothing,
+  LegendCutsceneClearBellAnimEnd: nothing,
+  Cinematic: nothing,
+  LegendCutsceneLugiaArrivesEffectBegin: nothing,
+  LegendCutsceneBirdFinalApproach: nothing,
+  LegendCutsceneLugiaArrivesEffectCameraPan: nothing,
+  LegendCutsceneLugiaArrivesEffectEnd: nothing,
+  ProcessSoundplate: nothing,
+  // Item 034.1: run by Route 27's onTransition (map 31) while flag 360 is off, with no result; its effect is unknown.
+  // shortcut: nothing; revisit if a Route 27 scene shows what it sets.
+  ScrCmd_804: nothing,
+  // Item 034.3: the League lobby's rankings sign (map 300) opens the Wi-Fi record screens: not in this game.
+  ViewRankings: nothing,
+  // Item 034.4: the party (eggs aside) goes into this player's Hall of Fame. shortcut: the Hall of Fame scene is not drawn.
+  HallOfFameAnim: (c) => c.host.recordHallOfFame?.(),
+  // Item 034.4: after the credits the player is back home, where a new game starts (the original saves there).
+  // shortcut: the credits are not shown.
+  HOFCredits: (c) => {
+    const home = c.host.home?.();
+    if (home) c.host.warp(home.map, home.x, home.z, home.facing);
+  },
   // Item 031.2: Raikou (0) and Entei (1) start roaming for this player (wild/roamer.ts).
   CreateRoamer: (c) => c.host.createRoamer?.(c.get("arg0")),
 };

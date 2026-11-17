@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import { BUTTON, createRng, findDuplicates, surfable, tileAt, type PcSlot, type ServerMessage } from "@soulsilver/shared/game";
 import { isIce, type Direction } from "@soulsilver/shared/maps";
+import { BLACKTHORN_START, blackthornFloor, blackthornPress, type BlackthornGymState } from "@soulsilver/shared/field";
 import { expForLevel, memberStats } from "@soulsilver/shared/progression";
 import { applyNewGame, badgeCount, migrate, type Save } from "@soulsilver/shared/save";
 import { SCRIPT_HANDLERS } from "@soulsilver/shared/script";
@@ -305,38 +306,54 @@ function pilot(from?: Save) {
    * one step closer, as a player walking by; the trainer spots, walks up and challenges.
    */
   function routeTrainer(name: string, map: number, npc: number): Check {
-    const person = data.scripts?.events(map)?.npcs.find((n) => n.id === npc);
-    if (!person?.trainer) return { name, failed: `pessoa ${npc} do mapa ${map} não é treinador na extração` };
-    const look = [VECTORS.north, VECTORS.south, VECTORS.west, VECTORS.east][person.facing] ?? VECTORS.south;
-    const toward = (Object.keys(VECTORS) as Direction[]).find((d) => VECTORS[d].x === -look.x && VECTORS[d].y === -look.y)!;
+    const extracted = data.scripts?.events(map)?.npcs.find((n) => n.id === npc);
+    if (!extracted?.trainer) return { name, failed: `pessoa ${npc} do mapa ${map} não é treinador na extração` };
     const o = data.world!(String(map))?.origin ?? { tx: 0, ty: 0 };
-    const people = new Set(session.world.all().filter((e) => e.kind === "npc" && e.area === String(map)).map((e) => `${Math.floor(e.x / 16) + o.tx},${Math.floor(e.y / 16) + o.ty}`));
-    // Item 031.3: a player walking by stands on no armed trigger (the Ecruteak Gym's void beside its path).
-    const vars = fresh().vars;
-    const armed = (tx: number, ty: number) => data.scripts?.events(map)?.triggers.some((t) => (vars[t.variable] ?? 0) === t.value && tx >= t.x && tx < t.x + t.w && ty >= t.z && ty < t.z + t.h);
-    const free = (tx: number, ty: number) => !people.has(`${tx},${ty}`) && !armed(tx, ty) && !SOLID.has(tileAt(data.world!, String(map), 0, (tx - o.tx) * 16 + 8, (ty - o.ty) * 16 + 8)?.category ?? "blocked");
-    const sight = person.param[0] ?? 1;
-    const d = [...Array(sight).keys()].map((i) => sight + 1 - i).find((k) => free(person.x + look.x * k, person.z + look.y * k) && free(person.x + look.x * (k - 1), person.z + look.y * (k - 1)));
-    // Its sight blocked (by people of a scene still standing, say), a player walks up beside it and talks.
-    const side = d === undefined ? (Object.keys(VECTORS) as Direction[]).find((dir) => free(person.x + VECTORS[dir].x, person.z + VECTORS[dir].y)) : undefined;
-    if (d === undefined && !side) return { name, failed: `treinador ${person.trainer} sem linha de visão livre nem lado livre para conversar` };
-    const opposite = (dir: Direction) => (Object.keys(VECTORS) as Direction[]).find((x) => VECTORS[x].x === -VECTORS[dir].x && VECTORS[x].y === -VECTORS[dir].y)!;
-    const money = fresh().money;
-    const pass = () => {
-      if (d !== undefined) {
-        warp(map, person.x + look.x * d, person.z + look.y * d);
-        walk(toward, 1);
-      } else {
-        warp(map, person.x + VECTORS[side!].x, person.z + VECTORS[side!].y);
-        talk(opposite(side!));
-      }
+    // Where it stands now, on the map the player is on: a trainer that walks (Cianwood Gym's, movement 20) has left its spot.
+    /** From where it stands now: the way to walk into its sight, or the failure. */
+    const plan = (): (() => void) | string => {
+      const live = session.world.all().find((e) => e.kind === "npc" && e.area === String(map) && e.data["person"] === npc);
+      const person = live ? { ...extracted, x: Math.floor(live.x / 16) + o.tx, z: Math.floor(live.y / 16) + o.ty } : extracted;
+      const look = [VECTORS.north, VECTORS.south, VECTORS.west, VECTORS.east][person.facing] ?? VECTORS.south;
+      const toward = (Object.keys(VECTORS) as Direction[]).find((d) => VECTORS[d].x === -look.x && VECTORS[d].y === -look.y)!;
+      const people = new Set(session.world.all().filter((e) => e.kind === "npc" && e.area === String(map)).map((e) => `${Math.floor(e.x / 16) + o.tx},${Math.floor(e.y / 16) + o.ty}`));
+      // Item 031.3: a player walking by stands on no armed trigger (the Ecruteak Gym's void beside its path).
+      const vars = fresh().vars;
+      const armed = (tx: number, ty: number) => data.scripts?.events(map)?.triggers.some((t) => (vars[t.variable] ?? 0) === t.value && tx >= t.x && tx < t.x + t.w && ty >= t.z && ty < t.z + t.h);
+      const free = (tx: number, ty: number) => !people.has(`${tx},${ty}`) && !armed(tx, ty) && !SOLID.has(tileAt(data.world!, String(map), 0, (tx - o.tx) * 16 + 8, (ty - o.ty) * 16 + 8)?.category ?? "blocked");
+      const sight = person.param[0] ?? 1;
+      const d = [...Array(sight).keys()].map((i) => sight + 1 - i).find((k) => free(person.x + look.x * k, person.z + look.y * k) && free(person.x + look.x * (k - 1), person.z + look.y * (k - 1)));
+      // Its sight blocked (by people of a scene still standing, say), a player walks up beside it and talks.
+      const side = d === undefined ? (Object.keys(VECTORS) as Direction[]).find((dir) => free(person.x + VECTORS[dir].x, person.z + VECTORS[dir].y)) : undefined;
+      if (d === undefined && !side) return `treinador ${person.trainer} sem linha de visão livre nem lado livre para conversar`;
+      const opposite = (dir: Direction) => (Object.keys(VECTORS) as Direction[]).find((x) => VECTORS[x].x === -VECTORS[dir].x && VECTORS[x].y === -VECTORS[dir].y)!;
+      return () => {
+        if (d !== undefined) {
+          warp(map, person.x + look.x * d, person.z + look.y * d);
+          walk(toward, 1);
+        } else {
+          warp(map, person.x + VECTORS[side!].x, person.z + VECTORS[side!].y);
+          talk(opposite(side!));
+        }
+      };
     };
+    const money = fresh().money;
+    const first = plan();
+    if (typeof first === "string") return { name, failed: first };
+    const pass = first;
     const seen = spotted.length;
     const since = battles.size;
     pass();
     // A trainer that looks around (movement 2, 5 to 13) spots only once it turns to the player, who waits in its line.
     if (spotted.length === seen && until(() => spotted.length > seen, 600)) settle();
-    return battle(name, [person.trainer], money, pass, since);
+    // One that walks about (movement 20) may have moved on: from where it stands now, again.
+    for (let tries = 0; tries < 4 && spotted.length === seen; tries++) {
+      const again = plan();
+      if (typeof again === "string") break;
+      again();
+      if (until(() => spotted.length > seen, 200)) settle();
+    }
+    return battle(name, [extracted.trainer], money, pass, since);
   }
 
   /** Spec 026: beside person `npc` of `map`, facing them, and talks (a beaten trainer does not spot). */
@@ -854,8 +871,11 @@ function route(p: Pilot, tx: number, tz: number, face?: Direction, taken: string
     }
     return back.get(`${tx},${tz}`) ?? undefined;
   };
+  // Item 033.1: a warp as the target is reached by taking it (the warehouse's exit, between two walls).
+  const toWarp = events?.warps.some((w) => w.x === tx && w.z === tz) ?? false;
   for (let n = 0; n < 200; n++) {
     const at = p.tile();
+    if (at.map !== area && toWarp) return;
     if (at.map !== area) throw new Error(`o jogador saiu do mapa ${area} para o ${at.map} a caminho de (${tx}, ${tz})`);
     if (at.tx === tx && at.ty === tz) {
       if (face) p.tick(face);
@@ -873,6 +893,127 @@ function route(p: Pilot, tx: number, tz: number, face?: Direction, taken: string
 }
 
 /**
+ * Item 033.3: to (tx, tz) of the Blackthorn Gym (map 141) over its lava, by the fewest steps of a search over the three
+ * platforms (where BlackthornGymInit puts them on entering) and the player's tile: a platform's floor is walkable, its
+ * buttons move or turn it as the server does (field/blackthorn-gym.ts); the gym's armed triggers are stepped around.
+ */
+function blackthornRoute(p: Pilot, tx: number, tz: number): void {
+  const area = p.me().area;
+  const events = p.data.scripts?.events(Number(area));
+  const vars = p.fresh().vars;
+  const armed = new Set((events?.triggers ?? []).filter((t) => (vars[t.variable] ?? 0) === t.value).flatMap((t) => [...Array(t.w * t.h).keys()].map((i) => `${t.x + (i % t.w)},${t.z + Math.floor(i / t.w)}`)));
+  const people = new Set((events?.npcs ?? []).map((n) => `${n.x},${n.z}`));
+  const warps = new Set((events?.warps ?? []).map((w) => `${w.x},${w.z}`));
+  const cell = (x: number, z: number) => tileAt(p.data.world!, area, 0, x * 16 + 8, z * 16 + 8);
+  const lava = (x: number, z: number) => {
+    const c = cell(x, z);
+    return !!c && c.category !== "blocked" && (c.raw & 0xff) === 0x2c;
+  };
+  const open = (state: BlackthornGymState, x: number, z: number) =>
+    !people.has(`${x},${z}`) && !warps.has(`${x},${z}`) && !armed.has(`${x},${z}`) && !SOLID.has(cell(x, z)?.category ?? "blocked") && (!lava(x, z) || blackthornFloor(state, x, z));
+  const keyOf = (state: BlackthornGymState, x: number, z: number) => `${x},${z}|${state.map((q) => `${q.x},${q.z},${q.rot}`).join(";")}`;
+  const from = p.tile();
+  const start = BLACKTHORN_START.map((q) => ({ ...q }));
+  const back = new Map<string, [string, Direction] | null>([[keyOf(start, from.tx, from.ty), null]]);
+  const queue: [BlackthornGymState, number, number][] = [[start, from.tx, from.ty]];
+  let end: string | undefined;
+  for (let i = 0; i < queue.length && !end; i++) {
+    const [state, x, z] = queue[i]!;
+    for (const dir of Object.keys(VECTORS) as Direction[]) {
+      let [nx, nz] = [x + VECTORS[dir].x, z + VECTORS[dir].y];
+      if (!open(state, nx, nz)) continue;
+      let next = state;
+      const pressed = blackthornPress(state, nx, nz, (a, b) => !lava(a, b));
+      if (pressed) [next, nx, nz] = [pressed.state, nx + pressed.dx, nz + pressed.dz];
+      const k = keyOf(next, nx, nz);
+      if (back.has(k)) continue;
+      back.set(k, [keyOf(state, x, z), dir]);
+      if (nx === tx && nz === tz) end = k;
+      queue.push([next, nx, nz]);
+    }
+  }
+  if (!end) throw new Error(`sem caminho pelas plataformas de (${from.tx}, ${from.ty}) a (${tx}, ${tz}) no mapa ${area}`);
+  const steps: Direction[] = [];
+  for (let k = end; back.get(k); k = back.get(k)![0]) steps.unshift(back.get(k)![1]);
+  for (const dir of steps) {
+    const at = p.tile();
+    const across = dir === "north" || dir === "south";
+    const off = () => ((across ? p.me().x : p.me().y) % 16) - 8;
+    for (let i = 0; i < 12 && Math.abs(off()) > 1; i++) p.tick(across ? (off() > 0 ? "west" : "east") : off() > 0 ? "north" : "south");
+    for (let i = 0; i < 40 && p.tile().tx === at.tx && p.tile().ty === at.ty; i++) p.tick(dir);
+    p.settle(4);
+    if (p.tile().tx === at.tx && p.tile().ty === at.ty) throw new Error(`o passo para ${dir} de (${at.tx}, ${at.ty}) não saiu do lugar no ginásio de Blackthorn`);
+  }
+  if (p.tile().tx !== tx || p.tile().ty !== tz) throw new Error(`as plataformas levaram a (${p.tile().tx}, ${p.tile().ty}), não a (${tx}, ${tz})`);
+}
+
+/**
+ * Item 033.2: pushes Strength boulder `person` of the current map onto the hole at (hx, hz), by the fewest steps of a search
+ * over the boulder's and the player's tiles: the player steps on no armed trigger (the holes), the boulder goes onto no hole
+ * but its own, and neither through people, warps or walls. Strength is turned on by talking to it first.
+ */
+function pushInto(p: Pilot, person: number, hx: number, hz: number): void {
+  const area = p.me().area;
+  const o = p.data.world!(area)?.origin ?? { tx: 0, ty: 0 };
+  const events = p.data.scripts?.events(Number(area));
+  const flags = new Set(p.fresh().flags);
+  const vars = p.fresh().vars;
+  const holes = new Set((events?.triggers ?? []).filter((t) => (vars[t.variable] ?? 0) === t.value).flatMap((t) => [...Array(t.w * t.h).keys()].map((i) => `${t.x + (i % t.w)},${t.z + Math.floor(i / t.w)}`)));
+  const boulder = events?.npcs.find((n) => n.id === person);
+  if (!boulder) throw new Error(`a pedra ${person} não está no mapa ${area}`);
+  // The other people where the extraction puts them, but those this player no longer sees (the boulders already fallen).
+  const people = new Set((events?.npcs ?? []).filter((n) => n.id !== person && !(n.hideFlag && flags.has(n.hideFlag))).map((n) => `${n.x},${n.z}`));
+  const warps = new Set((events?.warps ?? []).map((w) => `${w.x},${w.z}`));
+  const solid = (x: number, z: number) => people.has(`${x},${z}`) || warps.has(`${x},${z}`) || SOLID.has(tileAt(p.data.world!, area, 0, (x - o.tx) * 16 + 8, (z - o.ty) * 16 + 8)?.category ?? "blocked");
+  const start = p.tile();
+  const key = (bx: number, bz: number, px: number, pz: number) => `${bx},${bz},${px},${pz}`;
+  const back = new Map<string, [string, Direction] | null>([[key(boulder.x, boulder.z, start.tx, start.ty), null]]);
+  const queue: [number, number, number, number][] = [[boulder.x, boulder.z, start.tx, start.ty]];
+  let end: string | undefined;
+  for (let i = 0; i < queue.length && !end; i++) {
+    const [bx, bz, px, pz] = queue[i]!;
+    for (const dir of Object.keys(VECTORS) as Direction[]) {
+      const { x: dx, y: dz } = VECTORS[dir];
+      let next: [number, number, number, number];
+      if (px + dx === bx && pz + dz === bz) {
+        const [nx, nz] = [bx + dx, bz + dz];
+        if (solid(nx, nz) || (holes.has(`${nx},${nz}`) && (nx !== hx || nz !== hz))) continue;
+        next = [nx, nz, bx, bz];
+      } else {
+        if (solid(px + dx, pz + dz) || holes.has(`${px + dx},${pz + dz}`)) continue;
+        next = [bx, bz, px + dx, pz + dz];
+      }
+      const k = key(...next);
+      if (back.has(k)) continue;
+      back.set(k, [key(bx, bz, px, pz), dir]);
+      if (next[0] === hx && next[1] === hz) end = k;
+      queue.push(next);
+    }
+  }
+  if (!end) throw new Error(`sem jeito de empurrar a pedra ${person} de (${boulder.x}, ${boulder.z}) até o buraco (${hx}, ${hz}) no mapa ${area}`);
+  const steps: Direction[] = [];
+  for (let k = end; back.get(k); k = back.get(k)![0]) steps.unshift(back.get(k)![1]);
+  let strength = false;
+  let [bx, bz] = [boulder.x, boulder.z];
+  for (const dir of steps) {
+    const at = p.tile();
+    const pushing = at.tx + VECTORS[dir].x === bx && at.ty + VECTORS[dir].y === bz;
+    if (pushing && !strength) {
+      p.talk(dir);
+      strength = true;
+    }
+    const across = dir === "north" || dir === "south";
+    const off = () => ((across ? p.me().x : p.me().y) % 16) - 8;
+    for (let i = 0; i < 12 && Math.abs(off()) > 1; i++) p.tick(across ? (off() > 0 ? "west" : "east") : off() > 0 ? "north" : "south");
+    for (let i = 0; i < 40 && p.tile().tx === at.tx && p.tile().ty === at.ty; i++) p.tick(dir);
+    // No step past the tile's edge: walking on toward its center would push a boulder just ahead a second tile.
+    p.settle(4);
+    if (p.tile().tx === at.tx && p.tile().ty === at.ty) throw new Error(`o passo para ${dir} de (${at.tx}, ${at.ty}) não saiu do lugar ao empurrar a pedra ${person}`);
+    if (pushing) [bx, bz] = [bx + VECTORS[dir].x, bz + VECTORS[dir].y];
+  }
+}
+
+/**
  * Item 032.6: to (tx, tz) of the current map over its ice, where a step onto it slides on until a rock, a person, a wall or the
  * end of the ice stops it, and walking into an ice block (sprite 406, no script) pushes it to slide on the same way; planned
  * again after each step, as a trainer who spots the player stops one midway. The blocks are where the steps pushed them.
@@ -882,7 +1023,9 @@ function iceRoute(p: Pilot, tx: number, tz: number): void {
   const o = p.data.world!(area)?.origin ?? { tx: 0, ty: 0 };
   const cell = (x: number, z: number) => tileAt(p.data.world!, area, 0, (x - o.tx) * 16 + 8, (z - o.ty) * 16 + 8);
   const events = p.data.scripts?.events(Number(area));
-  const warps = new Set((events?.warps ?? []).map((w) => `${w.x},${w.z}`));
+  // Item 033.2: a warp as the target is reached by taking it, as in route.
+  const toWarp = (events?.warps ?? []).some((w) => w.x === tx && w.z === tz);
+  const warps = new Set((events?.warps ?? []).map((w) => `${w.x},${w.z}`).filter((w) => w !== `${tx},${tz}`));
   const isBlock = new Set((events?.npcs ?? []).filter((n) => n.sprite === 406 && !n.script).map((n) => n.id));
   let blocks = (events?.npcs ?? []).filter((n) => isBlock.has(n.id)).map((n) => `${n.x},${n.z}`);
   type Step = { dir: Direction; player: string; blocks: string[] };
@@ -921,8 +1064,9 @@ function iceRoute(p: Pilot, tx: number, tz: number): void {
     }
     return undefined;
   };
-  for (let n = 0; n < 60; n++) {
+  for (let n = 0; n < 200; n++) {
     const at = p.tile();
+    if (at.map !== area && toWarp) return;
     if (at.map !== area) throw new Error(`o jogador saiu do mapa ${area} para o ${at.map} a caminho de (${tx}, ${tz})`);
     if (at.tx === tx && at.ty === tz) return;
     const step = plan();
@@ -1802,6 +1946,323 @@ const STEPS: Record<number, (p: Pilot) => void> = {
     p.talk("north");
     checks.push(p.battle("Pryce (ginásio de Mahogany)", [32], money, () => p.talk("north")));
   },
+  // Item 033.1. Back in Mahogany with the seventh badge (0x4134 = 4) the frame script (930:5) has Team Rocket take the Radio
+  // Tower (0x4077 = 2). In the Goldenrod Tunnel's studio (map 199) the grunt's trigger (x 15, 94:4) puts the player in a Team
+  // Rocket uniform (0x4077 = 3).
+  69: (p) => {
+    keep(p, "antes-radio");
+    p.warp(87, 523, 184);
+    if (p.fresh().vars[0x4077] !== 2) throw new Error(`a Torre de Rádio não foi tomada ao voltar a Mahogany (0x4077 = ${p.fresh().vars[0x4077]})`);
+    p.warp(199, 14, 10);
+    p.walk("east", 1);
+  },
+  // Item 033.1. Radio Tower 1F (map 112): in uniform, the grunt on the stairs' tile (person 6 at (23, 5), 29:5) steps aside
+  // (0x400A = 1); on that tile the rival unmasks the player (29:9), the grunt battles (trainer 185) and runs to warn the others
+  // (0x4077 = 4).
+  70: (p) => {
+    keep(p, "antes-torre-1f");
+    const money = p.fresh().money;
+    p.warp(112, 22, 5);
+    // Once he steps aside the player, still turned to him, moves onto the tile.
+    p.talk("east");
+    if (p.tile().map === "112") p.walk("east", 1);
+    checks.push(p.battle("grunt do 1F da Torre de Rádio", [185], money, () => undefined));
+  },
+  // Item 033.1. Radio Tower 5F (map 189): the "Director" (person 0 at (5, 13), 33:2) is Petrel in disguise; beaten (trainer
+  // 487), he gives the Basement Key (item 476) and sends the player to the warehouse (0x40E7 = 2). The floors' grunts are
+  // passed by warp (shortcut, as the route trainers elsewhere).
+  71: (p) => {
+    keep(p, "antes-petrel");
+    const money = p.fresh().money;
+    p.warp(189, 5, 14);
+    p.talk("north");
+    checks.push(p.battle("Petrel disfarçado de diretor (5F)", [487], money, () => undefined));
+  },
+  // Item 033.1. The Goldenrod Tunnel (map 199): a Kimono Girl at (16, 31) (94:11, 0x40E7 = 3); the Basement Key opens the door
+  // (person 11, 94:10, flag 448) to map 118 and its way down to the warehouse (map 201), where the rival waits at (19, 5)
+  // (96:4, trainer 271 for Cyndaquil, 0x40A0 = 1). Through 202 the real Director (person 3, 97:1) gives the Card Key (item 475).
+  72: (p) => {
+    keep(p, "antes-armazem");
+    p.warp(199, 15, 31);
+    p.walk("east", 1);
+    if (p.fresh().vars[0x40e7] !== 3) throw new Error(`a Kimono Girl do túnel não apareceu (0x40E7 = ${p.fresh().vars[0x40e7]})`);
+    p.warp(199, 25, 31);
+    p.talk("north");
+    p.walk("north", 1);
+    if (p.fresh().area !== "118") throw new Error(`a porta do porão não levou ao mapa 118 (está ${p.fresh().area})`);
+    route(p, 25, 4);
+    p.walk("north", 1);
+    if (p.fresh().area !== "201") throw new Error(`o túnel não levou ao armazém (mapa 201; está ${p.fresh().area})`);
+    const money = p.fresh().money;
+    route(p, 19, 5);
+    checks.push(p.battle("rival no armazém", [289, 271, 288], money, () => undefined));
+    route(p, 26, 14);
+    if (p.fresh().area !== "202") throw new Error(`o armazém não levou ao mapa 202 (está ${p.fresh().area})`);
+    route(p, 20, 14);
+    p.talk("north");
+  },
+  // Item 033.1. The Card Key in the slot of 3F (map 187, (22, 11), 31:7) opens its shutters (flag 144); Proton on 4F (map 188,
+  // person 3, trainer 706) and Ariana on 5F (map 189, person 1, trainer 478) by their lines of sight; on the Observation Deck
+  // (map 190) Archer (person 0, 34:1, trainer 485) disbands Team Rocket and the Director gives the Silver Wing (item 482,
+  // flag 148): the tower is free (0x4077 = 5, flag 198).
+  73: (p) => {
+    keep(p, "antes-executivos");
+    p.warp(187, 22, 12);
+    p.talk("north");
+    checks.push(p.routeTrainer("Proton (4F da Torre de Rádio)", 188, 3));
+    checks.push(p.routeTrainer("Ariana (5F da Torre de Rádio)", 189, 1));
+    const money = p.fresh().money;
+    p.warp(190, 8, 4);
+    p.talk("north");
+    checks.push(p.battle("Archer (mirante da Torre de Rádio)", [485], money, () => undefined));
+  },
+  // Item 033.2. Route 44's cave mouth (633, 169) into the Ice Path's 1F (map 120), over its ice: the HM07 (Waterfall) item
+  // ball at (47, 10) (flag 1111), picked from the floor west of it (the man at (47, 7) turns back whoever comes from the
+  // north without it, 99:4); down the stairs at (55, 7) to B1F (map 237).
+  74: (p) => {
+    keep(p, "antes-ice-path");
+    // The hiker of Route 42 (map 44, trigger (434, 172–176), 252:0, 0x4091 = 1) bumps into the player and gives HM04 (Strength,
+    // item 423), needed for B1F's boulders; the walk to Mahogany passes here (the golden came by warp).
+    p.warp(44, 435, 173);
+    p.walk("west", 1);
+    if (p.fresh().vars[0x4091] !== 1) throw new Error(`o alpinista da Route 42 não deu o HM04 (0x4091 = ${p.fresh().vars[0x4091]})`);
+    p.warp(46, 633, 170);
+    p.walk("north", 1);
+    if (p.fresh().area !== "120") throw new Error(`a Route 44 não levou ao Ice Path (está ${p.fresh().area})`);
+    iceRoute(p, 46, 10);
+    p.talk("east");
+    iceRoute(p, 55, 7);
+  },
+  // Item 033.2. Down and back up the Ice Path by its stairs, over the ice of each floor: B1F (237) to B2F (238) at (25, 8),
+  // B2F to B3F (239) at (16, 17), B3F back to B2F's east side at (24, 12), B2F to B1F at (43, 22), B1F to 1F's east side
+  // at (6, 42). There, Sayo, frozen at (55, 29), is pushed from behind (99:2, flag 569, 0x40E8 = 1); out at (55, 40) to
+  // Blackthorn City (map 89).
+  75: (p) => {
+    keep(p, "antes-ice-path-b1f");
+    // B1F's four boulders (persons 0–3, flags 490–493) into its four holes: each falls to B2F as a rock (flags 494–497) that
+    // stops a slide on its ice. HM04 (Strength) is taught to the lead in place of its second move.
+    p.send({ type: "use-item", item: 423, partyIndex: 0 });
+    p.settle();
+    let left = [0, 1, 2, 3];
+    for (const [hx, hz] of [[11, 10], [10, 18], [18, 7], [19, 19]] as const) {
+      const fell = left.find((person) => {
+        try {
+          pushInto(p, person, hx, hz);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+      if (fell === undefined) throw new Error(`nenhuma pedra do B1F chega ao buraco (${hx}, ${hz})`);
+      left = left.filter((n) => n !== fell);
+    }
+    for (const [map, tx, tz] of [["237", 25, 8], ["238", 16, 17], ["239", 24, 12], ["238", 43, 22], ["237", 6, 42]] as const) {
+      if (p.fresh().area !== map) throw new Error(`o Ice Path não levou ao mapa ${map} (está ${p.fresh().area})`);
+      iceRoute(p, tx, tz);
+    }
+    if (p.fresh().area !== "120") throw new Error(`o B1F não levou de volta ao 1F do Ice Path (está ${p.fresh().area})`);
+    iceRoute(p, 55, 28);
+    p.talk("south");
+    iceRoute(p, 55, 40);
+  },
+  // Item 033.3. Blackthorn's gym door (668, 151) into map 141: over the lava on its three platforms, moved and turned by their
+  // buttons (BlackthornGymInit, item 033.3), to Clair (person 0 at (12, 3), 943:0, trainer 35). Beaten, she keeps the Badge
+  // and sends the player to the Dragon's Den (flag 209). The gym's trainers spot the player on the way.
+  76: (p) => {
+    keep(p, "antes-blackthorn");
+    p.warp(89, 668, 152);
+    p.walk("north", 1);
+    if (p.fresh().area !== "141") throw new Error(`a porta do ginásio de Blackthorn não levou ao mapa 141 (está ${p.fresh().area})`);
+    // The gym guide's trigger across the way in (12–14, 82) (943:4, 0x4130 = 1) tells of Clair's Dragon types.
+    p.walk("north", 5);
+    const money = p.fresh().money;
+    const since = p.battles.size;
+    blackthornRoute(p, 12, 4);
+    p.talk("north");
+    checks.push(p.battle("Clair (ginásio de Blackthorn)", [35], money, () => undefined, since));
+  },
+  // Item 033.3. Behind the gym, the Dragon's Den (Blackthorn's (672, 132) to map 125, then 253): by Surf from (28, 18) and
+  // Whirlpool across its water to the strip below the shrine's door, in at (28, 50) (map 288). The elder's five questions (130:3): each answer is a menu
+  // entry the extraction marks right (arg2 0: entries 0, 0, 1, 0, 1); then Clair brings the Rising Badge (badge 7, flag 234)
+  // and the Den's way out has her give TM59 later (0x40C4 = 1).
+  77: (p) => {
+    keep(p, "antes-dragons-den");
+    p.warp(89, 672, 133);
+    p.walk("north", 1);
+    if (p.fresh().area !== "125") throw new Error(`a entrada do Dragon's Den não levou ao mapa 125 (está ${p.fresh().area})`);
+    route(p, 6, 5);
+    if (p.fresh().area !== "253") throw new Error(`o Dragon's Den não levou ao mapa 253 (está ${p.fresh().area})`);
+    route(p, 28, 18, "south");
+    p.send({ type: "field-mount", mode: "surf" });
+    p.settle();
+    if (p.me().data["mode"] !== "surf") throw new Error(`o Surf não começou no Dragon's Den (${p.recent().join(", ")})`);
+    // The whirlpool at (13–15, 36–38) (0x11) is the only way by water to the strip below the shrine's door, which faces
+    // south: HM05 (item 424) is taught to the first member that learns it, then used from the water north of it.
+    const learner = p.fresh().party.findIndex((m) => p.data.progression?.machines(m.species).includes(424 - 327));
+    if (learner === -1) throw new Error("ninguém do time aprende o HM05 (Whirlpool)");
+    p.send({ type: "use-item", item: 424, partyIndex: learner });
+    p.settle();
+    if (!p.fresh().party[learner]?.moves.includes(250)) throw new Error(`o membro ${learner} não aprendeu Whirlpool`);
+    route(p, 14, 35, "south");
+    p.talk("south");
+    if (p.tile().ty < 39) throw new Error(`o Whirlpool não levou o jogador pelo redemoinho (está em (${p.tile().tx}, ${p.tile().ty}))`);
+    route(p, 28, 52, "north");
+    p.send({ type: "field-dismount" });
+    p.settle();
+    p.answers.push(0, 0, 1, 0, 1);
+    p.walk("north", 1);
+    if (p.fresh().area !== "288") throw new Error(`o píer não levou ao santuário (mapa 288; está ${p.fresh().area})`);
+    p.settle();
+  },
+  // Item 033.4. With eight Badges, New Bark's east exit (trigger (700, 398–402), 842:11) has Mom send the player back
+  // (0x4081 = 1); in Elm's lab (map 61) Lyra brings the player to Elm, who gives the Master Ball (item 1, 843:14, 0x4108 = 9)
+  // and sends them to the Kimono Girls; the exit then has Lyra turn them back (0x4081 = 2, 842:12) until Lugia (item 033.7).
+  78: (p) => {
+    keep(p, "antes-master-ball");
+    const blocked = (who: string) => {
+      p.warp(60, 699, 400);
+      p.walk("east", 1);
+      const at = p.tile();
+      checks.push(at.map === "60" && at.tx < 700 ? { name: `saída leste de New Bark bloqueada (${who})` } : { name: `saída leste de New Bark bloqueada (${who})`, failed: `o jogador passou para (${at.tx}, ${at.ty}) do mapa ${at.map}` });
+    };
+    blocked("mãe, 0x4081 = 1");
+    // Beside the door: the scene walks the player 7 tiles north, to the tile before Elm.
+    p.warp(61, 4, 13);
+    p.settle();
+    if (p.fresh().vars[0x4108] !== 9) throw new Error(`o Elm não deu a Master Ball (0x4108 = ${p.fresh().vars[0x4108]})`);
+    blocked("Lyra, 0x4081 = 2");
+  },
+  // Item 033.6. Before Ecruteak's Dance Theater (map 78, trigger (397, 174), 920:5, 0x4079 = 3) the rival talks to the player
+  // (0x4079 = 4, 0x410C = 4); inside (map 86) the scene (928:16) walks them to Zuki, who tests them: five battles in a row
+  // (item 033.5) against the Kimono Girls (trainers 162, 160, 164, 161, 163), then the Tidal Bell (item 503, flag 260) and
+  // off to the Whirl Islands (0x410C = 6, 0x40FA = 1, flag 581 cleared).
+  79: (p) => {
+    keep(p, "antes-kimono");
+    p.warp(78, 397, 175);
+    p.walk("north", 1);
+    if (p.fresh().vars[0x410c] !== 4) throw new Error(`o rival não apareceu diante do teatro (0x410C = ${p.fresh().vars[0x410c]})`);
+    const money = p.fresh().money;
+    const since = p.battles.size;
+    // The scene moved the player: back to the door.
+    route(p, 397, 173);
+    if (p.fresh().area !== "86") throw new Error(`a porta do teatro não levou ao mapa 86 (está ${p.fresh().area})`);
+    p.settle();
+    const fought = [...p.battles.values()].slice(since);
+    const order = fought.map((b) => `${b.trainer} ${b.result}`).join(", ");
+    checks.push(order === "162 won, 160 won, 164 won, 161 won, 163 won" ? { name: `Kimono Girls em sequência: ${order}` } : { name: "Kimono Girls em sequência", failed: `lutas: ${order || "nenhuma"}` });
+    const owed = fought.reduce((sum, b) => sum + (b.prize ?? 0), 0);
+    if (p.fresh().money - money !== owed) checks.push({ name: "prêmio das Kimono Girls", failed: `dinheiro ${p.fresh().money - money}, prêmios ${owed}` });
+  },
+  // Item 033.7. The Whirl Islands (map 243, from 242's (54, 43)): the monk at (36, 30) (103:0) sees the Silver Wing and lets
+  // the player down (flag 262); at (31, 43) the basin (map 244), where the Kimono Girls dance with the Tidal Bell (trigger
+  // (16, 36), 104:5, flag 267) and Lugia shows itself.
+  80: (p) => {
+    keep(p, "antes-whirl-islands");
+    p.warp(243, 32, 15);
+    route(p, 36, 31, "north");
+    p.talk("north");
+    if (!p.fresh().flags.includes(262)) throw new Error("o monge das Whirl Islands não viu a Silver Wing (flag 262)");
+    route(p, 31, 43);
+    if (p.fresh().area !== "244") throw new Error(`o caminho não levou ao fundo da cachoeira (mapa 244; está ${p.fresh().area})`);
+    p.walk("north", 2);
+  },
+  // Item 033.7. Lugia (person 5 at (16, 17), 104:0, level 45 in SoulSilver), faced by Surf from (16, 18): a static encounter
+  // for this player, knocked out by the bot; the Kimono Girls go home and New Bark's east exit opens (flag 265, 0x4081 = 3).
+  81: (p) => {
+    keep(p, "antes-lugia");
+    // Around Zuki, who ends the dance in front of the player (route would also avoid the other girls' first places).
+    p.walk("west", 1);
+    p.walk("north", 2);
+    route(p, 16, 23, "north");
+    p.send({ type: "field-mount", mode: "surf" });
+    p.settle();
+    if (p.me().data["mode"] !== "surf") throw new Error(`o Surf não começou diante do Lugia (${p.recent().join(", ")})`);
+    route(p, 16, 18, "north");
+    p.talk("north");
+    knockOut(p, 249, "244");
+    // Its body lies there catchable a while; the script (and its flags) goes on once it is gone.
+    p.until(() => !!p.save?.flags.includes(265), 6000);
+    p.settle();
+  },
+  // Item 034.1. New Bark's east exit lets the player by now (0x4081 = 3). Route 27 (map 31): "your first step into Kanto"
+  // (trigger (734, 402–404), 221:1, 0x408A = 1); the Tohjo Falls (map 126) in at (740, 396) and out at (45, 20) to the
+  // route's east side; Route 26's gate (map 299, from (909, 296)): the guard checks the eight Badges (trigger (11, 16),
+  // 213:0, 0x4110 = 1) and the way north (11, 2) leads into the Victory Road (map 124).
+  // shortcut: the routes' water and the falls' insides are crossed by warp, as other long stretches of the golden path.
+  82: (p) => {
+    keep(p, "antes-route-27");
+    p.warp(60, 699, 400);
+    p.walk("east", 1);
+    const at = p.tile();
+    checks.push(at.map === "60" && at.tx >= 700 ? { name: "saída leste de New Bark aberta depois do Lugia" } : { name: "saída leste de New Bark aberta depois do Lugia", failed: `o jogador ficou em (${at.tx}, ${at.ty}) do mapa ${at.map}` });
+    p.warp(31, 735, 403);
+    p.walk("west", 1);
+    if (p.fresh().vars[0x408a] !== 1) throw new Error(`o homem da Route 27 não falou do primeiro passo em Kanto (0x408A = ${p.fresh().vars[0x408a]})`);
+    p.warp(31, 740, 397);
+    p.walk("north", 1);
+    if (p.fresh().area !== "126") throw new Error(`a entrada das Tohjo Falls não levou ao mapa 126 (está ${p.fresh().area})`);
+    p.warp(126, 44, 20);
+    p.walk("east", 1);
+    if (p.fresh().area !== "31") throw new Error(`a saída das Tohjo Falls não levou à Route 27 (está ${p.fresh().area})`);
+    p.warp(30, 909, 297);
+    p.walk("north", 1);
+    if (p.fresh().area !== "299") throw new Error(`a Route 26 não levou ao portão da Liga (mapa 299; está ${p.fresh().area})`);
+    route(p, 11, 16);
+    if (p.fresh().vars[0x4110] !== 1) throw new Error(`o guarda do portão não conferiu as insígnias (0x4110 = ${p.fresh().vars[0x4110]})`);
+    route(p, 11, 2);
+  },
+  // Item 034.2. The Victory Road's way out (map 179): the rival waits at (37–39, 21) (110:0, trainer 272 for Cyndaquil,
+  // 0x40C5 = 1); past him, (38, 14) leads onto the Indigo Plateau (map 58) and its door (912, 200) into the League (map 300).
+  // shortcut: the Victory Road's floors (124, 178, 179) are crossed by warp, to the rival's scene.
+  83: (p) => {
+    keep(p, "antes-victory-road");
+    if (p.fresh().area !== "124") throw new Error(`o portão não levou à Victory Road (mapa 124; está ${p.fresh().area})`);
+    const money = p.fresh().money;
+    p.warp(179, 38, 22);
+    p.walk("north", 1);
+    checks.push(p.battle("rival na Victory Road", [268, 272, 264], money, () => undefined));
+    route(p, 38, 14);
+    if (p.fresh().area !== "58") throw new Error(`a Victory Road não levou ao Indigo Plateau (está ${p.fresh().area})`);
+    route(p, 912, 202);
+    p.walk("north", 2);
+    if (p.fresh().area !== "300") throw new Error(`a porta do Indigo Plateau não levou à Liga (mapa 300; está ${p.fresh().area})`);
+  },
+  // Item 034.3. The Elite Four in a row (item 033.5): from the lobby (map 300) past its attendant, north at (11, 7), each room (301 to 304) walks
+  // the player in (its frame script), the member waits at (6, 10) or (6, 11), and beaten opens the door at (6, 2): Will (245),
+  // Koga (247), Bruno (418), Karen (246), flags 228 to 231.
+  84: (p) => {
+    keep(p, "antes-elite-four");
+    // The attendant before the door (person 8 at (11, 8), 819:8) warns, then steps aside.
+    route(p, 11, 9, "north");
+    p.talk("north");
+    p.walk("north", 2);
+    for (const [map, z, trainer, name] of [["301", 10, 245, "Will"], ["302", 11, 247, "Koga"], ["303", 10, 418, "Bruno"], ["304", 10, 246, "Karen"]] as const) {
+      if (p.fresh().area !== map) throw new Error(`a porta não levou à sala de ${name} (mapa ${map}; está ${p.fresh().area})`);
+      p.settle();
+      const money = p.fresh().money;
+      route(p, 6, z + 1, "north");
+      p.talk("north");
+      checks.push(p.battle(`${name} (Elite Four)`, [trainer], money, () => undefined));
+      route(p, 6, 2);
+    }
+  },
+  // Item 034.4. Lance's room (map 305): his trigger (5–7, 10) (824:0, trainer 244), then Professor Oak and Mary; Lance takes
+  // the player to the Hall of Fame (map 306), where the team is recorded (825:0, HallOfFameAnim) and the credits leave the
+  // player home in New Bark (HOFCredits; flag 2430).
+  85: (p) => {
+    keep(p, "antes-lance-campeao");
+    if (p.fresh().area !== "305") throw new Error(`a porta de Karen não levou à sala do Lance (mapa 305; está ${p.fresh().area})`);
+    p.settle();
+    const money = p.fresh().money;
+    route(p, 6, 11);
+    p.walk("north", 1);
+    checks.push(p.battle("Lance (campeão)", [244], money, () => undefined));
+    p.until(() => p.me().area !== "305" && p.me().area !== "306", 6000);
+    p.settle();
+    const fame = p.fresh().hallOfFame ?? [];
+    const team = p.fresh().party.filter((m) => !m.egg).map((m) => m.species).join(",");
+    checks.push(fame.at(-1)?.party.map((m) => m.species).join(",") === team ? { name: `Hall da Fama no save: ${team}` } : { name: "Hall da Fama no save", failed: `registros ${JSON.stringify(fame)}, time ${team}` });
+  },
 };
 
 /** Fights the wild `species` a script just placed on map `area` with the bot until it is knocked out and gone, then settles. */
@@ -1836,8 +2297,11 @@ function multiBattle(p: Pilot, name: string, foes: number[], moneyBefore: number
   return { name: `${name}: treinadores ${foes.join(" e ")}, prêmio ${owed}` };
 }
 
-it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm, Mineral and Glacier Badges", () => {
-  let p = pilot();
+it("goes from the bedroom past the eight Badges, Lugia and the League to the Hall of Fame", () => {
+  // shortcut (development only): GOLDEN_RESUME="<save.json>:<n>" starts from a save `keep` wrote, at milestone n; the earlier
+  // milestones and the isolation counts are skipped. The full run is the check.
+  const resume = process.env["GOLDEN_RESUME"]?.match(/^(.*):(\d+)$/);
+  let p = resume ? pilot(JSON.parse(readFileSync(resume[1]!, "utf8")) as Save) : pilot();
   const reached: Milestone[] = [];
   let shared = 0;
   const isolation: Check[] = [];
@@ -1849,6 +2313,7 @@ it("goes from the bedroom past the Zephyr, Hive, Plain, Fog, Storm, Mineral and 
   };
   const extra = () => ({ checks: [...checks, ...isolation], optional: optional() });
   for (const m of MILESTONES) {
+    if (resume && m.n < Number(resume[2])) continue;
     // From the starter on (milestone 3), the boosted party; again before the lake's Gyarados (milestone 60), for the Pidgey
     // caught after the first boost, the one member that may go out from the water.
     if (m.n === 4 || m.n === 60) p = boosted(p);

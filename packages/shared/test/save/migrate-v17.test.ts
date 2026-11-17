@@ -37,7 +37,7 @@ const v16 = {
   eggWalk: 0,
   photos: [],
 };
-const v17 = (over: object = {}) => ({ ...v16, schemaVersion: 18, ...over });
+const v17 = (over: object = {}) => ({ ...v16, schemaVersion: 19, ...over });
 
 describe("save v17", () => {
   it("is the current version", () => {

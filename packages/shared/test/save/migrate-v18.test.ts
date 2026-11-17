@@ -37,11 +37,11 @@ const v17 = {
   eggWalk: 0,
   photos: [],
 };
-const v18 = (over: object = {}) => ({ ...v17, schemaVersion: 18, ...over });
+const v18 = (over: object = {}) => ({ ...v17, schemaVersion: 19, ...over });
 
 describe("save v18", () => {
-  it("is the current version", () => {
-    expect(SAVE_SCHEMA_VERSION).toBe(18);
+  it("is the current version or older", () => {
+    expect(SAVE_SCHEMA_VERSION).toBeGreaterThanOrEqual(18);
   });
 
   it("keeps a v17 save as it was: the Seal Case is empty", () => {

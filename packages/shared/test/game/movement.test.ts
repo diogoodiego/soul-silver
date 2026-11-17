@@ -260,6 +260,14 @@ describe("stepMovement: warps", () => {
     expect(e.data["warping"]).toBeGreaterThan(0);
   });
 
+  // Item 033.1: the Goldenrod Tunnel's basement door (map 199) is a person on the door tile until the Basement Key moves it.
+  it("does not enter a door a person stands in", () => {
+    let e = at(24, 40, { area: "street" });
+    for (let i = 0; i < 3; i++) e = stepMovement(e, go(0, -1), houses, (tx, ty) => tx === 1 && ty === 1);
+    expect(e.data["warping"]).toBeUndefined();
+    expect(e.area).toBe("street");
+  });
+
   it("does not enter a door brushed by the footprint's corner", () => {
     const e = repeat(at(36, 40, { area: "street" }), go(0, -1), 3, houses);
     expect(e.data["warping"]).toBeUndefined();

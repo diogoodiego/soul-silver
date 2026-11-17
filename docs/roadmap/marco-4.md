@@ -328,3 +328,33 @@ Regras do item:
 - Corrija só o que a verificação revelar, sem acrescentar recursos.
 
 Verificação: completa (CLAUDE.md), depois o caminho dourado completo e o roteiro de capturas. No fim, mostre o relatório, diga o que cada captura mostra e liste o que foi corrigido.
+
+### 034.7 Pendências dos blocos 033 e 034
+
+Item 034.7 do roadmap (bloco 034): resolver o que ficou em aberto nos itens 033.1 a 034.4 (lista em `docs/STATUS.md`, Pendências, linhas 033.x e 034.x).
+Fazer, por grupo (um commit por grupo; antes de cada um, mostre o plano):
+- Cliente (render, isento de teste-first):
+  - Plataformas do ginásio de Blackthorn (modelos 120/121, posição e rotação vindas do servidor), com animação de movimento, giro e batida. Precisa de rotação no evento `props` (sobe o protocolo).
+  - Disfarce Rocket no jogador (RocketCostumeFlagAction 1/0, mapas 112 e 199).
+  - Cena do Lugia nas Whirl Islands (sino, câmera, ondas, olhos, chegada, barras de cinema, ScrCmd_805, ProcessSoundplate) e a asa do monge (ShowLegendaryWing).
+  - Animação do Hall da Fama e créditos (HallOfFameAnim, HOFCredits).
+- Servidor e scripts (teste-first):
+  - ScrCmd_109 (tipo de movimento de uma pessoa) aplicado; conferir ScrCmd_622 (lido como direção da pessoa) com o pokeheartgold.
+  - Pedra que cai num buraco do Ice Path B1F: conferir com o pokeheartgold qual rocha do B2F aparece (hoje: a do buraco, por `boulderHoles` em `content/field/moves.json`).
+  - Extrator: paredes do santuário do Dragon's Den (mapa 253, x 27 e 29, z 43–49) marcadas como `levelTransition`; corrigir a detecção de níveis.
+- Atividades paralelas do bloco 033 (decidir antes se entram aqui ou saem do bloco em `map-blocks.json`):
+  - Loteria da Torre de Rádio (112: LotoIDGet, LotoIDSearch, BufferIntEx, BufferBoxMonNick) e senha da Buena (186: GetBuenasPassword).
+  - Acessórios do Fashion Case (118: ScrCmd_403/406) e lojas do subsolo de Goldenrod (199: ScrCmd_255/155/154/256/404/492/494/553/830–833, MonAddFriendship, MonAddContestValue).
+  - Casas de Blackthorn (290: MonGetGender, GetEVTotal; 291: Move Tutor/Relearner, MonForgetMove, BufferMoveName, GetMonTypes).
+- Caminho dourado (trocar `shortcut:` por caminho real, onde der):
+  - Torre de Rádio 2F–5F e armazém lutando com os grunts de visão.
+  - Interior das Whirl Islands (entrada pela Route 41), água das Routes 26/27, interior das Tohjo Falls e andares da Victory Road (pedras e buracos), hoje por warp.
+  - Captura do Lugia (o golden só exercita o nocaute).
+- Capturas manuais pelos roteiros `.evidence/033/roteiro.md` e `.evidence/034/roteiro.md`, comparadas com as páginas 29–40 e 100–104 do detonado.
+Pronto quando: cada pendência acima foi resolvida ou registrada como decisão (uma linha em "Decisões" do STATUS), e a tabela do M4.0 dos blocos 033 e 034 está limpa.
+
+Regras do item:
+- Depende de: 034.6 concluído.
+- Pergunte antes de mudar protocolo, save ou schema de dados extraídos.
+
+Verificação: completa (CLAUDE.md), com o caminho dourado completo de Johto.

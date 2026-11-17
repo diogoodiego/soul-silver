@@ -1,11 +1,11 @@
 import type { EncounterRecord, EncounterSlot, MapEventsFile, FieldItemsFile, FlyPointsFile, HeadbuttRecord, NewGameFile, NpcTradeRecord, RockSmashRecord, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
-import { headbuttTree, pickUser, RIDER_OFFSET_PX, rideAt, gymProps, type AzaleaGym, type AzaleaGymState, type FieldMovesRules, type GymTile } from "@soulsilver/shared/field";
+import { BLACKTHORN_START, blackthornFloor, blackthornPress, headbuttTree, pickUser, RIDER_OFFSET_PX, rideAt, gymProps, type AzaleaGym, type AzaleaGymState, type BlackthornGymState, type FieldMovesRules, type GymTile } from "@soulsilver/shared/field";
 import { rollLevel, rollSlot } from "@soulsilver/shared/wild";
 import { createRng, ringSource, stepMovement, tileAt, unstick, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
 import { isCounter, isIce, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { starterMember } from "@soulsilver/shared/progression";
 import { store } from "@soulsilver/shared/pc";
-import { canFight, hasBadgeBit, PHOTO_ALBUM_MAX, SEAL_KINDS, SEAL_MAX, type PartyMember, type Save } from "@soulsilver/shared/save";
+import { canFight, HALL_OF_FAME_MAX, hasBadgeBit, PHOTO_ALBUM_MAX, SEAL_KINDS, SEAL_MAX, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { npcOccupied, type CutsceneActor, type CutsceneStep } from "@soulsilver/shared/npc";
 import { createRunner, SCRIPT_DIRECTIONS, SCRIPT_HANDLERS, type MissingCommand, type Runner, type ScriptHost } from "@soulsilver/shared/script";
 import { POCKET_KEYS } from "@soulsilver/shared/game-data";
@@ -92,6 +92,8 @@ const FROM_WATER = new Set([0x13, 0x11]);
 const STRENGTH_SCRIPT = 10002;
 /** The ice blocks of Mahogany's gym and the Ice Path (item 032.6): this sprite with no script; walking into one pushes it. */
 const ICE_BLOCK_SPRITE = 406;
+/** TILE_BEHAVIOR_MAGMA (constants/metatile_behavior.h). */
+const MAGMA = 0x2c;
 /** Rock Smash's move id: the companion that knows it swings at the rock itself. */
 const ROCK_SMASH = 249;
 /**
@@ -197,7 +199,7 @@ export interface Storyteller {
   intro?: boolean | undefined;
   /** The story has not started (a new save, or one restarted, spec 024): _std_init runs once on joining. */
   init?: boolean | undefined;
-  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badgeSet" | "pokedex" | "respawn" | "daycare" | "daycareEgg" | "eggWalk" | "photos" | "seals">;
+  progress: Pick<Save, "party" | "boxes" | "bag" | "money" | "badgeSet" | "pokedex" | "respawn" | "daycare" | "daycareEgg" | "eggWalk" | "photos" | "seals" | "hallOfFame">;
   /** The save's rival name (spec 024); mutated in place, the session saves it. */
   rival?: Pick<Save, "rivalName"> | undefined;
   send(msg: ServerMessage): void;
@@ -246,6 +248,8 @@ export interface ScriptsOptions {
   fieldWild?: { encounter(area: string): EncounterRecord | undefined; spawn(area: string, x: number, y: number, species: number, level: number): boolean } | undefined;
   /** Spec 025: the items of each Rock Smash list and the chance of each place (content/field/moves.json). */
   rockSmashItems?: FieldMovesRules["rockSmashItems"] | undefined;
+  /** Item 033.2: holes a Strength boulder falls through (content/field/moves.json). */
+  boulderHoles?: FieldMovesRules["boulderHoles"] | undefined;
   /** Defeated trainer t is flag trainerFlagBase + t (spec 022, content/trainer/tuning.json). */
   trainerFlagBase?: number | undefined;
   /** Spec 026: the player's phone (server/src/phone.ts). `call` rings a script's call; the script waits for callEnded. */
@@ -335,6 +339,8 @@ interface State {
   strength: boolean;
   /** Spec 030.5: the Azalea Gym's spiders and levers, set by AzaleaGymInit on entering the gym. */
   gymmick: AzaleaGymState | undefined;
+  /** Item 033.3: the Blackthorn Gym's platforms, set by BlackthornGymInit on entering the gym and gone on leaving it. */
+  blackthorn: BlackthornGymState | undefined;
   /** Spec 030.5: the Spinarak ride under way, glided a step each tick while its script waits. */
   ride: { path: GymTile[]; spider: number; from: number } | undefined;
   /** The latest flag and variable changes for the debugger (spec 024), kept while it is off too. */
@@ -360,6 +366,12 @@ export function createScripts(options: ScriptsOptions) {
   let tick = 0;
 
   const origin = (area: string) => lookup(area)?.origin ?? { tx: 0, ty: 0 };
+  /** Item 033.3: lava (behavior 0x2C, MetatileBehavior_IsMagma) at map tile (x, z) of entity e's map, where no wall is. */
+  const lava = (e: Entity, x: number, z: number) => {
+    const o = origin(e.area);
+    const cell = tileAt(lookup, e.area, e.level, center(x - o.tx), center(z - o.ty));
+    return !!cell && cell.category !== "blocked" && (cell.raw & 0xff) === MAGMA;
+  };
   const eventsOf = (area: string) => (/^\d+$/.test(area) ? data.events(Number(area)) : undefined);
   const center = (t: number) => t * MAP_TILE_PX + MAP_TILE_PX / 2;
   /** The state of a player allowed to use a development command (spec 024, 025); otherwise logs the refusal. */
@@ -819,6 +831,16 @@ export function createScripts(options: ScriptsOptions) {
         s.tile = `${e.area}:${t.x},${t.z}`;
       },
       azaleaGym: () => data.azaleaGym,
+      blackthornInit: () => void (s.blackthorn = BLACKTHORN_START.map((p) => ({ ...p }))),
+      recordHallOfFame() {
+        const party = who.progress.party.filter((m) => !m.egg).map((m) => ({ species: m.species, level: m.level, ...(m.nickname ? { nickname: m.nickname } : {}) }));
+        if (party.length === 0) return;
+        const fame = (who.progress.hallOfFame ??= []);
+        fame.push({ at: options.clock(), party });
+        // The oldest team gives way once the Hall is full.
+        if (fame.length > HALL_OF_FAME_MAX) fame.shift();
+      },
+      home: () => data.newGame && { map: data.newGame.map, x: data.newGame.tx, z: data.newGame.ty, facing: SCRIPT_DIRECTIONS.indexOf(data.newGame.facing) },
       gymmick: () => s.gymmick,
       setGymmick: (state) => void (s.gymmick = state),
       facePlayer() {
@@ -835,7 +857,9 @@ export function createScripts(options: ScriptsOptions) {
       // Where this player sees them: Ilex Forest's Farfetch'd (spec 030.7) are found by the tile their last flight left them on.
       personPosition(id) {
         const e = personOf(me().area, id);
-        return e && visibleTo(s, e) ? tileOf(viewOf(s, e)) : undefined;
+        if (!e || !visibleTo(s, e)) return undefined;
+        const v = viewOf(s, e);
+        return { ...tileOf(v), facing: SCRIPT_DIRECTIONS.indexOf(v.facing) };
       },
       // Only for this player and kept in their save: the shared person stays put for the others (FR-009).
       movePerson(id, x, z, facing) {
@@ -1056,6 +1080,7 @@ export function createScripts(options: ScriptsOptions) {
     s.shown.clear();
     s.moved.clear();
     s.strength = false;
+    s.blackthorn = undefined;
     s.framesOff = false;
     for (let v = TEMP_VARS.from; v <= TEMP_VARS.to; v++) s.who.vars.delete(v);
     for (let f = MAPTEMP_FLAGS.from; f <= MAPTEMP_FLAGS.to; f++) s.who.flags.delete(f);
@@ -1141,7 +1166,7 @@ export function createScripts(options: ScriptsOptions) {
 
   return {
     join(who: Storyteller): void {
-      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", walkedFrom: undefined, shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false, outcome: 0, wildArea: undefined, strength: false, gymmick: undefined, ride: undefined, changes: [] };
+      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", walkedFrom: undefined, shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false, outcome: 0, wildArea: undefined, strength: false, gymmick: undefined, blackthorn: undefined, ride: undefined, changes: [] };
       states.set(who.playerId, s);
       // Spec 024: a story not yet started runs _std_init to its end before any map, as RunInitScript does.
       const init = who.init && data.newGame ? data.resolve(data.newGame.initScript, data.newGame.map) : undefined;
@@ -1309,12 +1334,30 @@ export function createScripts(options: ScriptsOptions) {
             if (eggCheckDue(d, s.who.progress.daycareEgg) && eggRoll(daycareCompatibility(s.who), rng.nextInt(0x10000))) s.who.progress.daycareEgg = true;
           }
           s.tile = key;
+          // Item 033.3: a Blackthorn Gym button moves or turns its platform; a move carries the player.
+          const pressed = s.blackthorn && blackthornPress(s.blackthorn, t.x, t.z, (x, z) => !lava(e, x, z));
+          if (pressed) {
+            s.blackthorn = pressed.state;
+            if (pressed.dx || pressed.dz) {
+              world.update({ ...e, x: e.x + pressed.dx * MAP_TILE_PX, y: e.y + pressed.dz * MAP_TILE_PX });
+              s.tile = `${e.area}:${t.x + pressed.dx},${t.z + pressed.dz}`;
+            }
+          }
           const trigger = eventsOf(e.area)?.triggers.find((g) => g.script && t.x >= g.x && t.x < g.x + g.w && t.z >= g.z && t.z < g.z + g.h && triggerMet(s, g));
           if (trigger?.script && start(s, trigger.script)) continue;
         }
         const frame = s.framesOff ? undefined : frameScript(s, e.area);
         if (frame) start(s, frame, true);
       }
+    },
+    /** Item 033.3: in the Blackthorn Gym, lava without a platform on it holds this player back (local tiles of their map). */
+    lavaBlocks(playerId: number): ((tx: number, ty: number) => boolean) | undefined {
+      const s = states.get(playerId);
+      const e = s?.blackthorn && world.get(s.who.entityId);
+      if (!s?.blackthorn || !e) return undefined;
+      const o = origin(e.area);
+      const platforms = s.blackthorn;
+      return (tx, ty) => lava(e, tx + o.tx, ty + o.ty) && !blackthornFloor(platforms, tx + o.tx, ty + o.ty);
     },
     /**
      * Strength (spec 025): walking into a boulder pushes it a tile, for this player only, when the tile beyond is free.
@@ -1347,6 +1390,13 @@ export function createScripts(options: ScriptsOptions) {
       let [bx, by] = [tx + dx, ty + dy];
       if (iceBlock) while (isIce(cell(bx, by)) && free(bx + dx, by + dy)) [bx, by] = [bx + dx, by + dy];
       s.moved.set(npc.id, { tx: bx, ty: by, facing: boulder!.facing });
+      // Item 033.2: onto a hole it falls; the rock it becomes on the floor below shows (the Ice Path's B1F).
+      const o = origin(me.area);
+      const hole = options.boulderHoles?.find((h) => String(h.map) === me.area && h.x === bx + o.tx && h.z === by + o.ty);
+      if (hole && npc.hideFlag) {
+        writeFlag(s, npc.hideFlag, true);
+        writeFlag(s, hole.shows, false);
+      }
     },
     /** Whether this player sees the entity: people follow the player's own flags (principle VII). */
     /** Spec 027: the hidden items still there for this player on their map, at their tiles' centers (the Dowsing MCHN). */

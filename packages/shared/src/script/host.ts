@@ -138,6 +138,16 @@ export interface ScriptHost {
   /** Spec 030.5: the Azalea Gym's threads (azalea-gym.json); undefined without the file. */
   azaleaGym?(): AzaleaGym | undefined;
   /** Spec 030.5: this player's Azalea Gym spiders and levers (the original's Gymmick block), set on entering the gym. */
+  /** Item 033.3: puts this player's Blackthorn Gym platforms where the gym starts them. */
+  blackthornInit?(): void;
+  /** Item 034.4: adds the party (eggs aside) to this player's Hall of Fame. */
+  recordHallOfFame?(): void;
+  /** Item 034.4: where a new game starts (map tiles, facing as SCRIPT_DIRECTIONS index): where the credits leave the player. */
+  home?(): { map: number; x: number; z: number; facing: number } | undefined;
+  /** Item 034.4: adds the party (eggs aside) to this player's Hall of Fame. */
+  recordHallOfFame?(): void;
+  /** Item 034.4: where a new game starts (map tiles, facing as SCRIPT_DIRECTIONS index): where the credits leave the player. */
+  home?(): { map: number; x: number; z: number; facing: number } | undefined;
   gymmick?(): AzaleaGymState | undefined;
   setGymmick?(state: AzaleaGymState): void;
   /** Spec 030.5: glides the player along `path` (map tiles) on spider `spider` while the script waits out the ride. */
@@ -147,7 +157,7 @@ export interface ScriptHost {
   hidePerson(id: number): void;
   showPerson(id: number): void;
   /** Undefined when the object is not on the map. */
-  personPosition(id: number): { x: number; z: number } | undefined;
+  personPosition(id: number): { x: number; z: number; facing?: number } | undefined;
   movePerson(id: number, x: number, z: number, facing?: number): void;
   /** 0 Sunday to 6 Saturday. */
   weekday(): number;

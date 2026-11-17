@@ -219,4 +219,47 @@ export const MILESTONES: Milestone[] = [
   // Item 032.6. Map 140, the last room of Mahogany's gym, over the ice: 932:1, Pryce (person 0, trainer 32): the Glacier Badge
   // (badge 6), then TM16 (item 334, flag 210).
   { n: 68, name: "Pryce vencido e Insígnia Glacier", checks: { badges: 7, flags: [210], items: { 334: 1 }, beaten: [32] } },
+  // Item 033.1. Mahogany's frame script (930:5) after the seventh badge: the Radio Tower taken (0x4077 = 2); the tunnel's
+  // studio (map 199, 94:4) dresses the player as a grunt (0x4077 = 3).
+  { n: 69, name: "Torre de Rádio tomada e disfarce Rocket", checks: { map: 199, vars: { 0x4077: 3 } } },
+  // Radio Tower 1F (map 112, 29:9): the rival's scene and grunt 185 on the stairs' tile, which then takes the player up to
+  // 2F (map 186); the tower's floors open to the player (0x4077 = 4).
+  { n: 70, name: "Rival e grunt no 1F da Torre de Rádio", checks: { map: 186, vars: { 0x4077: 4 }, flags: [445], beaten: [185] } },
+  // Radio Tower 5F (map 189, 33:2): Petrel as the Director (trainer 487), then the Basement Key (item 476, 0x40E7 = 2).
+  { n: 71, name: "Petrel no 5F e Basement Key", checks: { map: 189, items: { 476: 1 }, vars: { 0x40e7: 2 }, beaten: [487] } },
+  // The tunnel's Kimono Girl (94:11, flag 567, 0x40E7 = 3), the basement door (flag 448), the rival in the warehouse (96:4,
+  // 0x40A0 = 1; his team depends on the starter) and the Director's Card Key (97:1, item 475, flag 449).
+  { n: 72, name: "Armazém, rival e Card Key", checks: { map: 202, items: { 475: 1 }, flags: [448, 449, 567], vars: { 0x40e7: 3, 0x40a0: 1 }, beaten: [289, 271, 288] } },
+  // The 3F shutters (31:7, flag 144), Proton (706, 4F), Ariana (478, 5F) and Archer (485, Observation Deck, 34:1); the
+  // Director's Silver Wing (item 482, flag 148) and the tower freed (0x4077 = 5, flag 198).
+  { n: 73, name: "Torre de Rádio libertada e Silver Wing", checks: { map: 190, items: { 482: 1 }, flags: [144, 148, 198], vars: { 0x4077: 5 }, beaten: [706] } },
+  // Item 033.2. HM04 from Route 42's hiker (252:0, item 423, 0x4091 = 1); the Ice Path's 1F (map 120): HM07 (item 426, flag
+  // 1111) over the ice; down to B1F (map 237).
+  { n: 74, name: "Ice Path 1F e HM07", checks: { map: 237, items: { 423: 1, 426: 1 }, flags: [1111], vars: { 0x4091: 1 } } },
+  // B1F, B2F and B3F by their stairs and back to 1F's east side: Sayo pushed off the ice (99:2, flag 569, 0x40E8 = 1); out
+  // to Blackthorn City (map 89).
+  { n: 75, name: "Ice Path atravessado até Blackthorn", checks: { map: 89, flags: [569, 490, 491, 492, 493], vars: { 0x40e8: 1 } } },
+  // Item 033.3. The Blackthorn Gym (map 141) across its lava platforms: Clair (943:0, trainer 35) beaten, no Badge yet (flag 209).
+  { n: 76, name: "Clair vencida no ginásio de Blackthorn", checks: { map: 141, badges: 7, flags: [209], beaten: [35] } },
+  // The Dragon's Den shrine (map 288, 130:3): the elder's test passed; Clair's Rising Badge (badge 7, flag 234; 0x4108 = 8,
+  // 0x40C4 = 1, 0x4081 = 1).
+  { n: 77, name: "Teste do ancião e Insígnia Rising", checks: { map: 288, badges: 8, flags: [234], vars: { 0x4108: 8, 0x40c4: 1, 0x4081: 1 } } },
+  // Item 033.4. Elm's Master Ball (843:14, item 1, 0x4108 = 9, flag 571); New Bark's east exit held by Lyra (0x4081 = 2).
+  { n: 78, name: "Master Ball do Elm e saída leste bloqueada", checks: { map: 60, items: { 1: 1 }, flags: [571], vars: { 0x4108: 9, 0x4081: 2 } } },
+  // Item 033.6. The Dance Theater (map 86, 928:16): the five Kimono Girls beaten in a row, the Tidal Bell (item 503, flag 260);
+  // they leave for the Whirl Islands (0x410C = 6, 0x40FA = 1).
+  { n: 79, name: "Kimono Girls e Tidal Bell", checks: { map: 86, items: { 503: 1 }, flags: [260, 572], vars: { 0x410c: 6, 0x40fa: 1 }, beaten: [163] } },
+  // Item 033.7. The Whirl Islands' monk (243, flag 262) and the basin (map 244): the Kimono Girls' dance (104:5, flag 267, 0x40FA = 2).
+  { n: 80, name: "Silver Wing e a dança no fundo da cachoeira", checks: { map: 244, flags: [261, 262, 267], vars: { 0x40fa: 2 } } },
+  // Lugia knocked out (104:0): flag 265, New Bark's east exit open (0x4081 = 3), Kimono Girls home (flag 581, 572 cleared).
+  { n: 81, name: "Lugia nas Whirl Islands", checks: { map: 244, flags: [265, 581], vars: { 0x4081: 3 } } },
+  // Item 034.1. Route 27's first step into Kanto (221:1, 0x408A = 1), the Tohjo Falls, the gate's Badge check (213:0,
+  // 0x4110 = 1) and into the Victory Road (map 124).
+  { n: 82, name: "Routes 27 e 26 até a Victory Road", checks: { map: 124, badges: 8, vars: { 0x408a: 1, 0x4110: 1 } } },
+  // Item 034.2. The rival at the Victory Road's way out (110:0, 0x40C5 = 1), then the League's lobby (map 300).
+  { n: 83, name: "Rival na Victory Road e Indigo Plateau", checks: { map: 300, vars: { 0x40c5: 1 }, beaten: [268, 272, 264] } },
+  // Item 034.3. The Elite Four beaten in a row (flags 228–231); the player stands in Lance's room (map 305).
+  { n: 84, name: "Elite Four", checks: { map: 305, flags: [228, 229, 230, 231], beaten: [245, 247, 418, 246] } },
+  // Item 034.4. Lance (244), the Hall of Fame (825:0) and the credits: back home in New Bark (map 64) with the after-League flags.
+  { n: 85, name: "Campeão, Hall da Fama e volta a New Bark", checks: { map: 64, flags: [2430], beaten: [244] } },
 ];

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { bundledFieldData } from "../src/field";
 import { at, fieldStory, mon, obstacle } from "./field-fixture";
 
 // Spec 025 US1: Strength pushes boulders while it is on; Rock Climb carries the player up the wall;
@@ -71,6 +72,25 @@ describe("Strength (spec 025)", () => {
     answerAll(t, a);
     t.walk(a, { x: 0, y: 1 }, 6);
     expect(personTile(t, a, 5)).toEqual({ x: 1, y: 3 });
+  });
+});
+
+describe("boulders into holes (item 033.2)", () => {
+  // The Ice Path's B1F (map 237): a boulder (flag 490) pushed onto a hole falls; the rock under it on B2F shows (flag 494).
+  it("pushed onto a hole, the boulder is gone and the rock it becomes below shows", () => {
+    const boulder = { ...obstacle(5, 1, 3, 10002), hideFlag: 490 };
+    const base = bundledFieldData();
+    const field = { ...base, rules: { ...base.rules, boulderHoles: [{ map: 60, x: 1, z: 4, shows: 494 }] } };
+    const t = fieldStory([boulder], {}, { field, spawn: () => ({ area: "60", x: at(1), y: at(2) }) });
+    const a = t.connect("A", undefined, { save: { party: [mon([STRENGTH])], badgeSet: PLAIN, flags: [494] } });
+    t.step(2);
+    t.press(a);
+    answerAll(t, a);
+    t.walk(a, { x: 0, y: 1 }, 6);
+    t.session.close("closed-by-host");
+    const flags = a.saves().at(-1)!.save.flags;
+    expect(flags).toContain(490);
+    expect(flags).not.toContain(494);
   });
 });
 

@@ -134,7 +134,7 @@ function hopStart(world: WorldLookup, e: Entity, x: number, y: number, dir: Dire
  * the walk is stopped by a solid warp tile (doors: the feet are drawn into the doorway), or when the
  * walk is stopped while standing on a warp tile (pushing down on a mat).
  */
-function afterMove(world: WorldLookup, e: Entity, px: number, py: number, hits: Blocker[] = []): Entity {
+function afterMove(world: WorldLookup, e: Entity, px: number, py: number, hits: Blocker[] = [], occupied?: Occupied): Entity {
   let next = e;
   const map = world(next.area);
   if (map && !insideMap(map, next.x, next.y)) {
@@ -149,7 +149,8 @@ function afterMove(world: WorldLookup, e: Entity, px: number, py: number, hits: 
   if (next.area !== e.area) return next;
   // Only the tile straight ahead of the feet: a footprint corner brushing a door does not enter it.
   const [sx, sy] = STEP[next.facing];
-  const door = hits.find((b) => b.tx === tileOf(next.x) + sx && b.ty === tileOf(next.y) + sy && destinationOf(world, next, b.tx, b.ty));
+  // Item 033.1: a person standing in the doorway (the Goldenrod Tunnel's basement door) keeps it shut.
+  const door = hits.find((b) => !occupied?.(b.tx, b.ty) && b.tx === tileOf(next.x) + sx && b.ty === tileOf(next.y) + sy && destinationOf(world, next, b.tx, b.ty));
   if (door) return { ...next, x: center(door.tx), y: center(door.ty), data: warpTicks };
   return next;
 }
@@ -215,7 +216,7 @@ function slide(world: WorldLookup, e: Entity, occupied?: Occupied): Entity | und
     else y = center(tileOf(y));
   }
   if (x === x0 && y === y0) return undefined;
-  return afterMove(world, { ...e, x, y }, e.x, e.y, along.hit);
+  return afterMove(world, { ...e, x, y }, e.x, e.y, along.hit, occupied);
 }
 
 /** One tick of movement. Input is ignored while hopping, warping or sliding on ice. An unknown map is open ground. */
@@ -260,5 +261,5 @@ export function stepMovement(entity: Entity, input: MoveInput | null, world: Wor
 
   const start = hopStart(world, entity, along.x, along.y, dir, along.hit);
   if (start) return { ...entity, x: start[0], y: start[1], facing: dir, data: withCounter(entity.data, "hop", HOP_TICKS) };
-  return afterMove(world, { ...entity, x: along.x, y: along.y, facing: dir }, entity.x, entity.y, along.hit);
+  return afterMove(world, { ...entity, x: along.x, y: along.y, facing: dir }, entity.x, entity.y, along.hit, occupied);
 }

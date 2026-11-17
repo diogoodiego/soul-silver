@@ -44,6 +44,12 @@ export const fieldMovesRules = z.strictObject({
     ruinsOfAlph: z.array(int(1, 0xffff)).length(8),
     cliffCave: z.array(int(1, 0xffff)).length(8),
   }),
+  /**
+   * Item 033.2: holes a Strength boulder falls through (map tiles), and the flag cleared to show the rock it becomes on the
+   * floor below. The Ice Path's B1F holes are plain floor with a fall trigger; each shows the B2F rock beside where the
+   * player lands from it.
+   */
+  boulderHoles: z.array(z.strictObject({ map: int(0, 0xffff), x: int(0, 0xffff), z: int(0, 0xffff), shows: int(1, 0xffff) })).optional(),
 });
 export type FieldMovesRules = z.infer<typeof fieldMovesRules>;
 export type FieldMoveRule = z.infer<typeof fieldMove>;

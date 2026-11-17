@@ -38,7 +38,7 @@ describe("save v7", () => {
     if (!result.ok) throw new Error(result.message);
     const { save } = result;
     expect(save).not.toHaveProperty("storage");
-    expect(save.schemaVersion).toBe(18);
+    expect(save.schemaVersion).toBe(19);
     expect(save.pcItems).toEqual([]);
     expect(save.boxes).toHaveLength(BOX_COUNT);
     expect(save.boxes.map((b) => b.name)).toEqual(Array.from({ length: BOX_COUNT }, (_, i) => `BOX ${i + 1}`));

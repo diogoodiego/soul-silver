@@ -10,7 +10,7 @@ const save = (over: object) => ({ schemaVersion: 18, rivalName: "", storyRev: 1,
 describe("protocol v32", () => {
   it("is version 32, with save v18", () => {
     expect(PROTOCOL_VERSION).toBeGreaterThanOrEqual(32);
-    expect(SAVE_SCHEMA_VERSION).toBe(18);
+    expect(SAVE_SCHEMA_VERSION).toBeGreaterThanOrEqual(18);
   });
 
   it("carries the seals in the save, and a save without them", () => {
