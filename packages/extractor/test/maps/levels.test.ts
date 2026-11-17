@@ -12,8 +12,8 @@ const box = (x0: number, z0: number, x1: number, z1: number): Pick<PlateSpec, "f
 });
 const level = (y: number, area: Pick<PlateSpec, "from" | "to">): PlateSpec => ({ ...area, normal: [0, 1, 0], d: -y });
 
-function collision(plates: PlateSpec[], permissions: number[] = []) {
-  return buildCollision(7, [{ x: 0, z: 0, piece: readPiece(buildLand({ plates, permissions })) }]);
+function collision(plates: PlateSpec[], permissions: number[] = [], freeTopRows = true) {
+  return buildCollision(7, [{ x: 0, z: 0, piece: readPiece(buildLand({ plates, permissions })) }], freeTopRows);
 }
 
 describe("buildCollision", () => {
@@ -36,6 +36,14 @@ describe("buildCollision", () => {
     const tiles = collision([FLAT_GROUND], permissions).levels[0]!.tiles;
     expect([5, 6, 7].map((z) => tiles[tile(4, z)]!.category)).toEqual(["free", "blocked", "blocked"]);
     expect(tiles[tile(8, 5)]!.category).toBe("blocked");
+  });
+
+  // Item 033.2: in caves the top row stays a wall, as the original has it (the Ice Path's rocks stop a slide).
+  it("keeps the top row of a blocked area blocked in a cave", () => {
+    const permissions: number[] = [];
+    for (const z of [5, 6]) permissions[tile(4, z)] = 0x8000;
+    const tiles = collision([FLAT_GROUND], permissions, false).levels[0]!.tiles;
+    expect([5, 6].map((z) => tiles[tile(4, z)]!.category)).toEqual(["blocked", "blocked"]);
   });
 
   it("makes one grid per level, the upper one taking the deck tiles and sharing the rest", () => {

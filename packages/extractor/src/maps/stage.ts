@@ -244,7 +244,7 @@ async function run(ctx: StageContext): Promise<void> {
         const drawn = playing.length > 0 ? buildMapScene({ ...sceneInput, areaTextures, animations, textureAnimations, ticks }) : scene;
         return { mesh: buildMapMesh(header.id, drawn.input), sceneWarnings: scene.warnings };
       });
-      const collision = await step("collision", () => buildCollision(header.id, mapCellsWithPieces));
+      const collision = await step("collision", () => buildCollision(header.id, mapCellsWithPieces, header.areaType !== "cave"));
 
       await writeMesh(folder, mesh);
       await mkdir(join(folder, "collision"), { recursive: true });
@@ -290,7 +290,8 @@ export const mapsStage: Stage = {
   title: "Desenhando os mapas",
   // 7: script props (spec 024). 8: weather without the region bit, and the bike, escape rope and fly bits (spec 025).
   // 9: the incoming-calls bit (spec 026). 10: the Azalea Gym's Spinarak cart (spec 030.5). 11: its ropes and levers as posed props.
-  version: 11,
+  // 12: caves keep the top row of tall walls blocked (item 033.2).
+  version: 12,
   weight: 20,
   inputs: [NARC_INPUT, CODE_INPUT],
   outputs: ["maps"],

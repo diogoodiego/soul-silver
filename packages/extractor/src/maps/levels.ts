@@ -14,7 +14,8 @@ export interface CollisionWarning {
 const SAME_HEIGHT = 2;
 const NEIGHBORS = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 
-export function buildCollision(map: number, cells: MapCell[]): { levels: MapCollisionFile[]; warnings: CollisionWarning[] } {
+/** `freeTopRows`: false for caves, which keep the ROM's walls; elsewhere the top row of tall blocked areas is freed (below). */
+export function buildCollision(map: number, cells: MapCell[], freeTopRows = true): { levels: MapCollisionFile[]; warnings: CollisionWarning[] } {
   const grid = mapGrid(cells);
   const { width, height } = grid;
   const surfaces = (tx: number, tz: number) => {
@@ -41,7 +42,7 @@ export function buildCollision(map: number, cells: MapCell[]): { levels: MapColl
   // The oblique camera draws buildings and trees over the tile north of their base, so the top row
   // of a blocked area at least 2 tiles tall is walkable: the player can stand behind it, hidden by depth.
   const blockedAt = (tx: number, tz: number) => tz < 0 || base[tz * width + tx]!.category === "blocked";
-  for (let tz = height - 2; tz >= 0; tz--) { // bottom-up, so a freed row never frees the one below
+  for (let tz = freeTopRows ? height - 2 : -1; tz >= 0; tz--) { // bottom-up, so a freed row never frees the one below
     for (let tx = 0; tx < width; tx++) {
       if (blockedAt(tx, tz) && !blockedAt(tx, tz - 1) && blockedAt(tx, tz + 1)) {
         base[tz * width + tx] = { category: "free", raw: base[tz * width + tx]!.raw };
