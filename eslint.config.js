@@ -8,7 +8,7 @@ const isolationMessage =
   "client and server must not depend on Electron or Node (constitution, principles IV and IX).";
 
 export default ts.config(
-  { ignores: ["**/node_modules/", "**/out/", "**/dist/", "**/coverage/", "specs/", ".specify/", ".claude/"] },
+  { ignores: ["**/node_modules/", "**/out/", "**/dist/", "**/coverage/", "specs/", ".specify/", ".claude/", "scripts/roteiro.mjs"] },
   js.configs.recommended,
   ...ts.configs.recommendedTypeChecked,
   ...svelte.configs.recommended,

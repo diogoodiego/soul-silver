@@ -68,8 +68,8 @@ export function createPost(renderer: WebGLRenderer, quality: Exclude<Visual["qua
   const taps = quality === "high" ? 8 : 4;
   const blurX = new ShaderPass(tiltShift(taps));
   const blurY = new ShaderPass(tiltShift(taps));
-  blurX.uniforms["dir"]!.value.set(1, 0);
-  blurY.uniforms["dir"]!.value.set(0, 1);
+  (blurX.uniforms["dir"]!.value as Vector2).set(1, 0);
+  (blurY.uniforms["dir"]!.value as Vector2).set(0, 1);
   const vignette = new ShaderPass(VIGNETTE);
   for (const pass of [upscale, bloom, blurX, blurY, vignette]) composer.addPass(pass);
   let scale = 1;
@@ -82,7 +82,7 @@ export function createPost(renderer: WebGLRenderer, quality: Exclude<Visual["qua
       composer.setSize(w * s, h * s);
       // Low quality: the glow is computed at half the resolution again.
       if (quality === "low") bloom.setSize((w * s) / 2, (h * s) / 2);
-      for (const blur of [blurX, blurY]) blur.uniforms["texel"]!.value.set(1 / (w * s), 1 / (h * s));
+      for (const blur of [blurX, blurY]) (blur.uniforms["texel"]!.value as Vector2).set(1 / (w * s), 1 / (h * s));
     },
     /** `focusY`: the player's height on the screen, 0 at the top and 1 at the bottom. */
     render(scene: Scene, camera: Camera, visual: Visual, focusY: number, outdoor: boolean): void {

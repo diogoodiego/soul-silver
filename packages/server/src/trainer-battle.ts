@@ -328,7 +328,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     if (options.lookup(me.area)?.areaType !== "indoor") return;
     const area = ringArea(me.area, b.id);
     const person = trainerPerson(b);
-    const standIn = person && world.add({ kind: "npc", area, ...RING_SPOTS.trainer, level: 0, facing: "west", data: { sprite: person.data["sprite"] } }).id;
+    const standIn = person && world.add({ kind: "npc", area, ...RING_SPOTS.trainer, level: 0, facing: "west", data: { sprite: person.data["sprite"] ?? 0 } }).id;
     b.ring = { back: { area: me.area, x: me.x, y: me.y, level: me.level, facing: me.facing }, standIn };
     world.update({ ...me, area, ...RING_SPOTS.player, level: 0, facing: "east" });
     b.arena = { area, ...RING_SPOTS.center, radiusPx: RING_RADIUS_PX };

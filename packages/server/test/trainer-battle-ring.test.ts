@@ -4,8 +4,6 @@ import { arenaSetup, at, FACING, member, trainer, trainerNpc } from "./trainer-f
 
 // Item V.3: a trainer battle indoors is fought in a ring of its own; the player comes back where they stood after it.
 
-const talkScript = [["TrainerBattle", { trainer: { trainer: 7 }, arg1: 0, arg2: 0, arg3: 0 }], ["CheckBattleWon", { var: { variable: 0x4001 } }], ["End"]] as const;
-
 describe("trainer battles in a ring", () => {
   it("takes the player and a copy of the trainer to a ring, and brings the player back after", () => {
     const t = arenaSetup({ indoor: true, trainers: [trainer(1, ["sentret"])], npcs: [trainerNpc(0, 1, 5, 1, FACING.north, 5)] });
@@ -43,7 +41,7 @@ describe("trainer battles in a ring", () => {
   });
 
   it("a gym leader's scripted battle: the ring, then the script goes on back home", () => {
-    const t = arenaSetup({ indoor: true, trainers: [trainer(7, ["sentret"])], script: ["L1:", ...talkScript], spawns: [{ x: at(0), y: at(1) }] });
+    const t = arenaSetup({ indoor: true, trainers: [trainer(7, ["sentret"])], script: ["L1:", ["TrainerBattle", { trainer: { trainer: 7 }, arg1: 0, arg2: 0, arg3: 0 }], ["CheckBattleWon", { var: { variable: 0x4001 } }], ["End"]], spawns: [{ x: at(0), y: at(1) }] });
     const a = t.join(undefined, { facing: "north" });
     t.step();
     t.press(a, t.BUTTON.interact);
