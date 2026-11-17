@@ -6,10 +6,15 @@ import { createSessionList, decodeAnnouncement, encodeAnnouncement, LAN_PORT_DIS
 
 const INTERVAL_MS = 1000;
 
-/** How others reach this PC on the LAN: each external IPv4 address, with the port when it is not the default. */
+/** Global unicast IPv6 (2000::/3): reachable from the internet; link-local and unique-local stay out (R.2). */
+const isGlobalIpv6 = (address: string) => (Number.parseInt(address.split(":")[0]!, 16) & 0xe000) === 0x2000;
+
+/** How others reach this PC: each external IPv4 address, then each global IPv6 one in brackets, with the port when it is not the default. */
 export function localAddresses(port: number, interfaces: NodeJS.Dict<NetworkInterfaceInfo[]> = networkInterfaces()): string[] {
-  const ips = Object.values(interfaces).flatMap((infos) => (infos ?? []).filter((i) => i.family === "IPv4" && !i.internal).map((i) => i.address));
-  return ips.map((ip) => (port === LAN_PORT_GAME ? ip : `${ip}:${port}`));
+  const all = Object.values(interfaces).flatMap((infos) => (infos ?? []).filter((i) => !i.internal));
+  const v4 = all.filter((i) => i.family === "IPv4").map((i) => i.address);
+  const v6 = all.filter((i) => i.family === "IPv6" && isGlobalIpv6(i.address)).map((i) => `[${i.address}]`);
+  return [...v4, ...v6].map((ip) => (port === LAN_PORT_GAME ? ip : `${ip}:${port}`));
 }
 
 /** The limited broadcast plus the directed broadcast of every external IPv4 interface. */

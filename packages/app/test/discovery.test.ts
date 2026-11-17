@@ -29,6 +29,12 @@ describe("localAddresses", () => {
     expect(localAddresses(LAN_PORT_GAME, interfaces)).toEqual(["192.168.1.20"]);
     expect(localAddresses(47801, interfaces)).toEqual(["192.168.1.20:47801"]);
   });
+
+  it("adds global IPv6 addresses in brackets and leaves out link-local and unique-local ones (R.2)", () => {
+    const v6 = { Ethernet: [iface("192.168.1.20"), iface("2804:14c:65:1::10", false, "IPv6"), iface("fe80::1", false, "IPv6"), iface("fd12:3456::1", false, "IPv6"), iface("::1", true, "IPv6")] };
+    expect(localAddresses(LAN_PORT_GAME, v6)).toEqual(["192.168.1.20", "[2804:14c:65:1::10]"]);
+    expect(localAddresses(47801, v6)).toEqual(["192.168.1.20:47801", "[2804:14c:65:1::10]:47801"]);
+  });
 });
 
 describe("announce and watch", () => {

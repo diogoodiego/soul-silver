@@ -48,6 +48,10 @@ const fields = {
   bindings,
   /** Spec 018: volumes 0–100 in steps of 5. */
   audio: z.strictObject({ master: volume, music: volume, effects: volume, muteUnfocused: z.boolean() }),
+  /** R.1: what guests must type to join a session this PC hosts; empty means no password. */
+  roomPassword: z.string().max(64),
+  /** R.3: where invites learn this PC's public address; empty sends none (only LAN and IPv6 candidates). */
+  stunServer: z.string().max(200).regex(/^(stuns?:\S+)?$/, "use stun: ou stuns:"),
 };
 
 export type AppSettings = { [K in keyof typeof fields]: z.infer<(typeof fields)[K]> };
@@ -63,6 +67,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   visual: { ...VISUAL_DEFAULTS },
   bindings: structuredClone(DEFAULT_KEYS),
   audio: { master: 80, music: 80, effects: 80, muteUnfocused: false },
+  roomPassword: "",
+  stunServer: "stun:stun.l.google.com:19302",
 };
 
 /** Any JSON to full settings, field by field. */

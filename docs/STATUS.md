@@ -6,7 +6,7 @@ cada item (ver `CLAUDE.md`).
 
 **Próximo item: 034.5 Balanceamento de Johto**
 
-Versões atuais: protocolo 34, save 19.
+Versões atuais: protocolo 35, save 19.
 
 ## Concluídos
 
@@ -46,6 +46,10 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] V.1 Visual HD-2D: pós-processamento (avulso; roteiro manual pendente)
 - [x] V.2 Visual HD-2D: sombras projetadas (avulso; roteiro manual pendente)
 - [x] V.3 Ringue para lutas de treinador em interiores (avulso; roteiro manual pendente)
+- [x] R.1 Senha da sala (avulso, bloco R em `docs/roadmap/rede.md`)
+- [x] R.2 IPv6 direto (guia em `docs/multiplayer-internet.md`)
+- [x] R.3 Convite WebRTC (código copiado, sem servidor próprio)
+- [x] R.4 Verificação do bloco R (roteiro manual pendente em `.evidence/R/roteiro.md`)
 - [x] 033.1 Torre de Rádio
 - [x] 033.2 Ice Path
 - [x] 033.3 Blackthorn e Dragon's Den
@@ -142,12 +146,22 @@ assunto, ou quando o desenvolvedor pedir.
 - 031.6: golden pula os nadadores das Routes 40/41 e faz warp até o Sentret quando o caminho trava; cena do Rocket no teatro sem teste de servidor.
 - 031.7 (`shortcut:`): CheckReturnLoanMon nunca dá 3 (sem Ball Capsule); ordem das checagens não conferida com o pokeheartgold.
 - 031.7: selos só no save, sem tela de Seal Case/Ball Capsule; Shuckle (232) e selos (215) só com testes sintéticos, fora do golden.
+- R.1: o painel Online dentro do jogo não tem campo de senha; ao trocar de sessão por ali, só vale uma senha já usada antes com aquele host.
+- R.1: a lista de partidas da LAN não indica quais pedem senha.
+- R.2: conexão real por IPv6 entre duas casas não testada (roteiro manual no R.4); o rótulo "IP do anfitrião" e o placeholder seguem só com exemplo IPv4.
+- R.3: conexão WebRTC real não testada (vitest não tem WebRTC; roteiro manual no R.4); NAT simétrico (4G) não conecta, sem TURN.
+- R.3: convidado por convite não reconecta (o botão de reconectar falha com mensagem; precisa de convite novo) e o painel Online mostra "convite" como endereço.
+- R.3: o STUN padrão é o público do Google, que vê o IP de quem gera convite; trocável ou vazio nas Configurações.
+- R.4: roteiro manual em `.evidence/R/roteiro.md` (senha na LAN, IPv6 entre casas, convite WebRTC, 4G) a cargo do desenvolvedor.
+- R.4: `scripts-perf` também falha às vezes na suíte cheia e passa isolado (como `perf`/`trainer-perf`); não é do bloco R.
 - 031.7: comparação com as páginas 6–20 do detonado pendente (sem capturas; verificação só no servidor); roteiro manual em `.evidence/031/roteiro-manual.md`.
 
 ## Decisões
 
 Só o que muda o rumo de itens futuros, uma linha cada.
 
+- Rede pela internet (bloco R): só IPv6 direto e WebRTC com convite por código copiado; sem relay, VPN ou túnel. A senha da sala é conferida no socket de rede (`ws-listener`), nunca na sessão, e vem das Configurações do host.
+- Canais vindos do renderer (R.3) chegam ao servidor como `Link` adotado pelo `ws-listener`, por MessagePort; `null` na porta quer dizer "fechou".
 - V.1: com efeitos ligados, o canvas tem o tamanho da tela e a cena é desenhada num render target nativo (`render/post.ts`); quem ler pixels do canvas deve contar com isso.
 - V.2: sombra sem iluminar os materiais (camada `SHADE` sobre o mapa); um item futuro de luz real deve substituir essa camada, não somar.
 

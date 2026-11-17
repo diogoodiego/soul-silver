@@ -4,8 +4,10 @@ export type HostToServerMessage =
   | { type: "init"; protocolVersion: number; appVersion: string }
   | { type: "get-info"; requestId: number }
   /** Opens the LAN socket for other PCs (hosted session); solo never sends it. */
-  | { type: "listen" }
+  | { type: "listen"; password?: string }
   | { type: "unlisten" }
+  /** R.3: carries a MessagePort to a guest's WebRTC data channel; handled by the server process entry, not the game server. */
+  | { type: "peer-link" }
   /** A game client message; the first one for a connId opens the connection. Validated by the game server. */
   | { type: "client-message"; connId: number; msg: unknown }
   | { type: "client-close"; connId: number };
@@ -63,7 +65,9 @@ export function isHostToServerMessage(value: unknown): value is HostToServerMess
     case "get-info":
       return isCount(value["requestId"]);
     case "listen":
+      return value["password"] === undefined || typeof value["password"] === "string";
     case "unlisten":
+    case "peer-link":
       return true;
     case "client-message":
       return isCount(value["connId"]) && "msg" in value;

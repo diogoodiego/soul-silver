@@ -16,7 +16,7 @@ export interface SessionControllerDeps {
     getInfo(): Promise<ServerInfo>;
   };
   remote: {
-    connect(address: string): Promise<void>;
+    connect(address: string, password?: string): Promise<void>;
     send(msg: unknown): void;
     close(): void;
   };
@@ -154,7 +154,7 @@ export function createSessionController(deps: SessionControllerDeps) {
       return { ok: true, port };
     },
 
-    joinSession: (slot: number, address: string) => start(slot, "guest", () => deps.remote.connect(address)),
+    joinSession: (slot: number, address: string, password?: string) => start(slot, "guest", () => deps.remote.connect(address, password)),
 
     watchSessions(on: boolean): void {
       stopWatch?.();

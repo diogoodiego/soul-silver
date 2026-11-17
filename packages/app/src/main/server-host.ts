@@ -1,3 +1,4 @@
+import type { MessagePortMain } from "electron";
 import {
   isServerToHostMessage,
   PROTOCOL_VERSION,
@@ -10,7 +11,7 @@ import {
 
 /** The part of Electron's UtilityProcess the host uses; faked in tests. */
 export interface ServerProcess {
-  postMessage(msg: HostToServerMessage): void;
+  postMessage(msg: HostToServerMessage, transfer?: MessagePortMain[]): void;
   on(event: "message", listener: (msg: unknown) => void): unknown;
   on(event: "exit", listener: (code: number) => void): unknown;
   kill(): boolean;
@@ -36,8 +37,10 @@ export interface ServerHost {
   connectGame(): void;
   sendGame(msg: unknown): void;
   /** Opens the LAN socket (hosted session); resolves with the port, rejects with the reason. */
-  listen(): Promise<number>;
+  listen(password?: string): Promise<number>;
   unlisten(): void;
+  /** R.3: hands a guest's data channel port to the server; false when the server is not running. */
+  peerLink(port: MessagePortMain): boolean;
   stop(): void;
 }
 
@@ -153,7 +156,7 @@ export function createServerHost(options: ServerHostOptions): ServerHost {
     sendGame(msg) {
       if (gameConnId > 0) child?.postMessage({ type: "client-message", connId: gameConnId, msg });
     },
-    listen() {
+    listen(password) {
       if (!child || status.state === "stopped") return Promise.reject(new Error(SERVER_UNAVAILABLE));
       settleListen()?.reject(new Error("substituído por outro pedido"));
       const result = new Promise<number>((resolve, reject) => {
@@ -162,8 +165,13 @@ export function createServerHost(options: ServerHostOptions): ServerHost {
         }, timeoutMs * 2);
         pendingListen = { resolve, reject, timer };
       });
-      child.postMessage({ type: "listen" });
+      child.postMessage({ type: "listen", ...(password ? { password } : {}) });
       return result;
+    },
+    peerLink(port) {
+      if (!child || status.state === "stopped") return false;
+      child.postMessage({ type: "peer-link" }, [port]);
+      return true;
     },
     unlisten() {
       child?.postMessage({ type: "unlisten" });

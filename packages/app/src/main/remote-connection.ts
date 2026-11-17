@@ -1,4 +1,4 @@
-import { parseAddress } from "@soulsilver/shared/lan";
+import { parseAddress, urlHost } from "@soulsilver/shared/lan";
 import { WebSocket } from "ws";
 import { rawText } from "../server-host/ws-listener";
 
@@ -20,6 +20,8 @@ export function createRemoteClient(options: RemoteClientOptions) {
   let socket: WebSocket | undefined;
   /** Reconnect tokens per host and player name, kept in memory only. */
   const tokens = new Map<string, string>();
+  /** R.1: room passwords per host, kept in memory only, so a reconnect needs no typing. */
+  const passwords = new Map<string, string>();
   let key = "";
 
   const close = () => {
@@ -31,14 +33,15 @@ export function createRemoteClient(options: RemoteClientOptions) {
   };
 
   return {
-    /** Resolves when the socket is open; rejects with a message for the player. */
-    connect(address: string): Promise<void> {
+    /** Resolves when the socket is open; rejects with a message for the player. Without a password, the last one given for this host is used. */
+    connect(address: string, password?: string): Promise<void> {
       close();
       const parsed = parseAddress(address);
-      if (!parsed) return Promise.reject(new Error("Endereço inválido. Use o formato 192.168.0.10 ou 192.168.0.10:47800."));
-      key = `${parsed.host}:${parsed.port}`;
+      if (!parsed) return Promise.reject(new Error("Endereço inválido. Use o formato 192.168.0.10, 192.168.0.10:47800 ou [2804:abcd::10]:47800."));
+      key = urlHost(parsed.host, parsed.port);
+      if (password !== undefined) passwords.set(key, password);
       return new Promise((resolve, reject) => {
-        const ws = new WebSocket(`ws://${parsed.host}:${parsed.port}`, { handshakeTimeout: CONNECT_TIMEOUT_MS });
+        const ws = new WebSocket(`ws://${key}`, { handshakeTimeout: CONNECT_TIMEOUT_MS });
         socket = ws;
         let opened = false;
         ws.once("open", () => {
@@ -80,6 +83,8 @@ export function createRemoteClient(options: RemoteClientOptions) {
         playerName.set(ws, name);
         const token = tokens.get(`${key}|${name}`);
         if (token) out = { ...msg, resumeToken: token };
+        const roomPassword = passwords.get(key);
+        if (roomPassword) out = { ...(out as object), roomPassword };
       }
       ws.send(JSON.stringify(out));
     },

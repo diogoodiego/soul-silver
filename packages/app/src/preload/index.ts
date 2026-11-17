@@ -2,6 +2,8 @@ import {
   type AppSettings,
   type AssetsState,
   IpcChannel,
+  PEER_LINK_MESSAGE,
+  PEER_PORT_MESSAGE,
   type LanResult,
   type ServerInfo,
   type ServerStatus,
@@ -55,8 +57,11 @@ const api: SoulSilverApi = {
   restartStory: (slot) => ipcRenderer.invoke(IpcChannel.SavesRestartStory, slot) as Promise<SaveResult>,
   startSolo: (slot) => ipcRenderer.invoke(IpcChannel.SessionSolo, slot) as Promise<SessionResult>,
   startHost: (slot) => ipcRenderer.invoke(IpcChannel.SessionHost, slot) as Promise<SessionResult>,
-  joinSession: (slot, address) => ipcRenderer.invoke(IpcChannel.SessionJoin, { slot, address }) as Promise<SessionResult>,
+  joinSession: (slot, address, password) => ipcRenderer.invoke(IpcChannel.SessionJoin, { slot, address, password }) as Promise<SessionResult>,
   openToLan: () => ipcRenderer.invoke(IpcChannel.SessionOpenLan) as Promise<LanResult>,
+  openPeerLink: () => {
+    ipcRenderer.send(IpcChannel.PeerLink);
+  },
   watchSessions: (listener) => {
     const unsubscribe = subscribe<SessionListing[]>(IpcChannel.SessionsList, listener);
     void ipcRenderer.invoke(IpcChannel.SessionsWatch, true);
@@ -72,3 +77,13 @@ const api: SoulSilverApi = {
 };
 
 contextBridge.exposeInMainWorld("soulSilver", api);
+
+// R.3: MessagePorts cannot cross the context bridge; they pass as window messages (see PEER_LINK_MESSAGE).
+ipcRenderer.on(IpcChannel.PeerLink, (event) => {
+  window.postMessage({ type: PEER_LINK_MESSAGE }, "*", [...event.ports]);
+});
+window.addEventListener("message", (event) => {
+  if (event.source === window && (event.data as { type?: unknown } | null)?.type === PEER_PORT_MESSAGE && event.ports.length === 1) {
+    ipcRenderer.postMessage(IpcChannel.PeerPort, null, [...event.ports]);
+  }
+});

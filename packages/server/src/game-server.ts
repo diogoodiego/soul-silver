@@ -77,7 +77,7 @@ export interface GameServerOptions extends Scheduler {
   /** Poké Marts (spec 023); clerks' scripts end as missing when omitted. */
   shops?: ShopData | undefined;
   /** Opens/closes the LAN socket for other PCs (hosted sessions only); results go back as `listening`/`listen-failed`. */
-  listen?(on: boolean): void;
+  listen?(on: boolean, password?: string): void;
 }
 
 export interface GameServer {
@@ -231,8 +231,10 @@ export function createGameServer(options: GameServerOptions): GameServer {
         hosted.receive(msg.msg);
         return;
       }
+      // R.3: the server process entry takes these; one that reaches here has no port to adopt.
+      if (msg.type === "peer-link") return;
       if (msg.type === "listen" || msg.type === "unlisten") {
-        options.listen?.(msg.type === "listen");
+        options.listen?.(msg.type === "listen", msg.type === "listen" ? msg.password : undefined);
         return;
       }
       if (msg.type === "client-close") {

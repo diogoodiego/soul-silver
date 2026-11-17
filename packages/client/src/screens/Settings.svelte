@@ -88,6 +88,18 @@
     <button type="button" class="aria-pressed:bg-accent aria-pressed:text-[#111]" aria-pressed={$settings.audio.muteUnfocused} onclick={() => void saveSettings({ audio: { ...$settings.audio, muteUnfocused: !$settings.audio.muteUnfocused } })}>{t("settings.audio.muteUnfocused")}</button>
   </div>
 
+  <label class="grid gap-1 mb-4 max-w-[24rem]">
+    {t("settings.roomPassword")}
+    <input value={$settings.roomPassword} maxlength="64" autocomplete="off" spellcheck="false" onchange={(event) => void saveSettings({ roomPassword: event.currentTarget.value })} />
+    <small class="text-muted">{t("settings.roomPassword.note")}</small>
+  </label>
+
+  <label class="grid gap-1 mb-4 max-w-[24rem]">
+    {t("settings.stunServer")}
+    <input value={$settings.stunServer} maxlength="200" autocomplete="off" spellcheck="false" placeholder="stun:stun.l.google.com:19302" onchange={(event) => void saveSettings({ stunServer: event.currentTarget.value.trim() })} />
+    <small class="text-muted">{t("settings.stunServer.note")}</small>
+  </label>
+
   <div class="flex gap-2">
     <button type="button" onclick={onControls}>{t("settings.controls")}</button>
     {#if onRescue}<button type="button" onclick={() => (askingRescue = true)}>{t("settings.stuck")}</button>{/if}

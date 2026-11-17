@@ -35,6 +35,10 @@ export const IpcChannel = {
   SessionHost: "session:host",
   SessionJoin: "session:join",
   SessionOpenLan: "session:open-lan",
+  /** R.3: renderer asks for a port to the server for a guest's data channel; the reply carries it on the same channel. */
+  PeerLink: "peer:link",
+  /** R.3: renderer hands main the port of its own data channel, as a guest. */
+  PeerPort: "peer:port",
   SessionsWatch: "sessions:watch",
   SessionsList: "sessions:list",
   SettingsGet: "settings:get",
@@ -99,10 +103,12 @@ export interface SoulSilverApi {
   startSolo(slot: number): Promise<SessionResult>;
   /** Opens the LAN socket and announces the session; `reason` explains a port failure. */
   startHost(slot: number): Promise<SessionResult>;
-  /** `address` is `ip` or `ip:port`; the game connection is open when it resolves. */
-  joinSession(slot: number, address: string): Promise<SessionResult>;
+  /** `address` is `ip` or `ip:port`; the game connection is open when it resolves. Without `password` (R.1), the last one given for that host is used. */
+  joinSession(slot: number, address: string, password?: string): Promise<SessionResult>;
   /** Opens the solo session being played to the LAN and announces it, without restarting it. */
   openToLan(): Promise<LanResult>;
+  /** R.3: asks for a port to the server; it arrives as a window message of type PEER_LINK_MESSAGE (ports cannot cross the bridge). */
+  openPeerLink(): void;
   /** Sessions announced on the LAN while subscribed. Returns a function that cancels the subscription. */
   watchSessions(listener: (sessions: SessionListing[]) => void): () => void;
   getSettings(): Promise<AppSettings>;
@@ -111,3 +117,12 @@ export interface SoulSilverApi {
   setSettings(patch: SettingsPatch): Promise<AppSettings>;
   quitApp(): Promise<void>;
 }
+
+/**
+ * R.3: MessagePorts cannot cross the context bridge, so they travel as window messages between the page and the
+ * preload: PEER_LINK_MESSAGE brings the host a port to the server, PEER_PORT_MESSAGE takes a guest's port to main.
+ */
+export const PEER_LINK_MESSAGE = "soulsilver:peer-link";
+export const PEER_PORT_MESSAGE = "soulsilver:peer-port";
+/** R.3: the address a guest joins with when the link is a WebRTC invite, not a socket. */
+export const PEER_ADDRESS = "convite";

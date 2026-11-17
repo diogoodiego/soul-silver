@@ -101,7 +101,7 @@
     {#if error}<p class="text-danger" role="alert">{error}</p>{/if}
   </section>
 {:else if step === "join"}
-  <JoinGame {busy} {error} onJoin={(address: string) => void begin((s) => api.joinSession(s, address), address)} onBack={() => (step = "mode")} />
+  <JoinGame {busy} {error} onJoin={(address: string, password: string) => void begin((s) => api.joinSession(s, address, password), address)} onBack={() => (step = "mode")} />
 {:else if step === "arena"}
   <div use:menu={{ onBack: () => (step = "mode") }}>
     <ArenaSetup {busy} onStart={(spec: ArenaSpec) => void begin((s) => api.startSolo(s), undefined, spec)} onBack={() => (step = "mode")} />

@@ -97,6 +97,8 @@ export const clientMessage = z.discriminatedUnion("type", [
     protocolVersion: count(),
     save: z.unknown(),
     resumeToken: z.string().min(1).max(64).optional(),
+    /** R.1: checked by the host's network socket before the hello reaches the session; the session ignores it. */
+    roomPassword: z.string().max(64).optional(),
     arena: arenaSpec.optional(),
   }),
   z.strictObject({ type: z.literal("save-ack"), rev: count() }),
@@ -221,7 +223,7 @@ export const tickMetrics = z.strictObject({
 });
 export type TickMetrics = z.infer<typeof tickMetrics>;
 
-export const REJECT_CODES = ["protocol-mismatch", "session-full", "session-closed", "invalid-save", "save-too-new", "name-taken", "invalid-message"] as const;
+export const REJECT_CODES = ["protocol-mismatch", "session-full", "session-closed", "invalid-save", "save-too-new", "name-taken", "invalid-message", "wrong-password"] as const;
 export type RejectCode = (typeof REJECT_CODES)[number];
 
 /** `no-escape` is the original's refusal in a trainer battle (spec 022). */

@@ -5,6 +5,7 @@
   import type { DuelRules } from "@soulsilver/shared/game";
   import { onMount } from "svelte";
   import { t } from "../i18n";
+  import InviteHost from "./InviteHost.svelte";
 
   let {
     mode,
@@ -101,6 +102,9 @@
     </section>
   {:else if mode === "host" && addresses.length > 0}
     <p class="m-0">{t("online.addresses", { addresses: addresses.join(", ") })}</p>
+  {/if}
+  {#if mode === "host"}
+    <InviteHost />
   {/if}
 
   {#if mode !== "arena"}

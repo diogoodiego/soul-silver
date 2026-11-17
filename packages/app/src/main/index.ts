@@ -3,14 +3,15 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkAssets, createConsoleLogger, createRegistry, defaultStages } from "@soulsilver/extractor";
 import { loadWorld } from "../server-host/world-loader";
-import { type AppSettings, IpcChannel, PROTOCOL_VERSION } from "@soulsilver/shared";
+import { type AppSettings, IpcChannel, PEER_ADDRESS, PROTOCOL_VERSION } from "@soulsilver/shared";
 import { CANCELLED, SAVE_SLOTS } from "@soulsilver/shared/save";
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell, utilityProcess, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, MessageChannelMain, net, protocol, session, shell, utilityProcess, type IpcMainInvokeEvent } from "electron";
 import electronUpdater from "electron-updater";
 import { createAssetsController } from "./assets-controller";
 import { ASSETS_SCHEME, resolveAssetPath } from "./assets-protocol";
 import { isAllowedNavigation, permissionRequestHandler, windowOpenHandler } from "./navigation-guard";
 import { createDiscovery, localAddresses } from "./discovery";
+import { createPeerRemote } from "./peer-remote";
 import { createRemoteClient } from "./remote-connection";
 import { createSaveStore } from "./save-store";
 import { createServerHost, startWhenAssetsReady } from "./server-host";
@@ -199,14 +200,33 @@ if (!app.requestSingleInstanceLock()) {
     const lanLog = (message: string) => {
       console.warn(`[lan] ${message}`);
     };
-    const remote = createRemoteClient({
-      onMessage: (msg) => sessionRef.current?.onRemoteMessage(msg),
+    const remoteEvents = {
+      onMessage: (msg: unknown) => sessionRef.current?.onRemoteMessage(msg),
       onClose: () => sessionRef.current?.onRemoteClosed(),
       log: lanLog,
-    });
+    };
+    const socketRemote = createRemoteClient(remoteEvents);
+    // R.3: a guest joining by invite talks through the renderer's data channel instead of a socket.
+    const peerRemote = createPeerRemote(remoteEvents);
+    let viaPeer = false;
+    const remote = {
+      connect: (address: string, password?: string) => {
+        viaPeer = address === PEER_ADDRESS;
+        return viaPeer ? peerRemote.connect(address, password) : socketRemote.connect(address, password);
+      },
+      send: (msg: unknown) => {
+        if (viaPeer) peerRemote.send(msg);
+        else socketRemote.send(msg);
+      },
+      close: () => {
+        socketRemote.close();
+        peerRemote.close();
+      },
+    };
     const play = createSessionController({
       saves,
-      server: serverHost,
+      // R.1: the room password from the settings each time the port opens.
+      server: { ...serverHost, listen: async () => serverHost.listen((await settings.get()).roomPassword) },
       remote,
       discovery: createDiscovery({ localProtocolVersion: PROTOCOL_VERSION, appVersion: app.getVersion(), log: lanLog }),
       protocolVersion: PROTOCOL_VERSION,
@@ -261,8 +281,9 @@ if (!app.requestSingleInstanceLock()) {
       return result.ok ? { ok: true, addresses: localAddresses(result.port) } : result;
     });
     handle(IpcChannel.SessionJoin, (arg) => {
-      const { slot, address } = fields(arg);
-      return isSlot(slot) && typeof address === "string" ? play.joinSession(slot, address) : invalid;
+      const { slot, address, password } = fields(arg);
+      if (password !== undefined && (typeof password !== "string" || password.length > 64)) return invalid;
+      return isSlot(slot) && typeof address === "string" ? play.joinSession(slot, address, password) : invalid;
     });
     handle(IpcChannel.SessionsWatch, (on) => {
       play.watchSessions(on === true);
@@ -286,6 +307,18 @@ if (!app.requestSingleInstanceLock()) {
     // Fire-and-forget: inputs go out every tick, so no invoke round trip.
     ipcMain.on(IpcChannel.GameSend, (event, msg: unknown) => {
       if (event.sender === window.webContents) play.sendGame(msg);
+    });
+    // R.3, host: a port to the server for a guest's data channel, sent back on the same channel.
+    ipcMain.on(IpcChannel.PeerLink, (event) => {
+      if (event.sender !== window.webContents) return;
+      const { port1, port2 } = new MessageChannelMain();
+      if (serverHost.peerLink(port2)) event.sender.postMessage(IpcChannel.PeerLink, null, [port1]);
+      else port1.close();
+    });
+    // R.3, guest: the renderer's own data channel; joinSession with PEER_ADDRESS follows.
+    ipcMain.on(IpcChannel.PeerPort, (event) => {
+      const port = event.ports[0];
+      if (event.sender === window.webContents && port) peerRemote.attach(port);
     });
     handle(IpcChannel.AppGetVersion, () => app.getVersion());
     handle(IpcChannel.UpdateGetState, () => updates.getState());

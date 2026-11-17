@@ -6,7 +6,7 @@ import { createGameServer } from "@soulsilver/server";
 import { LAN_PORT_GAME } from "@soulsilver/shared/lan";
 import type { ServerToHostMessage } from "@soulsilver/shared";
 import { loadServerData } from "./server-data";
-import { createWsListener, REMOTE_CONN_BASE } from "./ws-listener";
+import { createWsListener, portLink, REMOTE_CONN_BASE } from "./ws-listener";
 import { join } from "node:path";
 import { openTradeLedger } from "./trade-ledger";
 
@@ -45,12 +45,12 @@ const send = (msg: ServerToHostMessage) => {
 
 const server = createGameServer({
   send,
-  listen: (on) => {
+  listen: (on, password) => {
     if (!on) {
       lan.stop();
       return;
     }
-    lan.start().then(
+    lan.start(password).then(
       (boundPort) => {
         send({ type: "listening", port: boundPort });
       },
@@ -80,6 +80,16 @@ const server = createGameServer({
   onStuck: scriptLog && ((s) => scriptLog.write(`${JSON.stringify({ time: new Date().toISOString(), stuck: true, ...s })}\n`)),
 });
 
+/** Numbers the WebRTC guests in the log and keeps each one's wrong-password count apart. */
+let peers = 0;
+
 port.on("message", (event) => {
+  const data = event.data as { type?: unknown } | null;
+  // R.3: a guest's WebRTC data channel, through the host's renderer; it joins like a LAN socket.
+  if (data?.type === "peer-link") {
+    const peerPort = event.ports[0];
+    if (peerPort) lan.adopt(portLink(peerPort, `convite ${++peers}`));
+    return;
+  }
   server.handleMessage(event.data);
 });
