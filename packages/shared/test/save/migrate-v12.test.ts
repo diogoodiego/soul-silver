@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, trainerIdFor } from "../../src/save/schema.ts";
 
 // Spec 029, item 029.1: the Pokémon left at the Day Care live in the player's save (principle VII).
 
@@ -34,7 +34,7 @@ const v11 = {
   phone: newPhone(),
   ...newItemState(),
 };
-const v12 = (daycare: object[]) => ({ ...v11, schemaVersion: 19, daycare, daycareEgg: false, eggWalk: 0, photos: [] });
+const v12 = (daycare: object[]) => ({ ...v11, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-13T12:00:00.000Z"), daycare, daycareEgg: false, eggWalk: 0, photos: [] });
 
 describe("save v12", () => {
   it("is version 12 or later", () => {

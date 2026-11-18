@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { newBoxes, newCollection, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, type PartyMember, type Save } from "./schema.ts";
+import { newBoxes, newCollection, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, trainerIdFor, type PartyMember, type Save } from "./schema.ts";
 
 export type SaveFailureCode = "invalid" | "save-too-new";
 export type MigrateResult<T = Save> = { ok: true; save: T } | { ok: false; code: SaveFailureCode; message: string };
@@ -53,6 +53,8 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   17: (save) => ({ ...save, schemaVersion: 18 }),
   // Item 034.4: nobody is in the Hall of Fame yet (hallOfFame is optional).
   18: (save) => ({ ...save, schemaVersion: 19 }),
+  // Block H: an ID for the trainer card; when an old game began is unknown (startedAt is optional).
+  19: (save) => ({ ...save, trainerId: trainerIdFor(String(save["name"]), String(save["savedAt"])), schemaVersion: 20 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

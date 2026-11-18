@@ -5,7 +5,21 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 19;
+export const SAVE_SCHEMA_VERSION = 20;
+
+/**
+ * Block H: the trainer card's ID, 0 to 65535, from the player's name and a save's timestamp (FNV-1a folded to 16 bits).
+ * New games take it from their creation, so two players named alike rarely share one.
+ */
+export function trainerIdFor(name: string, savedAt: string): number {
+  let h = 0x811c9dc5;
+  for (const ch of `${name}\u0000${savedAt}`) {
+    h ^= ch.codePointAt(0)!;
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return (h ^ (h >>> 16)) & 0xffff;
+}
+
 /** Teams the Hall of Fame keeps (the original's 30 records); the oldest goes first. */
 export const HALL_OF_FAME_MAX = 30;
 
@@ -152,6 +166,10 @@ export const saveSchema = z.strictObject({
   playTimeMs: z.number().int().nonnegative(),
   savedAt: z.iso.datetime(),
   rev: z.number().int().nonnegative(),
+  /** Block H: the trainer card's ID. */
+  trainerId: z.number().int().min(0).max(0xffff),
+  /** Block H: when the game began; absent in games started before v20. */
+  startedAt: z.iso.datetime().optional(),
   party: z.array(partyMember).max(6),
   money: z.number().int().min(0).max(999999),
   /** Badges earned (spec 025): bit i is badge i, in the original numbering (0 Zephyr … 15 Earth). */

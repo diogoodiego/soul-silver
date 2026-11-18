@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, trainerIdFor } from "../../src/save/schema.ts";
 
 // Spec 029, item 029.2: members have a gender and may be eggs; the Day Care remembers an egg waiting.
 
@@ -35,7 +35,7 @@ const v12 = {
   ...newItemState(),
   daycare: [{ mon: member, steps: 40 }],
 };
-const v13 = (over: object = {}) => ({ ...v12, schemaVersion: 19, daycareEgg: false, eggWalk: 0, photos: [], ...over });
+const v13 = (over: object = {}) => ({ ...v12, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-13T12:00:00.000Z"), daycareEgg: false, eggWalk: 0, photos: [], ...over });
 
 describe("save v13", () => {
   it("is version 13 or later", () => {

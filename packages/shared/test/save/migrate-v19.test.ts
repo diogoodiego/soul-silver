@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
-import { HALL_OF_FAME_MAX, newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema } from "../../src/save/schema.ts";
+import { HALL_OF_FAME_MAX, newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, trainerIdFor } from "../../src/save/schema.ts";
 
 // Item 034.4: the Hall of Fame keeps each team that beat the League.
 
@@ -37,12 +37,12 @@ const v18 = {
   eggWalk: 0,
   photos: [],
 };
-const v19 = (over: object = {}) => ({ ...v18, schemaVersion: 19, ...over });
+const v19 = (over: object = {}) => ({ ...v18, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-17T12:00:00.000Z"), ...over });
 const entry = { at: "2026-11-17T12:00:00.000Z", party: [{ species: 157, level: 60, nickname: "Fogo" }, { species: 16, level: 55 }] };
 
 describe("save v19", () => {
   it("is the current version", () => {
-    expect(SAVE_SCHEMA_VERSION).toBe(19);
+    expect(SAVE_SCHEMA_VERSION).toBeGreaterThanOrEqual(19);
   });
 
   it("keeps a v18 save as it was: no team in the Hall of Fame yet", () => {

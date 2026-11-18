@@ -179,6 +179,10 @@ export const clientMessage = z.discriminatedUnion("type", [
   /** The player counts as in a menu while the Pokégear is open. */
   z.strictObject({ type: z.literal("gearOpen") }),
   z.strictObject({ type: z.literal("gearClose") }),
+  /** Block H: the phone's Save app; the server sends a save at once (at most one a second). */
+  z.strictObject({ type: z.literal("save-now") }),
+  /** Block H: the Trainer Card app opened; the server answers with a fresh `trainer-card` (play time runs). */
+  z.strictObject({ type: z.literal("trainer-card-request") }),
   /** Spec 022: the player closed the challenge line of the trainer that spotted them; the battle may start. */
   z.strictObject({ type: z.literal("trainer-ready") }),
   /** Spec 023: shop and PC requests, refused without an open session. */
@@ -360,6 +364,20 @@ export const serverMessage = z.discriminatedUnion("type", [
     resumed: z.boolean(),
   }),
   z.strictObject({ type: z.literal("save"), save: saveSchema }),
+  /** Block H: what the Trainer Card app shows; sent on joining, when money or badges change, and on request. */
+  z.strictObject({
+    type: z.literal("trainer-card"),
+    name: saveSchema.shape.name,
+    trainerId: saveSchema.shape.trainerId,
+    money: saveSchema.shape.money,
+    badgeSet: saveSchema.shape.badgeSet,
+    playTimeMs: saveSchema.shape.playTimeMs,
+    startedAt: saveSchema.shape.startedAt,
+    /** Pokédex counts, and how many teams entered the Hall of Fame. */
+    seen: count(),
+    caught: count(),
+    hallOfFame: count(),
+  }),
   z.strictObject({ type: z.literal("reject"), code: z.enum(REJECT_CODES), message: z.string(), serverProtocolVersion: count() }),
   z.strictObject({
     type: z.literal("state"),

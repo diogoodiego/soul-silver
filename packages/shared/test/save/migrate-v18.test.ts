@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, trainerIdFor } from "../../src/save/schema.ts";
 
 // Item 031.7: the Seal Case keeps how many of each seal the player holds.
 
@@ -37,7 +37,7 @@ const v17 = {
   eggWalk: 0,
   photos: [],
 };
-const v18 = (over: object = {}) => ({ ...v17, schemaVersion: 19, ...over });
+const v18 = (over: object = {}) => ({ ...v17, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-15T12:00:00.000Z"), ...over });
 
 describe("save v18", () => {
   it("is the current version or older", () => {

@@ -26,7 +26,7 @@ import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { npcOccupied } from "@soulsilver/shared/npc";
 import { leadIndex } from "@soulsilver/shared/companion";
 import { expForLevel, memberStats } from "@soulsilver/shared/progression";
-import { migrate, newBoxes, newCollection, newProgress, STORY_REV, storyUnstarted, type PartyMember, type Save } from "@soulsilver/shared/save";
+import { migrate, newBoxes, trainerIdFor, newCollection, newProgress, STORY_REV, storyUnstarted, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { buildAiData, BUNDLED_AI_CONTENT, type AiData } from "./ai-loader";
 import { ARENA_AREA, ARENA_MAP, ARENA_SPAWN, arenaMember, foeSpot, trainerMember } from "./arena";
 import { createCombat, type Combat } from "./combat";
@@ -70,6 +70,8 @@ const TICK_MS = 50;
 const DEFAULT_TIMEOUT_TICKS = 200;
 /** The clock goes out every 5 s of real time (spec 026); the clients run it on in between. */
 const GEAR_MAP_EVERY_TICKS = TICKS_PER_S;
+/** Block H: the Save app gets at most one save a second. */
+const SAVE_NOW_EVERY_TICKS = TICKS_PER_S;
 const CLOCK_EVERY_TICKS = 5 * TICKS_PER_S;
 /** A save goes to each player every 30 s of play (FR-006 allows up to 60 s). */
 const SAVE_INTERVAL_TICKS = 600;
@@ -203,6 +205,10 @@ interface Player {
   menuOpen: boolean;
   /** The Pokégear is open (spec 026): busy as the menu, and its map is kept fresh. */
   gearOpen: boolean;
+  /** Block H: the tick of the last save the Save app asked for, to keep it to one a second. */
+  saveNowTick?: number;
+  /** Block H: what the last trainer card sent showed (play time aside), to send it again only on a change. */
+  cardKey?: [money: number, badgeSet: number, seen: number, caught: number, hallOfFame: number];
 }
 
 interface Reserved {
@@ -897,6 +903,36 @@ export function createSession(options: SessionOptions): Session {
     }
   }
 
+  /** Block H: the Trainer Card app's contents; sent always when `force`, otherwise only when something but the play time changed. */
+  function sendCard(p: Player, force = false): void {
+    // Checked every tick for every player: compare the numbers before building anything.
+    const { money, badgeSet, pokedex, hallOfFame } = p.progress;
+    const seen = pokedex.seen.length;
+    const caught = pokedex.caught.length;
+    const fame = hallOfFame?.length ?? 0;
+    const last = p.cardKey;
+    if (!force && last && last[0] === money && last[1] === badgeSet && last[2] === seen && last[3] === caught && last[4] === fame) return;
+    p.cardKey = [money, badgeSet, seen, caught, fame];
+    p.conn?.send({
+      type: "trainer-card",
+      name: p.base.name,
+      trainerId: p.base.trainerId,
+      money,
+      badgeSet,
+      playTimeMs: p.playTimeMs + (tick - p.joinTick) * TICK_MS,
+      ...(p.base.startedAt === undefined ? {} : { startedAt: p.base.startedAt }),
+      seen,
+      caught,
+      hallOfFame: fame,
+    } satisfies ServerMessage);
+  }
+
+  /** Block H: the Save app's save, at most one a second. */
+  function saveNow(p: Player): void {
+    if (p.saveNowTick !== undefined && tick - p.saveNowTick < SAVE_NOW_EVERY_TICKS) return;
+    if (sendSave(p) !== undefined) p.saveNowTick = tick;
+  }
+
   /** The rev of the save sent, if one was. */
   function sendSave(p: Player): number | undefined {
     if (!p.conn || p.arenaFoes !== undefined) return undefined;
@@ -1173,6 +1209,7 @@ export function createSession(options: SessionOptions): Session {
           resumed: admitted.resumed,
         } satisfies ServerMessage);
         conn.send(clockMessage());
+        sendCard(player, true);
         phone.sync(player.id);
         // Spec 028.3: the client came back with a save from before a trade; the traded progress goes to its disk at once.
         if (player.tradeRev !== undefined) player.tradeRev = sendSave(player) ?? player.tradeRev;
@@ -1308,6 +1345,12 @@ export function createSession(options: SessionOptions): Session {
             player.conn?.send(radio.state(player.id, world.get(player.entityId)?.area ?? ""));
           }
           return;
+        case "save-now":
+          saveNow(player);
+          return;
+        case "trainer-card-request":
+          sendCard(player, true);
+          return;
         case "gearClose":
           player.gearOpen = false;
           setBusy(player, player.menuOpen || (scripts?.busy(player.id) ?? false));
@@ -1430,6 +1473,8 @@ export function createSession(options: SessionOptions): Session {
     // The clients run the clock on between these (spec 026); a change made with debugSetClock goes at once.
     if (tick % CLOCK_EVERY_TICKS === 0) sendClock();
     if (tick % GEAR_MAP_EVERY_TICKS === 0) for (const p of players.values()) if (p.gearOpen) sendGear(p);
+    // Block H: the trainer card follows money, badges, the Pokédex and the Hall of Fame.
+    for (const p of players.values()) sendCard(p);
     for (const p of players.values()) {
       const input = p.queue.shift();
       if (input) {
@@ -1534,7 +1579,7 @@ export function createSession(options: SessionOptions): Session {
       for (const p of players.values()) p.conn?.send(msg);
     },
     join: (name, spawn) => {
-      const base: Save = { schemaVersion: 17, rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
+      const base: Save = { schemaVersion: 17, trainerId: trainerIdFor(name, ""), rivalName: "", storyRev: STORY_REV, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: spawn.area, x: spawn.x, y: spawn.y, facing: spawn.facing, playTimeMs: 0, savedAt: clock(), rev: 0, ...newProgress(), ...newCollection() };
       return add(base, undefined, spawn, "").id;
     },
     leave(playerId) {

@@ -37,8 +37,13 @@ describe("restartStory", () => {
 
   it("makes the rest a new game's, at the current story revision", () => {
     const restarted = restartStory(played(), start);
-    expect(restarted).toEqual({ ...applyNewGame(fresh(), start), playTimeMs: 2_078_700, rev: 99, savedAt: "2026-10-30T06:15:14.437Z" });
+    const { startedAt: _, ...story } = applyNewGame(fresh(), start);
+    expect(restarted).toEqual({ ...story, playTimeMs: 2_078_700, rev: 99, savedAt: "2026-10-30T06:15:14.437Z" });
     expect(restarted).toMatchObject({ area: "64", party: [], bag: [], badgeSet: 0, flags: [...NEW_GAME_FLAGS], vars: {}, rivalName: "", storyRev: STORY_REV, boxes: newBoxes() });
+  });
+
+  it("keeps the trainer card's ID and start date (block H)", () => {
+    expect(restartStory({ ...played(), trainerId: 4321, startedAt: "2026-10-01T08:00:00.000Z" }, start)).toMatchObject({ trainerId: 4321, startedAt: "2026-10-01T08:00:00.000Z" });
   });
 });
 

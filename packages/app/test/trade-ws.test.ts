@@ -88,7 +88,7 @@ async function game() {
       }
     });
     ws[name] = s;
-    const save: Save = { schemaVersion: 18, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: "a", x: 160, y: 160, facing: "south", playTimeMs: 0, savedAt: "2026-11-13T12:00:00.000Z", ...newProgress(), ...newCollection(), ...disk[name], party: disk[name].party.map((m) => ({ ...m })), bag: disk[name].bag.map((b) => ({ ...b })) };
+    const save: Save = { schemaVersion: 20, trainerId: 0, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name, character: "male", area: "a", x: 160, y: 160, facing: "south", playTimeMs: 0, savedAt: "2026-11-13T12:00:00.000Z", ...newProgress(), ...newCollection(), ...disk[name], party: disk[name].party.map((m) => ({ ...m })), bag: disk[name].bag.map((b) => ({ ...b })) };
     s.send(JSON.stringify({ type: "hello", protocolVersion: PROTOCOL_VERSION, save, ...(resumeToken ? { resumeToken } : {}) }));
     await until(() => got[name].some((m) => m.type === "welcome"));
   }

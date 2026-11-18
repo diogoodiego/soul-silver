@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, trainerIdFor } from "../../src/save/schema.ts";
 
 // Item 030.10: in-game trades. A member remembers the trade it came from (MonIsInGameTradePoke) and, for
 // Kenya's Spearow, the trade whose trainer wrote the mail it holds (KenyaCheckPartyOrMailbox).
@@ -39,7 +39,7 @@ const v15 = {
   eggWalk: 0,
   photos: [],
 };
-const v16 = (over: object = {}) => ({ ...v15, schemaVersion: 19, ...over });
+const v16 = (over: object = {}) => ({ ...v15, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-15T12:00:00.000Z"), ...over });
 
 describe("save v16", () => {
   it("is the current version", () => {

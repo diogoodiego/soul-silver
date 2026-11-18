@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes, newItemState, newPhone, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, newPhone, saveSchema, trainerIdFor } from "../../src/save/schema.ts";
 
 // Spec 026, contracts/save-v10.md: the Pokégear phone, per player (principle VII).
 
@@ -32,7 +32,7 @@ const v9 = {
   storyRev: 1,
 };
 
-const v10 = (phone: unknown) => ({ ...v9, schemaVersion: 19, daycare: [], daycareEgg: false, eggWalk: 0, photos: [], phone, ...newItemState() });
+const v10 = (phone: unknown) => ({ ...v9, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-10-24T12:00:00.000Z"), daycare: [], daycareEgg: false, eggWalk: 0, photos: [], phone, ...newItemState() });
 
 describe("save v10", () => {
   it("gives a v9 save an empty phone and leaves the rest alone", () => {

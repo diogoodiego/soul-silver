@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, trainerIdFor } from "../../src/save/schema.ts";
 
 // Spec 030, item 030.2: ribbons on party members (MonHasRibbon, GiveRibbon) and Cameron's photo album.
 
@@ -36,7 +36,7 @@ const v14 = {
   daycare: [{ mon: member, steps: 40 }],
 };
 
-const v15 = (over: object = {}) => ({ ...v14, schemaVersion: 19, photos: [], ...over });
+const v15 = (over: object = {}) => ({ ...v14, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-13T12:00:00.000Z"), photos: [], ...over });
 const photo = { map: 36, spot: 5, species: [155], takenAt: "2026-11-14T12:00:00.000Z" };
 
 describe("save v15", () => {

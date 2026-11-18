@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes, newItemState, newPhone, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, newPhone, saveSchema, trainerIdFor } from "../../src/save/schema.ts";
 
 // Spec 027, contracts/save-v11.md: the Apricorn Box, Berry Pots, Kurt and Repel, per player (principle VII);
 // held items and PP Ups on the members, both optional.
@@ -34,7 +34,7 @@ const v10 = {
   storyRev: 1,
   phone: newPhone(),
 };
-const v11 = (items: object, party: object[] = [member]) => ({ ...v10, schemaVersion: 19, daycare: [], daycareEgg: false, eggWalk: 0, photos: [], party, ...newItemState(), ...items });
+const v11 = (items: object, party: object[] = [member]) => ({ ...v10, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-10-24T12:00:00.000Z"), daycare: [], daycareEgg: false, eggWalk: 0, photos: [], party, ...newItemState(), ...items });
 
 describe("save v11", () => {
   it("gives a v10 save an empty Apricorn Box and Berry Pots, and touches nothing else", () => {

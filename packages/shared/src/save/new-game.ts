@@ -33,5 +33,7 @@ export function applyNewGame(save: Save, start: NewGameStart): Save {
     flags: [...NEW_GAME_FLAGS],
     vars: {},
     storyRev: STORY_REV,
+    // Block H: the trainer card's start date is the slot's creation.
+    startedAt: save.savedAt,
   };
 }

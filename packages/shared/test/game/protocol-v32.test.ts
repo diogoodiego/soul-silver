@@ -5,7 +5,7 @@ import { newBoxes, newCollection, newProgress, SAVE_SCHEMA_VERSION } from "../..
 
 // Item 031.7: the save the protocol carries (save v18) keeps the Seal Case.
 
-const save = (over: object) => ({ schemaVersion: 18, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name: "Ana", character: "female", area: "215", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-11-16T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), ...over });
+const save = (over: object) => ({ schemaVersion: 18, trainerId: 0, rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name: "Ana", character: "female", area: "215", x: 1, y: 2, facing: "south", playTimeMs: 0, savedAt: "2026-11-16T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), ...over });
 
 describe("protocol v32", () => {
   it("is version 32, with save v18", () => {

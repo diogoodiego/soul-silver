@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { badgeCount } from "../../src/save/badges.ts";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes, newItemState } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, trainerIdFor } from "../../src/save/schema.ts";
 
 // Spec 025: the badge count becomes the set of badges, and Fly gets its visited points.
 
@@ -41,7 +41,7 @@ describe("save v9", () => {
   ])("turns %i badges into the first bits (%i)", (count, set) => {
     const result = migrate(v8(count));
     if (!result.ok) throw new Error(result.message);
-    expect(result.save).toEqual({ ...rest, schemaVersion: 19, daycare: [], daycareEgg: false, eggWalk: 0, photos: [], badgeSet: set, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() });
+    expect(result.save).toEqual({ ...rest, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-10-24T12:00:00.000Z"), daycare: [], daycareEgg: false, eggWalk: 0, photos: [], badgeSet: set, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() });
   });
 
   it("counts the set back", () => {
@@ -50,7 +50,7 @@ describe("save v9", () => {
   });
 
   it("accepts a v9 save as it is", () => {
-    const save = { ...rest, schemaVersion: 19, daycare: [], daycareEgg: false, eggWalk: 0, photos: [], badgeSet: 0b100, flyPoints: ["11", "15"], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() };
+    const save = { ...rest, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-10-24T12:00:00.000Z"), daycare: [], daycareEgg: false, eggWalk: 0, photos: [], badgeSet: 0b100, flyPoints: ["11", "15"], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() };
     expect(migrate(save)).toEqual({ ok: true, save });
   });
 

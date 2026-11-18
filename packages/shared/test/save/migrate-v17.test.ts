@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, trainerIdFor } from "../../src/save/schema.ts";
 
 // Item 031.2: Raikou and Entei roam for each player; the save keeps where each is and what the last encounter left.
 
@@ -37,7 +37,7 @@ const v16 = {
   eggWalk: 0,
   photos: [],
 };
-const v17 = (over: object = {}) => ({ ...v16, schemaVersion: 19, ...over });
+const v17 = (over: object = {}) => ({ ...v16, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-15T12:00:00.000Z"), ...over });
 
 describe("save v17", () => {
   it("is the current version", () => {

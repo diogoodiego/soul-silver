@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
-import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, newPhone, SAVE_SCHEMA_VERSION, saveSchema, trainerIdFor } from "../../src/save/schema.ts";
 
 // Spec 029, item 029.4: the distance walked in the current egg cycle.
 
@@ -36,7 +36,7 @@ const v12 = {
   daycare: [{ mon: member, steps: 40 }],
 };
 const v13 = { ...v12, schemaVersion: 13, daycareEgg: false };
-const v14 = (over: object = {}) => ({ ...v13, schemaVersion: 19, eggWalk: 0, photos: [], ...over });
+const v14 = (over: object = {}) => ({ ...v13, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-13T12:00:00.000Z"), eggWalk: 0, photos: [], ...over });
 
 describe("save v14", () => {
   it("is version 14 or later", () => {
