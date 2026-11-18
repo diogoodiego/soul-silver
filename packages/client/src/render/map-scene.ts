@@ -24,6 +24,7 @@ import {
 } from "three";
 import type { MapMesh } from "./map-assets";
 import { CLEARING_RADIUS_PX, MAX_CLEARINGS } from "./grass-clearing";
+import { groundCover } from "./ground-cover";
 
 // A map's mesh (shared/maps/mesh.ts) as three.js objects: one mesh per group, one texture view per
 // image of the group (wrap differs per group), its scale and offset set by the frame shown.
@@ -180,7 +181,8 @@ export function buildMapObject({ file, vertices, textures }: MapMesh, grid?: Col
     if (grass) clearGrass(material, grass, file);
     if (group.frames.length > 1) animated.push({ material, group, views });
     const mesh = new Mesh(geometry, material);
-    mesh.castShadow = true;
+    // Flowers and other decals on the ground receive shadows but cast none (their shadow would land beside them).
+    mesh.castShadow = !groundCover(file, vertices, group);
     root.add(mesh);
     if (!group.translucent) {
       const shade = new Mesh(geometry, SHADE);
