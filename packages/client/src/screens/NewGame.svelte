@@ -1,10 +1,10 @@
 <script lang="ts">
   // New game in the chosen slot: name and character (spec 012 US1); the starter comes from Prof. Elm (spec 024).
   import { PLAYER_NAME_MAX } from "@soulsilver/shared/game";
-  import { t } from "./i18n";
-  import { activeDevice } from "./input/input";
-  import { menu } from "./input/menu";
-  import NameKeyboard from "./NameKeyboard.svelte";
+  import { t } from "../i18n";
+  import { activeDevice } from "../input/input";
+  import { menu } from "../input/menu";
+  import NameKeyboard from "../ui/NameKeyboard.svelte";
 
   let { slot, overwrite, onCreated, onBack }: { slot: number; overwrite: boolean; onCreated: (slot: number) => void; onBack: () => void } = $props();
 

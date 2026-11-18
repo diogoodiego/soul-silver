@@ -50,6 +50,24 @@
   }
 }
 
+/* A thin rounded thumb on no track, no arrows: for lists on dark screens. */
+@utility scrollbar-clean {
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track,
+  &::-webkit-scrollbar-button {
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgb(255 255 255 / 22%);
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgb(255 255 255 / 40%);
+  }
+}
+
 @utility palette-ink {
   font-palette: --ink;
 }

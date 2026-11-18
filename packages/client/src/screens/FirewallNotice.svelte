@@ -1,7 +1,7 @@
 <script lang="ts">
   // Shown once, before the first time the player hosts, so the Windows firewall prompt is no surprise (spec 012, FR-014).
-  import { t } from "./i18n";
-  import { menu } from "./input/menu";
+  import { t } from "../i18n";
+  import { menu } from "../input/menu";
 
   let { onContinue, onBack }: { onContinue: () => void; onBack: () => void } = $props();
 </script>

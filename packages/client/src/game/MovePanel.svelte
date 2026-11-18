@@ -3,7 +3,7 @@
   // the controlled Pokémon's with type color in a fight, all dimmed until its action bar is full.
   import type { Entity } from "@soulsilver/shared/game";
   import type { Action } from "@soulsilver/shared/input";
-  import Glyph from "../Glyph.svelte";
+  import Glyph from "../ui/Glyph.svelte";
   import { t } from "../i18n";
   import { TYPE_COLORS } from "./type-colors";
 

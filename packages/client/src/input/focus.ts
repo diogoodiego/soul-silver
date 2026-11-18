@@ -12,7 +12,8 @@ type Direction = "up" | "down" | "left" | "right";
 export function nextInDirection(rects: readonly Rect[], from: number, dir: Direction): number {
   if (from < 0) return rects.length > 0 ? 0 : -1;
   const center = (r: Rect) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
-  const o = center(rects[from]!);
+  const here = rects[from]!;
+  const o = center(here);
   let best = from;
   let bestScore = Infinity;
   rects.forEach((rect, i) => {
@@ -21,7 +22,11 @@ export function nextInDirection(rects: readonly Rect[], from: number, dir: Direc
     const dx = c.x - o.x;
     const dy = c.y - o.y;
     const along = dir === "down" ? dy : dir === "up" ? -dy : dir === "right" ? dx : -dx;
-    const across = dir === "up" || dir === "down" ? Math.abs(dx) : Math.abs(dy);
+    // Overlapping across the move counts as aligned: a short item in a right-aligned list is not off to the side.
+    const across =
+      dir === "up" || dir === "down"
+        ? rect.left < here.left + here.width && here.left < rect.left + rect.width ? 0 : Math.abs(dx)
+        : rect.top < here.top + here.height && here.top < rect.top + rect.height ? 0 : Math.abs(dy);
     if (along <= 0) return;
     // Off-axis distance counts more, so aligned neighbours win.
     const score = along + across * 3;

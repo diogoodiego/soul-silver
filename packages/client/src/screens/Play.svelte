@@ -4,14 +4,16 @@
   import type { ArenaSpec } from "@soulsilver/shared/game";
   import type { SlotSummary } from "@soulsilver/shared/save";
   import { onMount } from "svelte";
-  import ArenaSetup from "../ArenaSetup.svelte";
-  import FirewallNotice from "../FirewallNotice.svelte";
+  import ArenaSetup from "./ArenaSetup.svelte";
+  import FirewallNotice from "./FirewallNotice.svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
-  import JoinGame from "../JoinGame.svelte";
-  import NewGame from "../NewGame.svelte";
+  import KeyHints from "../ui/KeyHints.svelte";
+  import MenuItem from "../ui/MenuItem.svelte";
+  import JoinGame from "./JoinGame.svelte";
+  import NewGame from "./NewGame.svelte";
   import type { PlayRequest } from "../play-request";
-  import SaveSlots from "../SaveSlots.svelte";
+  import SaveSlots from "./SaveSlots.svelte";
 
   let { onPlay, onBack }: { onPlay: (play: PlayRequest) => void; onBack: () => void } = $props();
 
@@ -59,6 +61,12 @@
     await begin((s) => api.startHost(s), undefined, undefined, true);
   }
 
+  const hints = [
+    { actions: ["confirm" as const], label: t("hints.select") },
+    { actions: ["cancel" as const], label: t("hints.back") },
+    { actions: ["up" as const, "down" as const], label: t("hints.navigate") },
+  ];
+
   async function firewallAccepted(): Promise<void> {
     await api.markFirewallNoticeSeen();
     await host();
@@ -87,18 +95,20 @@
     onBack={() => (step = "save")}
   />
 {:else if step === "mode"}
-  <section use:menu={{ onBack: () => (step = "save") }}>
-    <h2>{t("play.chooseMode")}</h2>
-    {#if chosen?.status === "ok"}<p class="who">{t("play.playingAs", { name: chosen.name, slot: chosen.index })}</p>{/if}
-    <nav class="grid gap-[0.6rem] max-w-[18rem]">
-      <button type="button" disabled={busy} onclick={() => void begin((s) => api.startSolo(s))}>{t("play.solo")}</button>
-      <button type="button" disabled={busy} onclick={() => void host()}>{t("play.host")}</button>
-      <button type="button" disabled={busy} onclick={() => ((error = undefined), (step = "join"))}>{t("play.join")}</button>
-      <button type="button" disabled={busy} onclick={() => ((error = undefined), (step = "arena"))}>{t("play.arena")}</button>
-      <button type="button" onclick={() => (step = "save")}>{t("common.back")}</button>
+  <!-- The main menu's look: right edge, vertically centred, over the title backdrop. -->
+  <section class="fixed inset-0 flex flex-col items-end justify-center gap-2 pr-12 text-right" use:menu={{ onBack: () => (step = "save") }}>
+    <h2 class="m-0 text-[1.4rem]">{t("play.chooseMode")}</h2>
+    {#if chosen?.status === "ok"}<p class="m-0 mb-2 text-muted">{t("play.playingAs", { name: chosen.name, slot: chosen.index })}</p>{/if}
+    <nav class="flex flex-col items-end gap-1">
+      <MenuItem label={t("play.solo")} disabled={busy} onclick={() => void begin((s) => api.startSolo(s))} />
+      <MenuItem label={t("play.host")} disabled={busy} onclick={() => void host()} />
+      <MenuItem label={t("play.join")} disabled={busy} onclick={() => ((error = undefined), (step = "join"))} />
+      <MenuItem label={t("play.arena")} disabled={busy} onclick={() => ((error = undefined), (step = "arena"))} />
+      <MenuItem label={t("common.back")} onclick={() => (step = "save")} />
     </nav>
     {#if busy}<p role="status">{t("play.starting")}</p>{/if}
-    {#if error}<p class="text-danger" role="alert">{error}</p>{/if}
+    {#if error}<p class="text-danger font-bold" role="alert">{error}</p>{/if}
+    <div class="absolute right-12 bottom-6"><KeyHints {hints} /></div>
   </section>
 {:else if step === "join"}
   <JoinGame {busy} {error} onJoin={(address: string, password: string) => void begin((s) => api.joinSession(s, address, password), address)} onBack={() => (step = "mode")} />

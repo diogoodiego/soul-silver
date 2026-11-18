@@ -5,7 +5,6 @@
   import type { ServerMessage } from "@soulsilver/shared/game";
   import type { ItemRecord } from "@soulsilver/shared/game-data";
   import { t } from "../i18n";
-  import Controls from "../screens/Controls.svelte";
   import Settings from "../screens/Settings.svelte";
   import Bag from "./Bag.svelte";
   import FieldMenu from "./FieldMenu.svelte";
@@ -91,9 +90,7 @@
     {:else if page === "field"}
       <FieldMenu {party} {bag} {riding} {onField} onBack={back} />
     {:else if page === "settings"}
-      <Settings onControls={() => onPage("controls")} onRescue={() => send({ type: "rescue" })} onBack={back} />
-    {:else}
-      <Controls onBack={() => onPage("settings")} />
+      <Settings onRescue={() => send({ type: "rescue" })} onBack={back} />
     {/if}
   </div>
 </div>

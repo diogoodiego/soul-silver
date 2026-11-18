@@ -4,8 +4,8 @@
   // which to forget; an evolution plays and can be cancelled, as in the original.
   import type { ServerMessage } from "@soulsilver/shared/game";
   import { onMount } from "svelte";
-  import { t } from "./i18n";
-  import { menu } from "./input/menu";
+  import { t } from "../i18n";
+  import { menu } from "../input/menu";
 
   type Prompt = Extract<ServerMessage, { type: "progression" }>;
 

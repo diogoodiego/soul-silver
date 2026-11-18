@@ -1,7 +1,7 @@
 <script lang="ts">
   // The quick item selector in combat (spec 027, US1): a strip above the HUD. The items action (D-pad left, I)
   // opens it and moves to the next item; holding it uses the one shown. Sticks and face buttons stay on the Pokémon.
-  import Glyph from "../Glyph.svelte";
+  import Glyph from "../ui/Glyph.svelte";
   import { t } from "../i18n";
 
   let {

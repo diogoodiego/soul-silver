@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { UpdateState } from "@soulsilver/shared";
-  import { t } from "./i18n";
+  import { t } from "../i18n";
 
   let { update, onRestart }: { update: UpdateState; onRestart: () => void } = $props();
 

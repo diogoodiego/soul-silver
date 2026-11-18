@@ -8,59 +8,59 @@
   import { formatText, parseTextId, screenText, textVariables } from "@soulsilver/shared/text";
   import { onMount, untrack } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
-  import { audio, createAudioReactions } from "./audio";
+  import { audio, createAudioReactions } from "../audio";
   import { leadIndex } from "@soulsilver/shared/companion";
-  import CombatHud from "./game/CombatHud.svelte";
-  import type { MenuPage } from "./game/menu-page";
-  import MovePanel from "./game/MovePanel.svelte";
-  import OnlinePanel from "./game/OnlinePanel.svelte";
-  import TradePanel from "./game/TradePanel.svelte";
-  import DuelPanel from "./game/DuelPanel.svelte";
-  import PartyPanel from "./game/PartyPanel.svelte";
-  import { createDialogQueue } from "./game/dialog-queue";
-  import DialogBox from "./game/DialogBox.svelte";
-  import CallScreen from "./gear/CallScreen.svelte";
-  import { regionView } from "./gear/region";
-  import ScriptDebug from "./game/ScriptDebug.svelte";
-  import Shop from "./game/Shop.svelte";
-  import StarterChoice from "./game/StarterChoice.svelte";
-  import HatchScene from "./game/HatchScene.svelte";
-  import NameInput from "./game/NameInput.svelte";
-  import PcPanel from "./game/PcPanel.svelte";
-  import { BANK, bankTexts, itemRecords, moveTypes } from "./game/game-data";
-  import PauseMenu from "./game/PauseMenu.svelte";
-  import { t, type MessageKey } from "./i18n";
-  import { input } from "./input/app-input";
-  import { menu } from "./input/menu";
-  import type { PlayRequest } from "./play-request";
-  import ProgressionPrompt from "./ProgressionPrompt.svelte";
-  import { createGameConnection, type GameStatus } from "./net/game-connection";
-  import { TICK_MS } from "./net/prediction";
+  import CombatHud from "../game/CombatHud.svelte";
+  import type { MenuPage } from "../game/menu-page";
+  import MovePanel from "../game/MovePanel.svelte";
+  import OnlinePanel from "../game/OnlinePanel.svelte";
+  import TradePanel from "../game/TradePanel.svelte";
+  import DuelPanel from "../game/DuelPanel.svelte";
+  import PartyPanel from "../game/PartyPanel.svelte";
+  import { createDialogQueue } from "../game/dialog-queue";
+  import DialogBox from "../game/DialogBox.svelte";
+  import CallScreen from "../gear/CallScreen.svelte";
+  import { regionView } from "../gear/region";
+  import ScriptDebug from "../game/ScriptDebug.svelte";
+  import Shop from "../game/Shop.svelte";
+  import StarterChoice from "../game/StarterChoice.svelte";
+  import HatchScene from "../game/HatchScene.svelte";
+  import NameInput from "../game/NameInput.svelte";
+  import PcPanel from "../game/PcPanel.svelte";
+  import { BANK, bankTexts, itemRecords, moveTypes } from "../game/game-data";
+  import PauseMenu from "../game/PauseMenu.svelte";
+  import { t, type MessageKey } from "../i18n";
+  import { input } from "../input/app-input";
+  import { menu } from "../input/menu";
+  import type { PlayRequest } from "../play-request";
+  import ProgressionPrompt from "../game/ProgressionPrompt.svelte";
+  import { createGameConnection, type GameStatus } from "../net/game-connection";
+  import { TICK_MS } from "../net/prediction";
   import { MAP_TILE_PX } from "@soulsilver/shared/maps";
-  import trainerTuning from "../../../content/trainer/tuning.json";
-  import fishingJson from "../../../content/field/fishing.json";
-  import movesJson from "../../../content/field/moves.json";
-  import spawnJson from "../../../content/wild/spawn.json";
-  import tintJson from "../../../content/time/tint.json";
-  import radioJson from "../../../content/radio/channels.json";
+  import trainerTuning from "../../../../content/trainer/tuning.json";
+  import fishingJson from "../../../../content/field/fishing.json";
+  import movesJson from "../../../../content/field/moves.json";
+  import spawnJson from "../../../../content/wild/spawn.json";
+  import tintJson from "../../../../content/time/tint.json";
+  import radioJson from "../../../../content/radio/channels.json";
   import { pokemonMusicLines } from "@soulsilver/shared/radio";
-  import { tintAt } from "@soulsilver/shared/time";
-  import { timeOfDay } from "@soulsilver/shared/wild";
-  import FlyMap from "./FlyMap.svelte";
-  import { overlayShapes, type OverlayShape } from "./render/ai-overlay";
-  import { VIEW_W } from "./render/camera";
-  import { createCombatFx } from "./render/combat-fx";
-  import { createGameRenderer, SHAKE_MS, type DrawView } from "./render/game-renderer";
-  import { actorKey, stage, type Pose } from "./render/cutscene";
-  import { createClientWorld } from "./render/map-assets";
-  import { currentSettings, saveSettings, settings } from "./settings";
-  import SwapPicker from "./SwapPicker.svelte";
-  import ItemWheel from "./game/ItemWheel.svelte";
+  import { daylight, tintAt } from "@soulsilver/shared/time";
+  import { ballTarget, timeOfDay } from "@soulsilver/shared/wild";
+  import FlyMap from "../game/FlyMap.svelte";
+  import { overlayShapes, type OverlayShape } from "../render/ai-overlay";
+  import { VIEW_W } from "../render/camera";
+  import { createCombatFx } from "../render/combat-fx";
+  import { createGameRenderer, SHAKE_MS, type DrawView } from "../render/game-renderer";
+  import { actorKey, stage, type Pose } from "../render/cutscene";
+  import { createClientWorld } from "../render/map-assets";
+  import { currentSettings, saveSettings, settings } from "../settings";
+  import SwapPicker from "../game/SwapPicker.svelte";
+  import ItemWheel from "../game/ItemWheel.svelte";
   import { useEffectOf, type ItemEffects } from "@soulsilver/shared/items";
-  import itemEffectsJson from "../../../content/items/effects.json";
-  import DexButton from "./ui/DexButton.svelte";
-  import Glyph from "./Glyph.svelte";
-  import { presenceText } from "./game/presence";
+  import itemEffectsJson from "../../../../content/items/effects.json";
+  import DexButton from "../ui/DexButton.svelte";
+  import Glyph from "../ui/Glyph.svelte";
+  import { presenceText } from "../game/presence";
 
   let {
     play,
@@ -191,6 +191,8 @@
   /** Each combatant's move use count last seen, to notice a new use. */
   let usesSeen: Record<number, number> = {};
   const CALL_MS = 1500;
+  /** content/wild/spawn.json throwRangeTiles. shortcut: fixed here like SHAKE_MS; send it to the client if it is ever tuned. */
+  const THROW_RANGE_PX = 6 * MAP_TILE_PX;
   /** The Pokémon under the player's control, for the HUD. */
   let hudSelf = $state<Entity | undefined>();
   /** The player controls a Pokémon: a fight is on. */
@@ -877,8 +879,11 @@
         return { key, cx: c.x, cy: c.y, rx: Math.abs(ex.x - c.x), ry: Math.abs(ey.y - c.y) };
       });
       if (nextRings.length > 0 || arenaRings.length > 0) arenaRings = nextRings;
-      // Knocked out, waiting for a Poké Ball.
-      for (const e of shown) if (e.data["owner"] === "wild" && e.data["hp"] === 0) nextMarks.push({ key: `ko-${e.id}`, ...over(e), text: t("game.knockedOut"), capture: balls.length > 0 });
+      // Knocked out, waiting for a Poké Ball. The throw hint goes only over the one the ball would home in on (the
+      // server's rule, from whoever throws: the active Pokémon in a fight, else the player).
+      const wildsShown = shown.filter((e) => e.data["owner"] === "wild");
+      const aimed = view.self && balls.length > 0 ? ballTarget(view.self, wildsShown, THROW_RANGE_PX) : undefined;
+      for (const e of wildsShown) if (e.data["hp"] === 0) nextMarks.push({ key: `ko-${e.id}`, ...over(e), text: t("game.knockedOut"), capture: e === aimed });
       const bubbleOver = emotion && now < emotion.until ? shown.find((e) => e.id === emotion!.id) : undefined;
       if (bubbleOver && emotion) nextMarks.push({ key: "emotion", ...over(bubbleOver), text: emotion.text });
       if (fishing && view.self) nextMarks.push({ key: "fishing", ...over(view.self), text: fishing === "bite" ? "!" : "…" });
@@ -891,8 +896,8 @@
       if (JSON.stringify(nextDoing) !== JSON.stringify(doing)) doing = nextDoing;
       if (view.self && view.self.area !== darkArea) {
         const area = (darkArea = view.self.area);
-        darkMap = false;
-        outdoorMap = false;
+        // The last map's values hold until the header arrives: reset, the tint, fog and sky effects went off for a
+        // few frames at every border and the screen flashed. Warps change them under their black fade.
         void world.header(area).then((h) => {
           if (darkArea !== area) return;
           darkMap = movesJson.value.darkWeather.includes(h?.weather ?? -1);
@@ -903,7 +908,9 @@
       renderer.setVisual(currentSettings().visual, outdoorMap);
       const clock = game.clockAt(now);
       if (page === "gear" && clock) gearClock = { minuteOfDay: Math.floor(clock.minuteOfDay), weekday: clock.weekday };
-      renderer.setTint(outdoorMap && clock ? tintAt(clock.minuteOfDay, spawnJson.value.timeBands, tintJson.value) : null);
+      const tint = outdoorMap && clock ? tintAt(clock.minuteOfDay, spawnJson.value.timeBands, tintJson.value) : null;
+      renderer.setTint(tint);
+      renderer.setDaylight(tint ? daylight(tint, tintJson.value) : 0);
       const self = view.self;
       if (self) {
         selfArea = self.area;
@@ -1052,7 +1059,7 @@
     <!-- A lone glyph ("!", "…", "⚔", an emotion) is drawn large: in the screen's pixel font it is otherwise a few pixels tall. -->
     <span style:font-size={[...m.text].length <= 2 ? "2rem" : undefined} class="absolute -translate-x-1/2 -translate-y-full text-white font-bold text-[1.1rem] [text-shadow:0_1px_2px_#000] pointer-events-none z-1 grid justify-items-center" style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">
       {m.text}
-      {#if m.capture}<span class="text-[0.75em]"><Glyph action="throw" /> {t("game.captureHint")}</span>{/if}
+      {#if m.capture}<span class="mt-1 flex items-center gap-1 text-[0.9em]"><Glyph action="throw" round /> {t("game.captureHint")}</span>{/if}
     </span>
   {/each}
   {#if arenaRings.length > 0}

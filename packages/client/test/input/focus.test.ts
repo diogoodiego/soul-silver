@@ -24,6 +24,14 @@ describe("nextInDirection", () => {
     expect(nextInDirection(rects, 0, "down")).toBe(1);
   });
 
+  it("goes item by item down a right-aligned column of mixed widths", () => {
+    // Sozinho, Hospedar, Entrar (short), Arena de teste (long), Voltar: right edges at 300.
+    const widths = [120, 130, 70, 210, 90];
+    const items = widths.map((w, i) => r(300 - w, i * 40, w));
+    for (let i = 0; i < items.length - 1; i++) expect(nextInDirection(items, i, "down")).toBe(i + 1);
+    for (let i = items.length - 1; i > 0; i--) expect(nextInDirection(items, i, "up")).toBe(i - 1);
+  });
+
   it("moves across a row", () => {
     const row = [r(0, 0), r(120, 0), r(240, 0)];
     expect(nextInDirection(row, 0, "right")).toBe(1);

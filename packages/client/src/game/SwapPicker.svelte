@@ -1,8 +1,8 @@
 <script lang="ts">
   // Quick swap (spec 014, US3): the only menu in combat. Opens with the picker action or when the
   // Pokémon out faints; lists the party in its own order (swapping never reorders it).
-  import { t } from "./i18n";
-  import { menu } from "./input/menu";
+  import { t } from "../i18n";
+  import { menu } from "../input/menu";
 
   interface Member {
     species: number;

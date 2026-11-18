@@ -63,20 +63,20 @@ const HOP_ARC_PX = 12;
 const SPRITE_DEPTH_BIAS = 8;
 /** Where the light comes from (x east, y up, z south): a fixed sun from the north-west, and nearly overhead indoors and in caves. */
 // A high sun (~75°): a standing sprite's shadow is about a third of its height, pooled at the feet, not a long streak below them.
-const SUN_FROM = new Vector3(-0.4, 2.5, -0.5).normalize();
+export const SUN_FROM = new Vector3(-0.4, 2.5, -0.5).normalize();
 const ROOF_FROM = new Vector3(-0.1, 1, -0.3).normalize();
 /**
  * The sprite casts from this far north of its feet, so its shadow starts up under them: the thin legs cast
  * little and the body's shadow lands a few pixels south of the feet. Screen pixels; raise it if a gap shows.
  */
 const SHADOW_NUDGE_PX = 4;
-const LIGHT_DISTANCE = 500;
+export const LIGHT_DISTANCE = 500;
 /** Light-space depth kept around the player: narrow, so the bias stays under a pixel and shadows touch the feet. */
-const LIGHT_DEPTH = 400;
+export const LIGHT_DEPTH = 400;
 /** Shadow darkness at strength 100. */
-const MAX_SHADE = 0.55;
+export const MAX_SHADE = 0.55;
 /** Shadow map side and PCF blur radius per quality: low is cheaper and harder-edged. */
-const SHADOW_QUALITY = { low: { size: 1024, radius: 1.5 }, high: { size: 2048, radius: 4 } } as const;
+export const SHADOW_QUALITY = { low: { size: 1024, radius: 1.5 }, high: { size: 2048, radius: 4 } } as const;
 
 const FACING: Record<Direction, string> = { north: "up", south: "down", east: "right", west: "left" };
 
@@ -187,6 +187,8 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   // Item V.1: with effects on, the canvas is screen-sized and post draws the native frame into it.
   let visual: AppSettings["visual"] = DEFAULT_SETTINGS.visual;
   let outdoor = false;
+  /** Sun for the sky effects (god rays, cloud shadows), 0 at night and 1 at day. */
+  let sun = 0;
   let post: ReturnType<typeof createPost> | undefined;
   const fit = () => {
     screen = fillView(host.clientWidth, host.clientHeight);
@@ -442,21 +444,24 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     // Two hops: direct neighbors plus theirs, so diagonal corners are drawn too.
     const next = new Map<string, { dx: number; dy: number }>([[area, { dx: 0, dy: 0 }]]);
     const direct = await Promise.all(current.neighbors.map(async (n) => ({ n, map: await world.ensure(n.map) })));
-    bounds = { left: 0, top: 0, right: current.widthPx, bottom: current.heightPx };
+    // Built aside and swapped in with the placement: assigned piece by piece across the awaits below, the camera
+    // was clamped to half the box for a few frames after a border (west comes last) and then jumped.
+    let box: Bounds = { left: 0, top: 0, right: current.widthPx, bottom: current.heightPx };
     for (const { n, map } of direct) {
       if (!map) continue;
       next.set(map.id, { dx: n.dx, dy: n.dy });
-      bounds = {
-        left: Math.min(bounds.left, n.dx),
-        top: Math.min(bounds.top, n.dy),
-        right: Math.max(bounds.right, n.dx + map.widthPx),
-        bottom: Math.max(bounds.bottom, n.dy + map.heightPx),
+      box = {
+        left: Math.min(box.left, n.dx),
+        top: Math.min(box.top, n.dy),
+        right: Math.max(box.right, n.dx + map.widthPx),
+        bottom: Math.max(box.bottom, n.dy + map.heightPx),
       };
       const second = await Promise.all(map.neighbors.map(async (m) => ({ m, map: await world.ensure(m.map) })));
       for (const { m, map: far } of second) if (far && !next.has(far.id)) next.set(far.id, { dx: n.dx + m.dx, dy: n.dy + m.dy });
     }
     if (currentArea !== area) return;
     placement = next;
+    bounds = box;
     for (const id of [...visuals.keys()]) if (!next.has(id)) drop(id);
     for (const id of next.keys()) {
       const existing = visuals.get(id);
@@ -696,7 +701,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
           cam.updateProjectionMatrix();
         }
       }
-      if (post) post.render(scene, camera, visual, (self.y - OBLIQUE * groundOf(self) - DARK_EYE_PX - view2d.y) / screen.h, outdoor);
+      if (post) post.render(scene, camera, visual, (self.y - OBLIQUE * groundOf(self) - DARK_EYE_PX - view2d.y) / screen.h, outdoor, { daylight: sun, left: view2d.x, top: view2d.y, seconds: now / 1000 });
       else renderer.render(scene, camera);
       // Black at the map swap, half way through the warp (data-model.md).
       const warping = typeof self.data["warping"] === "number" ? self.data["warping"] : 0;
@@ -717,6 +722,10 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     setTint(rgb: { r: number; g: number; b: number } | null): void {
       const css = rgb ? `rgb(${[rgb.r, rgb.g, rgb.b].map((c) => Math.round(Math.min(1, c) * 255)).join(",")})` : "transparent";
       if (tint.style.background !== css) tint.style.background = css;
+    },
+    /** How much sun there is (time/tint.ts daylight), for the god rays and cloud shadows. */
+    setDaylight(next: number): void {
+      sun = next;
     },
     /** HD-2D effects (item V.1); the fog only shows on outdoor maps. */
     setVisual(next: AppSettings["visual"], isOutdoor: boolean): void {

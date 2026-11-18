@@ -2,23 +2,32 @@
   // The screen flow (spec 017): first run → title → main menu → play (save → mode → match) → game.
   import type { AssetsState, UpdateState } from "@soulsilver/shared";
   import { onMount } from "svelte";
-  import FirstRun from "./FirstRun.svelte";
-  import GameSession from "./GameSession.svelte";
+  import FirstRun from "./screens/FirstRun.svelte";
+  import GameSession from "./screens/GameSession.svelte";
   import { t } from "./i18n";
   import type { PlayRequest } from "./play-request";
   import About from "./screens/About.svelte";
-  import Controls from "./screens/Controls.svelte";
   import Home from "./screens/Home.svelte";
   import Play from "./screens/Play.svelte";
   import Settings from "./screens/Settings.svelte";
+  import { slide } from "./screens/slide-up";
   import Title from "./screens/Title.svelte";
-  import { loadSettings } from "./settings";
+  import { loadSettings, settings } from "./settings";
+  import { createTitleBackdrop } from "./render/title-backdrop";
+
+  /** Mounts the moving scenery; kept while the title hands over to the main menu. */
+  const backdrop = (node: HTMLElement) => ({ destroy: createTitleBackdrop(node) });
 
   /** How long "Assets prontos" stays up after an extraction before the title. */
   const READY_NOTICE_MS = 1000;
 
-  type Screen = "title" | "home" | "about" | "settings" | "controls" | "play";
+  type Screen = "title" | "home" | "about" | "settings" | "play";
   let screen = $state<Screen>("title");
+  /** `dir` slides title ⇄ menu (1 up, -1 down); every other change is instant. */
+  function go(next: Screen, dir: -1 | 0 | 1 = 0): void {
+    slide.dir = dir;
+    screen = next;
+  }
   let appVersion = $state<string | undefined>();
   let serverReady = $state(false);
   let failed = $state(false);
@@ -39,7 +48,7 @@
       return;
     }
     play = undefined;
-    screen = "home";
+    go("home");
     switchError = result.reason;
   }
 
@@ -94,26 +103,29 @@
   });
 </script>
 
-<main class="p-8">
+{#if showMain && !play && (screen === "title" || screen === "home" || screen === "settings" || screen === "play")}
+  <div class="fixed inset-0 overflow-hidden bg-black" class:crt={$settings.crt} aria-hidden="true" use:backdrop></div>
+  <div class="fixed inset-0 bg-black/40" aria-hidden="true"></div>
+{/if}
+<!-- Positioned, so it paints over the fixed backdrop above it (static content would sit under it). -->
+<main class="relative p-8">
   {#if !showMain}
     <h1>SoulSilver Desktop</h1>
     <FirstRun {assets} />
     <p class="text-quiet text-[0.85rem]">{t("app.version", { version: appVersion ?? "—" })}</p>
   {:else if play}
     {#key attempt}
-      <GameSession {play} onExit={() => ((play = undefined), (screen = "home"))} onReconnect={play.address ? reconnect : undefined} onSwitch={play.arena ? undefined : (address: string) => void switchTo(address)} />
+      <GameSession {play} onExit={() => ((play = undefined), go("home"))} onReconnect={play.address ? reconnect : undefined} onSwitch={play.arena ? undefined : (address: string) => void switchTo(address)} />
     {/key}
   {:else if screen === "title"}
-    <Title version={appVersion} onStart={() => (screen = "home")} />
+    <Title version={appVersion} onStart={() => go("home", 1)} />
   {:else if screen === "home"}
-    <Home notice={switchError} {update} {serverReady} serverFailed={failed} onPlay={() => (screen = "play")} onSettings={() => (screen = "settings")} onAbout={() => (screen = "about")} />
+    <Home notice={switchError} {update} {serverReady} serverFailed={failed} onPlay={() => go("play")} onSettings={() => go("settings")} onAbout={() => go("about")} onBack={() => go("title", -1)} />
   {:else if screen === "about"}
-    <About version={appVersion} onBack={() => (screen = "home")} />
+    <About version={appVersion} onBack={() => go("home")} />
   {:else if screen === "settings"}
-    <Settings onControls={() => (screen = "controls")} onBack={() => (screen = "home")} />
-  {:else if screen === "controls"}
-    <Controls onBack={() => (screen = "settings")} />
+    <Settings onBack={() => go("home")} />
   {:else}
-    <Play onPlay={(request: PlayRequest) => (play = request)} onBack={() => (screen = "home")} />
+    <Play onPlay={(request: PlayRequest) => (play = request)} onBack={() => go("home")} />
   {/if}
 </main>

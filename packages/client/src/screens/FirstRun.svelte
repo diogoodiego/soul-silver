@@ -1,8 +1,8 @@
 <script lang="ts">
   import { type AssetsFailure, type AssetsState, romRejectionMessage } from "@soulsilver/shared";
-  import Confirm from "./Confirm.svelte";
-  import { t } from "./i18n";
-  import { menu } from "./input/menu";
+  import Confirm from "../ui/Confirm.svelte";
+  import { t } from "../i18n";
+  import { menu } from "../input/menu";
 
   let { assets }: { assets: AssetsState } = $props();
 

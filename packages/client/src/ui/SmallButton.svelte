@@ -5,4 +5,8 @@
   let { children, danger = false, ...rest }: HTMLButtonAttributes & { danger?: boolean } = $props();
 </script>
 
-<button type="button" class={["text-[0.85rem] px-[0.6rem] py-1", danger && "text-alarm"]} {...rest}>{@render children?.()}</button>
+<button
+  type="button"
+  class={["rounded-full border-0 bg-white/10 px-3 py-1 text-[0.85rem] font-semibold outline-none focus:bg-white", danger ? "text-alarm" : "text-zinc-200 focus:text-ink"]}
+  {...rest}
+>{@render children?.()}</button>

@@ -1,7 +1,7 @@
 <script lang="ts">
   // A yes/no question the pad can answer (spec 017, FR-018); replaces window.confirm.
-  import { t } from "./i18n";
-  import { menu } from "./input/menu";
+  import { t } from "../i18n";
+  import { menu } from "../input/menu";
 
   let { question, onAnswer }: { question: string; onAnswer: (yes: boolean) => void } = $props();
 </script>

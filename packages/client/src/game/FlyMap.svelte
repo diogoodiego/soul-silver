@@ -2,8 +2,8 @@
   // Fly's destinations (spec 025, FR-015): only the fly points this player has visited, as the server
   // sent them.
   // shortcut: a list of names, not the Pokégear town map; draw the map once its graphics are extracted.
-  import { t } from "./i18n";
-  import { menu } from "./input/menu";
+  import { t } from "../i18n";
+  import { menu } from "../input/menu";
 
   let { points, onFly, onBack }: { points: { area: string; name: string }[]; onFly: (area: string) => void; onBack: () => void } = $props();
 </script>

@@ -5,7 +5,7 @@
   import { useEffectOf, type ItemEffects } from "@soulsilver/shared/items";
   import type { ServerMessage } from "@soulsilver/shared/game";
   import effectsJson from "../../../../content/items/effects.json";
-  import Glyph from "../Glyph.svelte";
+  import Glyph from "../ui/Glyph.svelte";
   import { t, type MessageKey } from "../i18n";
   import { menu } from "../input/menu";
   import PokemonIcon from "./PokemonIcon.svelte";

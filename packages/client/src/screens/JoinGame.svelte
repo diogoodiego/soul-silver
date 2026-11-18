@@ -3,11 +3,11 @@
   import { PEER_ADDRESS } from "@soulsilver/shared";
   import { parseAddress, type SessionListing } from "@soulsilver/shared/lan";
   import { onDestroy, onMount } from "svelte";
-  import { t } from "./i18n";
-  import { menu } from "./input/menu";
-  import { answerInvite, bridge, type GuestAnswer } from "./net/peer";
-  import { handToMain } from "./net/peer-link";
-  import { settings } from "./settings";
+  import { t } from "../i18n";
+  import { menu } from "../input/menu";
+  import { answerInvite, bridge, type GuestAnswer } from "../net/peer";
+  import { handToMain } from "../net/peer-link";
+  import { settings } from "../settings";
 
   /** `password`: R.1, the room password typed below; empty when none. `address` is PEER_ADDRESS for an invite (R.3). */
   let { onJoin, onBack, error, busy }: { onJoin: (address: string, password: string) => void; onBack: () => void; error: string | undefined; busy: boolean } = $props();

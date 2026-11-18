@@ -1,6 +1,6 @@
 <script lang="ts">
   // On-screen letters for typing a name with the pad alone (spec 017, FR-018), like the original's naming screen.
-  import { t } from "./i18n";
+  import { t } from "../i18n";
 
   let { value, max, onChange }: { value: string; max: number; onChange: (value: string) => void } = $props();
 
