@@ -71,3 +71,18 @@ export function ballMultiplier(ball: Ball, ctx: BallContext): number {
       return ctx.fished ? mult : 1;
   }
 }
+
+/**
+ * The wild Pokémon a thrown ball homes in on: the nearest on the thrower's map within `rangePx`;
+ * undefined when none is, and the ball flies the way the thrower faces. The server throws by it and
+ * the client marks the same one, so the player sees where the ball will go.
+ */
+export function ballTarget<T extends { area: string; x: number; y: number }>(from: { area: string; x: number; y: number }, wilds: readonly T[], rangePx: number): T | undefined {
+  let best: T | undefined;
+  let bestD = rangePx;
+  for (const w of wilds) {
+    const d = w.area === from.area ? Math.hypot(w.x - from.x, w.y - from.y) : Infinity;
+    if (d > 0.01 && d <= bestD) [best, bestD] = [w, d];
+  }
+  return best;
+}

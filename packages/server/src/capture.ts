@@ -4,7 +4,7 @@ import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { expForLevel } from "@soulsilver/shared/progression";
 import { firstFree, store } from "@soulsilver/shared/pc";
 import { canFight, type PartyMember, type Save } from "@soulsilver/shared/save";
-import { ballMultiplier, catchValue, markCaught, markSeen, rollShakes, timeOfDay } from "@soulsilver/shared/wild";
+import { ballMultiplier, ballTarget, catchValue, markCaught, markSeen, rollShakes, timeOfDay } from "@soulsilver/shared/wild";
 import type { Combat } from "./combat";
 import type { CombatData } from "./combat-loader";
 import type { WildData } from "./wild-loader";
@@ -120,13 +120,9 @@ export function createCaptures(options: CaptureOptions) {
     }
     const from = world.get(options.controlled(s.catcher.playerId) ?? s.catcher.entityId)!;
     // Aims itself at the nearest wild Pokémon in reach, else the way the thrower faces.
-    let dir = VECTORS[from.facing];
-    let best = rangePx;
-    for (const w of wilds.all()) {
-      const we = world.get(w.entityId);
-      const d = we && we.area === from.area ? Math.hypot(we.x - from.x, we.y - from.y) : Infinity;
-      if (d > 0.01 && d <= best) [best, dir] = [d, { x: (we!.x - from.x) / d, y: (we!.y - from.y) / d }];
-    }
+    const target = ballTarget(from, wilds.all().flatMap((w) => world.get(w.entityId) ?? []), rangePx);
+    const d = target ? Math.hypot(target.x - from.x, target.y - from.y) : 0;
+    const dir = target ? { x: (target.x - from.x) / d, y: (target.y - from.y) / d } : VECTORS[from.facing];
     const e = world.add({ kind: "projectile", area: from.area, x: from.x, y: from.y, level: from.level, facing: from.facing, data: { ball: item, owner: String(s.catcher.playerId) } });
     flights.push({ playerId: s.catcher.playerId, ball: item, entityId: e.id, dir, travelled: 0 });
     addBall(s, item, -1);

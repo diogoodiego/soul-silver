@@ -12,8 +12,9 @@ import type { CombatData } from "./combat-loader";
 import type { WildData } from "./wild-loader";
 import type { World } from "./world";
 
-// Wild Pokémon (spec 015): spawned per area from the map's encounter table, outside every
-// player's view; shared by everyone in the session; driven by the combat AI (spec 019).
+// Wild Pokémon (spec 015): spawned per area from the map's encounter table, at least
+// viewHalfTiles from every player (content/wild/spawn.json; in view is fine);
+// shared by everyone in the session; driven by the combat AI (spec 019).
 
 export interface Wild {
   entityId: number;

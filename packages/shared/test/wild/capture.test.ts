@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createRng, type Rng } from "../../src/game/rng.ts";
-import { ballMultiplier, catchValue, rollShakes, shakeThreshold, type BallContext } from "../../src/wild/capture.ts";
+import { ballMultiplier, ballTarget, catchValue, rollShakes, shakeThreshold, type BallContext } from "../../src/wild/capture.ts";
 import type { Ball } from "../../src/wild/schemas.ts";
 
 // Reference values worked out by hand from the Gen 3–4 formula (research R8).
@@ -96,5 +96,18 @@ describe("ballMultiplier", () => {
     ["moon otherwise", { mult: 4, when: "moon" }, {}, 1],
   ] as const)("%s", (_, ball, patch, expected) => {
     expect(ballMultiplier(ball as Ball, { ...ctx, ...patch })).toBe(expected);
+  });
+});
+
+describe("ballTarget", () => {
+  const at = (id: number, x: number, y: number, area = "1") => ({ id, area, x, y });
+  const from = at(0, 0, 0);
+
+  it("aims at the nearest one in reach", () => {
+    expect(ballTarget(from, [at(1, 50, 0), at(2, 20, 0)], 96)?.id).toBe(2);
+  });
+
+  it("ignores ones out of reach, on another map, or on the thrower", () => {
+    expect(ballTarget(from, [at(1, 200, 0), at(2, 10, 0, "2"), at(3, 0, 0)], 96)).toBeUndefined();
   });
 });
