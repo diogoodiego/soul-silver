@@ -40,6 +40,21 @@ describe("state machine (US1)", () => {
     expect(worst).toBeLessThanOrEqual(px(4));
   });
 
+  it("boxed in, it stands and looks around once per pause instead of turning every tick", () => {
+    const ring = [-1, 0, 1].flatMap((dx) => [-1, 0, 1].filter((dy) => dx || dy).map((dy) => `${10 + dx},${10 + dy}`));
+    // Home out of its wander zone, so the way back is blocked too (the case seen in game).
+    const s = simulate({ self: { x: px(10), y: px(10) }, home: { x: px(16), y: px(10) }, env: env(3, [], ring) });
+    let turns = 0;
+    let look = s.c.senses.look;
+    for (let i = 0; i < 20 * 4; i++) {
+      s.run(1);
+      if (s.c.senses.look !== look) turns++;
+      look = s.c.senses.look;
+    }
+    // idlePauseS is 2: four seconds hold about two new looks, never one per tick.
+    expect(turns).toBeLessThanOrEqual(3);
+  });
+
   it("does not notice a player behind a wall", () => {
     const s = simulate({ self: { x: px(10), y: px(10) }, env: env(1, ["12,10"]), opponents: () => [foe({ x: px(14), y: px(10) })] }).run(60);
     expect(s.states).toEqual(["idle"]);

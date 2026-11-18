@@ -335,7 +335,6 @@ function wander(c: Controller, t: AiTick, env: AiEnv): Point {
   }
   const dir = dist(self, c.home) > k.idleWanderTiles * TILE ? toward(self, c.home) : c.wander.dir;
   if (dir.x === 0 && dir.y === 0) return ZERO;
-  const step = steer(self, dir, TILE, env.walkable);
-  if (!step) c.wander.until = tick;
-  return step ?? ZERO;
+  // Boxed in, it stands until the pause ends: choosing again at once turned it every tick.
+  return steer(self, dir, TILE, env.walkable) ?? ZERO;
 }
