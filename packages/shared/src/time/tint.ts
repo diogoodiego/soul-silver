@@ -33,3 +33,13 @@ export function runClock(sample: { minuteOfDay: number; weekday: number; fixed: 
   const total = sample.minuteOfDay + Math.max(0, elapsedMs) / 60_000;
   return { minuteOfDay: total % DAY_MINUTES, weekday: (sample.weekday + Math.floor(total / DAY_MINUTES)) % 7 };
 }
+
+/**
+ * How much sun is in a tint, 0 at the night colour and 1 at the day one: its darkest channel placed
+ * between theirs. Drives the effects that need the sun (god rays, cloud shadows), in step with the tint.
+ */
+export function daylight(tint: Rgb, palette: TintPalette): number {
+  const low = (c: Rgb) => Math.min(c.r, c.g, c.b);
+  const span = low(palette.day) - low(palette.night);
+  return span <= 0 ? 1 : Math.max(0, Math.min(1, (low(tint) - low(palette.night)) / span));
+}

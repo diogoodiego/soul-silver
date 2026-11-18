@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tintAt } from "../../src/time/tint.ts";
+import { daylight, tintAt } from "../../src/time/tint.ts";
 
 // Spec 026, research R2: the tint is the band's colour inside it and a linear blend centred on each
 // band edge; continuous over the whole day, midnight included (SC-001).
@@ -60,5 +60,21 @@ describe("tintAt", () => {
     const hard = { ...palette, transitionMinutes: 0 };
     close(tintAt(10 * 60 - 0.01, bands, hard), palette.morning);
     close(tintAt(10 * 60, bands, hard), palette.day);
+  });
+});
+
+describe("daylight", () => {
+  it("is 1 at day, 0 at night and in between in the morning", () => {
+    expect(daylight({ ...palette.day }, palette)).toBe(1);
+    expect(daylight({ ...palette.night }, palette)).toBe(0);
+    const morning = daylight({ ...palette.morning }, palette);
+    expect(morning).toBeGreaterThan(0);
+    expect(morning).toBeLessThan(1);
+  });
+
+  it("rises smoothly through the dawn blend", () => {
+    const at = (m: number) => daylight(tintAt(m, bands, palette), palette);
+    expect(at(4 * 60 - 20)).toBeLessThan(at(4 * 60 + 20));
+    expect(at(4 * 60 + 20)).toBeLessThanOrEqual(at(10 * 60 + 40));
   });
 });
