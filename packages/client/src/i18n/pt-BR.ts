@@ -113,9 +113,6 @@ export const ptBR = {
   "newGame.space": "Espaço",
 
   "game.captureHint": "Capturar",
-  "menu.open": "Menu aberto",
-  "menu.back": "Voltar ao jogo",
-  "online.tab": "Online",
   "online.solo": "Partida sozinho: só você está aqui.",
   "online.hosting": "Você está hospedando esta partida na rede.",
   "online.guest": "Conectado a {address}.",

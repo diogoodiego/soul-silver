@@ -79,7 +79,6 @@ Itens dados como concluídos com algo ainda em aberto. Resolva quando o item atu
 assunto, ou quando o desenvolvedor pedir.
 
 - H: roteiro manual em `.evidence/H/roteiro.md` (pose e animação da Pokédex, apps cabendo na tela, minimapa, time, golpes em combate).
-- H: `PartyPanel.svelte` e `DexButton.svelte` ficaram sem uso, assim como as chaves `menu.open`, `menu.back` e `online.tab`; apagar depende de confirmação do desenvolvedor.
 - H: dois goldens já falham na base (`f56c77f`), independentemente do bloco H: a árvore de Cut do mapa 10 (1041, 219) continua bloqueando em `field.golden.ts`, e a luta com o Gyarados vermelho não começa em `campaign.golden.ts`.
 - V.1/V.2: roteiro manual em `.evidence/V.1/roteiro.md` (visual, ajuste das forças em `MAX`/`BLOOM_THRESHOLD`/`MAX_SHADE`, `shadow.bias`, FPS em Alta).
 - V.3: mapa 306 sem piso reconhecível (ringue invisível, colisão ok); 4 interiores só com piso, sem parede. Roteiro manual: ida/volta do ringue, texturas, câmera perto das paredes.
