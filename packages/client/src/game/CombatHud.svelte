@@ -1,31 +1,15 @@
 <script lang="ts">
-  // Combat HUD (spec 017, US3): HP, level, status and action bar of the Pokémon under control, an HP and
-  // action bar over each foe, and the trainer calling out the last move. The moves and the party live in
-  // the side panel next to the screen.
-  import type { Entity } from "@soulsilver/shared/game";
-  import { t, type MessageKey } from "../i18n";
+  // Combat HUD (spec 017, US3): an HP and action bar over each foe. Block H: the controlled Pokémon's HP,
+  // status and action bar live in the team's lead card (PartyStrip), and the trainer's call-out stacks with
+  // the moves in the bottom-left column.
   import HpBar from "../ui/HpBar.svelte";
-  import TrainerCall from "./TrainerCall.svelte";
 
   let {
-    self,
     bars,
-    call,
-    speciesName,
   }: {
-    /** The Pokémon the player controls, or undefined between swaps. */
-    self: Entity | undefined;
     /** HP and action bars over the foes (wild and other players'), in screen pixels; `gauge` from 0 to 1. */
     bars: { key: string; x: number; y: number; fraction: number; gauge: number }[];
-    /** The last move called out by a trainer: its sprite (trainer class) and the move's name. */
-    call: { key: number; pic: number; move: string } | undefined;
-    speciesName: (species: number) => string;
   } = $props();
-
-  const num = (key: string) => Number(self?.data[key] ?? 0);
-  const hpFraction = $derived(num("hpMax") > 0 ? num("hp") / num("hpMax") : 0);
-  const gauge = $derived(num("gauge"));
-  const status = $derived(String(self?.data["status"] ?? ""));
 </script>
 
 {#each bars as b (b.key)}
@@ -34,24 +18,3 @@
     <span class="block h-[0.25rem] mt-px bg-black/60 rounded-[2px] overflow-hidden"><span class="block h-full bg-[#4fc3f7]" style:width="{b.gauge * 100}%"></span></span>
   </span>
 {/each}
-
-<div class="absolute left-3 right-3 bottom-3 grid justify-items-start gap-1 pointer-events-none z-2">
-  {#if call}
-    {#key call.key}<TrainerCall pic={call.pic} move={call.move} />{/key}
-  {/if}
-  {#if self}
-    <section class="w-full max-w-[18rem] px-3 py-2 bg-panel rounded-[6px] text-white [text-shadow:0_1px_2px_#000]" aria-label={t("hud.label")}>
-      <header class="flex gap-2 items-baseline">
-        <strong>{speciesName(num("species"))}</strong>
-        <span>{t("hud.level", { level: num("level") })}</span>
-        {#if status}<span class="px-[0.3rem] rounded-[3px] bg-[#7b1fa2] text-[0.8rem]">{t(`status.${status}` as MessageKey)}</span>{/if}
-        {#if self.data["confused"]}<span class="px-[0.3rem] rounded-[3px] bg-[#7b1fa2] text-[0.8rem]">{t("status.confusion")}</span>{/if}
-      </header>
-      <HpBar fraction={hpFraction} role="meter" aria-label={t("hud.hp")} aria-valuemin={0} aria-valuemax={num("hpMax")} aria-valuenow={num("hp")} />
-      <small>{num("hp")} / {num("hpMax")}</small>
-      <span class="block h-[0.4rem] mt-1 bg-black/60 rounded-[3px] overflow-hidden" role="meter" aria-label={t("hud.gauge")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={gauge}>
-        <span class={["block h-full", gauge >= 100 ? "bg-[#ffd54f]" : "bg-[#4fc3f7]"]} style:width="{gauge}%"></span>
-      </span>
-    </section>
-  {/if}
-</div>

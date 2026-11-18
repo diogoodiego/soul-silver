@@ -21,7 +21,7 @@ export interface GameConnectionOptions {
 export type GameStatus = "connecting" | "playing" | "rejected" | "closed";
 
 /** Companion and fight messages (spec 014), bag, Pokédex and capture ones (spec 015), and scripts (spec 020), for the screen. */
-export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "rescued" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" | "trainerSpotted" | "trainerSay" | "trainerBattleStart" | "trainerSendOut" | "trainerItem" | "trainerBattleEnd" | "shopOpen" | "shopResult" | "shopClose" | "pcOpen" | "pcResult" | "pcClose" | "tradeState" | "duelState" | "field-result" | "player-mode" | "field-launchable" | "field-fishing" | "field-fly-map" | "field-lit" | "phone-call" | "phone-state" | "radio-state" | "gear-map" | "items-state" | "dowse" | "berry-pots" | "apricorn-box" | "item-found" }>;
+export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "rescued" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" | "trainerSpotted" | "trainerSay" | "trainerBattleStart" | "trainerSendOut" | "trainerItem" | "trainerBattleEnd" | "shopOpen" | "shopResult" | "shopClose" | "pcOpen" | "pcResult" | "pcClose" | "tradeState" | "duelState" | "field-result" | "player-mode" | "field-launchable" | "field-fishing" | "field-fly-map" | "field-lit" | "phone-call" | "phone-state" | "radio-state" | "gear-map" | "items-state" | "dowse" | "berry-pots" | "apricorn-box" | "item-found" | "trainer-card" }>;
 
 export function createGameConnection(options: GameConnectionOptions) {
   const entities = new Map<number, Entity>();
@@ -129,6 +129,7 @@ export function createGameConnection(options: GameConnectionOptions) {
       case "berry-pots":
       case "apricorn-box":
       case "item-found":
+      case "trainer-card":
         companionEvents.push(msg);
         return;
       case "state": {

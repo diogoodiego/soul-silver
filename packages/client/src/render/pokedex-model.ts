@@ -113,8 +113,36 @@ function buildModel(): { root: Group; dispose: () => void } {
   };
 }
 
+/**
+ * Where the device sits. `full`: the settings screen's, alone in the middle (it rises in on mount).
+ * Block H, the game's phone: `docked`, small and tilted in the bottom-right corner with only its top strip
+ * showing; `raised`, up in the middle, whole, a little smaller than `full` so the world shows around it.
+ */
+export type DexPose = "full" | "docked" | "raised";
+
+interface PoseParams {
+  /** World units, from the centre of the view; scale of the body. */
+  x: number;
+  y: number;
+  scale: number;
+  tiltX: number;
+  tiltZ: number;
+  sway: number;
+}
+
+const POSE_MS = 420;
+const RAISED_SCALE = 0.9;
+const DOCKED_SCALE = 0.36;
+/** How much of the docked body shows above the bottom edge: the lens, the lights and the tab strip. */
+const DOCKED_SHOWN = BODY.top - STRIP.bottom + 0.3;
+
 /** Mounts the Pokédex in `host` and keeps `screen` (DEX_SCREEN_W × DEX_SCREEN_H) on its screen; returns the teardown. */
 export function createPokedex(host: HTMLElement, screen: HTMLElement): () => void {
+  return mountPokedex(host, screen, "full").dispose;
+}
+
+/** The Pokédex in `host` with `screen` on it, in a pose that `setPose` moves it out of with an ease. */
+export function mountPokedex(host: HTMLElement, screen: HTMLElement, initial: DexPose): { setPose: (pose: DexPose) => void; dispose: () => void } {
   const renderer = new WebGLRenderer({ antialias: true, alpha: true });
   renderer.outputColorSpace = LinearSRGBColorSpace;
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -138,6 +166,8 @@ export function createPokedex(host: HTMLElement, screen: HTMLElement): () => voi
   scene.add(model.root);
 
   let size = { w: 1, h: 1 };
+  /** Half the view's height and width at the body's depth, in model units. */
+  let view = { halfH: 1, halfW: 1 };
   const fit = () => {
     size = { w: host.clientWidth || 1, h: host.clientHeight || 1 };
     renderer.setSize(size.w, size.h, false);
@@ -148,10 +178,12 @@ export function createPokedex(host: HTMLElement, screen: HTMLElement): () => voi
     const h = BODY.top - BODY.bottom + 1.4;
     camera.position.set(0, 0, Math.max(h / 2 / half, w / 2 / (half * camera.aspect)));
     camera.updateProjectionMatrix();
+    view = { halfH: camera.position.z * half, halfW: camera.position.z * half * camera.aspect };
     // How much the projection scales the screen's CSS px at rest: the screen divides its font size by it, so
-    // its text matches the other menus' (the entry and sway are left out, or the text would pulse).
+    // its text matches the other menus' (the entry and sway are left out, or the text would pulse). The
+    // phone's text is sized for its raised pose, the only one where it is read.
     const width = ((SCREEN.right - SCREEN.left) * size.h) / (2 * half * (camera.position.z - FRONT - 0.03));
-    screen.style.setProperty("--dex-scale", String(width / DEX_SCREEN_W));
+    screen.style.setProperty("--dex-scale", String((width * (initial === "full" ? 1 : RAISED_SCALE)) / DEX_SCREEN_W));
   };
   const observer = new ResizeObserver(fit);
   observer.observe(host);
@@ -172,15 +204,47 @@ export function createPokedex(host: HTMLElement, screen: HTMLElement): () => voi
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const start = performance.now();
 
+  /** The pose's place, worked out from the view each frame (the window may have been resized). */
+  const target = (pose: DexPose): PoseParams => {
+    switch (pose) {
+      case "full":
+        return { x: 0, y: centre, scale: 1, tiltX: 0, tiltZ: 0, sway: 1 };
+      case "raised":
+        return { x: 0, y: centre * RAISED_SCALE, scale: RAISED_SCALE, tiltX: 0, tiltZ: 0, sway: 1 };
+      case "docked": {
+        const s = DOCKED_SCALE;
+        const margin = 0.25;
+        return { x: view.halfW - margin - BODY.right * s, y: -view.halfH + DOCKED_SHOWN * s - BODY.top * s, scale: s, tiltX: -0.12, tiltZ: 0.07, sway: 0 };
+      }
+    }
+  };
+  let pose = initial;
+  /** The pose being left, frozen where it was when `setPose` was called. */
+  let from: PoseParams | undefined;
+  let since = start;
+  let shown: PoseParams = target(initial);
+  const mix = (a: PoseParams, b: PoseParams, k: number): PoseParams => ({
+    x: a.x + (b.x - a.x) * k,
+    y: a.y + (b.y - a.y) * k,
+    scale: a.scale + (b.scale - a.scale) * k,
+    tiltX: a.tiltX + (b.tiltX - a.tiltX) * k,
+    tiltZ: a.tiltZ + (b.tiltZ - a.tiltZ) * k,
+    sway: a.sway + (b.sway - a.sway) * k,
+  });
+
   renderer.setAnimationLoop((now: number) => {
     const s = (now - start) / 1000;
-    // Rises and opens towards the player, then sways a little.
-    const k = still ? 1 : Math.min(1, (now - start) / ENTRY_MS);
+    // The settings screen rises and opens towards the player; the phone starts docked.
+    const k = still || initial !== "full" ? 1 : Math.min(1, (now - start) / ENTRY_MS);
     const ease = 1 - (1 - k) ** 3;
-    const sway = still ? 0 : 1;
-    model.root.position.y = centre - (1 - ease) * 9;
-    model.root.rotation.x = (1 - ease) * 0.6 + sway * 0.025 * Math.sin(s * 0.7);
-    model.root.rotation.y = sway * 0.05 * Math.sin(s * 0.45);
+    const to = target(pose);
+    const m = from === undefined || still ? 1 : Math.min(1, (now - since) / POSE_MS);
+    shown = from === undefined ? to : mix(from, to, 1 - (1 - m) ** 3);
+    if (m >= 1) from = undefined;
+    const sway = still ? 0 : shown.sway;
+    model.root.scale.setScalar(shown.scale);
+    model.root.position.set(shown.x, shown.y - (1 - ease) * 9, 0);
+    model.root.rotation.set((1 - ease) * 0.6 + shown.tiltX + sway * 0.025 * Math.sin(s * 0.7), sway * 0.05 * Math.sin(s * 0.45), shown.tiltZ);
     model.root.updateMatrixWorld();
     const [a, b, c, d] = corners.map((corner): [number, number] => {
       point.copy(corner).applyMatrix4(model.root.matrixWorld).project(camera);
@@ -190,14 +254,22 @@ export function createPokedex(host: HTMLElement, screen: HTMLElement): () => voi
     renderer.render(scene, camera);
   });
 
-  return () => {
-    renderer.setAnimationLoop(null);
-    observer.disconnect();
-    model.dispose();
-    scene.environment?.dispose();
-    room.dispose();
-    pmrem.dispose();
-    renderer.dispose();
-    canvas.remove();
+  return {
+    setPose(next: DexPose) {
+      if (next === pose) return;
+      from = shown;
+      since = performance.now();
+      pose = next;
+    },
+    dispose() {
+      renderer.setAnimationLoop(null);
+      observer.disconnect();
+      model.dispose();
+      scene.environment?.dispose();
+      room.dispose();
+      pmrem.dispose();
+      renderer.dispose();
+      canvas.remove();
+    },
   };
 }

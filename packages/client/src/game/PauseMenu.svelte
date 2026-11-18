@@ -1,10 +1,14 @@
 <script lang="ts">
-  // The in-game menu's pages (spec 017, US5–US7): party, bag, Pokédex and settings, over the game
-  // screen. The menu itself is the button panel beside the screen. It never pauses the shared world
-  // (FR-012); the banner says so, and the others see the player as busy.
+  // The Pokédex phone's apps (spec 017, US5–US7; block H): each page drawn on the phone's screen. Opening
+  // the menu never pauses the shared world (FR-012); the phone's strip says so, and the others see the
+  // player as busy.
   import type { ServerMessage } from "@soulsilver/shared/game";
   import type { ItemRecord } from "@soulsilver/shared/game-data";
+  import type { Snippet } from "svelte";
   import { t } from "../i18n";
+  import { menu } from "../input/menu";
+  import SaveApp from "../hud/SaveApp.svelte";
+  import TrainerCard from "../hud/TrainerCard.svelte";
   import Settings from "../screens/Settings.svelte";
   import Bag from "./Bag.svelte";
   import FieldMenu from "./FieldMenu.svelte";
@@ -26,8 +30,13 @@
     pots,
     apricorns,
     gear,
+    card,
+    savedAt,
+    leaving,
+    online,
     onField,
     onPage,
+    onLeave,
   }: {
     page: MenuPage;
     party: Member[];
@@ -42,55 +51,70 @@
     apricorns: number[] | undefined;
     /** The Pokégear's tabs, already in text (spec 026). */
     gear: Omit<import("svelte").ComponentProps<typeof Gear>, "onBack">;
+    /** Block H: the Trainer Card, as the server last sent it. */
+    card: Extract<ServerMessage, { type: "trainer-card" }> | undefined;
+    /** Block H: when this client last wrote a save. */
+    savedAt: Date | undefined;
+    /** Saving and going back to the title. */
+    leaving: boolean;
+    /** The Online app's panel (spec 028), drawn by the game session, which holds its state. */
+    online: Snippet;
     /** A field move or item: the menu closes before it is sent. */
     onField: (msg: object) => void;
-    /** Another page, or undefined back to the button panel. */
+    /** Another page, or undefined back to the home grid. */
     onPage: (page: MenuPage | undefined) => void;
+    onLeave: () => void;
   } = $props();
 
   const send = (msg: unknown) => window.soulSilver.sendGame(msg);
   const back = () => onPage(undefined);
 </script>
 
-<!-- The world keeps moving behind: only a light veil. -->
-<div class="absolute inset-0 grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] justify-items-center p-4 bg-black/35 z-4 text-[#eef]">
-  <p class="mt-0 mx-0 mb-3 px-3 py-1 rounded-full bg-[#b23b3b] text-[0.9rem]" role="status">{t("pause.live")}</p>
-  <div class="self-start box-border w-full max-h-full overflow-auto px-5 py-4 bg-panel border-2 border-accent rounded-[8px]">
-    {#if page === "party"}
-      <PartyMenu
-        {party}
-        speciesName={names.species}
-        moveName={names.move}
-        natureName={names.nature}
-        abilityName={names.ability}
-        itemName={names.item}
-        onReorder={(from: number, to: number) => send({ type: "reorder-party", from, to })}
-        onBack={back}
-      />
-    {:else if page === "bag"}
-      <Bag
-        {bag}
-        {items}
-        {party}
-        {pots}
-        {apricorns}
-        itemName={names.item}
-        speciesName={names.species}
-        moveName={names.move}
-        onUse={(item: number, partyIndex: number, moveIndex?: number) => send({ type: "use-item", item, partyIndex, ...(moveIndex === undefined ? {} : { moveIndex }) })}
-        onHold={(partyIndex: number, item: number | null) => send({ type: "set-held", partyIndex, item })}
-        onPlant={(pot: number, item: number) => send({ type: "berry-plant", pot, item })}
-        onHarvest={(pot: number) => send({ type: "berry-harvest", pot })}
-        onBack={back}
-      />
-    {:else if page === "dex"}
-      <Pokedex seen={dex.seen} caught={dex.caught} speciesName={names.species} onBack={back} />
-    {:else if page === "gear"}
-      <Gear {...gear} onBack={back} />
-    {:else if page === "field"}
-      <FieldMenu {party} {bag} {riding} {onField} onBack={back} />
-    {:else if page === "settings"}
-      <Settings onRescue={() => send({ type: "rescue" })} onBack={back} />
-    {/if}
-  </div>
+<div class="h-full px-3 py-2 text-[#eef]">
+  {#if page === "party"}
+    <PartyMenu
+      {party}
+      speciesName={names.species}
+      moveName={names.move}
+      natureName={names.nature}
+      abilityName={names.ability}
+      itemName={names.item}
+      onReorder={(from: number, to: number) => send({ type: "reorder-party", from, to })}
+      onBack={back}
+    />
+  {:else if page === "bag"}
+    <Bag
+      {bag}
+      {items}
+      {party}
+      {pots}
+      {apricorns}
+      itemName={names.item}
+      speciesName={names.species}
+      moveName={names.move}
+      onUse={(item: number, partyIndex: number, moveIndex?: number) => send({ type: "use-item", item, partyIndex, ...(moveIndex === undefined ? {} : { moveIndex }) })}
+      onHold={(partyIndex: number, item: number | null) => send({ type: "set-held", partyIndex, item })}
+      onPlant={(pot: number, item: number) => send({ type: "berry-plant", pot, item })}
+      onHarvest={(pot: number) => send({ type: "berry-harvest", pot })}
+      onBack={back}
+    />
+  {:else if page === "dex"}
+    <Pokedex seen={dex.seen} caught={dex.caught} speciesName={names.species} onBack={back} />
+  {:else if page === "trainer"}
+    <TrainerCard {card} onRefresh={() => send({ type: "trainer-card-request" })} onBack={back} />
+  {:else if page === "gear"}
+    <Gear {...gear} onBack={back} />
+  {:else if page === "field"}
+    <FieldMenu {party} {bag} {riding} {onField} onBack={back} />
+  {:else if page === "online"}
+    <section class="grid gap-3" use:menu={{ onBack: back }}>
+      <h2 class="m-0">{t("pause.online")}</h2>
+      {@render online()}
+      <button type="button" class="m-0 justify-self-start" onclick={back}>{t("common.back")}</button>
+    </section>
+  {:else if page === "save"}
+    <SaveApp {savedAt} onSave={() => send({ type: "save-now" })} onBack={back} {leaving} {onLeave} />
+  {:else if page === "settings"}
+    <Settings embedded onRescue={() => send({ type: "rescue" })} onBack={back} />
+  {/if}
 </div>

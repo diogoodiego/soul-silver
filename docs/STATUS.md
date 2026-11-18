@@ -6,7 +6,7 @@ cada item (ver `CLAUDE.md`).
 
 **Próximo item: 034.5 Balanceamento de Johto**
 
-Versões atuais: protocolo 35, save 19.
+Versões atuais: protocolo 36, save 20.
 
 ## Concluídos
 
@@ -63,6 +63,7 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] 034.2 Victory Road e rival
 - [x] 034.3 Elite Four
 - [x] 034.4 Lance, Hall da Fama e retorno
+- [x] H Tela única com HUD e Pokédex-celular (avulso; roteiro manual pendente em `.evidence/H/roteiro.md`)
 - [ ] 034.5–034.6 Balanceamento e verificação
 - [ ] 034.7 Pendências dos blocos 033 e 034 (lista no roadmap)
 
@@ -77,6 +78,9 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 Itens dados como concluídos com algo ainda em aberto. Resolva quando o item atual tocar no
 assunto, ou quando o desenvolvedor pedir.
 
+- H: roteiro manual em `.evidence/H/roteiro.md` (pose e animação da Pokédex, apps cabendo na tela, minimapa, time, golpes em combate).
+- H: `PartyPanel.svelte` e `DexButton.svelte` ficaram sem uso, assim como as chaves `menu.open`, `menu.back` e `online.tab`; apagar depende de confirmação do desenvolvedor.
+- H: dois goldens já falham na base (`f56c77f`), independentemente do bloco H: a árvore de Cut do mapa 10 (1041, 219) continua bloqueando em `field.golden.ts`, e a luta com o Gyarados vermelho não começa em `campaign.golden.ts`.
 - V.1/V.2: roteiro manual em `.evidence/V.1/roteiro.md` (visual, ajuste das forças em `MAX`/`BLOOM_THRESHOLD`/`MAX_SHADE`, `shadow.bias`, FPS em Alta).
 - V.3: mapa 306 sem piso reconhecível (ringue invisível, colisão ok); 4 interiores só com piso, sem parede. Roteiro manual: ida/volta do ringue, texturas, câmera perto das paredes.
 - V.3: batalha roteirizada usa a pessoa mais próxima (até 2 tiles) como sprite do treinador no ringue (`shortcut:` em `trainer-battle.ts`).
@@ -165,6 +169,8 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Rede pela internet (bloco R): só IPv6 direto e WebRTC com convite por código copiado; sem relay, VPN ou túnel. A senha da sala é conferida no socket de rede (`ws-listener`), nunca na sessão, e vem das Configurações do host.
 - Canais vindos do renderer (R.3) chegam ao servidor como `Link` adotado pelo `ws-listener`, por MessagePort; `null` na porta quer dizer "fechou".
 - V.1: com efeitos ligados, o canvas tem o tamanho da tela e a cena é desenhada num render target nativo (`render/post.ts`); quem ler pixels do canvas deve contar com isso.
+- H: o jogo é uma tela única (sem as duas telas). O menu é a Pokédex-celular (`hud/PhoneDex.svelte`, poses `docked`/`raised` em `render/pokedex-model.ts`), com cada app numa `MenuPage` roteada por `game/PauseMenu.svelte`. App novo do menu entra em `APPS` (`game/menu-page.ts`).
+- H: o cartão do treinador vem da mensagem `trainer-card` (protocolo 36), que o servidor envia quando dinheiro, insígnias, Pokédex ou Hall da Fama mudam. O save 20 traz `trainerId` (obrigatório) e `startedAt` (opcional); o `restartStory` mantém os dois.
 - V.2: sombra sem iluminar os materiais (camada `SHADE` sobre o mapa); um item futuro de luz real deve substituir essa camada, não somar.
 
 - 033.1: Routes 44–46, Ice Path, Blackthorn, Dragon’s Den e o subsolo de Goldenrod (118, 199–202) entraram no bloco 033 em `map-blocks.json`; Dark Cave (123) segue pendente.

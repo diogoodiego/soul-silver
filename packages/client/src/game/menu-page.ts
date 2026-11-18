@@ -1,2 +1,5 @@
-/** A page of the in-game menu, opened from the button panel beside the screen. */
-export type MenuPage = "party" | "bag" | "dex" | "gear" | "field" | "settings";
+/** An app of the Pokédex phone (block H), opened from its home grid; undefined is the grid itself. */
+export type MenuPage = "party" | "bag" | "dex" | "trainer" | "gear" | "field" | "online" | "save" | "settings";
+
+/** The home grid, in order. */
+export const APPS: readonly MenuPage[] = ["party", "bag", "dex", "trainer", "gear", "field", "online", "save", "settings"];

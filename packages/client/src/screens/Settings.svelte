@@ -15,8 +15,9 @@
   import KeyHints from "../ui/KeyHints.svelte";
   import Controls from "./Controls.svelte";
 
-  // onRescue only in game: the title screen has nowhere to rescue from.
-  let { onRescue, onBack }: { onRescue?: () => void; onBack: () => void } = $props();
+  // onRescue only in game: the title screen has nowhere to rescue from. Embedded (block H), the screen alone,
+  // inside the game's Pokédex phone, which draws the device.
+  let { onRescue, onBack, embedded = false }: { onRescue?: () => void; onBack: () => void; embedded?: boolean } = $props();
 
   const TABS = ["game", "audio", "video", "gamepad", "controls", "accessibility"] as const;
   type Tab = (typeof TABS)[number];
@@ -28,10 +29,11 @@
   let waiting = $state<Action | undefined>();
   let controlsMessage = $state<string | undefined>();
 
-  let host: HTMLDivElement;
-  let screen: HTMLDivElement;
+  // Bound only outside the phone (block H), where the screen draws its own Pokédex.
+  let host = $state<HTMLDivElement>();
+  let screen = $state<HTMLDivElement>();
   let list: HTMLDivElement;
-  onMount(() => createPokedex(host, screen));
+  onMount(() => (embedded || !host || !screen ? undefined : createPokedex(host, screen)));
 
   interface Row {
     id: string;
@@ -150,11 +152,7 @@
   ];
 </script>
 
-<section class="fixed inset-0 bg-black/40" use:menu={{ onBack: () => waiting === undefined && onBack(), onAction }}>
-  <h2 class="sr-only">{t("settings.title")}</h2>
-  <div bind:this={host} class="absolute inset-0 overflow-hidden">
-    <!-- Transparent: the model draws the black screen, diagonal included; the tabs sit in its raised strip. -->
-    <div bind:this={screen} class="flex flex-col font-[system-ui,sans-serif] text-[length:calc(1rem/var(--dex-scale,1))] text-[#cfcfcf]" style:width="{DEX_SCREEN_W}px" style:height="{DEX_SCREEN_H}px">
+{#snippet content()}
       <div class="flex shrink-0 items-center gap-2 pr-5 text-[0.85em] font-bold uppercase" style:height="{DEX_STRIP_H}px" style:padding-left="{DEX_STRIP_LEFT}px" role="tablist">
         <span class="flex items-center gap-1 text-[#777]">&lt;<Glyph action="tabPrev" round /></span>
         {#each TABS as id, i (id)}
@@ -198,9 +196,27 @@
         style:top="{DEX_STRIP_H}px"
         aria-hidden="true"
       ></div>
+{/snippet}
+
+{#if embedded}
+  <section class="relative flex size-full flex-col" use:menu={{ onBack: () => waiting === undefined && onBack(), onAction }}>
+    <h2 class="sr-only">{t("settings.title")}</h2>
+    {@render content()}
+    {#if askingRescue}
+      <Confirm question={t("settings.stuck.confirm")} onAnswer={(yes) => { askingRescue = false; if (yes) onRescue?.(); }} />
+    {/if}
+  </section>
+{:else}
+  <section class="fixed inset-0 bg-black/40" use:menu={{ onBack: () => waiting === undefined && onBack(), onAction }}>
+    <h2 class="sr-only">{t("settings.title")}</h2>
+    <div bind:this={host} class="absolute inset-0 overflow-hidden">
+      <!-- Transparent: the model draws the black screen, diagonal included; the tabs sit in its raised strip. -->
+      <div bind:this={screen} class="flex flex-col font-[system-ui,sans-serif] text-[length:calc(1rem/var(--dex-scale,1))] text-[#cfcfcf]" style:width="{DEX_SCREEN_W}px" style:height="{DEX_SCREEN_H}px">
+        {@render content()}
+      </div>
     </div>
-  </div>
-  {#if askingRescue}
-    <Confirm question={t("settings.stuck.confirm")} onAnswer={(yes) => { askingRescue = false; if (yes) onRescue?.(); }} />
-  {/if}
-</section>
+    {#if askingRescue}
+      <Confirm question={t("settings.stuck.confirm")} onAnswer={(yes) => { askingRescue = false; if (yes) onRescue?.(); }} />
+    {/if}
+  </section>
+{/if}

@@ -3,7 +3,7 @@
   // the companion's reactions, the quick swap and the fight notices (spec 014); progression after a fight (spec 016);
   // the combat HUD, the dialog box, the full menu that never pauses the world and the busy mark (spec 017).
   import { CUTSCENE_TEXT_BOOST, PROTOCOL_VERSION } from "@soulsilver/shared";
-  import { BUTTON, PLAYER_NAME_MAX, surfable, tileAt, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics, type TradeOffer, type DuelRules } from "@soulsilver/shared/game";
+  import { BUTTON, PLAYER_NAME_MAX, surfable, tileAt, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics, type TradeOffer, type DuelRules, type WorldMap } from "@soulsilver/shared/game";
   import { POCKET_KEYS, type ItemRecord } from "@soulsilver/shared/game-data";
   import { formatText, parseTextId, screenText, textVariables } from "@soulsilver/shared/text";
   import { onMount, untrack } from "svelte";
@@ -13,10 +13,10 @@
   import CombatHud from "../game/CombatHud.svelte";
   import type { MenuPage } from "../game/menu-page";
   import MovePanel from "../game/MovePanel.svelte";
+  import TrainerCall from "../game/TrainerCall.svelte";
   import OnlinePanel from "../game/OnlinePanel.svelte";
   import TradePanel from "../game/TradePanel.svelte";
   import DuelPanel from "../game/DuelPanel.svelte";
-  import PartyPanel from "../game/PartyPanel.svelte";
   import { createDialogQueue } from "../game/dialog-queue";
   import DialogBox from "../game/DialogBox.svelte";
   import CallScreen from "../gear/CallScreen.svelte";
@@ -29,9 +29,11 @@
   import PcPanel from "../game/PcPanel.svelte";
   import { BANK, bankTexts, itemRecords, moveTypes } from "../game/game-data";
   import PauseMenu from "../game/PauseMenu.svelte";
+  import Minimap from "../hud/Minimap.svelte";
+  import PartyStrip from "../hud/PartyStrip.svelte";
+  import PhoneDex from "../hud/PhoneDex.svelte";
   import { t, type MessageKey } from "../i18n";
   import { input } from "../input/app-input";
-  import { menu } from "../input/menu";
   import type { PlayRequest } from "../play-request";
   import ProgressionPrompt from "../game/ProgressionPrompt.svelte";
   import { createGameConnection, type GameStatus } from "../net/game-connection";
@@ -58,7 +60,6 @@
   import ItemWheel from "../game/ItemWheel.svelte";
   import { useEffectOf, type ItemEffects } from "@soulsilver/shared/items";
   import itemEffectsJson from "../../../../content/items/effects.json";
-  import DexButton from "../ui/DexButton.svelte";
   import Glyph from "../ui/Glyph.svelte";
   import { presenceText } from "../game/presence";
 
@@ -78,8 +79,15 @@
   /** The "!" and approach timing the server uses (content/trainer/tuning.json, spec 022). */
   const TRAINER = trainerTuning.value;
   let menuOpen = $state(false);
-  // The Online tab beside the screen.
-  let tab = $state<"party" | "online">("party");
+  /** Block H: the Trainer Card app's contents, as the server last sent them. */
+  let trainerCard = $state<Extract<ServerMessage, { type: "trainer-card" }> | undefined>();
+  /** Block H: when this client last wrote a save to disk, for the Save app. */
+  let lastSaved = $state<Date | undefined>();
+  /** Block H: the minimap's map, level and entities, refreshed a few times a second from the draw loop. */
+  let hereMap = $state<WorldMap | undefined>();
+  let hereLevel = $state(0);
+  let miniEntities = $state<Entity[]>([]);
+  let selfEntity = $state<number | undefined>();
   let players = $state<{ id: number; name: string; host: boolean; area: string; place?: string }[]>([]);
   /** Counts "players" lists, so an older list's place names never land over a newer list. */
   let placesAsked = 0;
@@ -93,7 +101,7 @@
   /** The host being switched to, while this session saves and closes. */
   let switchingTo = $state<string | undefined>();
   let switched = false;
-  /** The menu page over the screen; undefined while the menu is open on the button panel. */
+  /** The app open on the Pokédex phone; undefined while the phone shows its home grid. */
   let page = $state<MenuPage | undefined>();
   let leaving = $state(false);
   let saveNote = $state<string | undefined>();
@@ -485,6 +493,9 @@
     };
     const sounds = createAudioReactions({ playerId: () => game.playerId, header: (area) => world.header(area), world: world.lookup, night });
     let shown: Entity[] = [];
+    /** Block H: when the minimap was last refreshed. */
+    let miniAt = 0;
+    const MINIMAP_MS = 200;
     for (const bank of ["species", "items", "moves", "natures", "abilities"] as const) void bankTexts(BANK[bank]).then((m) => (texts = { ...texts, [bank]: m }));
     void itemRecords().then((m) => (items = m));
     void moveTypes().then((m) => (types = m));
@@ -586,6 +597,8 @@
           dowsing = ev.dir === undefined ? undefined : { dir: ev.dir, near: ev.near ?? 0 };
         } else if (ev.type === "berry-pots") {
           berryPots = ev.pots;
+        } else if (ev.type === "trainer-card") {
+          trainerCard = ev;
         } else if (ev.type === "apricorn-box") {
           apricornBox = ev.counts;
         } else if (ev.type === "item-found") {
@@ -728,6 +741,7 @@
     let noteTimer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribeSaved = api.onGameSaved((result) => {
       saveNote = result.ok ? t("game.saved") : t("game.saveFailed", { reason: result.reason });
+      if (result.ok) lastSaved = new Date();
       clearTimeout(noteTimer);
       noteTimer = setTimeout(() => (saveNote = undefined), 2500);
       // The final save is on disk: the slot can be loaded for the next session.
@@ -916,6 +930,15 @@
         selfArea = self.area;
         selfAt = { x: self.x, y: self.y };
       }
+      // Block H: the minimap, five times a second; the trainer's own area and level, also while a Pokémon is out.
+      if (now - miniAt >= MINIMAP_MS) {
+        miniAt = now;
+        const trainer = shown.find((e) => e.id === game.entityId) ?? self;
+        hereMap = trainer ? world.lookup(trainer.area) : undefined;
+        hereLevel = trainer?.level ?? 0;
+        selfEntity = game.entityId;
+        miniEntities = shown;
+      }
       position = self ? t("debug.position", { area: self.area, x: Math.round(self.x), y: Math.round(self.y), level: self.level }) : "—";
       status = game.status;
       rejectMessage = game.rejectMessage;
@@ -1001,40 +1024,40 @@
 
   /** The Pokémon out: under control in a fight, else the one following the trainer. */
   const out = $derived(hudSelf ? activeMember : leadIndex(party));
-  const NAV: [MessageKey, MenuPage][] = [
-    ["pause.party", "party"],
-    ["pause.bag", "bag"],
-    ["pause.dex", "dex"],
-    ["pause.gear", "gear"],
-    ["pause.field", "field"],
-    ["pause.settings", "settings"],
-  ];
-  const NAV_CLASS = "grid grid-cols-2 gap-3";
-  const ASIDE = "grid grid-rows-[minmax(0,1fr)_auto_auto] gap-3 min-h-0";
-  const TABS: ["party" | "online", MessageKey][] = [
-    ["party", "pause.party"],
-    ["online", "online.tab"],
-  ];
+  /** Block H: apps that cannot open now; the Online app needs a running session. */
+  const appsOff = $derived<MenuPage[]>(status === "playing" ? [] : ["online", "save"]);
 
   const REASONS: Record<string, MessageKey> = { "host-left": "game.hostLeft", "closed-by-host": "game.closedByHost", disconnected: "game.disconnected" };
 </script>
 
-{#snippet navButtons()}
-  {#each NAV as [label, to] (to)}
-    <DexButton disabled={status !== "playing"} onclick={() => setMenu(true, to)}>{t(label)}</DexButton>
-  {/each}
-  <DexButton disabled={status !== "playing" || leaving} onclick={leave}>{leaving ? t("pause.saving") : t("pause.leave")}</DexButton>
-  <DexButton disabled={status !== "playing"} onclick={() => setMenu(false)}>{t("pause.resume")}</DexButton>
+{#snippet onlinePanel()}
+  <OnlinePanel {mode} {players} {doing} {me} address={play.address} {addresses} busy={onlineBusy || status !== "playing"} error={switchingTo ? t("online.switching") : onlineError} onOpen={() => void openLan()} onJoin={joinOther} onTrade={(to: number) => window.soulSilver.sendGame({ type: "trade-propose", to })} onDuel={(to: number, rules: DuelRules) => window.soulSilver.sendGame({ type: "duel-invite", to, rules })} />
 {/snippet}
 
-<section class="fixed inset-0 grid grid-cols-[minmax(0,1fr)_minmax(20rem,37.5%)] gap-8 p-8 bg-dex-red" aria-label={t("game.label")}>
-  <div class="grid grid-rows-[auto_minmax(0,1fr)_auto] min-h-0 px-3 bg-dex-shell rounded-[2px]">
-    <div class="flex justify-center gap-3 py-3" aria-hidden="true">
-      <span class="size-3.5 rounded-full bg-dex-bezel"></span>
-      <span class="size-3.5 rounded-full bg-dex-bezel"></span>
-    </div>
-    <!-- The game screen: the renderer and everything drawn over it share this box. -->
-    <div class="relative min-h-0 overflow-hidden border-[12px] border-dex-bezel bg-dex-screen font-screen" class:crt={$settings.crt}>
+{#snippet phoneApp(p: MenuPage)}
+  <PauseMenu
+    page={p}
+    {party}
+    {bag}
+    {items}
+    {dex}
+    {names}
+    {riding}
+    pots={berryPots}
+    apricorns={apricornBox}
+    gear={{ ...gear, clock: gearClock, onDial: (contact: number) => window.soulSilver.sendGame({ type: "phoneDial", contact }), onTune: (channel: string | null) => window.soulSilver.sendGame({ type: "radioTune", channel }) }}
+    card={trainerCard}
+    savedAt={lastSaved}
+    {leaving}
+    online={onlinePanel}
+    onField={(msg) => { setMenu(false); window.soulSilver.sendGame(msg); }}
+    onPage={(next: MenuPage | undefined) => setMenu(true, next)}
+    onLeave={leave}
+  />
+{/snippet}
+
+<!-- Block H: one screen. The world fills the window; the team, the minimap and the Pokédex phone sit over it. -->
+<section class="fixed inset-0 overflow-hidden bg-dex-screen font-screen" class:crt={$settings.crt} aria-label={t("game.label")}>
   <div class="absolute inset-0 overflow-hidden" bind:this={host}></div>
 
   {#if status === "rejected"}
@@ -1086,7 +1109,7 @@
   {#if captureLine}<p class={DIALOG} role="status">{captureLine}</p>{/if}
 
   {#if status === "playing" && (hudSelf || play.arena)}
-    <CombatHud self={hudSelf} {bars} call={moveCall} {speciesName} />
+    <CombatHud {bars} />
   {/if}
   {#if status === "playing" && hudSelf && (wheel.open || itemUse.endsTick !== undefined)}
     <ItemWheel
@@ -1203,50 +1226,33 @@
   {#if call}<CallScreen name={call.name} direction={call.direction} />{/if}
   <DialogBox queue={dialog} boost={scriptLocked && $settings.fastCutsceneText ? CUTSCENE_TEXT_BOOST : 1} />
 
-  {#if menuOpen && !page && status === "playing"}
-    <!-- The panel beside has the input: the screen is covered and says how to get back. -->
-    <div class="absolute inset-0 z-4 grid place-content-center justify-items-center gap-3 p-6 bg-black/60 text-center text-[#eef]">
-      <p class="m-0 text-[1.4rem]">{t("menu.open")}</p>
-      <p class="m-0"><Glyph action="menu" /> {t("menu.back")}</p>
-      <p class="m-0 px-3 py-1 rounded-full bg-[#b23b3b] text-[0.8rem]">{t("pause.live")}</p>
-    </div>
-  {/if}
-  {#if menuOpen && page && status === "playing"}
-    <PauseMenu {page} {party} {bag} {items} {dex} {names} {riding} pots={berryPots} apricorns={apricornBox} gear={{ ...gear, clock: gearClock, onDial: (contact: number) => window.soulSilver.sendGame({ type: "phoneDial", contact }), onTune: (channel: string | null) => window.soulSilver.sendGame({ type: "radioTune", channel }) }} onField={(msg) => { setMenu(false); window.soulSilver.sendGame(msg); }} onPage={(next: MenuPage | undefined) => setMenu(true, next)} />
-  {/if}
-
-  {#if saveNote}<p class="absolute left-2 top-2 m-0 text-white text-[0.85rem] opacity-80 z-1" role="status">{saveNote}</p>{/if}
-    </div>
-    <div class="flex items-center justify-between py-3" aria-hidden="true">
-      <span class="size-3 rounded-full bg-[#7a3b2e]"></span>
-      <span class="grid gap-[3px] w-14"><span class="h-[3px] bg-dex-bezel"></span><span class="h-[3px] bg-dex-bezel"></span><span class="h-[3px] bg-dex-bezel"></span></span>
-    </div>
-  </div>
-
-  {#snippet side()}
-    <section class="relative min-h-0 grid grid-rows-[auto_minmax(0,1fr)] border-8 border-black bg-dex-screen font-screen" class:crt={$settings.crt}>
-      <div class="flex" role="tablist">
-        {#each TABS as [key, label] (key)}
-          <button type="button" role="tab" aria-selected={tab === key} class="px-4 py-2 border-none bg-transparent [font-palette:--screen]! text-muted font-semibold aria-selected:bg-black/30 aria-selected:text-white" onclick={() => (tab = key)}>{t(label)}</button>
-        {/each}
-      </div>
-      {#if tab === "party"}
-        <PartyPanel {party} {out} {speciesName} />
-      {:else}
-        <OnlinePanel {mode} {players} {doing} {me} address={play.address} {addresses} busy={onlineBusy || status !== "playing"} error={switchingTo ? t("online.switching") : onlineError} onOpen={() => void openLan()} onJoin={joinOther} onTrade={(to: number) => window.soulSilver.sendGame({ type: "trade-propose", to })} onDuel={(to: number, rules: DuelRules) => window.soulSilver.sendGame({ type: "duel-invite", to, rules })} />
+  {#if status === "playing"}
+    <!-- Block H: the HUD corners. The moves float over the team only in a fight. -->
+    <Minimap map={hereMap} level={hereLevel} entities={miniEntities} selfId={selfEntity} {dex} {speciesName} />
+    <!-- One column, stacked bottom-up so nothing overlaps: the trainer's call-out, the moves, the team. -->
+    <div class="pointer-events-none absolute bottom-4 left-4 z-2 grid w-[17rem] justify-items-start gap-2">
+      {#if moveCall && (hudSelf || play.arena)}
+        {#key moveCall.key}<TrainerCall pic={moveCall.pic} move={moveCall.move} />{/key}
       {/if}
-    </section>
-    <nav class={NAV_CLASS}>{@render navButtons()}</nav>
-    <div class="mt-[clamp(0.5rem,6vh,4rem)]">
-      <MovePanel self={hudSelf} lead={party[leadIndex(party) ?? -1]} {moveName} moveType={(id: number) => types.get(id)} />
+      {#if hudSelf}
+        <div class="w-full"><MovePanel self={hudSelf} lead={party[leadIndex(party) ?? -1]} {moveName} moveType={(id: number) => types.get(id)} /></div>
+      {/if}
+      <PartyStrip {party} {out} fight={hudSelf} {speciesName} />
     </div>
-  {/snippet}
-  <!-- With the menu open, the whole panel takes the pad: tabs (also LB/RB), the Online tab and the buttons. -->
-  {#if menuOpen && !page}
-    <aside class={ASIDE} use:menu={{ onBack: () => setMenu(false), onAction: (a) => (a === "menu" ? (setMenu(false), true) : a === "tabPrev" || a === "tabNext" ? ((tab = tab === "party" ? "online" : "party"), true) : false) }}>{@render side()}</aside>
-  {:else}
-    <aside class={ASIDE}>{@render side()}</aside>
+    <PhoneDex
+      open={menuOpen}
+      {page}
+      disabled={appsOff}
+      onOpen={() => {
+        if (!inCombat && !progression && picker === "closed" && flyMap === undefined) setMenu(true);
+      }}
+      onClose={() => setMenu(false)}
+      onPage={(next: MenuPage | undefined) => setMenu(true, next)}
+      app={phoneApp}
+    />
   {/if}
+
+  {#if saveNote}<p class="absolute left-4 top-4 m-0 text-white text-[0.85rem] opacity-80 z-1 [text-shadow:0_1px_2px_#000]" role="status">{saveNote}</p>{/if}
 
   {#if showDebug}
     <dl class="debug fixed top-2 right-2 m-0 px-3 py-2 bg-black/75 text-white [font:12px_monospace] z-6" aria-label={t("debug.label")}>
