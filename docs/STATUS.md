@@ -50,6 +50,7 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] R.2 IPv6 direto (guia em `docs/multiplayer-internet.md`)
 - [x] R.3 Convite WebRTC (código copiado, sem servidor próprio)
 - [x] R.4 Verificação do bloco R (roteiro manual pendente em `.evidence/R/roteiro.md`)
+- [x] R.5 Abrir a porta no roteador por UPnP (roteiro manual pendente em `.evidence/R/roteiro.md`, seção 4)
 - [x] 033.1 Torre de Rádio
 - [x] 033.2 Ice Path
 - [x] 033.3 Blackthorn e Dragon's Den
@@ -154,6 +155,7 @@ assunto, ou quando o desenvolvedor pedir.
 - R.3: o STUN padrão é o público do Google, que vê o IP de quem gera convite; trocável ou vazio nas Configurações.
 - R.4: roteiro manual em `.evidence/R/roteiro.md` (senha na LAN, IPv6 entre casas, convite WebRTC, 4G) a cargo do desenvolvedor.
 - R.4: `scripts-perf` também falha às vezes na suíte cheia e passa isolado (como `perf`/`trainer-perf`); não é do bloco R.
+- R.5: UPnP com roteador real não testado (roteiro manual, seção 4); só IPv4 e TCP; sem NAT-PMP/PCP; se o app morrer sem fechar, a porta fica aberta até 1 h (ou até reiniciar o roteador, nos que só aceitam mapeamento permanente).
 - 031.7: comparação com as páginas 6–20 do detonado pendente (sem capturas; verificação só no servidor); roteiro manual em `.evidence/031/roteiro-manual.md`.
 
 ## Decisões
@@ -197,3 +199,4 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Seal Case é `save.seals` (id 1–80 → 1–99; nomes do banco 16 em runtime); a tela de Ball Capsule parte dele.
 - Verificação só pelo servidor (golden, sondas, harness): não abrir o app nem fazer capturas (pedido do desenvolvedor).
 - V.3: luta de treinador em mapa `indoor` vai para a área `ring:<mapa>:<batalha>` (18×18, só o lutador); scripts e roamers ignoram a ida e a volta; o save guarda a posição de antes.
+- R.5: abrir para a internet é opcional e explícito (botão no painel Online), nunca automático ao hospedar; o mapeamento UPnP vive e morre com a porta do host (`unlisten`).

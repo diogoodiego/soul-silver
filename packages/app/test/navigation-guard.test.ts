@@ -35,9 +35,15 @@ describe("windowOpenHandler", () => {
 });
 
 describe("permissionRequestHandler", () => {
-  it("denies every permission", () => {
+  it("denies every permission but writing the clipboard", () => {
     const callback = vi.fn();
     permissionRequestHandler(null, "media", callback);
     expect(callback).toHaveBeenCalledWith(false);
+  });
+
+  it("grants clipboard writes, used by the invite code copy buttons", () => {
+    const callback = vi.fn();
+    permissionRequestHandler(null, "clipboard-sanitized-write", callback);
+    expect(callback).toHaveBeenCalledWith(true);
   });
 });

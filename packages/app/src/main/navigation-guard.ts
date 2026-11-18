@@ -17,8 +17,9 @@ export function windowOpenHandler(): { action: "deny" } {
 
 export function permissionRequestHandler(
   _webContents: unknown,
-  _permission: string,
+  permission: string,
   callback: (granted: boolean) => void,
 ): void {
-  callback(false);
+  // navigator.clipboard.writeText needs this one (invite/answer code copy buttons).
+  callback(permission === "clipboard-sanitized-write");
 }

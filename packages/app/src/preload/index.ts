@@ -4,6 +4,7 @@ import {
   IpcChannel,
   PEER_LINK_MESSAGE,
   PEER_PORT_MESSAGE,
+  type InternetResult,
   type LanResult,
   type ServerInfo,
   type ServerStatus,
@@ -59,6 +60,7 @@ const api: SoulSilverApi = {
   startHost: (slot) => ipcRenderer.invoke(IpcChannel.SessionHost, slot) as Promise<SessionResult>,
   joinSession: (slot, address, password) => ipcRenderer.invoke(IpcChannel.SessionJoin, { slot, address, password }) as Promise<SessionResult>,
   openToLan: () => ipcRenderer.invoke(IpcChannel.SessionOpenLan) as Promise<LanResult>,
+  openToInternet: () => ipcRenderer.invoke(IpcChannel.SessionOpenInternet) as Promise<InternetResult>,
   openPeerLink: () => {
     ipcRenderer.send(IpcChannel.PeerLink);
   },

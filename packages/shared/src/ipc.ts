@@ -35,6 +35,8 @@ export const IpcChannel = {
   SessionHost: "session:host",
   SessionJoin: "session:join",
   SessionOpenLan: "session:open-lan",
+  /** R.5: asks the router (UPnP) to forward the hosted session's port. */
+  SessionOpenInternet: "session:open-internet",
   /** R.3: renderer asks for a port to the server for a guest's data channel; the reply carries it on the same channel. */
   PeerLink: "peer:link",
   /** R.3: renderer hands main the port of its own data channel, as a guest. */
@@ -55,6 +57,8 @@ export type SessionResult = { ok: true; save: Save } | { ok: false; reason: stri
 
 /** Outcome of opening the solo session to the LAN: the addresses others type to join. */
 export type LanResult = { ok: true; addresses: string[] } | { ok: false; reason: string };
+/** R.5: `address` is the public `ip` or `ip:port` friends outside the LAN type. */
+export type InternetResult = { ok: true; address: string } | { ok: false; reason: string };
 
 /** The only API the renderer can reach, exposed by the preload as window.soulSilver. */
 export interface SoulSilverApi {
@@ -107,6 +111,8 @@ export interface SoulSilverApi {
   joinSession(slot: number, address: string, password?: string): Promise<SessionResult>;
   /** Opens the solo session being played to the LAN and announces it, without restarting it. */
   openToLan(): Promise<LanResult>;
+  /** R.5: forwards the hosted session's port on the router by UPnP; the mapping goes when the session ends. */
+  openToInternet(): Promise<InternetResult>;
   /** R.3: asks for a port to the server; it arrives as a window message of type PEER_LINK_MESSAGE (ports cannot cross the bridge). */
   openPeerLink(): void;
   /** Sessions announced on the LAN while subscribed. Returns a function that cancels the subscription. */

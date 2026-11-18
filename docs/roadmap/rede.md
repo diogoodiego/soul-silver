@@ -49,3 +49,16 @@ Fazer: verificação completa (CLAUDE.md) e o roteiro manual em `.evidence/R/`: 
 Pronto quando: as verificações automáticas passam e o roteiro está escrito.
 
 Verificação: completa (CLAUDE.md).
+
+## R.5 Abrir a porta no roteador (UPnP)
+
+Item R.5 do roadmap (avulso): Abrir a porta no roteador por UPnP.
+Fazer: no painel Online do host, "Abrir para a internet" pede ao roteador (UPnP IGD: busca SSDP, descrição do aparelho, SOAP `GetExternalIPAddress` e `AddPortMapping`) para encaminhar a porta TCP do jogo a este PC, e mostra o IP público para o amigo digitar em Entrar → Por endereço. Sem IP público (CGNAT, 100.64/10 ou privado) não abre e manda usar o convite. A porta fecha (`DeletePortMapping`) quando a sessão termina ou o app fecha; o mapeamento dura 1 h renovado na metade, ou permanente em roteador que só aceita esse (erro 725).
+Pronto quando: testes, com roteador simulado por HTTP, cobrem leitura do SSDP, escolha do serviço WAN, filtro de IP público, mapear e desfazer, erro 725, porta ocupada (718), CGNAT e roteador mudo.
+
+Regras do item:
+- Depende de: R.1, R.2.
+- Sem dependência nova (só `dgram` e `fetch`). O protocolo do jogo não muda.
+- Textos novos passam pela estrutura de i18n.
+
+Verificação: leve (CLAUDE.md). Roteador real vai para o roteiro manual em `.evidence/R/`.

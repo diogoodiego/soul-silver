@@ -23,6 +23,12 @@ describe("invite codes", () => {
     expect(await decodeInvite(pasted)).toEqual({ kind: "offer", sdp });
   });
 
+  it("survives invisible characters, quotes and text around the code", async () => {
+    const code = await encodeInvite({ kind: "offer", sdp });
+    const pasted = `Aqui: "﻿${code.slice(0, 30)}​${code.slice(30)} ".`;
+    expect(await decodeInvite(pasted)).toEqual({ kind: "offer", sdp });
+  });
+
   it.each([
     ["empty", ""],
     ["another version", "SS9.abc"],
