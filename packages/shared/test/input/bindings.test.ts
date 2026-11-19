@@ -38,6 +38,19 @@ describe("defaults", () => {
     expect(DEFAULT_KEYS.confirm).toContain("Space");
     expect(sameContext("dash", "confirm")).toBe(false);
   });
+
+  it("puts interact on Space with the dodge: one only out of combat, the other only in it", () => {
+    expect(DEFAULT_KEYS.interact).toEqual(["Space"]);
+    expect(DEFAULT_KEYS.dash).toEqual(["Space"]);
+    expect(sameContext("interact", "dash")).toBe(false);
+    expect(sameContext("interact", "combat")).toBe(true);
+    expect(sameContext("dash", "combat")).toBe(true);
+  });
+
+  it("swaps Pokémon with Q (previous) and E (next)", () => {
+    expect(DEFAULT_KEYS.picker).toEqual(["KeyQ"]);
+    expect(DEFAULT_KEYS.swapNext).toEqual(["KeyE"]);
+  });
 });
 
 describe("rebind", () => {
@@ -78,5 +91,19 @@ describe("saved bindings", () => {
     const settings = readSettings({ bindings: older });
     expect(settings.bindings.combat).toEqual(["KeyZ"]);
     expect(settings.bindings.rod).toEqual(DEFAULT_KEYS.rod);
+  });
+
+  it("move interact off E to Space when E becomes the next-Pokémon key", () => {
+    const older: Record<string, readonly string[]> = { ...DEFAULT_KEYS, interact: ["KeyE"] };
+    delete older["swapNext"];
+    const settings = readSettings({ bindings: older });
+    expect(settings.bindings.interact).toEqual(["Space"]);
+    expect(settings.bindings.swapNext).toEqual(["KeyE"]);
+  });
+
+  it("keep interact on a key the player chose", () => {
+    const older: Record<string, readonly string[]> = { ...DEFAULT_KEYS, interact: ["KeyZ"] };
+    delete older["swapNext"];
+    expect(readSettings({ bindings: older }).bindings.interact).toEqual(["KeyZ"]);
   });
 });

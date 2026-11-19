@@ -117,6 +117,49 @@ describe("companion (US1)", () => {
   });
 });
 
+describe("chosen follower (quick swap on the field)", () => {
+  const choose = (g: ReturnType<typeof game>, partyIndex: number) => {
+    g.p.conn.send({ type: "set-follower", partyIndex });
+    g.tick();
+  };
+
+  it("makes the chosen member follow without changing the party order, and tells the client who leads", () => {
+    const g = game([member("cyndaquil"), member("chikorita")]);
+    g.walk(EAST, 10);
+    choose(g, 1);
+    g.walk(EAST, 5);
+    expect(g.companion()?.data["species"]).toBe(SPECIES.chikorita.id);
+    const last = g.msgs("party").at(-1)!;
+    expect(last.members.map((m) => m.species)).toEqual([SPECIES.cyndaquil.id, SPECIES.chikorita.id]);
+    expect(last).toMatchObject({ lead: 1 });
+  });
+
+  it("sends the chosen member out when a fight starts", () => {
+    const g = game([member("cyndaquil"), member("chikorita")]);
+    choose(g, 1);
+    g.press(BUTTON.combat);
+    expect(g.msgs("party").at(-1)).toMatchObject({ active: 1 });
+  });
+
+  it("ignores a fainted member or one past the party", () => {
+    const g = game([member("cyndaquil"), member("chikorita", 10, 0)]);
+    choose(g, 1);
+    choose(g, 5);
+    g.walk(EAST, 5);
+    expect(g.companion()?.data["species"]).toBe(SPECIES.cyndaquil.id);
+  });
+
+  it("keeps following the same member after the party is reordered", () => {
+    const g = game([member("cyndaquil"), member("chikorita"), member("sentret")]);
+    choose(g, 2);
+    g.p.conn.send({ type: "reorder-party", from: 2, to: 0 });
+    g.tick();
+    g.walk(EAST, 5);
+    expect(g.companion()?.data["species"]).toBe(SPECIES.sentret.id);
+    expect(g.msgs("party").at(-1)).toMatchObject({ lead: 0 });
+  });
+});
+
 describe("combat (US2)", () => {
   it("the combat button steps the companion forward and hands it control on the next tick", () => {
     const g = game([member("cyndaquil")]);

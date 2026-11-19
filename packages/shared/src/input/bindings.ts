@@ -4,7 +4,10 @@
 
 export const DIRECTIONS = ["up", "down", "left", "right"] as const;
 const MENU_ACTIONS = ["confirm", "cancel", "tabPrev", "tabNext"] as const;
-const MAP_ACTIONS = ["menu", "run", "dash", "move1", "move2", "move3", "move4", "combat", "recall", "interact", "picker", "throw", "nextBall", "rod", "items"] as const;
+const MAP_ACTIONS = ["menu", "run", "dash", "move1", "move2", "move3", "move4", "combat", "recall", "interact", "picker", "swapNext", "throw", "nextBall", "rod", "items"] as const;
+/** Map actions that only act out of combat, and ones that only act in it: one key may serve one of each. */
+const FIELD_ONLY: readonly string[] = ["interact"];
+const COMBAT_ONLY: readonly string[] = ["dash"];
 
 export const ACTIONS = [...DIRECTIONS, ...MENU_ACTIONS, ...MAP_ACTIONS] as const;
 export type Action = (typeof ACTIONS)[number];
@@ -15,6 +18,7 @@ export function sameContext(a: Action, b: Action): boolean {
   const context = (x: Action) => ((DIRECTIONS as readonly string[]).includes(x) ? "both" : (MENU_ACTIONS as readonly string[]).includes(x) ? "menu" : "map");
   const ca = context(a);
   const cb = context(b);
+  if ((FIELD_ONLY.includes(a) && COMBAT_ONLY.includes(b)) || (COMBAT_ONLY.includes(a) && FIELD_ONLY.includes(b))) return false;
   return ca === "both" || cb === "both" || ca === cb;
 }
 
@@ -36,8 +40,11 @@ export const DEFAULT_KEYS: Readonly<Bindings> = {
   move4: ["Digit4"],
   combat: ["KeyF"],
   recall: ["KeyR"],
-  interact: ["KeyE"],
+  /** Out of combat only, so it shares Space with the dodge (dash), which acts only in combat. */
+  interact: ["Space"],
+  /** The previous Pokémon (in combat sent out, on the field rotated to lead); the swap picker opens on a faint. */
   picker: ["KeyQ"],
+  swapNext: ["KeyE"],
   throw: ["KeyG"],
   nextBall: ["KeyB"],
   rod: ["KeyC"],
@@ -64,6 +71,8 @@ export const PAD_BUTTONS: Readonly<Record<Action, number>> = {
   recall: 7,
   interact: 12,
   picker: 8,
+  /** D-pad down: free on the map, where the left stick walks. */
+  swapNext: 13,
   throw: 10,
   nextBall: 15,
   rod: 11,

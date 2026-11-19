@@ -106,6 +106,8 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("leave") }),
   /** Quick swap in combat (spec 014); ignored on cooldown, fainted, already out or outside combat. */
   z.strictObject({ type: z.literal("swap"), partyIndex: z.number().int().min(0).max(5) }),
+  /** v37: the quick swap on the field: this member follows the trainer (and goes out first), the party order stays. */
+  z.strictObject({ type: z.literal("set-follower"), partyIndex: z.number().int().min(0).max(5) }),
   /** The ball the next throw uses (spec 015); ignored when it is not in the bag. */
   z.strictObject({ type: z.literal("select-ball"), item: count() }),
   /** Replies to the head of the progression queue (spec 016); ignored in combat or when the head is of another kind. */
@@ -425,6 +427,8 @@ export const serverMessage = z.discriminatedUnion("type", [
       )
       .max(6),
     active: count().optional(),
+    /** v37: the member following the trainer on the field (the one chosen with the quick swap, else the first able to fight). */
+    lead: z.number().int().min(0).max(5).optional(),
   }),
   /** Who is in the session (v12), sent to everyone whenever someone joins or leaves. */
   z.strictObject({ type: z.literal("players"), players: z.array(z.strictObject({ id: count(), name: z.string().min(1).max(PLAYER_NAME_MAX), host: z.boolean(), area: z.string() })).max(4) }),

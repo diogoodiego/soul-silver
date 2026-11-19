@@ -82,6 +82,9 @@ export function readSettings(raw: unknown): AppSettings {
     const parsed = fields[key].safeParse(obj[key]);
     if (parsed.success) (out as Record<string, unknown>)[key] = parsed.data;
   }
+  // E became the next-Pokémon key: settings from before it that still interact on E interact on Space now.
+  const saved = obj["bindings"];
+  if (typeof saved === "object" && saved !== null && !("swapNext" in saved) && out.bindings.interact.length === 1 && out.bindings.interact[0] === "KeyE") out.bindings.interact = [...DEFAULT_KEYS.interact];
   return out;
 }
 

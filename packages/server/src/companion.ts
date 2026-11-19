@@ -47,6 +47,8 @@ interface State {
   arena: Arena | undefined;
   /** Wild Pokémon that came inside this fight's circle: kept there until the fight ends. */
   pinned: Set<number>;
+  /** The member picked with the quick swap on the field (by reference, so a reorder keeps it); not saved. */
+  follower: PartyMember | undefined;
 }
 
 /** A trainer battle's arena as the companion rules see it. */
@@ -112,7 +114,15 @@ export function createCompanions(options: CompanionOptions) {
 
   function sendParty(s: State): void {
     const members = s.trainer.progress.party.map((m) => ({ species: m.species, ...(m.nickname ? { nickname: m.nickname } : {}), level: m.level, hp: m.hp, hpMax: hpMax(m), ...options.detail?.(m), ...(m.egg ? { egg: true as const } : {}) }));
-    s.trainer.send({ type: "party", members, ...(s.active !== undefined && s.mode === "combat" ? { active: s.active } : {}) });
+    const lead = fieldLead(s);
+    s.trainer.send({ type: "party", members, ...(s.active !== undefined && s.mode === "combat" ? { active: s.active } : {}), ...(lead !== undefined ? { lead } : {}) });
+  }
+
+  /** Who follows the trainer: the member picked with the quick swap while it can fight, else the first able to. */
+  function fieldLead(s: State): number | undefined {
+    const party = s.trainer.progress.party;
+    const i = s.follower ? party.indexOf(s.follower) : -1;
+    return i !== -1 && canFight(party[i]!) ? i : leadIndex(party);
   }
 
   /** Copies the HP of the Pokémon out in combat back to its party member. */
@@ -145,7 +155,7 @@ export function createCompanions(options: CompanionOptions) {
   function follow(s: State): void {
     const t = trainerOf(s);
     const party = s.trainer.progress.party;
-    const lead = leadIndex(party);
+    const lead = fieldLead(s);
     s.lastArea = t.area;
     if (lead === undefined || inBall(s, party[lead]!.species, t.area)) {
       removeCompanion(s);
@@ -193,8 +203,11 @@ export function createCompanions(options: CompanionOptions) {
   }
 
   const mayLaunch = (s: State, index: number) => options.launchable?.(s.trainer.playerId, s.trainer.progress.party[index]!.species) ?? true;
-  /** The first member able to fight that may be sent out here: while surfing, not a terrestrial lead (spec 025). */
+  /** The member following (picked with the quick swap) if it may go out here, else the first able to fight that
+   * may: while surfing, not a terrestrial lead (spec 025). */
   function launchLead(s: State): number | undefined {
+    const lead = fieldLead(s);
+    if (lead !== undefined && mayLaunch(s, lead)) return lead;
     const i = s.trainer.progress.party.findIndex((m, i) => canFight(m) && mayLaunch(s, i));
     return i === -1 ? undefined : i;
   }
@@ -226,7 +239,7 @@ export function createCompanions(options: CompanionOptions) {
     const rest = { ...t.data };
     delete rest["inCombat"];
     world.update({ ...t, data: rest });
-    const lead = leadIndex(s.trainer.progress.party);
+    const lead = fieldLead(s);
     if (lead !== undefined && !inBall(s, s.trainer.progress.party[lead]!.species, t.area)) reseed(s, trainerOf(s), s.trainer.progress.party[lead]!.species);
     else removeCompanion(s);
     s.trainer.send({ type: "control", entityId: s.trainer.entityId });
@@ -319,7 +332,7 @@ export function createCompanions(options: CompanionOptions) {
   function interact(s: State): void {
     const t = trainerOf(s);
     const c = s.companionId === undefined ? undefined : world.get(s.companionId);
-    const lead = leadIndex(s.trainer.progress.party);
+    const lead = fieldLead(s);
     if (!c || lead === undefined || busy(t)) return;
     const dx = c.x - t.x;
     const dy = c.y - t.y;
@@ -338,7 +351,7 @@ export function createCompanions(options: CompanionOptions) {
       // HP from a save is a trust boundary: never above the maximum for the level.
       for (const m of trainer.progress.party) m.hp = Math.min(m.hp, hpMax(m));
       const t = world.get(trainer.entityId)!;
-      const s: State = { trainer, trail: [], companionId: undefined, mode: "walk", active: undefined, anchor: { x: 0, y: 0 }, swapReadyTick: 0, swapUntil: 0, lastThreatTick: 0, buttons: 0, lastArea: t.area, hitByPlayer: false, arena: undefined, pinned: new Set() };
+      const s: State = { trainer, trail: [], companionId: undefined, mode: "walk", active: undefined, anchor: { x: 0, y: 0 }, swapReadyTick: 0, swapUntil: 0, lastThreatTick: 0, buttons: 0, lastArea: t.area, hitByPlayer: false, arena: undefined, pinned: new Set(), follower: undefined };
       states.set(trainer.playerId, s);
       sendParty(s);
     },
@@ -390,6 +403,14 @@ export function createCompanions(options: CompanionOptions) {
       }
       if (input && s.companionId !== undefined && tick >= s.swapUntil) combat!.input(s.companionId, { move: input.move, buttons: input.buttons, aim: input.aim });
       return true;
+    },
+    /** Quick swap on the field: this member follows the trainer; ignored in combat and for one that cannot fight. */
+    setFollower(playerId: number, index: number): void {
+      const s = states.get(playerId);
+      const member = s?.trainer.progress.party[index];
+      if (!s || s.mode !== "walk" || !member || !canFight(member)) return;
+      s.follower = member;
+      sendParty(s);
     },
     /** Quick swap; ignored on cooldown, for a fainted or already active member, or outside combat. */
     swap(playerId: number, index: number, tick: number): void {

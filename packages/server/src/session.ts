@@ -1229,6 +1229,9 @@ export function createSession(options: SessionOptions): Session {
         case "swap":
           companions?.swap(player.id, msg.partyIndex, tick);
           return;
+        case "set-follower":
+          companions?.setFollower(player.id, msg.partyIndex);
+          return;
         case "select-ball":
           captures?.select(player.id, msg.item);
           return;
