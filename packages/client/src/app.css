@@ -38,15 +38,37 @@
     font-palette: --ink;
   }
 }
-/* A CRT over a screen: scanlines above everything drawn in it, never taking clicks. The vignette is a V.1 effect. */
+/* A CRT over a screen, above everything drawn in it, never taking clicks. The vignette is a V.1 effect.
+ * --crt-px is the game pixel's height on the page (set by the renderer): one scanline per pixel row, so the lines
+ * sit on the art instead of beating against it. Each line is a beam: clear in the middle, darker to its edges.
+ * Under it a faint aperture grille (red, green, blue columns); dropped when a game pixel is under 3 page pixels
+ * (data-crt-coarse), where the columns would alias. Plain translucent layers, no blend mode: over a transparent
+ * backdrop (the Pokédex screen, warped in 3D and isolated) a multiply would show its own near-white colours. */
 @utility crt {
+  --crt-line: var(--crt-px, 3px);
   &::after {
     content: "";
     position: absolute;
     inset: 0;
     z-index: 10;
     pointer-events: none;
-    background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0%) 0 2px, rgb(0 0 0 / 22%) 2px 3px);
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgb(0 0 0 / 14%) 0,
+        rgb(0 0 0 / 0%) calc(var(--crt-line) * 0.3),
+        rgb(0 0 0 / 0%) calc(var(--crt-line) * 0.6),
+        rgb(0 0 0 / 30%) var(--crt-line)
+      ),
+      repeating-linear-gradient(
+        to right,
+        rgb(255 0 0 / 5%) 0 calc(var(--crt-line) / 3),
+        rgb(0 255 0 / 4%) calc(var(--crt-line) / 3) calc(var(--crt-line) * 2 / 3),
+        rgb(0 0 255 / 5%) calc(var(--crt-line) * 2 / 3) var(--crt-line)
+      );
+  }
+  :root[data-crt-coarse] &::after {
+    background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0%) 0 calc(var(--crt-line) * 0.5), rgb(0 0 0 / 22%) calc(var(--crt-line) * 0.5) var(--crt-line));
   }
 }
 
