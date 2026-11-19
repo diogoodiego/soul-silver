@@ -1,5 +1,6 @@
 import { GAME_DATA_FILES, parseGameDataJson, type GameDataFileOf, TYPE_KEYS } from "@soulsilver/shared/game-data";
 import type { TextBankFile } from "@soulsilver/shared/text";
+import { parseEventsJson, type EncounterRecord } from "@soulsilver/shared/events";
 import { loadBank } from "../render/combat-fx";
 
 // What the menus and the HUD read from the extraction (spec 017): text banks and a few game-data
@@ -99,6 +100,40 @@ export function trainerSprites() {
     })
     .catch(() => new Map<number, Frame>());
   return trainers;
+}
+
+let encounters: Promise<Map<number, EncounterRecord>> | undefined;
+
+/** The extracted encounter tables, by id (Block H: the minimap's route species); empty when missing. */
+export function encounterTables() {
+  const path = "assets://stages/events/events/encounters.json";
+  encounters ??= fetch(path)
+    .then((r) => r.text())
+    .then((text) => {
+      const parsed = parseEventsJson("encounters", text, path);
+      return new Map(parsed.ok ? parsed.data.records.map((r) => [r.id, r]) : []);
+    })
+    .catch(() => new Map<number, EncounterRecord>());
+  return encounters;
+}
+
+let items: Promise<Map<number, Frame>> | undefined;
+
+/** The bag icon of each item (a/0/1/8), as a page URL and a frame; empty when the atlas is missing. */
+export function itemIcons() {
+  items ??= fetch(`${ICONS}/icon-item.json`)
+    .then((r) => r.json() as Promise<{ pages: { file: string }[]; frames: { name: string; page: number; x: number; y: number; w: number; h: number }[] }>)
+    .then((set) => {
+      const out = new Map<number, Frame>();
+      for (const f of set.frames) {
+        const m = /^icon-item\/(\d+)$/.exec(f.name);
+        const page = set.pages[f.page];
+        if (m && page) out.set(Number(m[1]), { url: `${ICONS}/${page.file}`, x: f.x, y: f.y, w: f.w, h: f.h });
+      }
+      return out;
+    })
+    .catch(() => new Map<number, Frame>());
+  return items;
 }
 
 let icons: Promise<Map<number, { url: string; x: number; y: number; w: number; h: number }>> | undefined;

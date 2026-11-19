@@ -1,5 +1,5 @@
 // Block H: the minimap's geometry and markers. The whole current map is fitted into the box (keeping its
-// aspect, centred); each wild Pokémon of the area becomes a marker drawn by what the Pokédex knows of it.
+// aspect, centred); under it, the species the map's encounter table can give, by what the Pokédex knows of them.
 
 export type DexState = "unknown" | "seen" | "caught";
 
@@ -34,30 +34,22 @@ export function toMinimap(fit: MinimapFit, x: number, y: number): { x: number; y
   return { x: fit.ox + x * fit.scale, y: fit.oy + y * fit.scale };
 }
 
-interface EntityLike {
-  id: number;
-  kind: string;
-  area: string;
-  x: number;
-  y: number;
-  data: Record<string, unknown>;
+type Slots = readonly { species: number }[];
+
+/** The parts of an encounter table the minimap reads. */
+export interface EncounterTable {
+  grass?: { morning: Slots; day: Slots; night: Slots } | undefined;
+  surf?: Slots | undefined;
+  rockSmash?: Slots | undefined;
+  oldRod?: Slots | undefined;
+  goodRod?: Slots | undefined;
+  superRod?: Slots | undefined;
 }
 
-export interface WildMarker {
-  id: number;
-  species: number;
-  state: DexState;
-  x: number;
-  y: number;
-}
-
-/** The wild Pokémon of `area` (not a trainer's or a player's), placed in the box. */
-export function wildMarkers(entities: readonly EntityLike[], area: string, dex: Pokedex, fit: MinimapFit): WildMarker[] {
-  const markers: WildMarker[] = [];
-  for (const e of entities) {
-    const species = e.data["species"];
-    if (e.kind !== "pokemon" || e.area !== area || e.data["owner"] !== "wild" || typeof species !== "number") continue;
-    markers.push({ id: e.id, species, state: dexState(species, dex), ...toMinimap(fit, e.x, e.y) });
-  }
-  return markers;
+/** Every species the map's encounter table can give (grass at any hour, surf, Rock Smash, rods), once each, in table order. */
+export function routeSpecies(table: EncounterTable | undefined, dex: Pokedex): { species: number; state: DexState }[] {
+  if (!table) return [];
+  const all = [table.grass?.morning, table.grass?.day, table.grass?.night, table.surf, table.rockSmash, table.oldRod, table.goodRod, table.superRod].flatMap((s) => s ?? []);
+  const unique = [...new Set(all.map((s) => s.species).filter((id) => id > 0))];
+  return unique.map((species) => ({ species, state: dexState(species, dex) }));
 }

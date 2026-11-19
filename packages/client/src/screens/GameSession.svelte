@@ -57,6 +57,9 @@
   import { createClientWorld } from "../render/map-assets";
   import { currentSettings, saveSettings, settings } from "../settings";
   import SwapPicker from "../game/SwapPicker.svelte";
+  import { cycleSwap } from "../game/swap-cycle";
+  import { encounterTables } from "../game/game-data";
+  import type { EncounterRecord } from "@soulsilver/shared/events";
   import ItemWheel from "../game/ItemWheel.svelte";
   import { useEffectOf, type ItemEffects } from "@soulsilver/shared/items";
   import itemEffectsJson from "../../../../content/items/effects.json";
@@ -86,6 +89,9 @@
   /** Block H: the minimap's map, level and entities, refreshed a few times a second from the draw loop. */
   let hereMap = $state<WorldMap | undefined>();
   let hereLevel = $state(0);
+  /** The encounter table of the trainer's area, for the minimap's route species; `encounterArea` is the area it is for. */
+  let hereEncounters = $state<EncounterRecord | undefined>();
+  let encounterArea: string | undefined;
   let miniEntities = $state<Entity[]>([]);
   let selfEntity = $state<number | undefined>();
   let players = $state<{ id: number; name: string; host: boolean; area: string; place?: string }[]>([]);
@@ -125,6 +131,8 @@
   type ScriptRequestBuffer = Extract<Extract<ServerMessage, { type: "script" }>["request"], { kind: "say" }>["buffers"][string];
   let party = $state<Member[]>([]);
   let activeMember = $state<number | undefined>();
+  /** v37: the member following the trainer on the field, as the server says (the quick swap picks it). */
+  let fieldLead = $state<number | undefined>();
   let picker = $state<"closed" | "open" | "fainted">("closed");
   /** While surfing (spec 025): which members may be sent out; undefined on land. */
   let launchable = $state<boolean[] | undefined>();
@@ -509,6 +517,7 @@
     let emotion: { id: number; text: string; until: number } | undefined;
     let reactionTimer: ReturnType<typeof setTimeout> | undefined;
     let pickerHeld = false;
+    let swapNextHeld = false;
     let nextBallHeld = false;
     let interactHeld = false;
     let rodHeld = false;
@@ -548,6 +557,7 @@
         if (ev.type === "party") {
           party = ev.members;
           activeMember = ev.active;
+          fieldLead = ev.lead;
         } else if (ev.type === "players") {
           players = ev.players;
           me = game.playerId;
@@ -607,7 +617,7 @@
         } else if (ev.type === "pokedex") {
           dex = { seen: ev.seen, caught: ev.caught };
         } else if (ev.type === "capture") {
-          renderer.capture(ev.wildId, ev.shakes, now);
+          renderer.capture(ev.wildId, ev.shakes, now, ev.caught);
           const shakes = Array.from({ length: ev.shakes }, (_, i) => t("capture.shake", { dots: "●".repeat(i + 1) }));
           captureLines([t("capture.hit"), ...shakes, ev.caught ? t("capture.caught") : t("capture.escaped")]);
         } else if (ev.type === "captured") {
@@ -802,9 +812,22 @@
         buttons |= BUTTON.recall;
         recallOnce = false;
       }
+      // Quick swap: Q (picker) to the previous member, E (swapNext) to the next. In combat it is sent out (the
+      // server keeps the cooldown); on the field the party rotates so it leads and follows the trainer.
       const pickerNow = !blocked && input.held("picker");
-      if (pickerNow && !pickerHeld && inCombat && picker === "closed") picker = "open";
+      const swapNextNow = !blocked && input.held("swapNext");
+      const quickSwap = (dir: 1 | -1) => {
+        const i = inCombat ? cycleSwap(party, activeMember, dir, launchable) : cycleSwap(party, fieldLead ?? leadIndex(party), dir);
+        // Nobody else able to fight (the rest fainted, or eggs): say so instead of doing nothing.
+        if (i === undefined) captureLines([t("swap.none")]);
+        else api.sendGame(inCombat ? { type: "swap", partyIndex: i } : { type: "set-follower", partyIndex: i });
+      };
+      if (picker === "closed" && !progression && !fishing) {
+        if (pickerNow && !pickerHeld) quickSwap(-1);
+        else if (swapNextNow && !swapNextHeld) quickSwap(1);
+      }
       pickerHeld = pickerNow;
+      swapNextHeld = swapNextNow;
       const nextBallNow = !blocked && input.held("nextBall");
       if (nextBallNow && !nextBallHeld && balls.length > 1) {
         const at = balls.findIndex((b) => b.item === selectedBall);
@@ -936,6 +959,14 @@
         const trainer = shown.find((e) => e.id === game.entityId) ?? self;
         hereMap = trainer ? world.lookup(trainer.area) : undefined;
         hereLevel = trainer?.level ?? 0;
+        // The route's species come from the map header's encounter table; looked up again only on a new area.
+        if (trainer && trainer.area !== encounterArea) {
+          const area = trainer.area;
+          encounterArea = area;
+          void Promise.all([world.header(area), encounterTables()]).then(([h, tables]) => {
+            if (encounterArea === area) hereEncounters = h?.refs.encounters == null ? undefined : tables.get(h.refs.encounters);
+          });
+        }
         selfEntity = game.entityId;
         miniEntities = shown;
       }
@@ -1023,7 +1054,7 @@
   const MESSAGE = "absolute left-1/2 top-1/2 -translate-1/2 m-0 text-white z-5";
 
   /** The Pokémon out: under control in a fight, else the one following the trainer. */
-  const out = $derived(hudSelf ? activeMember : leadIndex(party));
+  const out = $derived(hudSelf ? activeMember : (fieldLead ?? leadIndex(party)));
   /** Block H: apps that cannot open now; the Online app needs a running session. */
   const appsOff = $derived<MenuPage[]>(status === "playing" ? [] : ["online", "save"]);
 
@@ -1228,7 +1259,7 @@
 
   {#if status === "playing"}
     <!-- Block H: the HUD corners. The moves float over the team only in a fight. -->
-    <Minimap map={hereMap} level={hereLevel} entities={miniEntities} selfId={selfEntity} {dex} {speciesName} />
+    <Minimap map={hereMap} level={hereLevel} entities={miniEntities} selfId={selfEntity} encounters={hereEncounters} {dex} {speciesName} />
     <!-- One column, stacked bottom-up so nothing overlaps: the trainer's call-out, the moves, the team. -->
     <div class="pointer-events-none absolute bottom-4 left-4 z-2 grid w-[17rem] justify-items-start gap-2">
       {#if moveCall && (hudSelf || play.arena)}

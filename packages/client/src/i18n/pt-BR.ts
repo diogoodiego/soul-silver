@@ -260,7 +260,8 @@ export const ptBR = {
   "action.combat": "Entrar em combate",
   "action.recall": "Recolher",
   "action.interact": "Interagir",
-  "action.picker": "Trocar Pokémon",
+  "action.picker": "Pokémon anterior",
+  "action.swapNext": "Próximo Pokémon",
   "action.throw": "Arremessar bola",
   "action.nextBall": "Próxima bola",
   "action.rod": "Vara de pesca",
@@ -425,6 +426,7 @@ export const ptBR = {
   "hud.empty": "vazio",
   "hud.minimap": "Minimapa",
   "hud.minimap.unknown": "Pokémon desconhecido",
+  "hud.minimap.caught": "capturado",
 
   "party.title": "Equipe",
   "party.nature": "Natureza",
@@ -571,6 +573,7 @@ export const ptBR = {
   "swap.landTag": " · não luta na água",
   "swap.recall": "Recolher e fugir",
   "swap.back": "Voltar à luta",
+  "swap.none": "Nenhum outro Pokémon da equipe pode lutar.",
 
   "progress.label": "Progresso do Pokémon",
   "progress.levelUp": "{name} subiu para o nível {level}!",

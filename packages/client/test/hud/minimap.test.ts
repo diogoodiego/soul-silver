@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { dexState, fitMap, toMinimap, wildMarkers } from "../../src/hud/minimap";
+import { dexState, fitMap, routeSpecies, toMinimap } from "../../src/hud/minimap";
 
-// Block H: the minimap shows the whole current map and its wild Pokémon, by what the Pokédex knows of them.
+// Block H: the minimap shows the whole current map and the species of its encounter table, by what the Pokédex knows.
 
 const dex = { seen: [16, 19, 155], caught: [155] };
-const wild = (id: number, species: number, over: object = {}) => ({ id, kind: "pokemon", area: "29", x: 160, y: 80, data: { owner: "wild", species }, ...over });
 
 describe("dexState", () => {
   it("is caught, seen or unknown, caught first", () => {
@@ -33,25 +32,28 @@ describe("fitMap", () => {
   });
 });
 
-describe("wildMarkers", () => {
-  const fit = fitMap(320, 160, 160, 80);
+describe("routeSpecies", () => {
+  const slot = (species: number) => ({ species, form: 0, minLevel: 2, maxLevel: 4, chance: 10 });
+  const rates = { walking: 25, surfing: 0, rockSmash: 0, oldRod: 0, goodRod: 0, superRod: 0 };
 
-  it("marks the wild Pokémon of the area, with their place and what the Pokédex knows", () => {
-    expect(wildMarkers([wild(1, 155), wild(2, 16, { x: 0, y: 0 }), wild(3, 25)], "29", dex, fit)).toEqual([
-      { id: 1, species: 155, state: "caught", x: 80, y: 40 },
-      { id: 2, species: 16, state: "seen", x: 0, y: 0 },
-      { id: 3, species: 25, state: "unknown", x: 80, y: 40 },
+  it("lists each species of every table once, in table order, with what the Pokédex knows", () => {
+    const table = { id: 1, rates, grass: { morning: [slot(16), slot(19)], day: [slot(16), slot(161)], night: [slot(163), slot(19)] }, surf: [slot(60)], oldRod: [slot(129), slot(60)] };
+    expect(routeSpecies(table, dex)).toEqual([
+      { species: 16, state: "seen" },
+      { species: 19, state: "seen" },
+      { species: 161, state: "unknown" },
+      { species: 163, state: "unknown" },
+      { species: 60, state: "unknown" },
+      { species: 129, state: "unknown" },
     ]);
   });
 
-  it("leaves out other areas, trainers' and players' Pokémon, players and Pokémon without a species", () => {
-    const others = [
-      wild(1, 16, { area: "30" }),
-      { id: 2, kind: "pokemon", area: "29", x: 0, y: 0, data: { owner: 1, species: 155 } },
-      { id: 3, kind: "pokemon", area: "29", x: 0, y: 0, data: { owner: "trainer", species: 16 } },
-      { id: 4, kind: "player", area: "29", x: 0, y: 0, data: { owner: "wild" } },
-      { id: 5, kind: "pokemon", area: "29", x: 0, y: 0, data: { owner: "wild" } },
-    ];
-    expect(wildMarkers(others, "29", dex, fit)).toEqual([]);
+  it("marks caught species and skips empty slots (species 0)", () => {
+    const table = { id: 2, rates, grass: { morning: [slot(155), slot(0)], day: [], night: [] } };
+    expect(routeSpecies(table, dex)).toEqual([{ species: 155, state: "caught" }]);
+  });
+
+  it("is empty for a map without a table", () => {
+    expect(routeSpecies(undefined, dex)).toEqual([]);
   });
 });

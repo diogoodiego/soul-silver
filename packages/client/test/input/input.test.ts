@@ -56,12 +56,12 @@ describe("moveButtons", () => {
     expect(moveButtons(new Set(), pad([1]))).toBe(0); // B runs
   });
 
-  it("maps the companion actions to their bits: F/LT combat, R/RT recall, E/D-pad up interact", () => {
+  it("maps the companion actions to their bits: F/LT combat, R/RT recall, D-pad up interact", () => {
     expect(moveButtons(new Set(["KeyF"]), () => false)).toBe(BUTTON.combat);
     expect(moveButtons(new Set(), (i) => i === 7)).toBe(BUTTON.recall);
-    expect(moveButtons(new Set(["KeyE"]), (i) => i === 6)).toBe(BUTTON.interact | BUTTON.combat);
-    // The picker is the client's own: no bit.
-    expect(moveButtons(new Set(["KeyQ"]), () => false)).toBe(0);
+    expect(moveButtons(new Set(), (i) => i === 6 || i === 12)).toBe(BUTTON.interact | BUTTON.combat);
+    // The quick swap (Q previous, E next) is the client's own: no bit.
+    expect(moveButtons(new Set(["KeyQ", "KeyE"]), () => false)).toBe(0);
   });
 
   it("maps G and pad LS to the throw, bit 8; the ball cycle (B, D-pad right) is the client's own", () => {
@@ -70,8 +70,8 @@ describe("moveButtons", () => {
     expect(moveButtons(new Set(["KeyB"]), (i) => i === 15)).toBe(0);
   });
 
-  it("maps Space and pad LB to dash, bit 4", () => {
-    expect(moveButtons(new Set(["Space"]), () => false)).toBe(0b10000);
+  it("maps Space to dash and interact (the server reads each in its own mode), pad LB to dash only", () => {
+    expect(moveButtons(new Set(["Space"]), () => false)).toBe(BUTTON.dash | BUTTON.interact);
     expect(moveButtons(new Set(), (i) => i === 4)).toBe(0b10000);
   });
 });

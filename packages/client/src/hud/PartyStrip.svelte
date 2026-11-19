@@ -1,9 +1,10 @@
 <script lang="ts">
   // Block H: the team in the bottom-left corner. The lead (the one following the trainer, or out in a fight)
-  // with its icon, name, level and HP; then a token for each of the 6 slots, tinted by HP, dimmed with a cross
-  // when fainted, a dot when empty.
+  // with its icon, name, level and HP; then a Poké Ball for each of the 6 slots (the bag icon extracted from the
+  // ROM, with an HP line under it, greyed when fainted), a dot when empty. Without the atlas: HP-tinted tokens.
   import type { Entity } from "@soulsilver/shared/game";
   import { hpColor } from "../game/type-colors";
+  import { itemIcons, type Frame } from "../game/game-data";
   import PokemonIcon from "../game/PokemonIcon.svelte";
   import { t, type MessageKey } from "../i18n";
   import HpBar from "../ui/HpBar.svelte";
@@ -33,6 +34,11 @@
     fight ? { species: num("species"), nickname: member?.species === num("species") ? member.nickname : undefined, level: num("level"), hp: num("hp"), hpMax: num("hpMax") } : member,
   );
   const fraction = (m: Member) => (m.hpMax > 0 ? m.hp / m.hpMax : 0);
+
+  /** Each slot shows the Poké Ball's bag icon (item 4) from the extracted atlas; the HP dot when it is missing. */
+  const POKE_BALL = 4;
+  let ball = $state<Frame | undefined>();
+  void itemIcons().then((map) => (ball = map.get(POKE_BALL)));
 </script>
 
 <section class="pointer-events-none grid gap-2 text-white [text-shadow:0_1px_2px_#000]" aria-label={t("hud.party")}>
@@ -61,10 +67,24 @@
   <ol class="m-0 flex list-none items-center gap-1.5 p-0">
     {#each SLOTS as i (i)}
       {@const m = party[i]}
-      <li class="grid size-5 place-items-center" title={m ? (m.egg ? t("party.egg") : (m.nickname ?? speciesName(m.species))) : t("hud.empty")}>
+      <li class="grid size-6 place-items-center" title={m ? (m.egg ? t("party.egg") : (m.nickname ?? speciesName(m.species))) : t("hud.empty")}>
         {#if !m}
           <span class="size-1.5 rounded-full bg-white/50"></span>
           <span class="sr-only">{t("hud.empty")}</span>
+        {:else if ball}
+          {@const down = m.hp === 0 && !m.egg}
+          <span class="grid justify-items-center gap-px">
+            <span
+              class={["block [image-rendering:pixelated] drop-shadow-[0_1px_1px_#000]", i === out ? "[zoom:1]" : "[zoom:0.75]", down && "opacity-50 grayscale"]}
+              aria-hidden="true"
+              style:width="{ball.w}px"
+              style:height="{ball.h}px"
+              style:background-image="url({ball.url})"
+              style:background-position="-{ball.x}px -{ball.y}px"
+            ></span>
+            {#if !m.egg}<span class="block h-[2px] w-4 rounded-full" style:background={down ? "#fff4" : hpColor(fraction(m))}></span>{/if}
+          </span>
+          {#if down}<span class="sr-only">{t("hud.fainted")}</span>{/if}
         {:else if m.hp === 0 && !m.egg}
           <span class="grid size-4 place-items-center rounded-full border-2 border-white/40 bg-black/50 text-[0.6rem] leading-none text-white/70">×</span>
           <span class="sr-only">{t("hud.fainted")}</span>
