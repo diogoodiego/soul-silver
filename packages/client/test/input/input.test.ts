@@ -42,24 +42,24 @@ describe("stickVector", () => {
 });
 
 describe("moveButtons", () => {
-  it("maps keys 1–4 to move bits 0–3", () => {
-    expect(moveButtons(new Set(["Digit1"]), () => false)).toBe(0b0001);
-    expect(moveButtons(new Set(["Digit2", "Digit4"]), () => false)).toBe(0b1010);
+  it("maps J, K, L, I to move bits 0–3", () => {
+    expect(moveButtons(new Set(["KeyJ"]), () => false)).toBe(0b0001);
+    expect(moveButtons(new Set(["KeyK", "KeyI"]), () => false)).toBe(0b1010);
     expect(moveButtons(new Set(["KeyW"]), () => false)).toBe(0);
   });
 
   it("maps pad A, X, Y and RB to moves 1–4", () => {
     const pad = (down: number[]) => (i: number) => down.includes(i);
-    expect(moveButtons(new Set(), pad([0]))).toBe(0b0001);
+    expect(moveButtons(new Set(), pad([0]))).toBe(0b0001 | BUTTON.interact); // A also interacts on the map
     expect(moveButtons(new Set(), pad([2, 3]))).toBe(0b0110);
     expect(moveButtons(new Set(), pad([5]))).toBe(0b1000);
     expect(moveButtons(new Set(), pad([1]))).toBe(0); // B runs
   });
 
-  it("maps the companion actions to their bits: F/LT combat, R/RT recall, D-pad up interact", () => {
+  it("maps the companion actions to their bits: F/LT combat, R/RT recall, A interact", () => {
     expect(moveButtons(new Set(["KeyF"]), () => false)).toBe(BUTTON.combat);
     expect(moveButtons(new Set(), (i) => i === 7)).toBe(BUTTON.recall);
-    expect(moveButtons(new Set(), (i) => i === 6 || i === 12)).toBe(BUTTON.interact | BUTTON.combat);
+    expect(moveButtons(new Set(), (i) => i === 6 || i === 0)).toBe(BUTTON.interact | BUTTON.combat | 0b0001);
     // The quick swap (Q previous, E next) is the client's own: no bit.
     expect(moveButtons(new Set(["KeyQ", "KeyE"]), () => false)).toBe(0);
   });
@@ -89,8 +89,9 @@ describe("bindings (spec 017)", () => {
     expect(keyboardVector(new Set(["KeyW"]), bindings)).toEqual({ x: 0, y: 0 });
   });
 
-  it("puts interact on D-pad up", () => {
-    expect(moveButtons(new Set(), (i) => i === 12)).toBe(BUTTON.interact);
+  it("puts interact on A with move 1: the server reads each in its own mode (walk, combat)", () => {
+    expect(moveButtons(new Set(), (i) => i === 0)).toBe(BUTTON.interact | 0b0001);
+    expect(moveButtons(new Set(), (i) => i === 12)).toBe(0);
   });
 });
 

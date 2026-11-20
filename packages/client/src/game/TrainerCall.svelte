@@ -23,7 +23,7 @@
       style:background-position="-{frame.x}px -{frame.y}px"
     ></span>
   {/if}
-  <p class="m-0 mb-6 px-3 py-1 rounded-[6px] border-3 border-frame bg-white/96 text-ink palette-ink text-[1.1rem] animate-[call_0.15s_ease-out]">{t("hud.call", { move })}</p>
+  <p class="m-0 mb-6 px-3 py-1 rounded-[6px] border-3 border-frame bg-overlay text-primary text-[1.1rem] animate-[call_0.15s_ease-out]">{t("hud.call", { move })}</p>
 </div>
 
 <style>

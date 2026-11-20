@@ -101,18 +101,44 @@
       unsubscribeAssets();
     };
   });
+
+  // 4×4 Bayer thresholds, (k + 0.5) / 16 as greys, one 2 px cell each: the tile the #dex-dither filter repeats.
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  const bayerTile =
+    "data:image/svg+xml," +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" shape-rendering="crispEdges">${BAYER.map((k, i) => `<rect x="${(i % 4) * 2}" y="${Math.floor(i / 4) * 2}" width="2" height="2" fill="rgb(${k * 16 + 8},${k * 16 + 8},${k * 16 + 8})"/>`).join("")}</svg>`,
+    );
 </script>
 
+<!-- The ordered dither of the Pokédex screen (the `dither` utility): each pixel's own colour (made opaque), nudged by
+     the Bayer threshold and cut to 4 levels, then given its alpha back untouched, so translucent layers keep letting
+     the glass (dithered by the model's shader) and its reflections through. -->
+<svg class="absolute size-0" aria-hidden="true">
+  <filter id="dex-dither" color-interpolation-filters="sRGB" x="0" y="0" width="100%" height="100%">
+    <feImage href={bayerTile} x="0" y="0" width="8" height="8" result="cell" />
+    <feTile in="cell" result="bayer" />
+    <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1" result="flat" />
+    <feComposite in="flat" in2="bayer" operator="arithmetic" k2="1" k3="0.25" k4="-0.125" result="nudged" />
+    <feComponentTransfer in="nudged" result="colour">
+      <feFuncR type="discrete" tableValues="0 0.3333 0.6667 1" />
+      <feFuncG type="discrete" tableValues="0 0.3333 0.6667 1" />
+      <feFuncB type="discrete" tableValues="0 0.3333 0.6667 1" />
+    </feComponentTransfer>
+    <feComposite in="colour" in2="SourceGraphic" operator="in" />
+  </filter>
+</svg>
+
 {#if showMain && !play && (screen === "title" || screen === "home" || screen === "settings" || screen === "play")}
-  <div class="fixed inset-0 overflow-hidden bg-black" class:crt={$settings.crt} aria-hidden="true" use:backdrop></div>
-  <div class="fixed inset-0 bg-black/40" aria-hidden="true"></div>
+  <div class="fixed inset-0 overflow-hidden bg-canvas" class:crt={$settings.crt} aria-hidden="true" use:backdrop></div>
+  <div class="fixed inset-0 bg-overlay" aria-hidden="true"></div>
 {/if}
 <!-- Positioned, so it paints over the fixed backdrop above it (static content would sit under it). -->
 <main class="relative p-8">
   {#if !showMain}
     <h1>SoulSilver Desktop</h1>
     <FirstRun {assets} />
-    <p class="text-quiet text-[0.85rem]">{t("app.version", { version: appVersion ?? "—" })}</p>
+    <p class="text-tertiary text-[0.85rem]">{t("app.version", { version: appVersion ?? "—" })}</p>
   {:else if play}
     {#key attempt}
       <GameSession {play} onExit={() => ((play = undefined), go("home"))} onReconnect={play.address ? reconnect : undefined} onSwitch={play.arena ? undefined : (address: string) => void switchTo(address)} />

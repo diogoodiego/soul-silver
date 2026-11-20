@@ -2,6 +2,7 @@
   // Progression after a fight (spec 016): one queued item at a time, never during combat (the
   // server only sends them out of it). Level up and a free move slot just need OK; a fifth move asks
   // which to forget; an evolution plays and can be cancelled, as in the original.
+  import Button from "../ui/Button.svelte";
   import type { ServerMessage } from "@soulsilver/shared/game";
   import { onMount } from "svelte";
   import { t } from "../i18n";
@@ -44,7 +45,7 @@
   });
 </script>
 
-<div class="absolute left-1/2 bottom-4 -translate-x-1/2 grid gap-1 w-[min(90%,28rem)] p-3 bg-black/85 text-white text-[13px]" role="dialog" aria-label={t("progress.label")} use:menu>
+<div class="absolute left-1/2 bottom-4 -translate-x-1/2 grid gap-1 w-[min(90%,28rem)] p-3 bg-overlay text-primary text-[13px]" role="dialog" aria-label={t("progress.label")} use:menu>
   {#if item.kind === "level-up"}
     <p class="mt-0 mb-1">{t("progress.levelUp", { name, level: item.level })}</p>
     {#if prompt.stats && prompt.gains}
@@ -55,19 +56,19 @@
         {/each}
       </dl>
     {/if}
-    <button type="button" class="text-left" onclick={onAck}>{t("common.ok")}</button>
+    <Button variant="ghost" class="text-left" onclick={onAck}>{t("common.ok")}</Button>
   {:else if item.kind === "learn" && !full}
     <p class="mt-0 mb-1">{t("progress.learned", { name, move: moveName(item.move) })}</p>
-    <button type="button" class="text-left" onclick={onAck}>{t("common.ok")}</button>
+    <Button variant="ghost" class="text-left" onclick={onAck}>{t("common.ok")}</Button>
   {:else if item.kind === "learn"}
     <p class="mt-0 mb-1">{t("progress.wantsToLearn", { name, move: moveName(item.move) })}</p>
     {#each prompt.moves ?? [] as move, i (i)}
-      <button type="button" class="text-left" onclick={() => onLearn(i)}>{t("progress.forget", { move: moveName(move) })}</button>
+      <Button variant="ghost" class="text-left" onclick={() => onLearn(i)}>{t("progress.forget", { move: moveName(move) })}</Button>
     {/each}
-    <button type="button" class="text-left" onclick={() => onLearn(null)}>{t("progress.dontLearn", { move: moveName(item.move) })}</button>
+    <Button variant="ghost" class="text-left" onclick={() => onLearn(null)}>{t("progress.dontLearn", { move: moveName(item.move) })}</Button>
   {:else}
     <p class="mt-0 mb-1">{t("progress.evolving", { name })}</p>
     <p class="relative h-6 mt-0 mb-1 text-[18px] font-bold" aria-live="polite"><span class="absolute animate-blink motion-reduce:animate-none">{name}</span><span class="absolute animate-blink [animation-delay:0.25s] motion-reduce:hidden">{speciesName(item.into)}</span></p>
-    <button type="button" class="text-left" onclick={() => onEvolve(false)}>{t("progress.cancelEvolution")}</button>
+    <Button variant="ghost" class="text-left" onclick={() => onEvolve(false)}>{t("progress.cancelEvolution")}</Button>
   {/if}
 </div>

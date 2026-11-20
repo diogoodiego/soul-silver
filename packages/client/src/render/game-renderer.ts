@@ -1,7 +1,7 @@
 import { HOP_TICKS, tileAt, WARP_TICKS, type Entity, type HitEvent, type WorldMap } from "@soulsilver/shared/game";
 import { ANIMATION_FRAME_MS, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { parseSpriteFile, type SpriteEmitter, type SpriteFrame, type SpriteSetFile } from "@soulsilver/shared/sprites";
-import { createCapsule, poseCapsule, type Capsule } from "./capture-capsule";
+import { BALL_PX, createPokeBall, poseCapture, poseFlight, type PokeBall } from "./poke-ball";
 import { createBeam, summonPhase } from "./summon";
 import {
   AmbientLight,
@@ -27,6 +27,8 @@ import { loadBitmap, loadMapMesh, loadPropMesh, spriteUrl, type ClientWorld, typ
 import { CLEARING_RADIUS_PX, clearings } from "./grass-clearing";
 import { buildMapObject, groundAt, SHADE, setGrassClearings, type MapObject } from "./map-scene";
 import { createParticles, effectsOf } from "./particles";
+import { createCastTelegraphs } from "./cast-telegraph";
+import { createDebuffs } from "./debuff";
 import { createPost } from "./post";
 import { DEFAULT_SETTINGS, type AppSettings } from "@soulsilver/shared";
 
@@ -45,11 +47,8 @@ const DRAWN = new Set(["player", "pokemon", "projectile", "npc"]);
 const FLASH_MS = 60;
 const EFFECT_SET = "field-effect.json";
 const BATTLE_FX_SET = "battle-fx.json";
-const ITEM_ICON_SET = "icon-item.json";
-/** The Poké Ball (item 4), drawn in place of a wild Pokémon during a capture. */
-const CAPTURE_BALL_FRAME = "icon-item/4";
-/** The bag icon is drawn for a menu: half size stands next to the overworld sprites. */
-const CAPTURE_BALL_SCALE = 0.5;
+/** A thrown ball flies at this height over the ground, in map pixels. */
+const BALL_FLIGHT_PX = 6;
 /** Beam ends: the trainer's chest and the Pokémon's middle, in map pixels above their feet. */
 const BEAM_FROM_PX = 14;
 const BEAM_TO_PX = 8;
@@ -227,20 +226,20 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   const shinyOf = new Map<Texture, Texture>();
   /** Wild Pokémon inside a ball (spec 015): drawn as the ball, wobbling once per shake. */
   const inBall = new Map<number, { start: number; shakes: number; caught: boolean | undefined }>();
-  /** The 3D capture capsule drawn for each wild Pokémon in `inBall`. */
-  const capsules = new Map<number, Capsule>();
+  /** The 3D Poké Ball of each thrown ball in flight and of each wild Pokémon in `inBall`. */
+  const balls = new Map<number, PokeBall>();
   /** A player's Pokémon by entity: the species drawn last frame, and its summon animation while it plays. */
   const ownSpecies = new Map<number, unknown>();
   const summons = new Map<number, { start: number; beam: ReturnType<typeof createBeam> }>();
   /** No summons for what is already out when the world is first drawn. */
   let summonsPrimed = false;
-  const redMaterials = new Map<Texture, MeshBasicMaterial>();
-  /** The sprite page tinted red: the Pokémon forming out of the beam. */
-  const redMaterial = (page: Texture) => {
-    let material = redMaterials.get(page);
+  const tintedMaterials = new Map<string, MeshBasicMaterial>();
+  /** The sprite page tinted: red for the Pokémon forming out of the beam. */
+  const tinted = (page: Texture, color: number) => {
+    let material = tintedMaterials.get(`${page.uuid}/${color}`);
     if (!material) {
-      material = new MeshBasicMaterial({ map: page, alphaTest: 0.5, side: DoubleSide, color: 0xff3030 });
-      redMaterials.set(page, material);
+      material = new MeshBasicMaterial({ map: page, alphaTest: 0.5, side: DoubleSide, color });
+      tintedMaterials.set(`${page.uuid}/${color}`, material);
     }
     return material;
   };
@@ -266,7 +265,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     actor.sprite.visible &&= phase.visible;
     actor.sprite.scale.setScalar(phase.scale);
     const map = (actor.sprite.material as MeshBasicMaterial).map;
-    if (phase.red && map && actor.sprite.material !== markerMaterial) actor.sprite.material = redMaterial(map);
+    if (phase.red && map && actor.sprite.material !== markerMaterial) actor.sprite.material = tinted(map, 0xff3030);
     actor.caster.visible = false;
     // The beam leaves the nearest trainer on the map: the companion keeps by its own.
     let trainer: Actor | undefined;
@@ -280,7 +279,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     const to = actor.sprite.position.clone().add(new Vector3(0, BEAM_TO_PX, 0));
     summon.beam.set(from.clone().lerp(to, phase.beam.tail), from.clone().lerp(to, phase.beam.head), BEAM_WIDTH_PX);
   }
-  // The capsule is the only lit mesh: a soft fill so its shaded side is not black.
+  // The Poké Ball is the only lit mesh: a soft fill so its shaded side is not black.
   scene.add(new AmbientLight(0xffffff, 0.55));
   /** Shiny wild Pokémon already greeted with the sparkle. */
   const sparkled = new Set<number>();
@@ -325,10 +324,6 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     if (!set) log("NPC sprites missing; drawing markers");
     indexGfx(set);
   });
-  // The ball of a capture: the Poké Ball's bag icon from the extraction; without it, the 3D capsule.
-  void loadSet(ITEM_ICON_SET).then((set) => {
-    if (!set) log("Item icons missing; captures draw the capsule");
-  });
   let rustle: { frame: string; ms: number }[] = [];
   void loadSet(EFFECT_SET).then((set) => {
     rustle = set?.sprites.find((s) => s.name === "field-effect/grass")?.animations[0]?.steps ?? [];
@@ -340,6 +335,8 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     else log("Battle effect sprites missing; moves and statuses draw no particles");
   });
   const particles = createParticles(scene, (name) => frames.get(name));
+  const telegraphs = createCastTelegraphs(scene);
+  const debuffs = createDebuffs(scene);
   /** Entities drawn last frame, so effects can follow them. */
   let latest = new Map<number, Entity>();
   /** Grass clearings this frame (fights), where sprites show their feet. */
@@ -637,27 +634,25 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       scene.add(actor.sprite);
       actors.set(e.id, actor);
     }
+    const heading = Math.atan2(e.x - actor.last.x, e.y - actor.last.y);
     actor.moving = Math.hypot(e.x - actor.last.x, e.y - actor.last.y) > 0.01 || e.data["hop"] !== undefined;
     actor.last = { x: e.x, y: e.y };
     const ball = inBall.get(e.id);
     if (ball && now >= ball.start + (ball.shakes + 1) * SHAKE_MS) {
       inBall.delete(e.id);
-      capsules.get(e.id)?.dispose();
-      capsules.delete(e.id);
+      balls.get(e.id)?.dispose();
+      balls.delete(e.id);
     }
-    const ballFrame = inBall.has(e.id) ? frames.get(CAPTURE_BALL_FRAME) : undefined;
-    const frame = inBall.has(e.id) ? ballFrame : frameFor(e, actor.moving, running, now);
+    const frame = inBall.has(e.id) ? undefined : frameFor(e, actor.moving, running, now);
+    // Knocked out: still (no idle bounce), until a ball or the fight's end takes it.
+    const knockedOut = e.kind === "pokemon" && e.data["hp"] === 0;
     const inGrass = tileAt(world.lookup, e.area, e.level, e.x, e.y)?.category === "tallGrass" && !cleared.some((c) => Math.hypot(c.x - e.x, c.y - e.y) <= CLEARING_RADIUS_PX);
     const [tx, ty] = [Math.floor(e.x / MAP_TILE_PX), Math.floor(e.y / MAP_TILE_PX)];
     if (actor.tile !== `${tx},${ty}`) {
       if (actor.tile !== "" && inGrass) rustleAt(tx, ty, groundOf(e), now);
       actor.tile = `${tx},${ty}`;
     }
-    if (ballFrame) {
-      // The icon is anchored at its centre: whole, never cut by the grass.
-      setQuad(actor.sprite.geometry, ballFrame, ballFrame.frame.h);
-      actor.sprite.material = spriteMaterial(ballFrame.page);
-    } else if (frame) {
+    if (frame) {
       setQuad(actor.sprite.geometry, frame, inGrass ? Math.max(1, frame.frame.h - GRASS_COVER_PX) : frame.frame.h);
       const shiny = e.data["shiny"] === true;
       actor.sprite.material = spriteMaterial((shiny && shinyOf.get(frame.page)) || frame.page);
@@ -668,41 +663,40 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         blinkUntil.set(e.id, now + 1200);
       }
     } else {
-      if (inBall.has(e.id)) markerQuad(actor.sprite.geometry, 3, 6);
-      else if (e.kind === "projectile") markerQuad(actor.sprite.geometry, e.data["field"] === true ? 12 : 3, e.data["field"] === true ? 2 : 6);
+      if (e.kind === "projectile") markerQuad(actor.sprite.geometry, e.data["field"] === true ? 12 : 3, e.data["field"] === true ? 2 : 6);
       else markerQuad(actor.sprite.geometry);
       actor.sprite.material = markerMaterial;
     }
     const particlesOnly = e.kind === "projectile" && battleFx.has(`move/${String(e.data["move"])}`);
     const blinking = e.data["flash"] === true || (blinkUntil.get(e.id) ?? 0) > now;
     actor.sprite.visible = !particlesOnly && (!blinking || Math.floor(now / FLASH_MS) % 2 === 0);
-    const bounce = ((e.kind === "pokemon" && !actor.moving) || e.data["mode"] === "surf") && Math.floor(now / (IDLE_BOUNCE_MS / 2)) % 2 === 0 ? IDLE_BOUNCE_PX : 0;
+    const bounce = ((e.kind === "pokemon" && !actor.moving && !knockedOut) || e.data["mode"] === "surf") && Math.floor(now / (IDLE_BOUNCE_MS / 2)) % 2 === 0 ? IDLE_BOUNCE_PX : 0;
     const hop = e.data["hop"];
     // shortcut: the arc steps once per server tick (the counter is not interpolated); smooth it if it reads choppy.
     const lift = typeof hop === "number" ? Math.round(Math.sin((Math.PI * (HOP_TICKS - hop + 0.5)) / HOP_TICKS) * HOP_ARC_PX) : 0;
-    // The ball icon's centre anchor would sink half of it into the ground: raise it by half its (scaled) height.
-    const ballLift = ballFrame ? Math.round((ballFrame.frame.h * CAPTURE_BALL_SCALE) / 2) : 0;
-    const y = groundOf(e) + SPRITE_DEPTH_BIAS + (ballFrame ? ballLift : bounce + lift);
+    const y = groundOf(e) + SPRITE_DEPTH_BIAS + bounce + lift;
     // A hit target shakes sideways while its flash lasts.
-    // A ball rocks during the first half of each shake window, then rests.
-    const rocking = ball && inBall.has(e.id) && now - ball.start < ball.shakes * SHAKE_MS && (now - ball.start) % SHAKE_MS < SHAKE_MS / 2;
-    const shake = e.data["flash"] === true ? Math.round(Math.sin(now / 15) * 2) : rocking ? Math.round(Math.sin(now / 40) * 3) : 0;
+    const shake = e.data["flash"] === true ? Math.round(Math.sin(now / 15) * 2) : 0;
     actor.sprite.position.set(Math.round(e.x) + shake, y, Math.round(e.y) + SPRITE_DEPTH_BIAS * OBLIQUE);
-    actor.sprite.scale.setScalar(ballFrame ? CAPTURE_BALL_SCALE : 1);
     actor.caster.visible = actor.sprite.material !== markerMaterial;
     if (actor.caster.visible) actor.caster.material = casterOf(actor.sprite.material);
     summonStep(e, actor, now);
-    // Without the extracted ball icon, the 3D capsule stands where the Pokémon was; the sprite (a white marker) hides.
-    if (ball && inBall.has(e.id) && !ballFrame) {
-      let capsule = capsules.get(e.id);
-      if (!capsule) {
-        capsule = createCapsule();
-        scene.add(capsule.root);
-        capsules.set(e.id, capsule);
+    // A thrown ball, and the ball a wild Pokémon is inside, are the 3D Poké Ball; the sprite (a marker) hides.
+    const thrown = e.kind === "projectile" && e.data["ball"] !== undefined;
+    if (thrown || (ball && inBall.has(e.id))) {
+      let model = balls.get(e.id);
+      if (!model) {
+        model = createPokeBall();
+        model.root.userData = { born: now, heading: 0 };
+        scene.add(model.root);
+        balls.set(e.id, model);
       }
       actor.sprite.visible = false;
-      capsule.root.position.set(Math.round(e.x), groundOf(e), Math.round(e.y));
-      poseCapsule(capsule, now - ball.start, ball.shakes, SHAKE_MS, ball.caught);
+      actor.caster.visible = false;
+      model.root.position.set(e.x, groundOf(e) + (thrown ? BALL_FLIGHT_PX - BALL_PX / 2 : 0), e.y);
+      if (actor.moving) model.root.userData["heading"] = heading;
+      if (thrown) poseFlight(model, now - (model.root.userData["born"] as number), model.root.userData["heading"] as number);
+      else if (ball) poseCapture(model, now - ball.start, ball.shakes, SHAKE_MS, ball.caught);
     }
   }
 
@@ -776,14 +770,16 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         actor.sprite.removeFromParent();
         actor.sprite.geometry.dispose();
         actors.delete(id);
-        capsules.get(id)?.dispose();
-        capsules.delete(id);
+        balls.get(id)?.dispose();
+        balls.delete(id);
         endSummon(id);
         ownSpecies.delete(id);
       }
       drawEffects(now);
       drawParticles(now);
       drawReaches(now);
+      telegraphs.draw(latest.values(), groundOf, now, post ? screen.scale : 1);
+      debuffs.draw(latest.values(), groundOf, now, post ? screen.scale : 1);
       const mapFrame = Math.floor(now / ANIMATION_FRAME_MS);
       for (const visual of visuals.values()) if (visual !== "loading") visual.object.animate(mapFrame);
       // The view follows the player's feet as drawn: raised ground draws higher.
@@ -865,6 +861,8 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       for (const actor of actors.values()) actor.sprite.geometry.dispose();
       for (const effect of effects) effect.sprite.geometry.dispose();
       particles.dispose();
+      telegraphs.dispose();
+      debuffs.dispose();
       for (const r of reaches) {
         r.mesh.geometry.dispose();
         r.mesh.material.dispose();

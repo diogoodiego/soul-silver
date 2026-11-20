@@ -315,6 +315,8 @@ export function createCompanions(options: CompanionOptions) {
     const reach = data.battle.disengageTiles * MAP_TILE_PX;
     const threat = world.all().some((w) => {
       const foe = w.kind === "pokemon" ? combat!.get(w.id) : undefined;
+      // A wild one holds the fight only once it came inside the circle: the ones wandering past do not.
+      if (foe?.owner === "wild" && !s.pinned.has(w.id)) return false;
       return foe && foe.hp > 0 && w.area === t.area && canHarm(s.trainer.playerId, foe.owner) && Math.hypot(w.x - (e?.x ?? t.x), w.y - (e?.y ?? t.y)) <= reach;
     });
     if (threat) s.lastThreatTick = tick;

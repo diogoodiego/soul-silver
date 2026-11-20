@@ -136,7 +136,7 @@ export function buildCombatData(content: CombatContent, extracted: ExtractedForC
       defaultChance: original.effect.chance || 100,
       rangePx: p.rangePx ?? 0,
       hitbox: p.hitbox,
-      castTicks: toTicks(p.castS ?? 0),
+      castTicks: toTicks(Math.max(p.castS ?? 0, tuning.minCastS)),
       cooldownTicks: toTicks(p.cooldownS ?? baseCooldownS(tuning.cooldown, power, original.pp)),
       speedPx: p.speedPx ?? 0,
       hits: p.hits ?? 1,

@@ -333,7 +333,9 @@ function wander(c: Controller, t: AiTick, env: AiEnv): Point {
       c.senses.look = dir;
     } else c.wander.dir = eightWay(dir);
   }
-  const dir = dist(self, c.home) > k.idleWanderTiles * TILE ? toward(self, c.home) : c.wander.dir;
+  // Past the zone's edge the walk itself turns home: keeping the old one stepped it out again the next tick.
+  if (dist(self, c.home) > k.idleWanderTiles * TILE) c.wander.dir = eightWay(toward(self, c.home));
+  const dir = c.wander.dir;
   if (dir.x === 0 && dir.y === 0) return ZERO;
   // Boxed in, it stands until the pause ends: choosing again at once turned it every tick.
   return steer(self, dir, TILE, env.walkable) ?? ZERO;

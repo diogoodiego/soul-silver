@@ -1,6 +1,7 @@
 <script lang="ts">
   // Block H: the Pokédex phone's home screen, its apps as a grid of icons. The pad moves between them as in
   // any menu; B or the menu button put the phone away.
+  import Button from "../ui/Button.svelte";
   import type { Action } from "@soulsilver/shared/input";
   import { onMount } from "svelte";
   import { APPS, type MenuPage } from "../game/menu-page";
@@ -65,9 +66,9 @@
 
 <nav bind:this={grid} class="grid h-full grid-cols-3 content-center gap-x-6 gap-y-4 px-10 py-4" aria-label={t("phone.home")} use:menu={{ onBack: onClose, onAction }}>
   {#each APPS as page (page)}
-    <button
-      type="button"
-      class="group m-0 grid justify-items-center gap-1.5 border-0 bg-transparent p-1 text-[1em] text-[#ddd] outline-none disabled:opacity-35"
+    <Button
+      variant="ghost"
+      class="grid justify-items-center gap-1.5"
       disabled={disabled.includes(page)}
       onclick={() => onOpen(page)}
     >
@@ -75,6 +76,6 @@
         {@render glyph(page)}
       </span>
       <span class="text-[0.9em] font-semibold">{t(LABELS[page])}</span>
-    </button>
+    </Button>
   {/each}
 </nav>

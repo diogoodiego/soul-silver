@@ -30,13 +30,15 @@
   override-colors: 0 #222222, 1 #222222;
 }
 
-/* Text inside the two screens (the game and the team/online panel); light surfaces in them use the dark palette. */
+/* Text inside the two screens (the game and the team/online panel). */
 @utility font-screen {
   font-family: "Sixtyfour Convergence", system-ui, sans-serif;
   font-palette: --screen;
-  & :is(button, input) {
-    font-palette: --ink;
-  }
+}
+
+/* An action's hover or pressed layer over its own fill: hover:layer-primary-hover. */
+@utility layer-* {
+  background-image: linear-gradient(--value(--color-action-*), --value(--color-action-*));
 }
 /* A CRT over a screen, above everything drawn in it, never taking clicks. The vignette is a V.1 effect.
  * --crt-px is the game pixel's height on the page (set by the renderer): one scanline per pixel row, so the lines
@@ -72,6 +74,12 @@
   }
 }
 
+/* Ordered dither over the Pokédex screen; the #dex-dither filter lives in App.svelte. Applied before the screen's
+ * 3D transform, so its 2 px cells warp with the screen like its own pixels. */
+@utility dither {
+  filter: url(#dex-dither);
+}
+
 /* A thin rounded thumb on no track, no arrows: for lists on dark screens. */
 @utility scrollbar-clean {
   &::-webkit-scrollbar {
@@ -90,19 +98,51 @@
   }
 }
 
-@utility palette-ink {
-  font-palette: --ink;
-}
 
 @theme {
-  --color-accent: #c0c8d8;
-  --color-panel: rgb(16 20 32 / 88%);
-  --color-ink: #222;
-  --color-muted: #aab;
-  --color-quiet: #99a;
+  /* Semantic tokens: the "Soul Silver" Figma collection, Dark mode. Each family has its own utility namespace,
+   * so names stay short: bg-panel, text-primary, border-default. */
+  --background-color-canvas: #0f0d0e;
+  --background-color-panel: #171516;
+  --background-color-raised: #262525;
+  --background-color-sunken: rgb(222 217 219 / 5%);
+  --background-color-hover: rgb(222 217 219 / 10%);
+  --background-color-selected: rgb(222 217 219 / 15%);
+  --background-color-overlay: rgb(38 37 37 / 80%);
+  --background-color-action-primary: #fff;
+  --background-color-action-disabled: rgb(222 217 219 / 5%);
+
+  --text-color-primary: #fff;
+  --text-color-secondary: rgb(222 217 219 / 80%);
+  --text-color-tertiary: rgb(222 217 219 / 70%);
+  --text-color-disabled: rgb(222 217 219 / 50%);
+  --text-color-action-primary: #0f0d0e;
+  --text-color-action-secondary: #d4cdcf;
+  --text-color-action-ghost: #d4cdcf;
+  --text-color-action-disabled: rgb(222 217 219 / 60%);
+
+  --border-color-subtle: rgb(222 217 219 / 5%);
+  --border-color-default: rgb(222 217 219 / 10%);
+  --border-color-focus: #fff;
+  --border-color-selected: #fff;
+  --outline-color-selected: #fff;
+  --outline-color-focus: #fff;
+
+  /* icon-primary, icon-secondary: for text-, fill- and stroke-. */
+  --color-icon-primary: #fff;
+  --color-icon-secondary: rgb(222 217 219 / 80%);
+
+  /* Hover and pressed are layers over an action's own fill (layer-*), not fills of their own. */
+  --color-action-primary-hover: rgb(38 37 37 / 10%);
+  --color-action-primary-pressed: rgb(38 37 37 / 20%);
+  --color-action-secondary-hover: rgb(222 217 219 / 10%);
+  --color-action-secondary-pressed: rgb(222 217 219 / 20%);
+  --color-action-ghost-hover: rgb(222 217 219 / 10%);
+  --color-action-ghost-pressed: rgb(222 217 219 / 20%);
+
+  /* No semantic token yet (status is unfinished): errors and the frame of the game's text boxes. */
   --color-danger: #ff6b81;
   --color-alarm: #b00020;
-  --color-focus: #ffd34d;
   --color-frame: #4a6;
 
   /* The game screen frame, after the Pokédex. */
@@ -111,6 +151,8 @@
   --color-dex-teal: #4fa8b8;
   --color-dex-screen: #313131;
   --color-dex-bezel: #121212;
+  /* Text on the dex shell (the move panel): outside the UI tokens. */
+  --color-dex-ink: #222;
 
   --animate-title-pulse: title-pulse 1.6s ease-in-out infinite;
   --animate-bob: bob 0.8s steps(2) infinite;
@@ -140,19 +182,25 @@
   }
   body {
     margin: 0;
-    background: #0d1018;
-    color: #eef;
+    background: var(--background-color-canvas);
+    color: var(--text-color-primary);
     font-family: system-ui, sans-serif;
   }
+  /* No preflight: drop the native button look, so Button's variants start from nothing. */
   button {
     font: inherit;
-    padding: 0.45rem 1rem;
-    cursor: pointer;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    padding: 0;
   }
-  button:focus-visible,
+  /* Buttons show no focus for now; only Button's menu variant marks it (with its fill). */
+  button:focus-visible {
+    outline: none;
+  }
   input:focus-visible,
   select:focus-visible {
-    outline: 3px solid var(--color-focus);
+    outline: 2px solid var(--border-color-focus);
     outline-offset: 2px;
   }
 }

@@ -8,6 +8,7 @@
     "knockbackPx": 6,
     "flashS": 0.2,
     "bodyRadiusPx": 8,
-    "accuracyDeviationDeg": 6
+    "accuracyDeviationDeg": 6,
+    "minCastS": 0.5
   }
 }

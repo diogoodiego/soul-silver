@@ -1,5 +1,6 @@
 <script lang="ts">
   // Play, step 3 — Join: sessions found on the LAN, or an address typed in (spec 012 US5, spec 017 US2).
+  import Button from "../ui/Button.svelte";
   import { PEER_ADDRESS } from "@soulsilver/shared";
   import { parseAddress, type SessionListing } from "@soulsilver/shared/lan";
   import { onDestroy, onMount } from "svelte";
@@ -80,9 +81,9 @@
   <ul class="list-none p-0 grid gap-[0.4rem] max-w-[40rem]">
     {#each sessions as s (s.address + s.sessionId)}
       <li class="flex gap-[0.6rem] items-center">
-        <button type="button" disabled={!s.joinable || busy} onclick={() => onJoin(s.address, password)}>
+        <Button disabled={!s.joinable || busy} onclick={() => onJoin(s.address, password)}>
           {t("join.session", { host: s.hostName, players: s.players, max: s.maxPlayers, version: s.appVersion, address: s.address })}
-        </button>
+        </Button>
         {#if !s.joinable}<em>{s.reason}</em>{/if}
       </li>
     {/each}
@@ -99,25 +100,25 @@
       {t("join.hostIp")}
       <input bind:value={address} placeholder="192.168.0.10" autocomplete="off" aria-invalid={address.trim() !== "" && !valid} />
     </label>
-    <button type="submit" disabled={!valid || busy}>{t("join.connect")}</button>
+    <Button type="submit" disabled={!valid || busy}>{t("join.connect")}</Button>
   </form>
   {#if address.trim() !== "" && !valid}<p class="text-danger">{t("join.invalidIp")}</p>{/if}
 
   <h3>{t("join.invite")}</h3>
-  <p class="text-muted max-w-[40rem]">{t("join.inviteNote")}</p>
+  <p class="text-secondary max-w-[40rem]">{t("join.inviteNote")}</p>
   <div class="grid gap-2 max-w-[40rem] mb-2">
     <label class="grid gap-1">
       {t("join.inviteCode")}
       <textarea class="text-[0.75rem] break-all" rows="3" bind:value={inviteCode} spellcheck="false" disabled={answering}></textarea>
     </label>
     {#if !answer}
-      <button type="button" class="justify-self-start" disabled={inviteCode.trim() === "" || answering || busy} onclick={() => void answerIt()}>{answering ? t("join.answering") : t("join.answer")}</button>
+      <Button class="justify-self-start" disabled={inviteCode.trim() === "" || answering || busy} onclick={() => void answerIt()}>{answering ? t("join.answering") : t("join.answer")}</Button>
     {:else}
       <label class="grid gap-1">
         {t("join.answerCode")}
         <textarea class="text-[0.75rem] break-all" rows="3" readonly value={answer.code}></textarea>
       </label>
-      <button type="button" class="justify-self-start" onclick={() => void copyAnswer()}>{copied ? t("invite.copied") : t("invite.copy")}</button>
+      <Button class="justify-self-start" onclick={() => void copyAnswer()}>{copied ? t("invite.copied") : t("invite.copy")}</Button>
       {#if answering}<p class="m-0" role="status">{t("join.waitingHost")}</p>{/if}
     {/if}
     {#if inviteError}<p class="m-0 text-danger" role="alert">{inviteError}</p>{/if}
@@ -125,5 +126,5 @@
 
   {#if busy}<p role="status">{t("join.connecting")}</p>{/if}
   {#if error}<p class="text-danger" role="alert">{error}</p>{/if}
-  <button type="button" onclick={onBack}>{t("common.back")}</button>
+  <Button onclick={onBack}>{t("common.back")}</Button>
 </section>

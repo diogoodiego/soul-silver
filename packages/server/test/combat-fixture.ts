@@ -72,7 +72,11 @@ export function extraction(content: CombatContent = readContent()): ExtractedFor
   };
 }
 
-export const combatData = () => buildCombatData(readContent(), extraction());
+/** The mechanics tests time moves by their archetypes' own casts, so the cast floor (minCastS, tested in combat-loader) is off. */
+export const combatData = () => {
+  const content = readContent() as CombatContent & { tuning: { value: object } };
+  return buildCombatData({ ...content, tuning: { ...content.tuning, value: { ...content.tuning.value, minCastS: 0 } } }, extraction());
+};
 
 /** A world with a combat simulation and helpers to drive it tick by tick. */
 export function combatSetup(seed = 1) {

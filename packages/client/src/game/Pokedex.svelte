@@ -1,6 +1,7 @@
 <script lang="ts">
   // Pokédex (spec 017, US5): species seen and caught; a caught one shows its entry from the text
   // catalog, a seen one only its name and icon.
+  import Button from "../ui/Button.svelte";
   import { screenText } from "@soulsilver/shared/text";
   import { onMount } from "svelte";
   import { t } from "../i18n";
@@ -28,11 +29,11 @@
   <ol class="list-none m-0 p-0 max-h-[60vh] overflow-y-auto grid gap-1">
     {#each list as id (id)}
       <li>
-        <button type="button" class={["flex gap-[0.6rem] w-full text-left", selected === id && "border-accent"]} onclick={() => (selected = id)} onfocus={() => (selected = id)}>
-          <span class="tabular-nums text-muted">{String(id).padStart(3, "0")}</span>
+        <Button variant="ghost" class={["flex gap-[0.6rem] w-full text-left", selected === id && "outline-2 outline-selected"]} onclick={() => (selected = id)} onfocus={() => (selected = id)}>
+          <span class="tabular-nums text-secondary">{String(id).padStart(3, "0")}</span>
           <span>{speciesName(id)}</span>
           {#if isCaught(id)}<span class="ml-auto text-danger" title={t("dex.caught")}>◓</span>{/if}
-        </button>
+        </Button>
       </li>
     {/each}
   </ol>
@@ -41,12 +42,12 @@
       <PokemonIcon species={selected} />
       <h3>{String(selected).padStart(3, "0")} {speciesName(selected)}</h3>
       {#if isCaught(selected)}
-        {#if categories.get(selected)}<p class="text-muted">{screenText(categories.get(selected)!)}</p>{/if}
+        {#if categories.get(selected)}<p class="text-secondary">{screenText(categories.get(selected)!)}</p>{/if}
         <p>{screenText(entries.get(selected) ?? "")}</p>
       {:else}
-        <p class="text-muted">{t("dex.onlySeen")}</p>
+        <p class="text-secondary">{t("dex.onlySeen")}</p>
       {/if}
     </article>
   {/if}
-  <button type="button" class="col-span-full m-0 justify-self-start" onclick={onBack}>{t("common.back")}</button>
+  <Button class="col-span-full justify-self-start" onclick={onBack}>{t("common.back")}</Button>
 </section>

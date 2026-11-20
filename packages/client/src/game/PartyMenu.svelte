@@ -1,6 +1,7 @@
 <script lang="ts">
   // Party (spec 017, US5): the 6 members, a summary of each (stats, moves, nature, ability, XP) and
   // reordering. The server applies the new order; nothing moves here until it confirms.
+  import Button from "../ui/Button.svelte";
   import type { ServerMessage } from "@soulsilver/shared/game";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
@@ -51,12 +52,12 @@
   <ol class="list-none m-0 p-0 grid content-start gap-[0.35rem]">
     {#each party as m, i (i)}
       <li>
-        <button type="button" class={["grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center w-full text-left", i === selected && "border-accent", i === moving && "outline-2 outline-dashed outline-focus"]} onclick={() => pick(i)} onfocus={() => moving === undefined && (selected = i)}>
+        <Button variant="ghost" class={["grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center w-full text-left", i === moving ? "outline-2 outline-dashed outline-selected" : i === selected && "outline-2 outline-selected"]} onclick={() => pick(i)} onfocus={() => moving === undefined && (selected = i)}>
           <PokemonIcon species={m.species} />
           <span>{m.egg ? t("party.egg") : (m.nickname ?? speciesName(m.species))}</span>
           <span>{t("hud.level", { level: m.level })}</span>
           <span class={[m.hp === 0 && "text-danger"]}>{m.hp}/{m.hpMax}</span>
-        </button>
+        </Button>
       </li>
     {/each}
   </ol>
@@ -92,9 +93,9 @@
 
   <div class="col-span-full m-0 flex gap-2">
     {#if party.length > 1}
-      <button type="button" onclick={() => (moving = moving === undefined ? selected : undefined)}>{moving === undefined ? t("party.move") : t("party.cancelMove")}</button>
+      <Button onclick={() => (moving = moving === undefined ? selected : undefined)}>{moving === undefined ? t("party.move") : t("party.cancelMove")}</Button>
     {/if}
-    <button type="button" onclick={onBack}>{t("common.back")}</button>
+    <Button onclick={onBack}>{t("common.back")}</Button>
   </div>
   {#if moving !== undefined}<p class="col-span-full m-0" role="status">{t("party.moveHint", { name: speciesName(party[moving]?.species ?? 0) })}</p>{/if}
 </section>

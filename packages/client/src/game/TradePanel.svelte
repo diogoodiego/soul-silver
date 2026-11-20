@@ -1,6 +1,7 @@
 <script lang="ts">
   // The trade screen (spec 028.2): both offers side by side, Pokémon and items. Every change goes to the
   // server, which clears both confirmations; two confirmations lead to the final step, two more end it.
+  import Button from "../ui/Button.svelte";
   import type { ServerMessage, TradeOffer } from "@soulsilver/shared/game";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
@@ -50,23 +51,23 @@
   }
 </script>
 
-<section class="absolute inset-0 z-4 grid place-content-center p-4 bg-black/75 text-[#eef]" use:menu={{ onBack: () => (trading || trade.phase === "waiting" || trade.phase === "invited" ? onCancel() : onClose()) }}>
+<section class="absolute inset-0 z-4 grid place-content-center p-4 bg-overlay text-primary" use:menu={{ onBack: () => (trading || trade.phase === "waiting" || trade.phase === "invited" ? onCancel() : onClose()) }}>
   <div class="grid gap-3 max-w-[52rem]">
     <h2 class="m-0">{t("trade.title", { name: partnerName })}</h2>
 
     {#if trade.phase === "invited"}
       <p class="m-0">{t("trade.invited", { name: partnerName })}</p>
       <div class="flex gap-2">
-        <button type="button" onclick={() => onAnswer(true)}>{t("trade.accept")}</button>
-        <button type="button" onclick={() => onAnswer(false)}>{t("trade.decline")}</button>
+        <Button onclick={() => onAnswer(true)}>{t("trade.accept")}</Button>
+        <Button onclick={() => onAnswer(false)}>{t("trade.decline")}</Button>
       </div>
     {:else if trade.phase === "waiting"}
       <p class="m-0">{t("trade.waiting", { name: partnerName })}</p>
-      <button type="button" class="justify-self-start" onclick={onCancel}>{t("trade.cancel")}</button>
+      <Button class="justify-self-start" onclick={onCancel}>{t("trade.cancel")}</Button>
     {:else if trading}
       <div class="grid gap-4 grid-cols-2">
         <div class="grid content-start gap-2">
-          <h3 class="m-0 text-[1rem]">{t("trade.mine")} {#if trade.confirmed.mine}<span class="text-focus">✓</span>{/if}</h3>
+          <h3 class="m-0 text-[1rem]">{t("trade.mine")} {#if trade.confirmed.mine}<span class="text-primary">✓</span>{/if}</h3>
           {#each party as m, i (i)}
             <label class="flex gap-2 items-center">
               <input type="checkbox" checked={trade.mine.party.includes(i)} onchange={() => togglePokemon(i)} />
@@ -75,28 +76,28 @@
           {/each}
           {#each bag as b (b.item)}
             <div class="flex gap-2 items-center">
-              <button type="button" disabled={offered(b.item) === 0} onclick={() => changeItem(b.item, -1)}>−</button>
+              <Button disabled={offered(b.item) === 0} onclick={() => changeItem(b.item, -1)}>−</Button>
               <span>{offered(b.item)}/{b.count}</span>
-              <button type="button" disabled={offered(b.item) >= b.count} onclick={() => changeItem(b.item, 1)}>+</button>
+              <Button disabled={offered(b.item) >= b.count} onclick={() => changeItem(b.item, 1)}>+</Button>
               {itemName(b.item)}
             </div>
           {/each}
         </div>
         <div class="grid content-start gap-2">
-          <h3 class="m-0 text-[1rem]">{t("trade.theirs", { name: partnerName })} {#if trade.confirmed.theirs}<span class="text-focus">✓</span>{/if}</h3>
-          {#if trade.theirs.party.length === 0 && trade.theirs.items.length === 0}<p class="m-0 text-muted">{t("trade.nothing")}</p>{/if}
+          <h3 class="m-0 text-[1rem]">{t("trade.theirs", { name: partnerName })} {#if trade.confirmed.theirs}<span class="text-primary">✓</span>{/if}</h3>
+          {#if trade.theirs.party.length === 0 && trade.theirs.items.length === 0}<p class="m-0 text-secondary">{t("trade.nothing")}</p>{/if}
           {#each trade.theirs.party as i (i)}<p class="m-0">{t("trade.theirPokemon", { slot: i + 1 })}</p>{/each}
           {#each trade.theirs.items as it (it.item)}<p class="m-0">{it.count} × {itemName(it.item)}</p>{/each}
         </div>
       </div>
-      {#if trade.phase === "final"}<p class="m-0 text-focus">{t("trade.finalHint")}</p>{/if}
+      {#if trade.phase === "final"}<p class="m-0 text-primary">{t("trade.finalHint")}</p>{/if}
       <div class="flex gap-2">
-        <button type="button" disabled={trade.confirmed.mine} onclick={onConfirm}>{trade.phase === "final" ? t("trade.confirmFinal") : t("trade.confirm")}</button>
-        <button type="button" onclick={onCancel}>{t("trade.cancel")}</button>
+        <Button disabled={trade.confirmed.mine} onclick={onConfirm}>{trade.phase === "final" ? t("trade.confirmFinal") : t("trade.confirm")}</Button>
+        <Button onclick={onCancel}>{t("trade.cancel")}</Button>
       </div>
     {:else}
       <p class="m-0">{trade.phase === "done" ? t("trade.done") : t("trade.cancelled")}</p>
-      <button type="button" class="justify-self-start" onclick={onClose}>{t("trade.close")}</button>
+      <Button class="justify-self-start" onclick={onClose}>{t("trade.close")}</Button>
     {/if}
   </div>
 </section>

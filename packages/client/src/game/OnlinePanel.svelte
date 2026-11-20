@@ -1,6 +1,7 @@
 <script lang="ts">
   // The Online tab beside the game screen: who is in the session, opening a solo game to the LAN, and
   // leaving for another session (found on the LAN or typed in).
+  import Button from "../ui/Button.svelte";
   import { parseAddress, type SessionListing } from "@soulsilver/shared/lan";
   import type { DuelRules } from "@soulsilver/shared/game";
   import { onMount } from "svelte";
@@ -70,8 +71,8 @@
   );
 </script>
 
-<div class="grid content-start gap-4 p-4 overflow-y-auto text-[#eef]">
-  <p class="m-0 text-muted">
+<div class="grid content-start gap-4 p-4 overflow-y-auto text-primary">
+  <p class="m-0 text-secondary">
     {#if mode === "solo"}{t("online.solo")}{:else if mode === "host"}{t("online.hosting")}{:else if mode === "guest"}{t("online.guest", { address: address ?? "" })}{:else}{t("online.arena")}{/if}
   </p>
 
@@ -79,14 +80,14 @@
     <h3 class="m-0 text-[1rem]">{t("online.players", { n: players.length })}</h3>
     <ul class="list-none m-0 p-0 grid gap-1">
       {#each players as p (p.id)}
-        <li class="flex gap-2 items-baseline px-3 py-2 rounded-[4px] bg-black/25">
+        <li class="flex gap-2 items-baseline px-3 py-2 rounded-[4px] bg-sunken">
           <strong>{p.name}</strong>
-          {#if p.host}<span class="text-[0.8rem] text-focus">{t("online.host")}</span>{/if}
-          <span class="text-[0.8rem] text-muted">{p.place ?? p.area}</span>
-          {#if p.id !== me && doing[p.name]}<span class="text-[0.8rem] text-muted">{doing[p.name]}</span>{/if}
-          {#if p.id === me}<span class="ml-auto text-[0.8rem] text-muted">{t("online.you")}</span>{:else}
-            {#if onTrade}<button type="button" class="ml-auto" onclick={() => onTrade(p.id)}>{t("trade.propose")}</button>{/if}
-            {#if onDuel}<button type="button" onclick={() => onDuel(p.id, { level: duelLevel, team: duelTeam })}>{t("duel.propose")}</button>{/if}
+          {#if p.host}<span class="text-[0.8rem] text-primary">{t("online.host")}</span>{/if}
+          <span class="text-[0.8rem] text-secondary">{p.place ?? p.area}</span>
+          {#if p.id !== me && doing[p.name]}<span class="text-[0.8rem] text-secondary">{doing[p.name]}</span>{/if}
+          {#if p.id === me}<span class="ml-auto text-[0.8rem] text-secondary">{t("online.you")}</span>{:else}
+            {#if onTrade}<Button class="ml-auto" onclick={() => onTrade(p.id)}>{t("trade.propose")}</Button>{/if}
+            {#if onDuel}<Button onclick={() => onDuel(p.id, { level: duelLevel, team: duelTeam })}>{t("duel.propose")}</Button>{/if}
           {/if}
         </li>
       {/each}
@@ -110,8 +111,8 @@
 
   {#if mode === "solo"}
     <section class="grid gap-2">
-      <button type="button" class="justify-self-start" disabled={busy} onclick={onOpen}>{busy ? t("online.opening") : t("online.open")}</button>
-      <small class="text-muted">{t("firewall.why")}</small>
+      <Button class="justify-self-start" disabled={busy} onclick={onOpen}>{busy ? t("online.opening") : t("online.open")}</Button>
+      <small class="text-secondary">{t("firewall.why")}</small>
     </section>
   {:else if mode === "host" && addresses.length > 0}
     <p class="m-0">{t("online.addresses", { addresses: addresses.join(", ") })}</p>
@@ -122,8 +123,8 @@
       {#if internetAddress}
         <p class="m-0" role="status">{t("online.internetAddress", { address: internetAddress })}</p>
       {:else}
-        <small class="text-muted">{t("online.internetNote")}</small>
-        <button type="button" class="justify-self-start" disabled={openingInternet} onclick={() => void openInternet()}>{openingInternet ? t("online.internetOpening") : t("online.internetOpen")}</button>
+        <small class="text-secondary">{t("online.internetNote")}</small>
+        <Button class="justify-self-start" disabled={openingInternet} onclick={() => void openInternet()}>{openingInternet ? t("online.internetOpening") : t("online.internetOpen")}</Button>
       {/if}
       {#if internetError}<p class="m-0 text-danger" role="alert">{internetError}</p>{/if}
     </section>
@@ -133,12 +134,12 @@
   {#if mode !== "arena"}
     <section class="grid gap-2">
       <h3 class="m-0 text-[1rem]">{t("online.join")}</h3>
-      <small class="text-muted">{t("online.joinNote")}</small>
-      {#if sessions.length === 0}<p class="m-0 text-muted" role="status">{t("join.searching")}</p>{/if}
+      <small class="text-secondary">{t("online.joinNote")}</small>
+      {#if sessions.length === 0}<p class="m-0 text-secondary" role="status">{t("join.searching")}</p>{/if}
       {#each sessions as s (s.address + s.sessionId)}
-        <button type="button" class="text-left" disabled={!s.joinable || busy} onclick={() => onJoin(s.address)}>
+        <Button variant="ghost" class="text-left" disabled={!s.joinable || busy} onclick={() => onJoin(s.address)}>
           {t("join.session", { host: s.hostName, players: s.players, max: s.maxPlayers, version: s.appVersion, address: s.address })}
-        </button>
+        </Button>
       {/each}
       <form
         class="flex gap-2 items-end"
@@ -151,7 +152,7 @@
           {t("join.hostIp")}
           <input class="[font:inherit]" bind:value={typed} placeholder="192.168.0.10" autocomplete="off" aria-invalid={typed.trim() !== "" && !valid} />
         </label>
-        <button type="submit" disabled={!valid || busy}>{t("join.connect")}</button>
+        <Button type="submit" disabled={!valid || busy}>{t("join.connect")}</Button>
       </form>
     </section>
   {/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../ui/Button.svelte";
   import { type AssetsFailure, type AssetsState, romRejectionMessage } from "@soulsilver/shared";
   import Confirm from "../ui/Confirm.svelte";
   import { t } from "../i18n";
@@ -55,13 +56,13 @@
 
 <svelte:window ondragover={onDragOver} ondragleave={() => (dragging = false)} ondrop={onDrop} />
 
-<section class={["max-w-[36rem] px-5 py-4 border-2 rounded-[6px]", dragging ? "border-dashed border-[#4a7bd0] bg-[rgb(74_123_208/15%)]" : "border-transparent"]} aria-live="polite" use:menu>
+<section class={["max-w-[36rem] px-5 py-4 border-2 rounded-[6px]", dragging ? "border-dashed border-selected bg-selected" : "border-transparent"]} aria-live="polite" use:menu>
   {#if assets.status === "checking"}
-    <p class="text-quiet text-[0.9rem]">{t("firstRun.checking")}</p>
+    <p class="text-tertiary text-[0.9rem]">{t("firstRun.checking")}</p>
   {:else if assets.status === "needs-rom" || assets.status === "rejected"}
     <h2 class="text-[1.2rem] mt-0 mx-0 mb-3">{t("firstRun.welcome")}</h2>
     <p>{t("firstRun.needRom")}</p>
-    <p class="text-quiet text-[0.9rem]">{t("firstRun.local")}</p>
+    <p class="text-tertiary text-[0.9rem]">{t("firstRun.local")}</p>
 
     {#if assets.status === "needs-rom" && assets.previousRomInvalid}
       <div class="my-4 mx-0 px-4 py-3 border-l-4 border-alarm bg-[rgb(176_0_32/18%)]" role="alert">
@@ -81,17 +82,17 @@
       <div class="mt-4">
         <p>{t("firstRun.interrupted")}</p>
         <div class="flex gap-2">
-          <button class="px-[0.9rem] py-[0.4rem]" onclick={() => void api.startExtraction()}>{t("firstRun.resume")}</button>
+          <Button onclick={() => void api.startExtraction()}>{t("firstRun.resume")}</Button>
         </div>
       </div>
     {/if}
 
-    <div class="mt-5 p-4 border border-dashed border-[#b5b5b5] rounded-[6px] text-center">
+    <div class="mt-5 p-4 border border-dashed border-default rounded-[6px] text-center">
       <p class="mt-0 mx-0 mb-2">{t("firstRun.drag")}</p>
       <div class="flex gap-2 justify-center">
-        <button class="px-[0.9rem] py-[0.4rem]" onclick={() => void api.chooseRom()}>
+        <Button onclick={() => void api.chooseRom()}>
           {assets.status === "rejected" ? t("firstRun.chooseOther") : t("firstRun.choose")}
-        </button>
+        </Button>
       </div>
     </div>
   {:else if assets.status === "validating"}
@@ -102,7 +103,7 @@
     <progress class="w-full h-4" max="100" value={assets.percent}></progress>
     <p class="tabular-nums">{assets.percent}%</p>
     <div class="flex gap-2">
-      <button class="px-[0.9rem] py-[0.4rem] bg-transparent" onclick={cancel}>{t("common.cancel")}</button>
+      <Button variant="ghost" onclick={cancel}>{t("common.cancel")}</Button>
     </div>
   {:else if assets.status === "cancelling"}
     <p>{t("firstRun.cancelling")}</p>
@@ -112,8 +113,8 @@
       <p class="my-1 mx-0">{failureMessage(assets.failure)}</p>
     </div>
     <div class="flex gap-2">
-      <button class="px-[0.9rem] py-[0.4rem]" onclick={() => void api.startExtraction()}>{t("firstRun.retry")}</button>
-      <button class="px-[0.9rem] py-[0.4rem] bg-transparent" onclick={() => void api.openExtractionLog()}>{t("firstRun.openLog")}</button>
+      <Button onclick={() => void api.startExtraction()}>{t("firstRun.retry")}</Button>
+      <Button variant="ghost" onclick={() => void api.openExtractionLog()}>{t("firstRun.openLog")}</Button>
     </div>
   {:else if assets.status === "ready"}
     <h2 class="text-[1.2rem] mt-0 mx-0 mb-3">{t("firstRun.ready")}</h2>

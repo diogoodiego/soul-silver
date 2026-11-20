@@ -1,6 +1,7 @@
 <script lang="ts">
   // Play, step 1 (spec 017, US2): the 3 slots with name, play time and badges; an empty slot starts
   // a new game. Restore, export and import stay from spec 012 (US1, US3, US7).
+  import Button from "../ui/Button.svelte";
   import type { Action } from "@soulsilver/shared/input";
   import { CANCELLED, type SaveResult, type SlotSummary } from "@soulsilver/shared/save";
   import { tick } from "svelte";
@@ -8,10 +9,7 @@
   import { t } from "../i18n";
   import { menu } from "../input/menu";
   import Glyph from "../ui/Glyph.svelte";
-  import HoldButton from "../ui/HoldButton.svelte";
   import KeyHints from "../ui/KeyHints.svelte";
-  import MenuItem from "../ui/MenuItem.svelte";
-  import SmallButton from "../ui/SmallButton.svelte";
 
   let {
     slots,
@@ -45,12 +43,12 @@
     if (!s) return false;
     if (action === EXPORT && s.status === "ok") void run(window.soulSilver.exportSave(s.index), t("saves.exported"));
     else if (action === IMPORT) importInto(s);
-    // Delete is held, not pressed: its HoldButton watches the action and confirms when full.
+    // Delete is held, not pressed: its hold Button watches the action and confirms when full.
     else if (action !== DELETE) return false;
     return true;
   }
   /** A slot: the main menu's pill, on two lines; all as wide as the widest, so up/down go slot by slot. */
-  const SLOT = "group grid justify-self-stretch gap-[0.1rem] justify-items-end rounded-2xl border-0 bg-transparent px-4 py-2 text-right text-zinc-200 outline-none focus:bg-white focus:text-ink";
+  const SLOT = "grid justify-self-stretch gap-[0.1rem] justify-items-end text-right";
 
   const playTime = (ms: number) => `${Math.floor(ms / 3_600_000)}h${String(Math.floor(ms / 60_000) % 60).padStart(2, "0")}`;
   /** The slot saved last gets the focus, so continuing is one press. */
@@ -99,9 +97,9 @@
 </script>
 
 {#snippet shortcut(s: SlotSummary, action: Action, label: string, onclick: () => void)}
-  <SmallButton tabindex={-1} {onclick}>
+  <Button tabindex={-1} {onclick}>
     <span class="inline-flex items-center gap-1">{#if current === s.index}<Glyph {action} round />{/if}{label}</span>
-  </SmallButton>
+  </Button>
 {/snippet}
 
 <!-- The main menu's look: right edge, vertically centred, over the title backdrop. -->
@@ -111,28 +109,28 @@
     {#each slots as s (s.index)}
       <li class="grid justify-items-end gap-[0.4rem]">
         {#if s.status === "ok"}
-          <button type="button" class={SLOT} data-slot={s.index} onclick={() => (s.staleStory ? (stale = s.index) : onPick(s.index))}>
+          <Button variant="menu" class={SLOT} data-slot={s.index} onclick={() => (s.staleStory ? (stale = s.index) : onPick(s.index))}>
             <strong class="flex items-center gap-2 text-[1.15rem]"><span class="hidden group-focus:inline-flex"><Glyph action="confirm" round /></span>{s.name}</strong>
             <span>{t("saves.summary", { slot: s.index, time: playTime(s.playTimeMs), badges: s.badges })}</span>
             {#if s.staleStory}<span class="text-danger">{t("saves.staleStory")}</span>{/if}
-          </button>
+          </Button>
           {#if stale === s.index}
             <p class="m-0">{t("saves.staleStoryExplain")}</p>
             <div class="flex gap-2">
-              <SmallButton onclick={() => restart(s.index)}>{t("saves.restartStory")}</SmallButton>
-              <SmallButton onclick={() => onPick(s.index)}>{t("saves.continueStale")}</SmallButton>
+              <Button onclick={() => restart(s.index)}>{t("saves.restartStory")}</Button>
+              <Button onclick={() => onPick(s.index)}>{t("saves.continueStale")}</Button>
             </div>
           {/if}
           <div class="flex gap-2">
             {@render shortcut(s, EXPORT, t("saves.export"), () => void run(window.soulSilver.exportSave(s.index), t("saves.exported")))}
             {@render shortcut(s, IMPORT, t("saves.import"), () => importInto(s))}
-            <HoldButton label={t("saves.delete")} action={DELETE} armed={current === s.index && !asking} onHeld={() => remove(s)} />
+            <Button variant="danger" hold={{ action: DELETE, armed: current === s.index && !asking, onHeld: () => remove(s) }}>{t("saves.delete")}</Button>
           </div>
         {:else if s.status === "empty"}
-          <button type="button" class={SLOT} data-slot={s.index} onclick={() => onNew(s.index)}>
+          <Button variant="menu" class={SLOT} data-slot={s.index} onclick={() => onNew(s.index)}>
             <strong class="flex items-center gap-2 text-[1.15rem]"><span class="hidden group-focus:inline-flex"><Glyph action="confirm" round /></span>{t("saves.newGame")}</strong>
             <span>{t("saves.emptySlot", { slot: s.index })}</span>
-          </button>
+          </Button>
           <div class="flex gap-2">
             {@render shortcut(s, IMPORT, t("saves.import"), () => importInto(s))}
           </div>
@@ -140,11 +138,11 @@
           <p class="text-danger m-0">{s.status === "corrupt" ? t("saves.corrupt", { slot: s.index, reason: s.reason }) : t("saves.unrecoverable", { slot: s.index, reason: s.reason })}</p>
           <div class="flex gap-2">
             {#if s.status === "corrupt"}
-              <SmallButton onclick={() => void run(window.soulSilver.restoreBackup(s.index), t("saves.restored"))}>{t("saves.restore")}</SmallButton>
+              <Button onclick={() => void run(window.soulSilver.restoreBackup(s.index), t("saves.restored"))}>{t("saves.restore")}</Button>
             {/if}
-            <SmallButton onclick={() => confirmThen(t("saves.confirmOverwrite", { slot: s.index }), () => onNew(s.index))}>{t("saves.newGameOverwrite")}</SmallButton>
-            <SmallButton onclick={() => importInto(s)}>{t("saves.import")}</SmallButton>
-            <HoldButton label={t("saves.delete")} action={DELETE} armed={false} onHeld={() => remove(s)} />
+            <Button onclick={() => confirmThen(t("saves.confirmOverwrite", { slot: s.index }), () => onNew(s.index))}>{t("saves.newGameOverwrite")}</Button>
+            <Button onclick={() => importInto(s)}>{t("saves.import")}</Button>
+            <Button variant="danger" hold={{ action: DELETE, armed: false, onHeld: () => remove(s) }}>{t("saves.delete")}</Button>
           </div>
         {/if}
       </li>
@@ -152,7 +150,7 @@
   </ul>
 
   {#if message}<p role="status">{message}</p>{/if}
-  <MenuItem label={t("common.back")} onclick={onBack} />
+  <Button variant="menu" glyph="confirm" onclick={onBack}>{t("common.back")}</Button>
   <div class="absolute right-12 bottom-6"><KeyHints {hints} /></div>
 </section>
 

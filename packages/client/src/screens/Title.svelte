@@ -37,5 +37,5 @@
     </div>
   {/if}
   <p class="relative text-[1.3rem] animate-title-pulse motion-reduce:animate-none" aria-live="polite">{t("title.press")} <Glyph action="confirm" round /> {t("title.toStart")}</p>
-  <p class="absolute right-4 bottom-3 m-0 text-quiet text-[0.85rem]">{t("app.version", { version: version ?? "—" })}</p>
+  <p class="absolute right-4 bottom-3 m-0 text-tertiary text-[0.85rem]">{t("app.version", { version: version ?? "—" })}</p>
 </section>

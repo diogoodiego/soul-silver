@@ -38,7 +38,22 @@ export function nextInDirection(rects: readonly Rect[], from: number, dir: Direc
   return best;
 }
 
-const FOCUSABLE = ":is(button, input, select, [tabindex]):not([disabled]):not([tabindex='-1'])";
+/** Layout box before CSS transforms: the phone's screen is tilted in 3D, and on-screen boxes would skew its rows. */
+function layoutRect(e: HTMLElement): Rect {
+  let left = 0;
+  let top = 0;
+  for (let n: Element | null = e; n instanceof HTMLElement; n = n.offsetParent) {
+    left += n.offsetLeft;
+    top += n.offsetTop;
+  }
+  for (let n = e.parentElement; n; n = n.parentElement) {
+    left -= n.scrollLeft;
+    top -= n.scrollTop;
+  }
+  return { left, top, width: e.offsetWidth, height: e.offsetHeight };
+}
+
+const FOCUSABLE =":is(button, input, select, [tabindex]):not([disabled]):not([tabindex='-1'])";
 
 /**
  * Drives the focus inside `root` from the input's menu actions. `onCancel` is the screen's back
@@ -55,7 +70,7 @@ export function menuNavigation(root: HTMLElement, input: Input, onCancel?: () =>
     if (action === "up" || action === "down" || action === "left" || action === "right") {
       // Inside a text field the arrows move the caret.
       if (document.activeElement instanceof HTMLInputElement && (action === "left" || action === "right")) return;
-      list[nextInDirection(list.map((e) => e.getBoundingClientRect()), at, action)]?.focus();
+      list[nextInDirection(list.map(layoutRect), at, action)]?.focus();
     } else if (action === "confirm") {
       // The input layer cancels the native Enter/Space click on bound keys, so this is the only click.
       if (document.activeElement instanceof HTMLInputElement) return;

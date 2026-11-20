@@ -40,6 +40,17 @@ describe("state machine (US1)", () => {
     expect(worst).toBeLessThanOrEqual(px(4));
   });
 
+  it("at its wander zone's edge it heads home instead of stepping back and forth every tick", () => {
+    const s = simulate({ self: { x: px(10), y: px(10) }, env: env(7) }).run(20 * 30);
+    // A new walk may turn it once per pause (idlePauseS 2: 15 in 30 s); the jitter turned it every tick.
+    let reversals = 0;
+    for (let i = 1; i < s.inputs.length; i++) {
+      const [a, b] = [s.inputs[i - 1]!.move, s.inputs[i]!.move];
+      if (a.x * b.x + a.y * b.y < 0) reversals++;
+    }
+    expect(reversals).toBeLessThanOrEqual(15);
+  });
+
   it("boxed in, it stands and looks around once per pause instead of turning every tick", () => {
     const ring = [-1, 0, 1].flatMap((dx) => [-1, 0, 1].filter((dy) => dx || dy).map((dy) => `${10 + dx},${10 + dy}`));
     // Home out of its wander zone, so the way back is blocked too (the case seen in game).

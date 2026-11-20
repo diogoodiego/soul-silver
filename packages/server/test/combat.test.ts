@@ -106,6 +106,19 @@ describe("using a move", () => {
     expect(t.combat.get(a)!.used.dir.y).toBeCloseTo(-1);
   });
 
+  it("keeps walking while a move charges, even a melee one (block H)", () => {
+    const t = combatSetup();
+    const a = t.spawn("cyndaquil", [tackle.id], { x: 100, y: 100 }, 1);
+    expect(t.data.move(tackle.id)!.behavior).toBe("melee");
+    t.combat.input(a, { move: { x: 0, y: 1 }, buttons: 1 });
+    t.step();
+    expect(t.combat.get(a)!.casting).toBeDefined();
+    const y = t.world.get(a)!.y;
+    t.combat.input(a, { move: { x: 0, y: 1 }, buttons: 1 });
+    t.step();
+    expect(t.world.get(a)!.y).toBeGreaterThan(y);
+  });
+
   it("dashes on bit 4 in the move direction, then waits for the cooldown", () => {
     const t = combatSetup();
     const a = t.spawn("cyndaquil", [], { x: 100, y: 100 }, 1);
@@ -127,6 +140,18 @@ describe("using a move", () => {
     const hitbox = t.data.move(tackle.id)!.hitbox!;
     if (hitbox.shape !== "arc") throw new Error("Tackle should be a melee arc");
     expect(t.world.get(a)!.data).toMatchObject({ used: 1, usedMove: tackle.id, usedDx: 100, usedDy: 0, usedReach: hitbox.radiusPx, usedArc: hitbox.angleDeg });
+  });
+
+  it("publishes the cast's area, length and type while it charges, then clears them", () => {
+    const t = combatSetup();
+    const a = t.spawn("cyndaquil", [ember.id], { x: 0, y: 0 }, 1);
+    t.press(a, 1, east);
+    t.step();
+    const castMs = t.data.move(ember.id)!.castTicks * 50;
+    expect(castMs).toBeGreaterThan(0);
+    expect(t.world.get(a)!.data).toMatchObject({ casting: 1, castMs, castType: ember.type, castShape: "rect", castOx: 0, castOy: 0, castSize: 172, castSpan: 12, castDx: 100, castDy: 0 });
+    t.step(5);
+    expect(t.world.get(a)!.data["castShape"]).toBeUndefined();
   });
 
   it("ignores an empty slot", () => {

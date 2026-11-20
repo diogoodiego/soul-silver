@@ -14,10 +14,12 @@ describe("defaults", () => {
     expect(PAD_BUTTONS.confirm).toBe(0);
     expect(PAD_BUTTONS.cancel).toBe(1);
     expect(PAD_BUTTONS.menu).toBe(9);
+    // A also talks to people on the map; in combat it is move 1.
+    expect(PAD_BUTTONS.interact).toBe(0);
   });
 
-  it("keeps the spec 011–015 keys", () => {
-    expect(DEFAULT_KEYS.move1).toEqual(["Digit1"]);
+  it("keeps the spec 011–015 keys (moves on J K L I)", () => {
+    expect(DEFAULT_KEYS.move1).toEqual(["KeyJ"]);
     expect(DEFAULT_KEYS.dash).toEqual(["Space"]);
     expect(DEFAULT_KEYS.up).toContain("ArrowUp");
     expect(DEFAULT_KEYS.up).toContain("KeyW");

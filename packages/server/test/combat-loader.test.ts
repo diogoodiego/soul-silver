@@ -15,9 +15,15 @@ describe("buildCombatData", () => {
     const ember = data.move(MOVES.ember.id)!;
     expect(ember.behavior).toBe("projectile");
     expect(ember.type).toBe(10);
-    // Seconds become ticks at 20 Hz: the projectile archetype casts in 0.15 s.
-    expect(ember.castTicks).toBe(3);
+    // Seconds become ticks at 20 Hz: the projectile archetype's 0.15 s rises to the 0.5 s floor (tuning minCastS).
+    expect(ember.castTicks).toBe(10);
     expect(ember.effects).toContainEqual({ kind: "status", status: "burn" });
+  });
+
+  it("raises every cast to the tuning's floor, instant moves too", () => {
+    const content = readContent() as { tuning: { value: object } };
+    const data = buildCombatData({ ...content, tuning: { ...content.tuning, value: { ...content.tuning.value, minCastS: 1 } } } as never, extraction());
+    for (const m of Object.values(MOVES)) expect(data.move(m.id)!.castTicks).toBeGreaterThanOrEqual(20);
   });
 
   it("uses the generic archetype of the category for unmapped moves", () => {

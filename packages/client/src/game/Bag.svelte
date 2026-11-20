@@ -1,6 +1,7 @@
 <script lang="ts">
   // Bag (spec 017, US5; spec 027): the original's pockets, switched with the tab actions. Every item that has a
   // field use can be used, and anything that is not a key item can be given to hold; the server decides each one.
+  import Button from "../ui/Button.svelte";
   import { POCKET_KEYS, type ItemRecord } from "@soulsilver/shared/game-data";
   import { useEffectOf, type ItemEffects } from "@soulsilver/shared/items";
   import type { ServerMessage } from "@soulsilver/shared/game";
@@ -112,7 +113,7 @@
     <div class="flex flex-wrap gap-[0.35rem] items-center mb-3" role="tablist">
       <Glyph action="tabPrev" />
       {#each POCKET_KEYS as key (key)}
-        <button type="button" class="aria-selected:bg-accent aria-selected:text-[#111]" role="tab" aria-selected={pocket === key} tabindex="-1" onclick={() => (pocket = key)}>{t(`pocket.${key}`)}</button>
+        <Button variant="ghost" role="tab" aria-selected={pocket === key} tabindex={-1} onclick={() => (pocket = key)}>{t(`pocket.${key}`)}</Button>
       {/each}
       <Glyph action="tabNext" />
     </div>
@@ -123,12 +124,12 @@
         {#each inPocket as b (b.item)}
           <li class="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
             <span class="flex gap-3 justify-between"><span>{itemName(b.item)}</span><span>×{b.count}</span></span>
-            <button type="button" disabled={!usable(b.item)} onclick={() => use(b.item)}>{t("bag.use")}</button>
-            <button type="button" disabled={!holdable(b.item)} onclick={() => (step = { item: b.item, mode: "hold" })}>{t("bag.give")}</button>
+            <Button disabled={!usable(b.item)} onclick={() => use(b.item)}>{t("bag.use")}</Button>
+            <Button disabled={!holdable(b.item)} onclick={() => (step = { item: b.item, mode: "hold" })}>{t("bag.give")}</Button>
           </li>
         {/each}
       </ul>
-      {#if pocket === "balls"}<small class="text-muted">{t("bag.ballHint")}</small>{/if}
+      {#if pocket === "balls"}<small class="text-secondary">{t("bag.ballHint")}</small>{/if}
     {/if}
   {:else if "pots" in step}
     <h3>{t("bag.pots")}</h3>
@@ -137,11 +138,11 @@
         <li class="grid gap-[0.2rem]">
           {#if pot}
             <span>{itemName(pot.berry)} · {t(`bag.stage.${pot.stage}` as MessageKey)}</span>
-            <button type="button" disabled={pot.stage !== "ripe"} onclick={() => onHarvest(i)}>{t("bag.harvest")}</button>
+            <Button disabled={pot.stage !== "ripe"} onclick={() => onHarvest(i)}>{t("bag.harvest")}</Button>
           {:else}
-            <span class="text-muted">{t("bag.potEmpty")}</span>
+            <span class="text-secondary">{t("bag.potEmpty")}</span>
             <span class="flex flex-wrap gap-1">
-              {#each berries as b (b.item)}<button type="button" onclick={() => onPlant(i, b.item)}>{t("bag.plant", { item: itemName(b.item) })}</button>{/each}
+              {#each berries as b (b.item)}<Button onclick={() => onPlant(i, b.item)}>{t("bag.plant", { item: itemName(b.item) })}</Button>{/each}
             </span>
           {/if}
         </li>
@@ -157,12 +158,11 @@
     <ul class="list-none p-0 grid gap-[0.35rem] max-w-[30rem]">
       {#each party[step.member]?.moves ?? [] as move, m (m)}
         <li>
-          <button
-            type="button"
+          <Button
             onclick={() => {
               if (step && "item" in step) onUse(step.item, step.member!, m);
               step = undefined;
-            }}>{moveName(move)}</button
+            }}>{moveName(move)}</Button
           >
         </li>
       {/each}
@@ -172,20 +172,20 @@
     <ul class="list-none p-0 grid gap-[0.35rem] max-w-[30rem]">
       {#each party as m, i (i)}
         <li class="grid gap-[0.1rem]">
-          <button type="button" class="flex gap-3 items-center justify-between" onclick={() => pickMember(i)}>
+          <Button variant="ghost" class="flex gap-3 items-center justify-between" onclick={() => pickMember(i)}>
             <PokemonIcon species={m.species} />
             <span>{m.egg ? t("party.egg") : (m.nickname ?? speciesName(m.species))}</span>
             <span>{m.hp}/{m.hpMax}</span>
-          </button>
+          </Button>
           {#if m.held !== undefined}
             <small class="flex gap-2 items-center">
               {t("bag.held", { item: itemName(m.held) })}
-              {#if step.mode === "hold"}<button type="button" onclick={() => (onHold(i, null), (step = undefined))}>{t("bag.take", { item: itemName(m.held) })}</button>{/if}
+              {#if step.mode === "hold"}<Button onclick={() => (onHold(i, null), (step = undefined))}>{t("bag.take", { item: itemName(m.held) })}</Button>{/if}
             </small>
           {/if}
         </li>
       {/each}
     </ul>
   {/if}
-  <button type="button" onclick={backOut}>{t("common.back")}</button>
+  <Button onclick={backOut}>{t("common.back")}</Button>
 </section>

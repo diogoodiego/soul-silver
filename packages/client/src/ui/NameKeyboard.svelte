@@ -1,5 +1,6 @@
 <script lang="ts">
   // On-screen letters for typing a name with the pad alone (spec 017, FR-018), like the original's naming screen.
+  import Button from "./Button.svelte";
   import { t } from "../i18n";
 
   let { value, max, onChange }: { value: string; max: number; onChange: (value: string) => void } = $props();
@@ -15,9 +16,9 @@
 
 <div class="grid grid-cols-[repeat(10,2.4rem)] gap-1" role="group" aria-label={t("newGame.keyboard")}>
   {#each [...letters, ...DIGITS] as c (c)}
-    <button type="button" class="px-0 py-[0.3rem]" onclick={() => add(c)}>{c}</button>
+    <Button onclick={() => add(c)}>{c}</Button>
   {/each}
-  <button type="button" class="px-0 py-[0.3rem] col-span-3" onclick={() => add(" ")}>{t("newGame.space")}</button>
-  <button type="button" class="px-0 py-[0.3rem] col-span-3" onclick={() => (upper = !upper)}>{upper ? "abc" : "ABC"}</button>
-  <button type="button" class="px-0 py-[0.3rem] col-span-3" onclick={() => onChange(value.slice(0, -1))}>⌫</button>
+  <Button class="col-span-3" onclick={() => add(" ")}>{t("newGame.space")}</Button>
+  <Button class="col-span-3" onclick={() => (upper = !upper)}>{upper ? "abc" : "ABC"}</Button>
+  <Button class="col-span-3" onclick={() => onChange(value.slice(0, -1))}>⌫</Button>
 </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   // The Pokégear (spec 026, US3): map, phone, radio and clock, as a page of the in-game menu.
+  import Button from "../ui/Button.svelte";
   import { t, type MessageKey } from "../i18n";
   import { menu } from "../input/menu";
   import ClockTab from "./ClockTab.svelte";
@@ -25,7 +26,7 @@
   <h2 class="m-0">{t("gear.title")}</h2>
   <div class="flex gap-2" role="tablist">
     {#each TABS as id (id)}
-      <button type="button" role="tab" aria-selected={tab === id} class={tab === id ? "outline-2 outline-accent" : ""} onclick={() => (tab = id)}>{t(`gear.${id}` as MessageKey)}</button>
+      <Button role="tab" aria-selected={tab === id} variant="ghost" onclick={() => (tab = id)}>{t(`gear.${id}` as MessageKey)}</Button>
     {/each}
   </div>
   {#if tab === "map"}
@@ -37,5 +38,5 @@
   {:else if clock}
     <ClockTab {...clock} />
   {/if}
-  <button type="button" onclick={onBack}>{t("common.back")}</button>
+  <Button onclick={onBack}>{t("common.back")}</Button>
 </section>

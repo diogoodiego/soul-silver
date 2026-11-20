@@ -1,7 +1,7 @@
 <script lang="ts">
   // Main menu (spec 017, US1): Play, Settings, About and Quit, with the downloaded-update notice.
   import type { UpdateState } from "@soulsilver/shared";
-  import MenuItem from "../ui/MenuItem.svelte";
+  import Button from "../ui/Button.svelte";
   import { t } from "../i18n";
   import { input } from "../input/app-input";
   import { menu } from "../input/menu";
@@ -55,10 +55,10 @@
     <p role="status">{t("home.serverStarting")}</p>
   {/if}
   <nav class="flex flex-col items-end gap-1">
-    <MenuItem label={t("home.play")} onclick={onPlay} disabled={!serverReady} />
-    <MenuItem label={t("home.settings")} onclick={onSettings} />
-    <MenuItem label={t("home.about")} onclick={onAbout} />
-    <MenuItem label={t("home.quit")} onclick={() => void window.soulSilver.quitApp()} />
+    <Button variant="menu" glyph="confirm" onclick={onPlay} disabled={!serverReady}>{t("home.play")}</Button>
+    <Button variant="menu" glyph="confirm" onclick={onSettings}>{t("home.settings")}</Button>
+    <Button variant="menu" glyph="confirm" onclick={onAbout}>{t("home.about")}</Button>
+    <Button variant="menu" glyph="confirm" onclick={() => void window.soulSilver.quitApp()}>{t("home.quit")}</Button>
   </nav>
   <div class="absolute right-12 bottom-6"><KeyHints {hints} /></div>
 </section>

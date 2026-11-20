@@ -205,3 +205,5 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Verificação só pelo servidor (golden, sondas, harness): não abrir o app nem fazer capturas (pedido do desenvolvedor).
 - V.3: luta de treinador em mapa `indoor` vai para a área `ring:<mapa>:<batalha>` (18×18, só o lutador); scripts e roamers ignoram a ida e a volta; o save guarda a posição de antes.
 - R.5: abrir para a internet é opcional e explícito (botão no painel Online), nunca automático ao hospedar; o mapeamento UPnP vive e morre com a porta do host (`unlisten`).
+- Bloco H: todo golpe leva ao menos 0,5 s de preparo (`minCastS` em `content/combat/tuning.json`), para a área e a carga serem vistas e desviadas; os testes de mecânica usam `minCastS: 0` (`combatData()`).
+- Bloco H: nenhum golpe prende o Pokémon durante o preparo (o campo `rooted` das archetypes ficou sem uso); a direção do golpe é a do início do preparo.

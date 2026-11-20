@@ -1,5 +1,6 @@
 <script lang="ts">
   // Shown once, before the first time the player hosts, so the Windows firewall prompt is no surprise (spec 012, FR-014).
+  import Button from "../ui/Button.svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
 
@@ -11,7 +12,7 @@
   <p>{t("firewall.why")}</p>
   <p>{t("firewall.how")}</p>
   <div class="flex gap-2">
-    <button type="button" onclick={onContinue}>{t("firewall.continue")}</button>
-    <button type="button" onclick={onBack}>{t("common.back")}</button>
+    <Button onclick={onContinue}>{t("firewall.continue")}</Button>
+    <Button onclick={onBack}>{t("common.back")}</Button>
   </div>
 </section>

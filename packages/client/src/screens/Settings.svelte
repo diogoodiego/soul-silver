@@ -1,6 +1,7 @@
 <script lang="ts">
   // Settings (spec 017, US7; audio spec 018) on a 3D Pokédex: four tabs on its screen, LB/RB between them,
   // left/right change the focused option. Each change is saved by the main process and applies at once.
+  import Button from "../ui/Button.svelte";
   import { STEP_1_EFFECTS, TEXT_SPEEDS, UI_SCALES, VISUAL_EFFECTS, VISUAL_QUALITIES, WINDOW_SIZES } from "@soulsilver/shared";
   import { type Action, ACTIONS, PAD_BUTTONS } from "@soulsilver/shared/input";
   import { onMount, tick } from "svelte";
@@ -33,7 +34,14 @@
   let host = $state<HTMLDivElement>();
   let screen = $state<HTMLDivElement>();
   let list: HTMLDivElement;
-  onMount(() => (embedded || !host || !screen ? undefined : createPokedex(host, screen)));
+  let setDither = $state<(on: boolean) => void>();
+  onMount(() => {
+    if (embedded || !host || !screen) return;
+    const dex = createPokedex(host, screen);
+    setDither = dex.setDither;
+    return dex.dispose;
+  });
+  $effect(() => setDither?.($settings.dither));
 
   interface Row {
     id: string;
@@ -80,6 +88,7 @@
             void saveSettings(v === FULLSCREEN ? { fullscreen: true } : { window: { ...WINDOW_SIZES.find((w) => w.width === v)! }, fullscreen: false }),
           ),
           toggle("crt", t("settings.crt"), s.crt, (crt) => void saveSettings({ crt })),
+          toggle("dither", t("settings.dither"), s.dither, (dither) => void saveSettings({ dither })),
           choice("quality", t("settings.visual.quality"), VISUAL_QUALITIES, s.visual.quality, (v) => t(`settings.visual.quality.${v}`), (quality) => void saveSettings({ visual: { ...s.visual, quality } })),
           ...(s.visual.quality === "off" ? [] : VISUAL_EFFECTS.map((key) => slider(key, t(`settings.visual.${key}`), s.visual[key], (v) => void saveSettings({ visual: { ...s.visual, [key]: v } }), STEP_1_EFFECTS.includes(key) ? 1 : 5))),
         ];
@@ -154,12 +163,12 @@
 
 {#snippet content()}
       <div class="flex shrink-0 items-center gap-2 pr-5 text-[0.85em] font-bold uppercase" style:height="{DEX_STRIP_H}px" style:padding-left="{DEX_STRIP_LEFT}px" role="tablist">
-        <span class="flex items-center gap-1 text-[#777]">&lt;<Glyph action="tabPrev" round /></span>
+        <span class="flex items-center gap-1 text-tertiary">&lt;<Glyph action="tabPrev" round /></span>
         {#each TABS as id, i (id)}
-          {#if i > 0}<span class="text-[#555]" aria-hidden="true">|</span>{/if}
-          <button type="button" role="tab" tabindex="-1" aria-selected={tab === id} class="border-0 bg-transparent px-2 py-0.5 font-bold uppercase text-[#bbb] aria-selected:bg-[#e8e8e8] aria-selected:text-[#111]" onclick={() => void showTab(id)}>{t(`settings.tab.${id}`)}</button>
+          {#if i > 0}<span class="text-disabled" aria-hidden="true">|</span>{/if}
+          <Button role="tab" tabindex={-1} aria-selected={tab === id} variant="ghost" class="uppercase" onclick={() => void showTab(id)}>{t(`settings.tab.${id}`)}</Button>
         {/each}
-        <span class="ml-auto flex items-center gap-1 text-[#777]"><Glyph action="tabNext" round />&gt;</span>
+        <span class="ml-auto flex items-center gap-1 text-tertiary"><Glyph action="tabNext" round />&gt;</span>
       </div>
       <div bind:this={list} class="scrollbar-clean flex-1 overflow-y-auto px-4 py-2" role="tabpanel">
         {#each rows as row (row.id)}
@@ -167,7 +176,7 @@
         {/each}
         {#if tab === "game"}
           {#each [{ id: "roomPassword", max: 64, placeholder: "" }, { id: "stunServer", max: 200, placeholder: "stun:stun.l.google.com:19302" }] as field (field.id)}
-            <label class="flex items-center justify-between gap-6 px-3 py-[0.35em] text-[1.15em] font-bold focus-within:bg-[#e8e8e8] focus-within:text-[#111]">
+            <label class="flex items-center justify-between gap-6 px-3 py-[0.35em] text-[1.15em] font-bold focus-within:bg-action-primary focus-within:text-action-primary">
               <span class="pl-[1.4ch]">{t(`settings.${field.id}` as Parameters<typeof t>[0])}</span>
               <input
                 class="w-[22rem] border-0 border-b-2 border-dashed border-current bg-transparent text-right text-[0.9em] text-inherit outline-none"
@@ -187,15 +196,9 @@
           <Controls bind:waiting onMessage={(m: string | undefined) => (controlsMessage = m)} onFocus={(action: Action) => (focused = `action.${action}`)} />
         {/if}
       </div>
-      <div class="mx-5 border-t-2 border-dashed border-[#444]"></div>
-      <p class="m-0 min-h-[2.6em] px-5 pt-2 text-[1em] font-semibold text-[#999]" role="status">{note ? `> ${note}` : ""}</p>
+      <div class="mx-5 border-t-2 border-dashed border-default"></div>
+      <p class="m-0 min-h-[2.6em] px-5 pt-2 text-[1em] font-semibold text-secondary" role="status">{note ? `> ${note}` : ""}</p>
       <div class="flex justify-end px-5 pb-3"><KeyHints {hints} /></div>
-      <!-- Glare on the glass, over the text as on a real screen; below the strip so the red corner stays clean. -->
-      <div
-        class="pointer-events-none absolute inset-x-0 bottom-0 rounded-b-[20px] rounded-tl-[20px] bg-[linear-gradient(155deg,rgb(255_255_255/5%)_0%,rgb(255_255_255/2%)_38%,transparent_39%)]"
-        style:top="{DEX_STRIP_H}px"
-        aria-hidden="true"
-      ></div>
 {/snippet}
 
 {#if embedded}
@@ -207,11 +210,11 @@
     {/if}
   </section>
 {:else}
-  <section class="fixed inset-0 bg-black/40" use:menu={{ onBack: () => waiting === undefined && onBack(), onAction }}>
+  <section class="fixed inset-0 bg-overlay" use:menu={{ onBack: () => waiting === undefined && onBack(), onAction }}>
     <h2 class="sr-only">{t("settings.title")}</h2>
     <div bind:this={host} class="absolute inset-0 overflow-hidden">
       <!-- Transparent: the model draws the black screen, diagonal included; the tabs sit in its raised strip. -->
-      <div bind:this={screen} class="flex flex-col font-[system-ui,sans-serif] text-[length:calc(1rem/var(--dex-scale,1))] text-[#cfcfcf]" style:width="{DEX_SCREEN_W}px" style:height="{DEX_SCREEN_H}px">
+      <div bind:this={screen} class="flex flex-col font-[system-ui,sans-serif] text-[length:calc(1rem/var(--dex-scale,1))] text-secondary" class:dither={$settings.dither} style:width="{DEX_SCREEN_W}px" style:height="{DEX_SCREEN_H}px">
         {@render content()}
       </div>
     </div>

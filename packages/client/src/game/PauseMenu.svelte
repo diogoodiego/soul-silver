@@ -2,6 +2,7 @@
   // The Pokédex phone's apps (spec 017, US5–US7; block H): each page drawn on the phone's screen. Opening
   // the menu never pauses the shared world (FR-012); the phone's strip says so, and the others see the
   // player as busy.
+  import Button from "../ui/Button.svelte";
   import type { ServerMessage } from "@soulsilver/shared/game";
   import type { ItemRecord } from "@soulsilver/shared/game-data";
   import type { Snippet } from "svelte";
@@ -70,7 +71,7 @@
   const back = () => onPage(undefined);
 </script>
 
-<div class="h-full px-3 py-2 text-[#eef]">
+<div class="h-full px-3 py-2 text-primary">
   {#if page === "party"}
     <PartyMenu
       {party}
@@ -110,7 +111,7 @@
     <section class="grid gap-3" use:menu={{ onBack: back }}>
       <h2 class="m-0">{t("pause.online")}</h2>
       {@render online()}
-      <button type="button" class="m-0 justify-self-start" onclick={back}>{t("common.back")}</button>
+      <Button class="justify-self-start" onclick={back}>{t("common.back")}</Button>
     </section>
   {:else if page === "save"}
     <SaveApp {savedAt} onSave={() => send({ type: "save-now" })} onBack={back} {leaving} {onLeave} />

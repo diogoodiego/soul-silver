@@ -1,5 +1,6 @@
 <script lang="ts">
   // New game in the chosen slot: name and character (spec 012 US1); the starter comes from Prof. Elm (spec 024).
+  import Button from "../ui/Button.svelte";
   import { PLAYER_NAME_MAX } from "@soulsilver/shared/game";
   import { t } from "../i18n";
   import { activeDevice } from "../input/input";
@@ -46,14 +47,14 @@
 
   <fieldset class="flex gap-2 border-none p-0">
     <legend>{t("newGame.character")}</legend>
-    <button type="button" class="aria-pressed:outline-2 aria-pressed:outline-solid aria-pressed:outline-accent" aria-pressed={character === "male"} onclick={() => (character = "male")}>{t("newGame.male")}</button>
-    <button type="button" class="aria-pressed:outline-2 aria-pressed:outline-solid aria-pressed:outline-accent" aria-pressed={character === "female"} onclick={() => (character = "female")}>{t("newGame.female")}</button>
+    <Button aria-pressed={character === "male"} onclick={() => (character = "male")}>{t("newGame.male")}</Button>
+    <Button aria-pressed={character === "female"} onclick={() => (character = "female")}>{t("newGame.female")}</Button>
   </fieldset>
 
   {#if error}<p class="text-danger m-0" role="alert">{error}</p>{/if}
 
   <div class="flex gap-2">
-    <button type="submit" disabled={busy}>{t("newGame.start")}</button>
-    <button type="button" onclick={onBack}>{t("common.back")}</button>
+    <Button type="submit" disabled={busy}>{t("newGame.start")}</Button>
+    <Button onclick={onBack}>{t("common.back")}</Button>
   </div>
 </form>

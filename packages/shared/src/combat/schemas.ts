@@ -151,6 +151,8 @@ export const combatTuning = z.strictObject({
   bodyRadiusPx: px(),
   /** Aim error per lowered accuracy stage. */
   accuracyDeviationDeg: z.number().min(0).max(90),
+  /** Block H: no move comes out faster, so its area and charge are seen and can be dodged. */
+  minCastS: seconds(5),
 });
 export type CombatTuning = z.infer<typeof combatTuning>;
 

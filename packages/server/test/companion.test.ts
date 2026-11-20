@@ -244,6 +244,17 @@ describe("combat (US2)", () => {
     expect(g.trainer().data["inCombat"]).toBeUndefined();
   });
 
+  it("ends even with a wild Pokémon wandering nearby that never joined the fight", () => {
+    const g = game([member("cyndaquil")]);
+    const bystander = withFoe(g);
+    // 7 tiles away: outside the 6-tile combat circle, inside the 8-tile threat reach.
+    g.session.world.update({ ...g.entity(bystander)!, x: g.trainer().x + 7 * 16 });
+    g.tick({ x: 0, y: 0 }, BUTTON.combat);
+    g.walk({ x: 0, y: 0 }, 101);
+    expect(g.trainer().data["inCombat"]).toBeUndefined();
+    expect(g.msgs("control").at(-1)).toEqual({ type: "control", entityId: g.trainerId });
+  });
+
   it("does nothing with no Pokémon able to fight", () => {
     const g = game([member("cyndaquil", 10, 0)]);
     g.tick({ x: 0, y: 0 }, BUTTON.combat);

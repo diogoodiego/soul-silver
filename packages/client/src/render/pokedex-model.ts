@@ -39,6 +39,10 @@ const BORDER = 0.14;
 const GLASS_RADIUS = 0.2;
 const BODY = { left: SCREEN.left - BORDER, right: SCREEN.right + BORDER, top: 3.35, bottom: SCREEN.bottom - BORDER, depth: 0.7, bevel: 0.05 };
 const FRONT = BODY.depth / 2 + BODY.bevel;
+/** The phone's menu button on the red body, top right, between the screen and the body's top edge. */
+const MENU_BUTTON = { x: SCREEN.right - 0.3, y: (BODY.top + SCREEN.top) / 2, half: 0.27 };
+/** The menu button's own size in CSS pixels (100 per model unit, as the screen). */
+export const DEX_BUTTON_PX = MENU_BUTTON.half * 200;
 const ENTRY_MS = 700;
 
 function roundedRect(left: number, right: number, bottom: number, top: number, r: number): Shape {
@@ -55,6 +59,31 @@ function roundedRect(left: number, right: number, bottom: number, top: number, r
   return s;
 }
 
+/** The screen's corners, tab strip included, in model units: its diagonal leaves the lens corner red. */
+const GLASS_CORNERS: readonly [number, number][] = [
+  [SCREEN.right, SCREEN.bottom],
+  [SCREEN.right, SCREEN.top],
+  [STRIP.diagonal + SCREEN.top - STRIP.bottom, SCREEN.top],
+  [STRIP.diagonal, STRIP.bottom],
+  [SCREEN.left, STRIP.bottom],
+  [SCREEN.left, SCREEN.bottom],
+];
+
+/** Draws the closed polygon `points` with every corner rounded by `r` (a quadratic through the corner). */
+function traceRounded(points: readonly [number, number][], r: number, pen: { move: (x: number, y: number) => void; line: (x: number, y: number) => void; quad: (cx: number, cy: number, x: number, y: number) => void }): void {
+  const toward = ([x, y]: [number, number], [tx, ty]: [number, number]): [number, number] => {
+    const len = Math.hypot(tx - x, ty - y);
+    return [x + ((tx - x) * r) / len, y + ((ty - y) * r) / len];
+  };
+  points.forEach((p, i) => {
+    const [ax, ay] = toward(p, points[(i + points.length - 1) % points.length]!);
+    const [cx, cy] = toward(p, points[(i + 1) % points.length]!);
+    if (i === 0) pen.move(ax, ay);
+    else pen.line(ax, ay);
+    pen.quad(p[0], p[1], cx, cy);
+  });
+}
+
 /** A flat slab of `shape` from z to z + depth. */
 function slab(shape: Shape, z: number, depth: number, bevel = 0): BufferGeometry {
   const g = new ExtrudeGeometry(shape, { depth, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 4, curveSegments: 10 });
@@ -62,8 +91,21 @@ function slab(shape: Shape, z: number, depth: number, bevel = 0): BufferGeometry
   return g;
 }
 
-function buildModel(): { root: Group; dispose: () => void } {
+/** The glass's ordered dither, the same 4×4 Bayer and 4 levels as the HTML screen's #dex-dither filter (App.svelte). */
+const DITHER_GLSL = /* glsl */ `
+  if (uDither > 0.5) {
+    vec2 p = mod(floor(gl_FragCoord.xy / uDitherCell), 4.0);
+    vec2 lo = mod(p, 2.0), hi = floor(p / 2.0);
+    // 2×2 Bayer [0 2; 3 1] at both scales: the same matrix the filter tiles.
+    float k = 4.0 * (2.0 * lo.x + 3.0 * lo.y - 4.0 * lo.x * lo.y) + (2.0 * hi.x + 3.0 * hi.y - 4.0 * hi.x * hi.y);
+    vec3 nudged = gl_FragColor.rgb + ((k + 0.5) / 16.0 - 0.5) / 4.0;
+    gl_FragColor.rgb = clamp(floor(nudged * 4.0), 0.0, 3.0) / 3.0;
+  }`;
+
+function buildModel(): { root: Group; dither: { uDither: { value: number }; uDitherCell: { value: number } }; dispose: () => void } {
   const root = new Group();
+  /** On (1) or off (0), and the cell's size in device pixels. */
+  const glassDither = { uDither: { value: 0 }, uDitherCell: { value: 2 } };
   // Lacquered shell and glass: a clear coat over each picks up the environment's reflections.
   const red = new MeshPhysicalMaterial({ color: 0xc8102e, roughness: 0.42, metalness: 0.05, clearcoat: 0.35, clearcoatRoughness: 0.12 });
   const black = new MeshPhysicalMaterial({ color: 0x141414, roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.05 });
@@ -71,7 +113,13 @@ function buildModel(): { root: Group; dispose: () => void } {
   const blue = new MeshStandardMaterial({ color: 0x1557a8, roughness: 0.15, metalness: 0.2, emissive: 0x06224a });
   const ledRed = new MeshStandardMaterial({ color: 0xff3b3b, emissive: 0x801010 });
   const ledWhite = new MeshStandardMaterial({ color: 0xffffff, emissive: 0x404040 });
-  const materials = [red, black, white, blue, ledRed, ledWhite];
+  // The screen's glass: the black lacquer, dithered (reflections included) when the setting is on.
+  const glassMaterial = black.clone();
+  glassMaterial.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, glassDither);
+    shader.fragmentShader = `uniform float uDither;\nuniform float uDitherCell;\n${shader.fragmentShader.replace("#include <dithering_fragment>", `#include <dithering_fragment>\n${DITHER_GLSL}`)}`;
+  };
+  const materials = [red, black, glassMaterial, white, blue, ledRed, ledWhite];
   const geometries: BufferGeometry[] = [];
   const add = (geometry: BufferGeometry, material: MeshStandardMaterial, at?: [number, number, number]) => {
     geometries.push(geometry);
@@ -83,21 +131,9 @@ function buildModel(): { root: Group; dispose: () => void } {
 
   add(slab(roundedRect(BODY.left, BODY.right, BODY.bottom, BODY.top, 0.35), -BODY.depth / 2, BODY.depth, BODY.bevel), red);
   // The screen under the HTML; its tab strip rises past a diagonal, leaving the lens corner red.
-  const { left: l, right: r, top: t, bottom: b } = SCREEN;
-  const g = STRIP.bottom;
   const glass = new Shape();
-  glass.moveTo(l + GLASS_RADIUS, b);
-  glass.lineTo(r - GLASS_RADIUS, b);
-  glass.quadraticCurveTo(r, b, r, b + GLASS_RADIUS);
-  glass.lineTo(r, t - GLASS_RADIUS);
-  glass.quadraticCurveTo(r, t, r - GLASS_RADIUS, t);
-  glass.lineTo(STRIP.diagonal + (t - g), t);
-  glass.lineTo(STRIP.diagonal, g);
-  glass.lineTo(l + GLASS_RADIUS, g);
-  glass.quadraticCurveTo(l, g, l, g - GLASS_RADIUS);
-  glass.lineTo(l, b + GLASS_RADIUS);
-  glass.quadraticCurveTo(l, b, l + GLASS_RADIUS, b);
-  add(slab(glass, FRONT, 0.03), black);
+  traceRounded(GLASS_CORNERS, GLASS_RADIUS, { move: (x, y) => glass.moveTo(x, y), line: (x, y) => glass.lineTo(x, y), quad: (cx, cy, x, y) => glass.quadraticCurveTo(cx, cy, x, y) });
+  add(slab(glass, FRONT, 0.03), glassMaterial);
   // Lens: white ring and a glossy blue dome, top left.
   add(new CylinderGeometry(0.5, 0.5, 0.08, 40), white, [-3.9, 2.78, FRONT + 0.04]).rotation.x = Math.PI / 2;
   add(new SphereGeometry(0.4, 32, 16), blue, [-3.9, 2.78, FRONT + 0.08]).scale.z = 0.45;
@@ -106,6 +142,7 @@ function buildModel(): { root: Group; dispose: () => void } {
 
   return {
     root,
+    dither: glassDither,
     dispose() {
       for (const g of geometries) g.dispose();
       for (const m of materials) m.dispose();
@@ -137,12 +174,17 @@ const DOCKED_SCALE = 0.36;
 const DOCKED_SHOWN = BODY.top - STRIP.bottom + 0.3;
 
 /** Mounts the Pokédex in `host` and keeps `screen` (DEX_SCREEN_W × DEX_SCREEN_H) on its screen; returns the teardown. */
-export function createPokedex(host: HTMLElement, screen: HTMLElement): () => void {
-  return mountPokedex(host, screen, "full").dispose;
+export function createPokedex(host: HTMLElement, screen: HTMLElement): { setDither: (on: boolean) => void; dispose: () => void } {
+  return mountPokedex(host, screen, "full");
 }
 
-/** The Pokédex in `host` with `screen` on it, in a pose that `setPose` moves it out of with an ease. */
-export function mountPokedex(host: HTMLElement, screen: HTMLElement, initial: DexPose): { setPose: (pose: DexPose) => void; dispose: () => void } {
+/** The Pokédex in `host` with `screen` on it, in a pose that `setPose` moves it out of with an ease; `setDither` dithers its glass. */
+export function mountPokedex(
+  host: HTMLElement,
+  screen: HTMLElement,
+  initial: DexPose,
+  button?: HTMLElement,
+): { setPose: (pose: DexPose) => void; setDither: (on: boolean) => void; dispose: () => void } {
   const renderer = new WebGLRenderer({ antialias: true, alpha: true });
   renderer.outputColorSpace = LinearSRGBColorSpace;
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -183,23 +225,43 @@ export function mountPokedex(host: HTMLElement, screen: HTMLElement, initial: De
     // its text matches the other menus' (the entry and sway are left out, or the text would pulse). The
     // phone's text is sized for its raised pose, the only one where it is read.
     const width = ((SCREEN.right - SCREEN.left) * size.h) / (2 * half * (camera.position.z - FRONT - 0.03));
-    screen.style.setProperty("--dex-scale", String((width * (initial === "full" ? 1 : RAISED_SCALE)) / DEX_SCREEN_W));
+    const scale = (width * (initial === "full" ? 1 : RAISED_SCALE)) / DEX_SCREEN_W;
+    screen.style.setProperty("--dex-scale", String(scale));
+    // The HTML's dither cells are 2 screen px: the glass's match them on the page, in device pixels.
+    model.dither.uDitherCell.value = Math.max(1, Math.round(2 * scale * renderer.getPixelRatio()));
   };
   const observer = new ResizeObserver(fit);
   observer.observe(host);
   fit();
 
+  // The glass's outline in screen px (diagonal and rounded corners), so the screen's filters stay off the red body.
+  const px = (x: number) => (x - SCREEN.left) * 100;
+  const py = (y: number) => (SCREEN.top - y) * 100;
+  let outline = "";
+  traceRounded(GLASS_CORNERS, GLASS_RADIUS, {
+    move: (x, y) => (outline += `M ${px(x)} ${py(y)} `),
+    line: (x, y) => (outline += `L ${px(x)} ${py(y)} `),
+    quad: (cx, cy, x, y) => (outline += `Q ${px(cx)} ${py(cy)} ${px(x)} ${py(y)} `),
+  });
+  screen.style.clipPath = `path("${outline}Z")`;
   screen.style.position = "absolute";
   screen.style.left = "0";
   screen.style.top = "0";
   screen.style.transformOrigin = "0 0";
-  const corners = [
-    new Vector3(SCREEN.left, SCREEN.top, FRONT + 0.03),
-    new Vector3(SCREEN.right, SCREEN.top, FRONT + 0.03),
-    new Vector3(SCREEN.right, SCREEN.bottom, FRONT + 0.03),
-    new Vector3(SCREEN.left, SCREEN.bottom, FRONT + 0.03),
-  ];
+  const quad = (left: number, right: number, top: number, bottom: number) =>
+    [new Vector3(left, top, FRONT + 0.03), new Vector3(right, top, FRONT + 0.03), new Vector3(right, bottom, FRONT + 0.03), new Vector3(left, bottom, FRONT + 0.03)] as const;
+  const corners = quad(SCREEN.left, SCREEN.right, SCREEN.top, SCREEN.bottom);
+  const buttonCorners = quad(MENU_BUTTON.x - MENU_BUTTON.half, MENU_BUTTON.x + MENU_BUTTON.half, MENU_BUTTON.y + MENU_BUTTON.half, MENU_BUTTON.y - MENU_BUTTON.half);
+  if (button) Object.assign(button.style, { position: "absolute", left: "0", top: "0", transformOrigin: "0 0", width: `${DEX_BUTTON_PX}px`, height: `${DEX_BUTTON_PX}px` });
   const point = new Vector3();
+  /** `el` (w × h CSS px) warped onto the projected model quad `at`. */
+  const place = (el: HTMLElement, w: number, h: number, at: readonly Vector3[]) => {
+    const [a, b, c, d] = at.map((corner): [number, number] => {
+      point.copy(corner).applyMatrix4(model.root.matrixWorld).project(camera);
+      return [((point.x + 1) / 2) * size.w, ((1 - point.y) / 2) * size.h];
+    }) as [[number, number], [number, number], [number, number], [number, number]];
+    el.style.transform = `matrix3d(${quadTransform(w, h, [a, b, c, d]).join(",")})`;
+  };
   const centre = -(BODY.top + BODY.bottom) / 2;
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const start = performance.now();
@@ -246,11 +308,8 @@ export function mountPokedex(host: HTMLElement, screen: HTMLElement, initial: De
     model.root.position.set(shown.x, shown.y - (1 - ease) * 9, 0);
     model.root.rotation.set((1 - ease) * 0.6 + shown.tiltX + sway * 0.025 * Math.sin(s * 0.7), sway * 0.05 * Math.sin(s * 0.45), shown.tiltZ);
     model.root.updateMatrixWorld();
-    const [a, b, c, d] = corners.map((corner): [number, number] => {
-      point.copy(corner).applyMatrix4(model.root.matrixWorld).project(camera);
-      return [((point.x + 1) / 2) * size.w, ((1 - point.y) / 2) * size.h];
-    }) as [[number, number], [number, number], [number, number], [number, number]];
-    screen.style.transform = `matrix3d(${quadTransform(DEX_SCREEN_W, DEX_SCREEN_H, [a, b, c, d]).join(",")})`;
+    place(screen, DEX_SCREEN_W, DEX_SCREEN_H, corners);
+    if (button) place(button, DEX_BUTTON_PX, DEX_BUTTON_PX, buttonCorners);
     renderer.render(scene, camera);
   });
 
@@ -260,6 +319,9 @@ export function mountPokedex(host: HTMLElement, screen: HTMLElement, initial: De
       from = shown;
       since = performance.now();
       pose = next;
+    },
+    setDither(on: boolean) {
+      model.dither.uDither.value = on ? 1 : 0;
     },
     dispose() {
       renderer.setAnimationLoop(null);

@@ -3,6 +3,7 @@
   // with its icon, name, level and HP; then a Poké Ball for each of the 6 slots (the bag icon extracted from the
   // ROM, with an HP line under it, greyed when fainted), a dot when empty. Without the atlas: HP-tinted tokens.
   import type { Entity } from "@soulsilver/shared/game";
+  import type { Snippet } from "svelte";
   import { hpColor } from "../game/type-colors";
   import { itemIcons, type Frame } from "../game/game-data";
   import PokemonIcon from "../game/PokemonIcon.svelte";
@@ -15,12 +16,15 @@
     out,
     fight,
     speciesName,
+    beside,
   }: {
     party: Member[];
     out: number | undefined;
     /** The Pokémon under control in a fight: the lead card shows its live HP, status and action bar. */
     fight?: Entity | undefined;
     speciesName: (species: number) => string;
+    /** Drawn at the end of the slots' row (the ball picker). */
+    beside?: Snippet | undefined;
   } = $props();
 
   const num = (key: string) => Number(fight?.data[key] ?? 0);
@@ -64,6 +68,7 @@
       </div>
     </div>
   {/if}
+  <div class="flex w-[17rem] items-center gap-3">
   <ol class="m-0 flex list-none items-center gap-1.5 p-0">
     {#each SLOTS as i (i)}
       {@const m = party[i]}
@@ -94,4 +99,6 @@
       </li>
     {/each}
   </ol>
+  {#if beside}<div class="ml-auto">{@render beside()}</div>{/if}
+  </div>
 </section>

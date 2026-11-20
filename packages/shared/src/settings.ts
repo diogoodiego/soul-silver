@@ -46,6 +46,8 @@ const fields = {
   uiScale: z.number().refine((n) => (UI_SCALES as readonly number[]).includes(n), "escala fora da lista"),
   /** Scanlines over the game screen and the team panel. */
   crt: z.boolean(),
+  /** Ordered dither over the Pokédex screen (settings and phone). */
+  dither: z.boolean(),
   /** V.1: HD-2D post-processing over the field. */
   visual,
   bindings,
@@ -67,6 +69,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fastCutsceneText: false,
   uiScale: 1,
   crt: true,
+  dither: true,
   visual: { ...VISUAL_DEFAULTS },
   bindings: structuredClone(DEFAULT_KEYS),
   audio: { master: 80, music: 80, effects: 80, muteUnfocused: false },

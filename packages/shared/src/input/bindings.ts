@@ -7,7 +7,7 @@ const MENU_ACTIONS = ["confirm", "cancel", "tabPrev", "tabNext"] as const;
 const MAP_ACTIONS = ["menu", "run", "dash", "move1", "move2", "move3", "move4", "combat", "recall", "interact", "picker", "swapNext", "throw", "nextBall", "rod", "items"] as const;
 /** Map actions that only act out of combat, and ones that only act in it: one key may serve one of each. */
 const FIELD_ONLY: readonly string[] = ["interact"];
-const COMBAT_ONLY: readonly string[] = ["dash"];
+const COMBAT_ONLY: readonly string[] = ["dash", "move1", "move2", "move3", "move4"];
 
 export const ACTIONS = [...DIRECTIONS, ...MENU_ACTIONS, ...MAP_ACTIONS] as const;
 export type Action = (typeof ACTIONS)[number];
@@ -34,10 +34,10 @@ export const DEFAULT_KEYS: Readonly<Bindings> = {
   menu: ["Tab", "Escape"],
   run: ["ShiftLeft", "ShiftRight"],
   dash: ["Space"],
-  move1: ["Digit1"],
-  move2: ["Digit2"],
-  move3: ["Digit3"],
-  move4: ["Digit4"],
+  move1: ["KeyJ"],
+  move2: ["KeyK"],
+  move3: ["KeyL"],
+  move4: ["KeyI"],
   combat: ["KeyF"],
   recall: ["KeyR"],
   /** Out of combat only, so it shares Space with the dodge (dash), which acts only in combat. */
@@ -48,7 +48,7 @@ export const DEFAULT_KEYS: Readonly<Bindings> = {
   throw: ["KeyG"],
   nextBall: ["KeyB"],
   rod: ["KeyC"],
-  items: ["KeyI"],
+  items: ["KeyO"],
 };
 
 export const PAD_BUTTONS: Readonly<Record<Action, number>> = {
@@ -69,7 +69,8 @@ export const PAD_BUTTONS: Readonly<Record<Action, number>> = {
   move4: 5,
   combat: 6,
   recall: 7,
-  interact: 12,
+  /** A, with move 1: the server reads interact only walking and the moves only in combat. */
+  interact: 0,
   picker: 8,
   /** D-pad down: free on the map, where the left stick walks. */
   swapNext: 13,

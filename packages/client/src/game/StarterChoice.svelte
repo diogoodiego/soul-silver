@@ -1,6 +1,7 @@
 <script lang="ts">
   // The starter scene (spec 024), after the original's: three Poké Balls on Elm's machine; the one
   // in focus shows the Pokémon inside, its name and types; picking it asks to confirm.
+  import Button from "../ui/Button.svelte";
   import { t, type MessageKey } from "../i18n";
   import { menu } from "../input/menu";
   import { pokemonFronts, speciesTypes } from "./game-data";
@@ -25,7 +26,7 @@
 </script>
 
 <section
-  class="absolute inset-0 z-4 grid grid-rows-[1fr_auto] bg-[radial-gradient(circle_at_50%_40%,#5b6b7a,#1c232b)] text-[#eef]"
+  class="absolute inset-0 z-4 grid grid-rows-[1fr_auto] bg-[radial-gradient(circle_at_50%_40%,#5b6b7a,#1c232b)] text-primary"
   aria-label={t("starter.title")}
   use:menu={{ onBack: () => (asking = undefined) }}
 >
@@ -53,26 +54,26 @@
     <!-- The machine: two balls on top, one below, as on the DS screen. -->
     <div class="grid grid-cols-2 gap-x-10 gap-y-2 p-5 rounded-full bg-[#2e4a5a] border-4 border-[#9bb]">
       {#each species as id, i (id)}
-        <button
-          type="button"
+        <Button
+          variant="bare"
           class="size-14 rounded-full border-4 border-[#222] bg-[linear-gradient(#e33_0_45%,#222_45%_55%,#eee_55%)] focus:outline-4 focus:outline-solid focus:outline-[#ffd54a] {i === 2 ? 'col-span-2 justify-self-center' : ''}"
           aria-label={speciesName(id)}
           disabled={asking !== undefined}
           onfocus={() => (focused = i)}
           onmouseenter={() => (focused = i)}
           onclick={() => (asking = i)}
-        ></button>
+        ></Button>
       {/each}
     </div>
   </div>
-  <div class="m-3 px-4 py-3 bg-white/96 text-ink palette-ink border-3 border-frame rounded-[6px] text-[1.1rem] leading-[1.5]">
+  <div class="m-3 px-4 py-3 bg-overlay text-primary border-3 border-frame rounded-[6px] text-[1.1rem] leading-[1.5]">
     {#if asking === undefined}
       <p class="m-0">{t("starter.touch")}</p>
     {:else}
       <p class="m-0">{t("script.starter", { name: speciesName(species[asking]!) })}</p>
       <div class="flex gap-2 mt-2">
-        <button type="button" use:focusNow onclick={() => onPick(asking!)}>{t("common.yes")}</button>
-        <button type="button" onclick={() => (asking = undefined)}>{t("common.no")}</button>
+        <Button {@attach focusNow} onclick={() => onPick(asking!)}>{t("common.yes")}</Button>
+        <Button onclick={() => (asking = undefined)}>{t("common.no")}</Button>
       </div>
     {/if}
   </div>

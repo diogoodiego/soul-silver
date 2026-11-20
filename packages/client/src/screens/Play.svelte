@@ -9,7 +9,7 @@
   import { t } from "../i18n";
   import { menu } from "../input/menu";
   import KeyHints from "../ui/KeyHints.svelte";
-  import MenuItem from "../ui/MenuItem.svelte";
+  import Button from "../ui/Button.svelte";
   import JoinGame from "./JoinGame.svelte";
   import NewGame from "./NewGame.svelte";
   import type { PlayRequest } from "../play-request";
@@ -98,13 +98,13 @@
   <!-- The main menu's look: right edge, vertically centred, over the title backdrop. -->
   <section class="fixed inset-0 flex flex-col items-end justify-center gap-2 pr-12 text-right" use:menu={{ onBack: () => (step = "save") }}>
     <h2 class="m-0 text-[1.4rem]">{t("play.chooseMode")}</h2>
-    {#if chosen?.status === "ok"}<p class="m-0 mb-2 text-muted">{t("play.playingAs", { name: chosen.name, slot: chosen.index })}</p>{/if}
+    {#if chosen?.status === "ok"}<p class="m-0 mb-2 text-secondary">{t("play.playingAs", { name: chosen.name, slot: chosen.index })}</p>{/if}
     <nav class="flex flex-col items-end gap-1">
-      <MenuItem label={t("play.solo")} disabled={busy} onclick={() => void begin((s) => api.startSolo(s))} />
-      <MenuItem label={t("play.host")} disabled={busy} onclick={() => void host()} />
-      <MenuItem label={t("play.join")} disabled={busy} onclick={() => ((error = undefined), (step = "join"))} />
-      <MenuItem label={t("play.arena")} disabled={busy} onclick={() => ((error = undefined), (step = "arena"))} />
-      <MenuItem label={t("common.back")} onclick={() => (step = "save")} />
+      <Button variant="menu" glyph="confirm" disabled={busy} onclick={() => void begin((s) => api.startSolo(s))}>{t("play.solo")}</Button>
+      <Button variant="menu" glyph="confirm" disabled={busy} onclick={() => void host()}>{t("play.host")}</Button>
+      <Button variant="menu" glyph="confirm" disabled={busy} onclick={() => ((error = undefined), (step = "join"))}>{t("play.join")}</Button>
+      <Button variant="menu" glyph="confirm" disabled={busy} onclick={() => ((error = undefined), (step = "arena"))}>{t("play.arena")}</Button>
+      <Button variant="menu" glyph="confirm" onclick={() => (step = "save")}>{t("common.back")}</Button>
     </nav>
     {#if busy}<p role="status">{t("play.starting")}</p>{/if}
     {#if error}<p class="text-danger font-bold" role="alert">{error}</p>{/if}

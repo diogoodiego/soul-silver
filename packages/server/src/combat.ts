@@ -12,6 +12,7 @@ import {
   stageMultiplier,
   STAGE_KEYS,
   startStatus,
+  telegraph,
   tickStatus,
   toTicks,
   type Body,
@@ -495,6 +496,23 @@ export function createCombat(options: CombatOptions) {
       ...(e.data["cutscene"] === true ? { cutscene: true } : {}),
     };
     c.moves.forEach((m, i) => (data[`move${i + 1}`] = m.id));
+    if (c.casting) {
+      // Block H: the area the cast will cover, its length and its type's colour, for the clients' charge.
+      const move = c.moves[c.casting.slot]!;
+      const { dir } = c.casting;
+      const area = telegraph(move, dir);
+      Object.assign(data, {
+        castMs: ((c.casting.readyTick - c.casting.startTick) * 1000) / TICKS_PER_S,
+        castType: move.type,
+        castShape: area.shape,
+        castOx: Math.round(area.ox),
+        castOy: Math.round(area.oy),
+        castSize: area.size,
+        castSpan: area.span,
+        castDx: Math.round(dir.x * 100),
+        castDy: Math.round(dir.y * 100),
+      });
+    }
     for (const k of STAGE_KEYS) if (c.stages[k] !== 0) data[`stg_${k}`] = c.stages[k];
     world.update({ ...e, data });
   }
@@ -666,7 +684,8 @@ export function createCombat(options: CombatOptions) {
           const slot = [0, 1, 2, 3].find((s) => pressed & (1 << s) && c.moves[s]);
           if (slot !== undefined) begin(c, slot, input?.aim, input?.minCastTicks);
         }
-        if (input && !(c.casting && c.moves[c.casting.slot]!.rooted)) move(c, input.move);
+        // Block H: no move roots its user while it charges; the area keeps the aim it began with.
+        if (input) move(c, input.move);
       }
       for (const c of all) if (c.casting && tick >= c.casting.readyTick && c.hp > 0) execute(c);
       actives = actives.filter((a) => {

@@ -2,12 +2,12 @@
   // Block H: the Pokédex phone. Docked in the bottom-right corner with only its top strip showing; the menu
   // button (or a click on the strip) raises it, whole, over the game, which keeps running behind. Its screen
   // shows the home grid of apps or the open app, which `app` draws.
+  import Button from "../ui/Button.svelte";
   import { onMount, type Snippet } from "svelte";
   import type { MenuPage } from "../game/menu-page";
   import { t } from "../i18n";
   import { DEX_SCREEN_H, DEX_SCREEN_W, DEX_STRIP_H, DEX_STRIP_LEFT, mountPokedex, type DexPose } from "../render/pokedex-model";
   import { settings } from "../settings";
-  import Glyph from "../ui/Glyph.svelte";
   import AppGrid from "./AppGrid.svelte";
 
   let {
@@ -32,14 +32,18 @@
 
   let host: HTMLDivElement;
   let screen: HTMLDivElement;
+  let menuButton: HTMLButtonElement = $state()!;
   let setPose: ((pose: DexPose) => void) | undefined;
+  let setDither = $state<(on: boolean) => void>();
 
   onMount(() => {
-    const dex = mountPokedex(host, screen, "docked");
+    const dex = mountPokedex(host, screen, "docked", menuButton);
     setPose = dex.setPose;
+    setDither = dex.setDither;
     return dex.dispose;
   });
   $effect(() => setPose?.(open ? "raised" : "docked"));
+  $effect(() => setDither?.($settings.dither));
 </script>
 
 <!-- The world shows through: only a light veil while the phone is up, as the old menu had. -->
@@ -49,21 +53,21 @@
     bind:this={screen}
     class="pointer-events-auto flex flex-col font-[system-ui,sans-serif] text-[length:calc(1rem/var(--dex-scale,1))] text-[#cfcfcf]"
     class:crt={$settings.crt}
+    class:dither={$settings.dither}
     style:width="{DEX_SCREEN_W}px"
     style:height="{DEX_SCREEN_H}px"
   >
     <div class="flex shrink-0 items-center gap-3 pr-5 text-[0.85em] font-bold uppercase" style:height="{DEX_STRIP_H}px" style:padding-left="{DEX_STRIP_LEFT}px">
       {#if open}
-        <button type="button" tabindex="-1" class="m-0 border-0 bg-transparent p-0 text-[1em] font-bold uppercase text-[#ddd]" onclick={() => (page ? onPage(undefined) : onClose())}>
+        <Button tabindex={-1} variant="bare" class="p-0 text-[1em] font-bold uppercase text-[#ddd]" onclick={() => (page ? onPage(undefined) : onClose())}>
           {page ? `‹ ${t("phone.home")}` : t("phone.home")}
-        </button>
+        </Button>
         <span class="ml-auto rounded-full bg-[#b23b3b] px-3 py-0.5 text-[0.85em] normal-case text-white" role="status">{t("pause.live")}</span>
-        <span class="flex items-center gap-1 text-[#999]"><Glyph action="menu" round /></span>
       {:else}
         <!-- Docked: the whole strip raises the phone. -->
-        <button type="button" tabindex="-1" class="m-0 flex size-full items-center gap-2 border-0 bg-transparent p-0 text-[1.4em] font-bold uppercase text-[#ddd]" onclick={onOpen} aria-label={t("phone.open")}>
-          <Glyph action="menu" round /> {t("phone.home")}
-        </button>
+        <Button tabindex={-1} variant="bare" class="flex size-full items-center gap-2 p-0 text-[1.4em] font-bold uppercase text-[#ddd]" onclick={onOpen} aria-label={t("phone.open")}>
+          {t("phone.home")}
+        </Button>
       {/if}
     </div>
     {#if open}
@@ -76,4 +80,16 @@
       </div>
     {/if}
   </div>
+  <!-- On the red body, top right (placed by the model): opens and closes the phone. -->
+  <Button
+    bind:el={menuButton}
+    variant="bare"
+    tabindex={-1}
+    class="pointer-events-auto grid place-items-center rounded-full border-2 border-[#7a0a1c] bg-[#141414] p-0 text-[#f2f2f2] shadow-[inset_0_2px_3px_rgb(255_255_255/18%)] active:bg-[#2a2a2a]"
+    onclick={() => (open ? onClose() : onOpen())}
+    aria-label={open ? t("phone.close") : t("phone.open")}
+    aria-expanded={open}
+  >
+    <svg viewBox="0 0 24 24" class="size-[60%]" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14" /></svg>
+  </Button>
 </div>

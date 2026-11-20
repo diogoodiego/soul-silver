@@ -2,6 +2,7 @@
   // Pokémon PC (spec 023, US3): the party beside one box at a time. Pick a Pokémon, then an empty
   // slot (or the party's end) to move it there; the server decides and answers with the boxes.
   // The Items tab moves bag items to the PC and back, one at a time (an addition, see balance-log).
+  import Button from "../ui/Button.svelte";
   import type { PcSlot } from "@soulsilver/shared/game";
   import type { PartyMember, Save } from "@soulsilver/shared/save";
   import { t } from "../i18n";
@@ -71,12 +72,12 @@
   }
 </script>
 
-<section class="absolute inset-0 z-4 grid place-content-center p-4 bg-black/75 text-[#eef]" use:menu={{ onBack: () => (held ? (held = undefined) : onLeave()), onAction }}>
+<section class="absolute inset-0 z-4 grid place-content-center p-4 bg-overlay text-primary" use:menu={{ onBack: () => (held ? (held = undefined) : onLeave()), onAction }}>
   <div class="grid gap-3 grid-cols-[minmax(10rem,auto)_minmax(18rem,auto)] max-w-[52rem]">
     <h2 class="m-0 col-span-2">{t("pc.title")}</h2>
     <div class="col-span-2 flex gap-2" role="tablist">
-      <button type="button" role="tab" class="aria-selected:bg-accent aria-selected:text-[#111]" aria-selected={tab === "pokemon"} onclick={() => (tab = "pokemon")}>{t("pc.tabPokemon")}</button>
-      <button type="button" role="tab" class="aria-selected:bg-accent aria-selected:text-[#111]" aria-selected={tab === "items"} onclick={() => ((tab = "items"), (held = undefined))}>{t("pc.tabItems")}</button>
+      <Button role="tab" variant="ghost" aria-selected={tab === "pokemon"} onclick={() => (tab = "pokemon")}>{t("pc.tabPokemon")}</Button>
+      <Button role="tab" variant="ghost" aria-selected={tab === "items"} onclick={() => ((tab = "items"), (held = undefined))}>{t("pc.tabItems")}</Button>
     </div>
     {#if refused}<p class="m-0 col-span-2 text-danger font-bold" role="alert">{refused}</p>{/if}
 
@@ -85,11 +86,11 @@
         <div class="grid gap-1 content-start">
           <h3 class="m-0">{t(title)}</h3>
           {#each list as s (s.item)}
-            <button type="button" class="flex gap-3 justify-between" aria-label={t(dir === "deposit" ? "pc.depositOne" : "pc.withdrawOne", { item: itemName(s.item) })} onclick={() => onItem(dir, s.item)}>
+            <Button variant="ghost" class="flex gap-3 justify-between" aria-label={t(dir === "deposit" ? "pc.depositOne" : "pc.withdrawOne", { item: itemName(s.item) })} onclick={() => onItem(dir, s.item)}>
               <span>{itemName(s.item)}</span><span>×{s.count}</span>
-            </button>
+            </Button>
           {:else}
-            <p class="m-0 text-muted">{t("pc.noItems")}</p>
+            <p class="m-0 text-secondary">{t("pc.noItems")}</p>
           {/each}
         </div>
       {/each}
@@ -98,51 +99,51 @@
     <div class="grid gap-1 content-start">
       <h3 class="m-0">{t("pc.party")}</h3>
       {#each party as m, i (i)}
-        <button type="button" class={["flex gap-2 items-center", held?.where === "party" && held.index === i && "outline-2 outline-accent"]} onclick={() => pick({ where: "party", index: i }, true)}>
+        <Button variant="ghost" class={["flex gap-2 items-center", held?.where === "party" && held.index === i && "outline-2 outline-selected"]} onclick={() => pick({ where: "party", index: i }, true)}>
           <PokemonIcon species={m.species} /><span>{speciesName(m.species)}</span><span class="ml-auto">{t("pc.level", { level: m.level })}</span>
-        </button>
+        </Button>
       {/each}
       {#if held && held.where === "box" && party.length < 6}
-        <button type="button" onclick={() => pick({ where: "party", index: party.length }, false)}>{t("pc.withdraw")}</button>
+        <Button onclick={() => pick({ where: "party", index: party.length }, false)}>{t("pc.withdraw")}</Button>
       {/if}
     </div>
 
     <div class="grid gap-2 content-start">
       <div class="flex gap-2 items-center">
-        <button type="button" aria-label={t("pc.prevBox")} onclick={() => turn(-1)}>◀</button>
+        <Button aria-label={t("pc.prevBox")} onclick={() => turn(-1)}>◀</Button>
         {#if naming === undefined}
-          <button type="button" class="grow" onclick={() => (naming = current.name)}>{current.name}</button>
+          <Button class="grow" onclick={() => (naming = current.name)}>{current.name}</Button>
         {:else}
           <form class="grow flex gap-1" onsubmit={(e) => (e.preventDefault(), onRename(box, naming!), (naming = undefined))}>
             <input class="grow" aria-label={t("pc.boxName")} maxlength="8" bind:value={naming} />
-            <button type="submit">{t("pc.rename")}</button>
+            <Button type="submit">{t("pc.rename")}</Button>
           </form>
         {/if}
-        <button type="button" aria-label={t("pc.nextBox")} onclick={() => turn(1)}>▶</button>
+        <Button aria-label={t("pc.nextBox")} onclick={() => turn(1)}>▶</Button>
       </div>
       <div class="grid grid-cols-6 gap-1">
         {#each current.slots as m, i (i)}
-          <button
-            type="button"
-            class={["size-10 grid place-items-center p-0", held?.where === "box" && held.box === box && held.index === i && "outline-2 outline-accent"]}
+          <Button
+            variant="bare"
+            class={["size-10 grid place-items-center rounded-full", held?.where === "box" && held.box === box && held.index === i && "outline-2 outline-selected"]}
             aria-label={m ? `${speciesName(m.species)} ${t("pc.level", { level: m.level })}` : t("pc.empty")}
             onclick={() => pick({ where: "box", box, index: i }, m !== null)}
           >
             {#if m}<PokemonIcon species={m.species} />{/if}
-          </button>
+          </Button>
         {/each}
       </div>
     </div>
 
     {/if}
     {#if heldMon && tab === "pokemon"}
-      <div class="col-span-2 grid gap-1 p-2 border border-white/30 rounded" aria-live="polite">
+      <div class="col-span-2 grid gap-1 p-2 border border-default rounded" aria-live="polite">
         <strong>{speciesName(heldMon.species)} · {t("pc.level", { level: heldMon.level })}</strong>
         <span>{t("pc.hp", { hp: heldMon.hp })}{#if heldMon.nature !== undefined} · {natureName(heldMon.nature)}{/if}</span>
         <span>{(heldMon.moves ?? []).map(moveName).join(", ")}</span>
-        <small class="text-muted">{t("pc.moveHint")}</small>
+        <small class="text-secondary">{t("pc.moveHint")}</small>
       </div>
     {/if}
-    <button type="button" class="col-span-2" onclick={onLeave}>{t("pc.leave")}</button>
+    <Button class="col-span-2" onclick={onLeave}>{t("pc.leave")}</Button>
   </div>
 </section>

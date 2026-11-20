@@ -37,7 +37,7 @@
     {@const move = moveAt(slot)}
     <div
       class={[
-        "relative flex gap-2 items-center [font-palette:--ink] min-h-[clamp(2.75rem,9vh,6.25rem)] px-3 rounded-[4px] bg-dex-shell text-ink overflow-hidden border-l-8 border-l-(color:--type)",
+        "relative flex gap-2 items-center [font-palette:--ink] min-h-[clamp(2.75rem,9vh,6.25rem)] px-3 rounded-[4px] bg-dex-shell text-dex-ink overflow-hidden border-l-8 border-l-(color:--type)",
         waiting > 0 && "after:absolute after:inset-0 after:content-[''] after:bg-[conic-gradient(rgb(0_0_0/45%)_var(--ring),transparent_0)]",
       ]}
       style:--type={move === undefined ? "transparent" : (TYPE_COLORS[(moveType(move) ?? "normal") as keyof typeof TYPE_COLORS] ?? "#888")}

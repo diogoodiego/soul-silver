@@ -139,7 +139,7 @@ export function createInput(target: Window, initial: Readonly<Bindings> = DEFAUL
   function gamepad(): MoveInput | undefined {
     const p = pad();
     if (!p) return undefined;
-    // On the map only the left stick moves; the D-pad is for interact and the ball cycle.
+    // On the map only the left stick moves; the D-pad is for the ball and item cycles and the swap.
     const move = stickVector(p.axes[0] ?? 0, p.axes[1] ?? 0);
     const run = pressed(PAD_BUTTONS.run);
     return move.x !== 0 || move.y !== 0 || run ? { move, run } : undefined;

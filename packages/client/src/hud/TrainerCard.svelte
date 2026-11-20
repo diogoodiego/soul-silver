@@ -1,6 +1,7 @@
 <script lang="ts">
   // Block H: the Trainer Card app. The server sends the card on joining and on each change; opening the app
   // asks for a fresh one, since the play time runs.
+  import Button from "../ui/Button.svelte";
   import type { ServerMessage } from "@soulsilver/shared/game";
   import { onMount } from "svelte";
   import { t } from "../i18n";
@@ -61,5 +62,5 @@
   {:else}
     <p class="m-0 opacity-70">…</p>
   {/if}
-  <button type="button" class="m-0 justify-self-start" onclick={onBack}>{t("common.back")}</button>
+  <Button class="justify-self-start" onclick={onBack}>{t("common.back")}</Button>
 </section>

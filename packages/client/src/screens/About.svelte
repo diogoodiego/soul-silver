@@ -1,5 +1,6 @@
 <script lang="ts">
   // About (spec 017, FR-006): version, credits and the fan-project notice.
+  import Button from "../ui/Button.svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
 
@@ -11,6 +12,6 @@
   <p>{t("app.version", { version: version ?? "—" })}</p>
   <h3>{t("about.creditsTitle")}</h3>
   <p>{t("about.credits")}</p>
-  <p class="px-4 py-3 border-l-4 border-accent bg-panel">{t("about.disclaimer")}</p>
-  <button type="button" onclick={onBack}>{t("common.back")}</button>
+  <p class="px-4 py-3 border-l-4 border-default bg-panel">{t("about.disclaimer")}</p>
+  <Button onclick={onBack}>{t("common.back")}</Button>
 </section>

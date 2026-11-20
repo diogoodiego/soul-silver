@@ -2,6 +2,7 @@
   // The game screen: renderer, input, pause menu and the debug overlay (specs 010, 011 and 012);
   // the companion's reactions, the quick swap and the fight notices (spec 014); progression after a fight (spec 016);
   // the combat HUD, the dialog box, the full menu that never pauses the world and the busy mark (spec 017).
+  import Button from "../ui/Button.svelte";
   import { CUTSCENE_TEXT_BOOST, PROTOCOL_VERSION } from "@soulsilver/shared";
   import { BUTTON, PLAYER_NAME_MAX, surfable, tileAt, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics, type TradeOffer, type DuelRules, type WorldMap } from "@soulsilver/shared/game";
   import { POCKET_KEYS, type ItemRecord } from "@soulsilver/shared/game-data";
@@ -31,7 +32,10 @@
   import PauseMenu from "../game/PauseMenu.svelte";
   import Minimap from "../hud/Minimap.svelte";
   import PartyStrip from "../hud/PartyStrip.svelte";
+  import BallPicker from "../hud/BallPicker.svelte";
+  import BallIcon from "../hud/BallIcon.svelte";
   import PhoneDex from "../hud/PhoneDex.svelte";
+  import CaptureCutscene from "../game/CaptureCutscene.svelte";
   import { t, type MessageKey } from "../i18n";
   import { input } from "../input/app-input";
   import type { PlayRequest } from "../play-request";
@@ -201,7 +205,7 @@
   /** A trainer line (bank 728); trainer lines may name the player through buffer 0. */
   const trainerLine = async (text: string) => dialog.say(await scriptPages(text, { 0: { kind: "player" } }));
   /** HP and action bars over the foes while fighting: wild ones and other players' Pokémon (spec 017, PvP). */
-  let bars = $state<{ key: string; x: number; y: number; fraction: number; gauge: number }[]>([]);
+  let bars = $state<{ key: string; x: number; y: number; fraction: number; gauge: number; scared: boolean }[]>([]);
   /** A trainer calling out the last move seen in the fight (bottom-left), until `until`. */
   let moveCall = $state<{ key: number; pic: number; move: string; until: number } | undefined>();
   /** Each combatant's move use count last seen, to notice a new use. */
@@ -230,9 +234,19 @@
   // The save the session started from; the server's messages take over from there.
   let bag = $state<{ item: number; count: number }[]>(untrack(() => play.save.bag.map((b) => ({ ...b }))));
   let selectedBall = $state<number | undefined>();
+  /** The capture cutscene: from our throw at a wild Pokémon; `result` once the ball hit (the server's shakes). */
+  let captureScene = $state<{ key: number; species: number; result: { shakes: number; caught: boolean } | undefined } | undefined>();
   let dex = $state(untrack(() => ({ seen: [...play.save.pokedex.seen], caught: [...play.save.pokedex.caught] })));
   let captureLine = $state<string | undefined>();
   const balls = $derived(bag.filter((b) => items.get(b.item)?.pocket === "balls"));
+  /** The ball the next throw uses, as the server picks it; unset with no balls. */
+  const throwBall = $derived((balls.find((b) => b.item === selectedBall) ?? balls[0])?.item);
+  /** Asks the server for the ball `step` kinds away from the one the next throw uses (the first when unset or gone). */
+  function stepBall(step: 1 | -1): void {
+    if (balls.length < 2) return;
+    const at = Math.max(0, balls.findIndex((b) => b.item === selectedBall));
+    window.soulSilver.sendGame({ type: "select-ball", item: balls[(at + step + balls.length) % balls.length]!.item });
+  }
   // Spec 027: the quick item selector, the trainer's item in use, the Dowsing MCHN, the Berry Pots and the Apricorn Box.
   const ITEM_EFFECTS = (itemEffectsJson as { value: ItemEffects }).value;
   const COMBAT_USES = new Set(["heal", "revive", "cure", "pp-ether", "battle-stat"]);
@@ -519,6 +533,9 @@
     let pickerHeld = false;
     let swapNextHeld = false;
     let nextBallHeld = false;
+    let throwHeld = false;
+    /** The wild Pokémon a ball thrown now would home in on (the draw loop keeps it). */
+    let aimedWild: Entity | undefined;
     let interactHeld = false;
     let rodHeld = false;
     /** The items action (spec 027): when it went down, to tell a tap (next item) from a hold (use it). */
@@ -618,11 +635,19 @@
           dex = { seen: ev.seen, caught: ev.caught };
         } else if (ev.type === "capture") {
           renderer.capture(ev.wildId, ev.shakes, now, ev.caught);
+          // Our ball: the cutscene started on the throw gets its shakes; one aimed elsewhere starts its own.
+          if (ev.player === game.playerId) {
+            const result = { shakes: ev.shakes, caught: ev.caught };
+            if (captureScene && !captureScene.result) captureScene = { ...captureScene, result };
+            else captureScene = { key: now, species: Number(shown.find((e) => e.id === ev.wildId)?.data["species"] ?? 0), result };
+          }
           const shakes = Array.from({ length: ev.shakes }, (_, i) => t("capture.shake", { dots: "●".repeat(i + 1) }));
           captureLines([t("capture.hit"), ...shakes, ev.caught ? t("capture.caught") : t("capture.escaped")]);
         } else if (ev.type === "captured") {
           captureLines([t(ev.to === "party" ? "capture.toParty" : "capture.toStorage", { name: speciesName(ev.species) })]);
         } else if (ev.type === "notice") {
+          // No balls, storage full, ball returned: the throw the capture cutscene waits on is not coming.
+          if (captureScene && !captureScene.result) captureScene = undefined;
           captureLines([t(`notice.${ev.code}` as MessageKey)]);
         } else if (ev.type === "exp-gain") {
           const m = party[ev.partyIndex];
@@ -793,7 +818,8 @@
       running = run;
       let buttons = blocked ? 0 : input.buttons();
       // Interacting needs no menu, swap picker or dialog open (FR-011); cutscenes do not exist yet.
-      if (picker !== "closed" || reaction || progression) buttons &= ~BUTTON.interact;
+      // In combat A is move 1: it must not also talk to whoever stands ahead.
+      if (picker !== "closed" || reaction || progression || inCombat) buttons &= ~BUTTON.interact;
       const interactNow = (buttons & BUTTON.interact) !== 0;
       const rodNow = !blocked && input.held("rod");
       // Interact or the rod button reels in; the rod button casts the best rod at the water ahead.
@@ -829,10 +855,7 @@
       pickerHeld = pickerNow;
       swapNextHeld = swapNextNow;
       const nextBallNow = !blocked && input.held("nextBall");
-      if (nextBallNow && !nextBallHeld && balls.length > 1) {
-        const at = balls.findIndex((b) => b.item === selectedBall);
-        api.sendGame({ type: "select-ball", item: balls[(at + 1) % balls.length]!.item });
-      }
+      if (nextBallNow && !nextBallHeld) stepBall(1);
       nextBallHeld = nextBallNow;
       const itemsNow = !blocked && inCombat && input.held("items");
       const clock = performance.now();
@@ -853,6 +876,9 @@
       if (wheel.open && (!inCombat || (itemsDownAt === undefined && clock - wheel.idleAt > WHEEL_IDLE_MS))) wheel = { ...wheel, open: false };
       if (picker !== "closed" || progression) buttons &= ~(BUTTON.throw | BUTTON.combat);
       // No aim: the server aims every move and ball at the nearest foe.
+      const throwNow = (buttons & BUTTON.throw) !== 0;
+      if (throwNow && !throwHeld && !captureScene && aimedWild) captureScene = { key: performance.now(), species: Number(aimedWild.data["species"]), result: undefined };
+      throwHeld = throwNow;
       game.sendInput(move, run, performance.now(), buttons);
     }, TICK_MS);
 
@@ -888,10 +914,13 @@
       if (!inCombat && picker !== "closed") picker = "closed";
       hudSelf = view.self?.kind === "pokemon" ? view.self : undefined;
       const fighting = hudSelf !== undefined;
+      // Block H: scared (😨) while a stat stage is lowered, until knocked out: beside a foe's bars, else over the Pokémon.
+      const lowered = (e: Entity) => e.data["hp"] !== 0 && Object.entries(e.data).some(([k, v]) => k.startsWith("stg_") && Number(v) < 0);
       const nextBars = fighting
-        ? shown.filter((e) => e.kind === "pokemon" && e.data["owner"] !== hudSelf!.data["owner"] && Number(e.data["hpMax"] ?? 0) > 0).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]), gauge: Number(e.data["gauge"] ?? 0) / 100 }))
+        ? shown.filter((e) => e.kind === "pokemon" && e.data["owner"] !== hudSelf!.data["owner"] && Number(e.data["hpMax"] ?? 0) > 0 && e.data["hp"] !== 0).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]), gauge: Number(e.data["gauge"] ?? 0) / 100, scared: lowered(e) }))
         : [];
       if (nextBars.length > 0 || bars.length > 0) bars = nextBars;
+      const barred = new Set(nextBars.map((b) => b.key));
       // A trainer's Pokémon (the player's or an NPC trainer's) used a move: the trainer calls it out.
       const fighters = fighting ? shown.filter((e) => e.kind === "pokemon" && typeof e.data["trainerPic"] === "number") : [];
       for (const e of fighters) {
@@ -920,8 +949,10 @@
       // server's rule, from whoever throws: the active Pokémon in a fight, else the player).
       const wildsShown = shown.filter((e) => e.data["owner"] === "wild");
       const aimed = view.self && balls.length > 0 ? ballTarget(view.self, wildsShown, THROW_RANGE_PX) : undefined;
+      aimedWild = aimed;
       for (const e of wildsShown) if (e.data["hp"] === 0) nextMarks.push({ key: `ko-${e.id}`, ...over(e), text: t("game.knockedOut"), capture: e === aimed });
       const bubbleOver = emotion && now < emotion.until ? shown.find((e) => e.id === emotion!.id) : undefined;
+      for (const e of shown) if (e.kind === "pokemon" && !barred.has(`hp-${e.id}`) && lowered(e)) nextMarks.push({ key: `debuff-${e.id}`, ...over(e), text: "😨" });
       if (bubbleOver && emotion) nextMarks.push({ key: "emotion", ...over(bubbleOver), text: emotion.text });
       if (fishing && view.self) nextMarks.push({ key: "fishing", ...over(view.self), text: fishing === "bite" ? "!" : "…" });
       if (nextMarks.length > 0 || marks.length > 0) marks = nextMarks;
@@ -1050,8 +1081,8 @@
     reconnecting = false;
   }
 
-  const DIALOG = "absolute left-1/2 top-4 -translate-x-1/2 w-[min(90%,32rem)] m-0 px-4 py-3 bg-white/95 text-ink palette-ink border-3 border-frame rounded-[6px] whitespace-pre-line z-3";
-  const MESSAGE = "absolute left-1/2 top-1/2 -translate-1/2 m-0 text-white z-5";
+  const DIALOG = "absolute left-1/2 top-4 -translate-x-1/2 w-[min(90%,32rem)] m-0 px-4 py-3 bg-overlay text-primary border-3 border-frame rounded-[6px] whitespace-pre-line z-3";
+  const MESSAGE = "absolute left-1/2 top-1/2 -translate-1/2 m-0 text-primary z-5";
 
   /** The Pokémon out: under control in a fight, else the one following the trainer. */
   const out = $derived(hudSelf ? activeMember : (fieldLead ?? leadIndex(party)));
@@ -1094,16 +1125,16 @@
   {#if status === "rejected"}
     <div class="{MESSAGE} grid gap-2 justify-items-center">
       <p class="text-danger font-bold" role="alert">{rejectMessage}</p>
-      <button type="button" onclick={onExit}>{t("game.backToMenu")}</button>
+      <Button onclick={onExit}>{t("game.backToMenu")}</Button>
     </div>
   {:else if status === "closed"}
     <div class="{MESSAGE} grid gap-2 justify-items-center">
       <p role="status">{t(REASONS[closeReason ?? ""] ?? "game.closed")}</p>
       {#if reconnectError}<p class="text-danger font-bold" role="alert">{reconnectError}</p>{/if}
       {#if onReconnect && closeReason === "disconnected"}
-        <button type="button" disabled={reconnecting} onclick={() => void reconnect()}>{t("game.reconnect")}</button>
+        <Button disabled={reconnecting} onclick={() => void reconnect()}>{t("game.reconnect")}</Button>
       {/if}
-      <button type="button" onclick={onExit}>{t("game.backToMenu")}</button>
+      <Button onclick={onExit}>{t("game.backToMenu")}</Button>
     </div>
   {:else if status === "connecting"}
     <p class={MESSAGE} role="status">{t("game.connecting")}</p>
@@ -1113,7 +1144,14 @@
     <!-- A lone glyph ("!", "…", "⚔", an emotion) is drawn large: in the screen's pixel font it is otherwise a few pixels tall. -->
     <span style:font-size={[...m.text].length <= 2 ? "2rem" : undefined} class="absolute -translate-x-1/2 -translate-y-full text-white font-bold text-[1.1rem] [text-shadow:0_1px_2px_#000] pointer-events-none z-1 grid justify-items-center" style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">
       {m.text}
-      {#if m.capture}<span class="mt-1 flex items-center gap-1 text-[0.9em]"><Glyph action="throw" round /> {t("game.captureHint")}</span>{/if}
+      {#if m.capture}
+        <!-- Hangs under the name so the mark keeps its place over the sprite. -->
+        <span class="absolute left-1/2 top-full -translate-x-1/2 flex items-center gap-1 text-[1.2em]">
+          <!-- With no ball the key is crossed out: the throw is unavailable. -->
+          <span class="relative inline-grid place-items-center"><Glyph action="throw" round />{#if throwBall === undefined}<span class="absolute inset-0 grid place-items-center text-[#ff3030] text-[1.2em] leading-none [text-shadow:0_0_2px_#000]">✕</span>{/if}</span>
+          <BallIcon item={throwBall} />
+        </span>
+      {/if}
     </span>
   {/each}
   {#if arenaRings.length > 0}
@@ -1153,8 +1191,8 @@
   {/if}
   {#if status === "playing" && dowsing}
     <!-- The Dowsing MCHN (spec 027): a needle toward the nearest hidden item, brighter as it gets close. -->
-    <div class="absolute right-3 top-3 z-2 grid justify-items-center gap-1 px-2 py-1 bg-panel rounded-[6px] text-white text-[0.8rem] pointer-events-none" role="img" aria-label={t("dowse.label")}>
-      <svg class="size-8 text-accent" viewBox="-16 -16 32 32" style:opacity={0.35 + 0.65 * dowsing.near} aria-hidden="true">
+    <div class="absolute right-3 top-3 z-2 grid justify-items-center gap-1 px-2 py-1 bg-panel rounded-[6px] text-primary text-[0.8rem] pointer-events-none" role="img" aria-label={t("dowse.label")}>
+      <svg class="size-8 text-icon-primary" viewBox="-16 -16 32 32" style:opacity={0.35 + 0.65 * dowsing.near} aria-hidden="true">
         <circle r="14" fill="none" stroke="currentColor" stroke-width="2" />
         <line x2="0" y2="-11" stroke="currentColor" stroke-width="3" stroke-linecap="round" transform="rotate({dowsing.dir})" />
       </svg>
@@ -1255,6 +1293,7 @@
   {/if}
 
   {#if call}<CallScreen name={call.name} direction={call.direction} />{/if}
+  {#if captureScene}{#key captureScene.key}<CaptureCutscene species={captureScene.species} result={captureScene.result} shakeMs={SHAKE_MS} onDone={() => (captureScene = undefined)} />{/key}{/if}
   <DialogBox queue={dialog} boost={scriptLocked && $settings.fastCutsceneText ? CUTSCENE_TEXT_BOOST : 1} />
 
   {#if status === "playing"}
@@ -1268,7 +1307,9 @@
       {#if hudSelf}
         <div class="w-full"><MovePanel self={hudSelf} lead={party[leadIndex(party) ?? -1]} {moveName} moveType={(id: number) => types.get(id)} /></div>
       {/if}
-      <PartyStrip {party} {out} fight={hudSelf} {speciesName} />
+      <PartyStrip {party} {out} fight={hudSelf} {speciesName}>
+        {#snippet beside()}<BallPicker {balls} selected={selectedBall} {itemName} onStep={stepBall} />{/snippet}
+      </PartyStrip>
     </div>
     <PhoneDex
       open={menuOpen}
@@ -1283,10 +1324,10 @@
     />
   {/if}
 
-  {#if saveNote}<p class="absolute left-4 top-4 m-0 text-white text-[0.85rem] opacity-80 z-1 [text-shadow:0_1px_2px_#000]" role="status">{saveNote}</p>{/if}
+  {#if saveNote}<p class="absolute left-4 top-4 m-0 text-primary text-[0.85rem] opacity-80 z-1 [text-shadow:0_1px_2px_#000]" role="status">{saveNote}</p>{/if}
 
   {#if showDebug}
-    <dl class="debug fixed top-2 right-2 m-0 px-3 py-2 bg-black/75 text-white [font:12px_monospace] z-6" aria-label={t("debug.label")}>
+    <dl class="debug fixed top-2 right-2 m-0 px-3 py-2 bg-overlay text-primary [font:12px_monospace] z-6" aria-label={t("debug.label")}>
       <dt>{t("debug.positionLabel")}</dt>
       <dd>{position}</dd>
       <dt>{t("debug.dex")}</dt>

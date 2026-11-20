@@ -24,6 +24,7 @@
   // The controller tab: a Hairline figure of the pad, wordless as Hairline wants, with a label for each
   // control in the columns beside it, joined by a leader line. Each label is a menu item: the pad or keys
   // move the focus between them and the focused one lights its control; the pointer works too.
+  import Button from "./Button.svelte";
   import { onMount, tick } from "svelte";
   import { spread } from "./callouts";
 
@@ -111,18 +112,16 @@
   <!-- The plate colour is the screen's, so the figure's opaque plates read as the screen itself. -->
   <div bind:this={stage} class="absolute" style:left="{left}px" style:top="{top}px" style:width="{SW}px" style:height="{SH}px" data-hairline-theme="dark" style="--hairline-plate: #131313" role="img" aria-label={idle}></div>
   {#each callouts as c (c.id)}
-    <button
-      type="button"
+    <Button
       data-control={c.id}
       data-side={c.onLeft ? "left" : "right"}
-      class="absolute m-0 border-0 bg-transparent p-0 text-[13px] leading-4 outline-none focus:bg-[#e8e8e8] focus:text-[#111] {c.onLeft ? 'text-right' : 'text-left'} {c.id === active ? 'text-white' : 'text-[#9a9a9a]'}"
-      style:left="{c.onLeft ? 0 : bw - column}px"
-      style:top="{c.y}px"
-      style:width="{column}px"
+      variant="bare"
+      class="absolute p-0 text-[13px] leading-4 outline-none focus:bg-[#e8e8e8] focus:text-[#111] {c.onLeft ? 'text-right' : 'text-left'} {c.id === active ? 'text-white' : 'text-[#9a9a9a]'}"
+      style="left: {c.onLeft ? 0 : bw - column}px; top: {c.y}px; width: {column}px"
       onfocus={() => handle?.pick(c.id)}
     >
       <b class="text-inherit">{c.name}</b> {c.actions}
-    </button>
+    </Button>
   {/each}
   <p class="sr-only" aria-live="polite">{caption === "rest" ? idle : caption}</p>
 </div>

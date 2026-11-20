@@ -1,6 +1,7 @@
 <script lang="ts">
   // Poké Mart (spec 023, US1): pick an item, a quantity, check the total, confirm. The server decides;
   // a refusal comes back as `refused` and nothing changed.
+  import Button from "../ui/Button.svelte";
   import type { ServerMessage } from "@soulsilver/shared/game";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
@@ -49,7 +50,7 @@
   }
 </script>
 
-<section class="absolute inset-0 z-4 grid place-content-center p-6 bg-black/70 text-[#eef]" use:menu={{ onBack: () => (chosen ? (chosen = undefined) : onLeave()), onAction }}>
+<section class="absolute inset-0 z-4 grid place-content-center p-6 bg-overlay text-primary" use:menu={{ onBack: () => (chosen ? (chosen = undefined) : onLeave()), onAction }}>
   <div class="grid gap-3 min-w-[20rem] max-w-[30rem]">
     <h2 class="m-0">{t(selling ? "shop.sellTitle" : "shop.buyTitle")}</h2>
     <p class="m-0">{t("shop.money", { money: shop.money })}</p>
@@ -61,27 +62,27 @@
         <ul class="list-none p-0 m-0 grid gap-[0.35rem]">
           {#each shop.stock as entry (entry.item)}
             <li>
-              <button type="button" class="w-full flex gap-3 justify-between" onclick={() => pick(entry)}>
+              <Button variant="ghost" class="w-full flex gap-3 justify-between" onclick={() => pick(entry)}>
                 <span>{itemName(entry.item)}{#if selling} ×{owned(entry.item)}{/if}</span>
                 <span>¥{entry.price}</span>
-              </button>
+              </Button>
             </li>
           {/each}
         </ul>
       {/if}
-      <button type="button" onclick={onLeave}>{t("shop.leave")}</button>
+      <Button onclick={onLeave}>{t("shop.leave")}</Button>
     {:else}
       <p class="m-0">{t(selling ? "shop.howManySell" : "shop.howManyBuy", { item: itemName(chosen.item) })}</p>
       <div class="flex gap-3 items-center">
-        <button type="button" aria-label={t("shop.less")} disabled={qty <= 1} onclick={() => (qty = Math.max(1, qty - 1))}>−</button>
+        <Button aria-label={t("shop.less")} disabled={qty <= 1} onclick={() => (qty = Math.max(1, qty - 1))}>−</Button>
         <output aria-live="polite">×{qty}</output>
-        <button type="button" aria-label={t("shop.more")} disabled={qty >= max} onclick={() => (qty = qty + 1)}>+</button>
+        <Button aria-label={t("shop.more")} disabled={qty >= max} onclick={() => (qty = qty + 1)}>+</Button>
       </div>
       <p class="m-0">{t("shop.total", { money: total })}</p>
-      {#if max === 0}<p class="m-0 text-muted">{t("shop.cannotAfford")}</p>{/if}
+      {#if max === 0}<p class="m-0 text-secondary">{t("shop.cannotAfford")}</p>{/if}
       <div class="flex gap-3">
-        <button type="button" disabled={max === 0 || qty > max} onclick={confirm}>{t("shop.confirm")}</button>
-        <button type="button" onclick={() => (chosen = undefined)}>{t("shop.back")}</button>
+        <Button disabled={max === 0 || qty > max} onclick={confirm}>{t("shop.confirm")}</Button>
+        <Button onclick={() => (chosen = undefined)}>{t("shop.back")}</Button>
       </div>
     {/if}
   </div>

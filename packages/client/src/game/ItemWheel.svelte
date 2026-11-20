@@ -21,8 +21,8 @@
   } = $props();
 </script>
 
-<section class="absolute left-3 bottom-[5.5rem] max-w-[min(calc(100%-1.5rem),22rem)] px-3 py-2 bg-panel rounded-[6px] z-2 text-white [text-shadow:0_1px_2px_#000] pointer-events-none" aria-label={t("items.wheel")} aria-live="polite">
-  <header class="flex gap-2 items-center text-[0.85rem]"><Glyph action="items" /> {t("items.wheel")} <small class="text-muted">{t("items.wheelHint")}</small></header>
+<section class="absolute left-3 bottom-[5.5rem] max-w-[min(calc(100%-1.5rem),22rem)] px-3 py-2 bg-panel rounded-[6px] z-2 text-primary [text-shadow:0_1px_2px_#000] pointer-events-none" aria-label={t("items.wheel")} aria-live="polite">
+  <header class="flex gap-2 items-center text-[0.85rem]"><Glyph action="items" /> {t("items.wheel")} <small class="text-secondary">{t("items.wheelHint")}</small></header>
   {#if using !== undefined}
     <p class="m-0">{t("items.using", { item: itemName(using) })}</p>
   {:else if choices.length === 0}
@@ -30,11 +30,11 @@
   {:else}
     <ul class="list-none m-0 p-0 flex gap-2 flex-wrap">
       {#each choices as c, i (c.item)}
-        <li class="px-2 rounded-[3px] {i === selected ? 'bg-accent text-[#111] [text-shadow:none]' : 'bg-black/30'}" aria-current={i === selected}>{itemName(c.item)} ×{c.count}</li>
+        <li class="px-2 rounded-[3px] {i === selected ? 'bg-selected' : 'bg-sunken'}" aria-current={i === selected}>{itemName(c.item)} ×{c.count}</li>
       {/each}
     </ul>
   {/if}
   {#if cooling > 0}
-    <div class="h-[3px] mt-1 bg-black/40" role="meter" aria-label={t("items.cooldown")} aria-valuemin={0} aria-valuemax={1} aria-valuenow={cooling}><div class="h-full bg-accent" style:width="{cooling * 100}%"></div></div>
+    <div class="h-[3px] mt-1 bg-sunken" role="meter" aria-label={t("items.cooldown")} aria-valuemin={0} aria-valuemax={1} aria-valuenow={cooling}><div class="h-full bg-action-primary" style:width="{cooling * 100}%"></div></div>
   {/if}
 </section>
