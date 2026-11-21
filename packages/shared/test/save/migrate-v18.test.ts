@@ -37,7 +37,7 @@ const v17 = {
   eggWalk: 0,
   photos: [],
 };
-const v18 = (over: object = {}) => ({ ...v17, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-15T12:00:00.000Z"), ...over });
+const v18 = (over: object = {}) => ({ ...v17, schemaVersion: 21, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-11-15T12:00:00.000Z"), ...over });
 
 describe("save v18", () => {
   it("is the current version or older", () => {

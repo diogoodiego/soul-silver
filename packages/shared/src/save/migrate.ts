@@ -55,6 +55,7 @@ export const SAVE_MIGRATIONS: Record<number, Step> = {
   18: (save) => ({ ...save, schemaVersion: 19 }),
   // Block H: an ID for the trainer card; when an old game began is unknown (startedAt is optional).
   19: (save) => ({ ...save, trainerId: trainerIdFor(String(save["name"]), String(save["savedAt"])), schemaVersion: 20 }),
+  20: (save) => ({ ...save, clockOffsetMs: 0, schemaVersion: 21 }),
 };
 
 const stats = (v: number) => ({ hp: v, attack: v, defense: v, speed: v, specialAttack: v, specialDefense: v });

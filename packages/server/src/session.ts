@@ -848,6 +848,7 @@ export function createSession(options: SessionOptions): Session {
       shops?.join({ playerId: id, progress: player.progress, send });
       pcs.join({ playerId: id, progress: player.progress, send });
     }
+    if (hostId === undefined && !arena) time.set({ kind: "offset", ms: base.clockOffsetMs ?? 0 });
     hostId ??= id;
     options.onRecord?.({ tick, kind: "join", playerId: id, name: base.name, spawn });
     return player;
@@ -870,6 +871,7 @@ export function createSession(options: SessionOptions): Session {
       boxes: structuredClone(p.progress.boxes),
       pcItems: p.progress.pcItems.map((b) => ({ ...b })),
       playTimeMs: p.playTimeMs + (tick - p.joinTick) * TICK_MS,
+      clockOffsetMs: p.id === hostId ? time.offsetMs() : (p.base.clockOffsetMs ?? 0),
       savedAt: clock(),
       rev: ++p.rev,
     };
@@ -1370,6 +1372,15 @@ export function createSession(options: SessionOptions): Session {
           sendClock();
           return;
         }
+        case "setClock":
+          if (player.id !== hostId) {
+            notice(player, "action-refused");
+            return;
+          }
+          if (msg.minuteOfDay === null) time.set({ kind: "host" });
+          else time.shiftTo(msg.minuteOfDay);
+          sendClock();
+          return;
         case "phoneDial":
           if ((scripts?.busy(player.id) ?? false) || (companions?.inCombat(player.id) ?? false) || !phone.dial(player.id, msg.contact)) notice(player, "action-refused");
           return;

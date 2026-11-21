@@ -5,7 +5,7 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 20;
+export const SAVE_SCHEMA_VERSION = 21;
 
 /**
  * Block H: the trainer card's ID, 0 to 65535, from the player's name and a save's timestamp (FNV-1a folded to 16 bits).
@@ -236,6 +236,8 @@ export const saveSchema = z.strictObject({
     .refine((l) => unique(l.map((r) => r.id)), "errante repetido")
     .optional(),
   /** Item 031.7: the Seal Case, how many of each seal (id 1 to 80, the seal-names bank) it holds. Absent is empty. */
+  /** The game's clock minus the PC's, under a day either way; the host's runs the session. Absent is 0. */
+  clockOffsetMs: z.number().int().gt(-86_400_000).lt(86_400_000).optional(),
   seals: z.record(z.string().regex(/^([1-9]|[1-7]\d|80)$/), z.number().int().min(1).max(SEAL_MAX)).optional(),
   /** Item 034.4: each team that beat the League, oldest first (HallOfFameAnim): when, and its members but eggs. Absent is none. */
   hallOfFame: z

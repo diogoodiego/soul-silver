@@ -27,6 +27,15 @@ export function createSessionClock(source: () => Date = () => new Date()) {
     /** 0 is Sunday, as the original's RTC_WEEK_*. */
     weekday: () => now().getDay(),
     fixed: () => mode.kind === "fixed",
+    /** How far the clock runs from the host's; 0 when it is the host's or fixed. */
+    offsetMs: () => (mode.kind === "offset" ? mode.ms : 0),
+    /** Runs the clock on from this minute of the host's current day. */
+    shiftTo(minuteOfDay: number): void {
+      const host = source();
+      const at = new Date(host.getTime());
+      at.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, host.getSeconds(), host.getMilliseconds());
+      mode = { kind: "offset", ms: at.getTime() - host.getTime() };
+    },
     set(next: ClockMode): void {
       mode = next;
     },

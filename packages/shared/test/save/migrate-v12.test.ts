@@ -34,7 +34,7 @@ const v11 = {
   phone: newPhone(),
   ...newItemState(),
 };
-const v12 = (daycare: object[]) => ({ ...v11, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-13T12:00:00.000Z"), daycare, daycareEgg: false, eggWalk: 0, photos: [] });
+const v12 = (daycare: object[]) => ({ ...v11, schemaVersion: 21, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-11-13T12:00:00.000Z"), daycare, daycareEgg: false, eggWalk: 0, photos: [] });
 
 describe("save v12", () => {
   it("is version 12 or later", () => {

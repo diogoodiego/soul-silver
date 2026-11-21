@@ -5,7 +5,7 @@ import { newBoxes, newCollection, newProgress, SAVE_SCHEMA_VERSION, trainerIdFor
 
 // Item 034.4: the save the protocol carries (save v19) keeps the Hall of Fame.
 
-const save = (over: object) => ({ schemaVersion: 20, trainerId: trainerIdFor("Ana", "2026-11-17T12:00:00.000Z"), rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name: "Ana", character: "female", area: "306", x: 1, y: 2, facing: "north", playTimeMs: 0, savedAt: "2026-11-17T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), ...over });
+const save = (over: object) => ({ schemaVersion: 21, trainerId: trainerIdFor("Ana", "2026-11-17T12:00:00.000Z"), rivalName: "", storyRev: 1, boxes: newBoxes(), pcItems: [], pending: [], flags: [], vars: {}, npcPlacement: {}, name: "Ana", character: "female", area: "306", x: 1, y: 2, facing: "north", playTimeMs: 0, savedAt: "2026-11-17T12:00:00.000Z", rev: 0, ...newProgress(), ...newCollection(), ...over });
 
 describe("protocol v34", () => {
   it("is at least version 34, with save v19", () => {

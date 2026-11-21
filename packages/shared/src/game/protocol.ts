@@ -181,6 +181,8 @@ export const clientMessage = z.discriminatedUnion("type", [
       z.strictObject({ mode: z.literal("advance"), minutes: z.number().int().min(1).max(7 * 24 * 60) }),
     ]),
   }),
+  /** The host picks the time of day the game runs from (it keeps running); null is the PC's clock. */
+  z.strictObject({ type: z.literal("setClock"), minuteOfDay: z.number().int().min(0).max(1439).nullable() }),
   /** Spec 026: the Pokégear. A call to a registered number; answering a ringing call, `choice` for its question. */
   z.strictObject({ type: z.literal("phoneDial"), contact: phoneContact }),
   z.strictObject({ type: z.literal("phoneAnswer"), callId: count(), choice: z.number().int().min(0).max(3).optional() }),

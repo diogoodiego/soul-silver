@@ -34,11 +34,11 @@ describe("save v8", () => {
   it("adds an empty rival name and a stale story, touching nothing else", () => {
     const result = migrate(structuredClone(v7));
     if (!result.ok) throw new Error(result.message);
-    expect(result.save).toEqual({ ...v7, badges: undefined, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-10-24T12:00:00.000Z"), daycare: [], daycareEgg: false, eggWalk: 0, photos: [], rivalName: "", storyRev: 0, badgeSet: 0, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() });
+    expect(result.save).toEqual({ ...v7, badges: undefined, schemaVersion: 21, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-10-24T12:00:00.000Z"), daycare: [], daycareEgg: false, eggWalk: 0, photos: [], rivalName: "", storyRev: 0, badgeSet: 0, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() });
   });
 
   it("hands a v8 save on to the next version", () => {
-    const save = { ...v7, badges: undefined, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-10-24T12:00:00.000Z"), daycare: [], daycareEgg: false, eggWalk: 0, photos: [], rivalName: "Silver", storyRev: 1, badgeSet: 0, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() };
+    const save = { ...v7, badges: undefined, schemaVersion: 21, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-10-24T12:00:00.000Z"), daycare: [], daycareEgg: false, eggWalk: 0, photos: [], rivalName: "Silver", storyRev: 1, badgeSet: 0, flyPoints: [], phone: { contacts: [], seeking: [], called: [], pending: [], log: [] }, ...newItemState() };
     expect(migrate({ ...v7, schemaVersion: 8, rivalName: "Silver", storyRev: 1 })).toEqual({ ok: true, save });
   });
 

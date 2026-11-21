@@ -165,6 +165,8 @@ assunto, ou quando o desenvolvedor pedir.
 
 Só o que muda o rumo de itens futuros, uma linha cada.
 
+- Hora do jogo escolhida pelo host (app Relógio na tela de início da Pokédex, `setClock`, protocolo 41): o relógio anda a partir dela; a diferença para o PC fica em `clockOffsetMs` no save do host (save v21) e vale para toda a sessão.
+
 - Rede pela internet (bloco R): só IPv6 direto e WebRTC com convite por código copiado; sem relay, VPN ou túnel. A senha da sala é conferida no socket de rede (`ws-listener`), nunca na sessão, e vem das Configurações do host.
 - Canais vindos do renderer (R.3) chegam ao servidor como `Link` adotado pelo `ws-listener`, por MessagePort; `null` na porta quer dizer "fechou".
 - V.1: com efeitos ligados, o canvas tem o tamanho da tela e a cena é desenhada num render target nativo (`render/post.ts`); quem ler pixels do canvas deve contar com isso.

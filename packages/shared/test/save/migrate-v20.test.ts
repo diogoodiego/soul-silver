@@ -41,12 +41,12 @@ const v19 = {
 
 describe("save v20", () => {
   it("is the current version", () => {
-    expect(SAVE_SCHEMA_VERSION).toBe(20);
+    expect(SAVE_SCHEMA_VERSION).toBeGreaterThanOrEqual(20);
   });
 
   it("gives a v19 save an ID from its name and when it was saved, and no start date", () => {
     const result = migrate(structuredClone(v19));
-    expect(result).toEqual({ ok: true, save: { ...v19, schemaVersion: 20, trainerId: trainerIdFor("Gold", "2026-11-17T12:00:00.000Z") } });
+    expect(result).toEqual({ ok: true, save: { ...v19, schemaVersion: 21, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-11-17T12:00:00.000Z") } });
   });
 
   it("derives a stable five-digit ID that changes with the save it came from", () => {
