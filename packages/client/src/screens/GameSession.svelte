@@ -147,7 +147,7 @@
   /** On the bicycle; Fly's destinations while its map is open; Flash in this map (spec 025). */
   let riding = $state(false);
   let flyMap = $state<{ area: string; name: string }[] | undefined>();
-  /** Escape is cancel on the Fly map and menu on the field, emitted one after the other: closing after both keeps the menu shut. */
+  /** A key bound to both cancel and menu (rebinding allows it) emits one after the other: closing after both keeps the menu shut. */
   function closeFlyMap(): void {
     queueMicrotask(() => {
       flyMap = undefined;
@@ -799,7 +799,7 @@
 
     // The menu action opens the full menu; once open, the menu screens take the input.
     const offAction = input.onAction((action) => {
-      if (action === "menu" && !menuOpen && (!dialogOpen || scriptLocked) && picker === "closed" && flyMap === undefined && !progression && status === "playing") setMenu(true);
+      if (action === "menu" && !menuOpen && (!dialogOpen || scriptLocked) && picker === "closed" && flyMap === undefined && !shop && !progression && status === "playing") setMenu(true);
       // Block H: moves 2 and 3 pick the options after talk; interact (talk) goes to the server with the input, as ever.
       if ((action === "move2" || action === "move3") && npcOptions) {
         const picked = npcOptions.actions[NPC_KEYS.indexOf(action)];

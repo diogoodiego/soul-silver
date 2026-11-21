@@ -31,7 +31,7 @@ export const DEFAULT_KEYS: Readonly<Bindings> = {
   cancel: ["Escape", "Backspace"],
   tabPrev: ["KeyQ"],
   tabNext: ["KeyE"],
-  menu: ["Tab", "Escape"],
+  menu: ["Tab"],
   run: ["ShiftLeft", "ShiftRight"],
   dash: ["Space"],
   move1: ["KeyJ"],

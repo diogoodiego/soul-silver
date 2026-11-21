@@ -3,7 +3,6 @@
   import type { UpdateState } from "@soulsilver/shared";
   import Button from "../ui/Button.svelte";
   import { t } from "../i18n";
-  import { input } from "../input/app-input";
   import { menu } from "../input/menu";
   import KeyHints from "../ui/KeyHints.svelte";
   import UpdateNotice from "../ui/UpdateNotice.svelte";
@@ -39,9 +38,8 @@
     { actions: ["up" as const, "down" as const], label: t("hints.navigate") },
   ];
 
-  // Escape is bound to both back and options: back wins, so options only answers when cancel is not held.
   const onAction = (action: string) => {
-    if (action !== "menu" || input.held("cancel")) return false;
+    if (action !== "menu") return false;
     onSettings();
     return true;
   };

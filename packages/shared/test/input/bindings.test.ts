@@ -103,6 +103,14 @@ describe("saved bindings", () => {
     expect(settings.bindings.swapNext).toEqual(["KeyE"]);
   });
 
+  it("give Escape to back only: the menu (the phone) opens on Tab", () => {
+    expect(DEFAULT_KEYS.menu).toEqual(["Tab"]);
+    expect(readSettings({ bindings: { ...DEFAULT_KEYS, menu: ["Tab", "Escape"] } }).bindings.menu).toEqual(["Tab"]);
+    expect(readSettings({ bindings: { ...DEFAULT_KEYS, menu: ["Escape"] } }).bindings.menu).toEqual(["Tab"]);
+    // Escape no longer backs out (the player rebound cancel): their menu key stays.
+    expect(readSettings({ bindings: { ...DEFAULT_KEYS, cancel: ["Backspace"], menu: ["Escape"] } }).bindings.menu).toEqual(["Escape"]);
+  });
+
   it("keep interact on a key the player chose", () => {
     const older: Record<string, readonly string[]> = { ...DEFAULT_KEYS, interact: ["KeyZ"] };
     delete older["swapNext"];

@@ -88,6 +88,12 @@ export function readSettings(raw: unknown): AppSettings {
   // E became the next-Pokémon key: settings from before it that still interact on E interact on Space now.
   const saved = obj["bindings"];
   if (typeof saved === "object" && saved !== null && !("swapNext" in saved) && out.bindings.interact.length === 1 && out.bindings.interact[0] === "KeyE") out.bindings.interact = [...DEFAULT_KEYS.interact];
+  // One key, one job: Escape used to open the menu too, so backing out of a screen opened the phone.
+  const { menu, cancel } = out.bindings;
+  if (cancel.includes("Escape") && menu.includes("Escape")) {
+    const rest = menu.filter((k) => k !== "Escape");
+    out.bindings.menu = rest.length > 0 ? rest : [...DEFAULT_KEYS.menu];
+  }
   return out;
 }
 

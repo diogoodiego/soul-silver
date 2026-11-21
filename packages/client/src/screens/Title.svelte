@@ -16,7 +16,7 @@
 
   onMount(() => {
     void playTitleMusic();
-    // Confirm (Enter, Space, pad A) or the pad's Start; "menu" is also Tab/Escape, so Start is read off the pad.
+    // Confirm (Enter, Space, pad A) or the pad's Start; "menu" is also Tab, so Start is read off the pad.
     const startPressed = () => navigator.getGamepads().some((p) => p?.buttons[PAD_BUTTONS.menu]?.pressed);
     const offAction = input.onAction((action) => {
       if (action === "confirm" || (action === "menu" && startPressed())) onStart();
