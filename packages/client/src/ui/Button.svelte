@@ -1,7 +1,7 @@
 <script lang="ts" module>
   /** secondary (the default): outlined, no fill; primary: the screen's main action, filled; danger: a secondary in red;
-   * ghost: list rows and tabs, no fill nor border; menu: main-menu options, larger, the only one that shows focus
-   * (filled); bare: drawn controls (a Poké Ball, the phone key) that style themselves. */
+   * ghost: list rows and tabs, no fill nor border; menu: main-menu options, larger, focus filled;
+   * secondary, primary and danger show focus with a ring; bare: drawn controls (a Poké Ball, the phone key) that style themselves. */
   export type ButtonVariant = "secondary" | "primary" | "danger" | "ghost" | "menu" | "bare";
   /** A destructive action that must be held: the fill grows while `action` (or the mouse) is held, `onHeld` fires once. */
   export type ButtonHold = { action: Action; armed: boolean; onHeld: () => void; ms?: number };
@@ -18,6 +18,7 @@
     children,
     variant = "secondary",
     glyph,
+    shortcut,
     hold,
     el = $bindable(),
     class: extra,
@@ -27,22 +28,25 @@
     variant?: ButtonVariant;
     /** Shown while focused: the action that presses it (a main-menu option shows confirm). */
     glyph?: Action;
+    /** Always shown: the action that presses it from anywhere on the screen (the screen handles the action). */
+    shortcut?: Action;
     hold?: ButtonHold;
     el?: HTMLButtonElement | undefined;
   } = $props();
 
-  const SIZE = "rounded-full px-3 py-1 text-[0.85rem] font-semibold leading-snug";
-  // Hover and pressed lay a layer over the fill; selected and disabled replace it.
+  const SIZE = "rounded-full px-3 py-1 text-sm font-semibold leading-snug";
+  // Hover and pressed lay a layer over the fill; selected and disabled replace it. Inside font-screen (a color font) the
+  // ink comes from font-palette, not color: dark text on action/primary/bg also sets the --action-primary-text palette.
+  /** The pad and the keys land on buttons too: the outlined and filled ones show it with a ring. */
+  const RING = "focus:outline-2 focus:outline-solid focus:outline-offset-2 focus:outline-focus";
   const STATE =
-    "aria-selected:bg-selected aria-selected:text-primary aria-pressed:bg-selected aria-pressed:text-primary disabled:bg-action-disabled disabled:text-action-disabled disabled:cursor-default items-center";
-  const SECONDARY = "border border-default enabled:hover:layer-secondary-hover enabled:active:layer-secondary-pressed";
-  const GHOST = "enabled:hover:layer-ghost-hover enabled:active:layer-ghost-pressed";
+    "aria-selected:layer-surface-selected aria-selected:text-primary aria-pressed:layer-surface-selected aria-pressed:text-primary disabled:bg-action-disabled-bg disabled:text-action-disabled-text disabled:cursor-default items-center";
   const LOOK: Record<ButtonVariant, string> = {
-    secondary: `${SIZE} ${STATE} ${SECONDARY} text-action-secondary`,
-    primary: `${SIZE} ${STATE} bg-action-primary text-action-primary font-bold enabled:hover:layer-primary-hover enabled:active:layer-primary-pressed`,
-    danger: `${SIZE} ${STATE} ${SECONDARY} text-error`,
-    ghost: `${SIZE} ${STATE} ${GHOST} text-action-ghost`,
-    menu: `rounded-full px-3 py-1.5 text-[1.15rem] font-semibold ${STATE} ${GHOST} text-primary focus:bg-action-primary focus:text-action-primary`,
+    secondary: `${SIZE} ${STATE} ${RING} border border-default enabled:hover:layer-action-secondary-bg-hover enabled:active:layer-action-secondary-bg-pressed text-action-secondary-text`,
+    primary: `${SIZE} ${STATE} ${RING} bg-action-primary-bg text-action-primary-text [font-palette:--action-primary-text] font-bold enabled:hover:layer-action-primary-bg-hover enabled:active:layer-action-primary-bg-pressed`,
+    danger: `${SIZE} ${STATE} ${RING} border border-default enabled:hover:layer-action-secondary-bg-hover enabled:active:layer-action-secondary-bg-pressed text-error`,
+    ghost: `${SIZE} ${STATE} enabled:hover:layer-action-ghost-bg-hover enabled:active:layer-action-ghost-bg-pressed text-action-ghost-text`,
+    menu: `rounded-full px-3 py-1.5 text-lg font-semibold ${STATE} enabled:hover:layer-action-ghost-bg-hover enabled:active:layer-action-ghost-bg-pressed text-primary focus:bg-action-primary-bg focus:[font-palette:--action-primary-text] focus:text-action-primary-text`,
     bare: "",
   };
 
@@ -98,6 +102,8 @@
   {#if hold}
     <span class="absolute inset-y-0 left-0 bg-alarm/35" style:width="{progress * 100}%" aria-hidden="true"></span>
     <span class="relative inline-flex items-center gap-1">{#if hold.armed}<Glyph action={hold.action} round />{/if}{@render children?.()}</span>
+  {:else if shortcut}
+    <span class="inline-flex items-center gap-2"><Glyph action={shortcut} round />{@render children?.()}</span>
   {:else if glyph}
     <span class="inline-flex items-center gap-2"><span class="hidden group-focus:inline-flex"><Glyph action={glyph} round /></span>{@render children?.()}</span>
   {:else}

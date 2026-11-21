@@ -238,7 +238,7 @@
     border: 0;
     padding: 0;
   }
-  /* Buttons show no focus for now; only Button's menu variant marks it (with its fill). */
+  /* No native ring: Button draws its own (the menu variant fills, the outlined and filled ones ring). */
   button:focus-visible {
     outline: none;
   }
