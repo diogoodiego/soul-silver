@@ -102,12 +102,13 @@ const DITHER_GLSL = /* glsl */ `
     gl_FragColor.rgb = clamp(floor(nudged * 4.0), 0.0, 3.0) / 3.0;
   }`;
 
-function buildModel(): { root: Group; dither: { uDither: { value: number }; uDitherCell: { value: number } }; dispose: () => void } {
+/** `shell`: the body's colour (red; the shop totem's is blue). */
+function buildModel(shell = 0xc8102e): { root: Group; dither: { uDither: { value: number }; uDitherCell: { value: number } }; dispose: () => void } {
   const root = new Group();
   /** On (1) or off (0), and the cell's size in device pixels. */
   const glassDither = { uDither: { value: 0 }, uDitherCell: { value: 2 } };
   // Lacquered shell and glass: a clear coat over each picks up the environment's reflections.
-  const red = new MeshPhysicalMaterial({ color: 0xc8102e, roughness: 0.42, metalness: 0.05, clearcoat: 0.35, clearcoatRoughness: 0.12 });
+  const body = new MeshPhysicalMaterial({ color: shell, roughness: 0.42, metalness: 0.05, clearcoat: 0.35, clearcoatRoughness: 0.12 });
   const black = new MeshPhysicalMaterial({ color: 0x141414, roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.05 });
   const white = new MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.3 });
   const blue = new MeshStandardMaterial({ color: 0x1557a8, roughness: 0.15, metalness: 0.2, emissive: 0x06224a });
@@ -119,7 +120,7 @@ function buildModel(): { root: Group; dither: { uDither: { value: number }; uDit
     Object.assign(shader.uniforms, glassDither);
     shader.fragmentShader = `uniform float uDither;\nuniform float uDitherCell;\n${shader.fragmentShader.replace("#include <dithering_fragment>", `#include <dithering_fragment>\n${DITHER_GLSL}`)}`;
   };
-  const materials = [red, black, glassMaterial, white, blue, ledRed, ledWhite];
+  const materials = [body, black, glassMaterial, white, blue, ledRed, ledWhite];
   const geometries: BufferGeometry[] = [];
   const add = (geometry: BufferGeometry, material: MeshStandardMaterial, at?: [number, number, number]) => {
     geometries.push(geometry);
@@ -129,7 +130,7 @@ function buildModel(): { root: Group; dither: { uDither: { value: number }; uDit
     return mesh;
   };
 
-  add(slab(roundedRect(BODY.left, BODY.right, BODY.bottom, BODY.top, 0.35), -BODY.depth / 2, BODY.depth, BODY.bevel), red);
+  add(slab(roundedRect(BODY.left, BODY.right, BODY.bottom, BODY.top, 0.35), -BODY.depth / 2, BODY.depth, BODY.bevel), body);
   // The screen under the HTML; its tab strip rises past a diagonal, leaving the lens corner red.
   const glass = new Shape();
   traceRounded(GLASS_CORNERS, GLASS_RADIUS, { move: (x, y) => glass.moveTo(x, y), line: (x, y) => glass.lineTo(x, y), quad: (cx, cy, x, y) => glass.quadraticCurveTo(cx, cy, x, y) });
@@ -184,6 +185,7 @@ export function mountPokedex(
   screen: HTMLElement,
   initial: DexPose,
   button?: HTMLElement,
+  shell?: number,
 ): { setPose: (pose: DexPose) => void; setDither: (on: boolean) => void; dispose: () => void } {
   const renderer = new WebGLRenderer({ antialias: true, alpha: true });
   renderer.outputColorSpace = LinearSRGBColorSpace;
@@ -204,7 +206,7 @@ export function mountPokedex(
   scene.environment = pmrem.fromScene(room, 0.04).texture;
   // Colour management is off and there is no tone mapping, so the room reflects at full strength: only a hint of it.
   scene.environmentIntensity = 0.12;
-  const model = buildModel();
+  const model = buildModel(shell);
   scene.add(model.root);
 
   let size = { w: 1, h: 1 };

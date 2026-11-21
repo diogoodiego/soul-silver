@@ -1326,6 +1326,7 @@ export function createSession(options: SessionOptions): Session {
         case "shop-buy":
         case "shop-sell":
         case "shop-leave":
+        case "shop-mode":
           if (shops) shops.handle(player.id, msg);
           else player.conn?.send({ type: "shopResult", ok: false, reason: "invalid", money: player.progress.money } satisfies ServerMessage);
           return;

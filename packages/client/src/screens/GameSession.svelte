@@ -1316,7 +1316,7 @@
     />
   {/if}
   {#if shop}
-    <Shop {shop} {bag} refused={shopRefused} {itemName} onConfirm={(item: number, qty: number) => window.soulSilver.sendGame({ type: shop!.mode === "sell" ? "shop-sell" : "shop-buy", item, qty })} onLeave={() => window.soulSilver.sendGame({ type: "shop-leave" })} />
+    <Shop {shop} {bag} refused={shopRefused} {itemName} onConfirm={(item: number, qty: number) => window.soulSilver.sendGame({ type: shop!.mode === "sell" ? "shop-sell" : "shop-buy", item, qty })} onMode={(mode: "buy" | "sell") => window.soulSilver.sendGame({ type: "shop-mode", mode })} onLeave={() => window.soulSilver.sendGame({ type: "shop-leave" })} />
   {/if}
 
   {#if call}<CallScreen name={call.name} direction={call.direction} />{/if}

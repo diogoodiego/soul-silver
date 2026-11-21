@@ -201,6 +201,8 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("shop-buy"), item: count(), qty: z.number().int().min(1).max(99) }),
   z.strictObject({ type: z.literal("shop-sell"), item: count(), qty: z.number().int().min(1).max(999) }),
   z.strictObject({ type: z.literal("shop-leave") }),
+  /** The shop totem's tabs: the open shop turns to buying or selling and is sent again. */
+  z.strictObject({ type: z.literal("shop-mode"), mode: z.enum(["buy", "sell"]) }),
   z.strictObject({ type: z.literal("pc-move"), from: pcSlot, to: pcSlot }),
   z.strictObject({ type: z.literal("pc-rename"), box: z.number().int().min(0).max(BOX_COUNT - 1), name: z.string().min(1).max(BOX_NAME_MAX) }),
   z.strictObject({ type: z.literal("pc-items"), dir: z.enum(["deposit", "withdraw"]), item: count(), qty: z.number().int().min(1).max(999) }),

@@ -32,7 +32,7 @@ export interface ShopsOptions {
   log(message: string): void;
 }
 
-type ShopRequest = Extract<ClientMessage, { type: "shop-buy" | "shop-sell" | "shop-leave" }>;
+type ShopRequest = Extract<ClientMessage, { type: "shop-buy" | "shop-sell" | "shop-leave" | "shop-mode" }>;
 
 interface Open {
   shop: ShopRecord;
@@ -93,6 +93,11 @@ export function createShops(options: ShopsOptions): Shops {
         open.delete(playerId);
         w.send({ type: "shopClose" });
         options.onClose(playerId);
+        return;
+      }
+      if (msg.type === "shop-mode") {
+        o.sell = msg.mode === "sell";
+        show(w, o);
         return;
       }
       const refused = msg.type === "shop-buy" ? (o.sell ? "invalid" : buy(w.progress, stock(w, o), msg.item, msg.qty, data.item)) : o.sell ? sell(w.progress, data.item, msg.item, msg.qty) : "invalid";

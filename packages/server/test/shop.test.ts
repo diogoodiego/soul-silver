@@ -89,6 +89,19 @@ describe("Poké Mart (US1)", () => {
     expect(sell.of(s, "shopOpen").at(-1)!.stock).toEqual([]);
   });
 
+  it("switches the open shop between buy and sell: the stock follows and the other request is refused", () => {
+    const { t, c } = atClerk({ money: 3000, bag: [{ item: 17, count: 2 }] });
+    c.conn.send({ type: "shop-mode", mode: "sell" });
+    t.step();
+    expect(t.of(c, "shopOpen").at(-1)).toEqual({ type: "shopOpen", shopId: 0, mode: "sell", money: 3000, stock: [{ item: 17, price: 150 }] });
+    c.conn.send({ type: "shop-buy", item: 4, qty: 1 });
+    t.step();
+    expect(t.of(c, "shopResult").at(-1)).toMatchObject({ ok: false, reason: "invalid" });
+    c.conn.send({ type: "shop-mode", mode: "buy" });
+    t.step();
+    expect(t.of(c, "shopOpen").at(-1)).toMatchObject({ mode: "buy", stock: [{ item: 4, price: 200 }, { item: 17, price: 300 }] });
+  });
+
   it("refuses every request without an open shop", () => {
     const t = story(data(), { shops });
     const c = t.connect(undefined, undefined, { save: { money: 3000 } });

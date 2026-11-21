@@ -7,7 +7,7 @@
   import { onMount, tick } from "svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
-  import { createPokedex, DEX_SCREEN_H, DEX_SCREEN_W, DEX_STRIP_H, DEX_STRIP_LEFT } from "../render/pokedex-model";
+  import { createPokedex, DEX_SCREEN_H, DEX_SCREEN_W } from "../render/pokedex-model";
   import { saveSettings, settings } from "../settings";
   import Checkbox from "../ui/Checkbox.svelte";
   import Confirm from "../ui/Confirm.svelte";
@@ -15,7 +15,7 @@
   import SlantBar from "../ui/SlantBar.svelte";
   import TextField from "../ui/TextField.svelte";
   import DexRow from "../ui/DexRow.svelte";
-  import Glyph from "../ui/Glyph.svelte";
+  import DexTabs from "../ui/DexTabs.svelte";
   import GamepadFigure from "../ui/GamepadFigure.svelte";
   import KeyHints from "../ui/KeyHints.svelte";
   import Controls from "./Controls.svelte";
@@ -173,14 +173,7 @@
 </script>
 
 {#snippet content()}
-      <div class="flex shrink-0 items-center gap-2 pr-5 text-[0.85em] font-bold uppercase" style:height="{DEX_STRIP_H}px" style:padding-left="{DEX_STRIP_LEFT}px" role="tablist">
-        <span class="flex items-center gap-1 text-tertiary">&lt;<Glyph action="tabPrev" round /></span>
-        {#each TABS as id, i (id)}
-          {#if i > 0}<span class="text-disabled" aria-hidden="true">|</span>{/if}
-          <Button role="tab" tabindex={-1} aria-selected={tab === id} variant="ghost" class="uppercase" onclick={() => void showTab(id)}>{t(`settings.tab.${id}`)}</Button>
-        {/each}
-        <span class="ml-auto flex items-center gap-1 text-tertiary"><Glyph action="tabNext" round />&gt;</span>
-      </div>
+      <DexTabs tabs={TABS.map((id) => ({ id, label: t(`settings.tab.${id}`) }))} current={tab} onSelect={(id: Tab) => void showTab(id)} />
       <div bind:this={list} class="scrollbar-clean flex-1 overflow-y-auto px-4 py-2" role="tabpanel">
         {#each rows as row (row.id)}
           {@const view = row.view}
