@@ -340,6 +340,7 @@ export const ptBR = {
   "hud.level": "Nv. {level}",
   "hud.hp": "HP",
   "hud.gauge": "Barra de ação",
+  "hud.exp": "Experiência",
   "hud.call": "{move}!",
   "hud.party": "Equipe",
   "status.burn": "QUE",

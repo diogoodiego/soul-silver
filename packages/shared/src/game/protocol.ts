@@ -428,6 +428,8 @@ export const serverMessage = z.discriminatedUnion("type", [
           exp: count().optional(),
           /** Experience at the next level; equal to exp at level 100. */
           expNext: count().optional(),
+          /** Experience at the start of the current level, for the HUD level bar. */
+          expLevel: count().optional(),
           /** Spec 027: the item it holds, and the PP Ups on each move. */
           held: count().optional(),
           ppUps: z.array(z.number().int().min(0).max(3)).max(4).optional(),

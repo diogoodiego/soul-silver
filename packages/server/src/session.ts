@@ -383,7 +383,7 @@ export function createSession(options: SessionOptions): Session {
       stats: memberStats(base.baseStats, m),
       nature: m.nature,
       exp: m.experience,
-      ...(rate ? { expNext: expForLevel(rate, Math.min(100, m.level + 1)) } : {}),
+      ...(rate ? { expLevel: expForLevel(rate, m.level), expNext: expForLevel(rate, Math.min(100, m.level + 1)) } : {}),
       ...(growth?.abilities ? { ability: growth.abilities[0] } : {}),
       ...(m.held !== undefined ? { held: m.held } : {}),
       ...(m.ppUps ? { ppUps: [...m.ppUps] } : {}),

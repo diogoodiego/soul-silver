@@ -10,7 +10,7 @@
   import { t, type MessageKey } from "../i18n";
   import HpBar from "../ui/HpBar.svelte";
 
-  type Member = { species: number; nickname?: string | undefined; level: number; hp: number; hpMax: number; egg?: true | undefined };
+  type Member = { species: number; nickname?: string | undefined; level: number; hp: number; hpMax: number; egg?: true | undefined; exp?: number | undefined; expLevel?: number | undefined; expNext?: number | undefined };
   let {
     party,
     out,
@@ -38,6 +38,12 @@
     fight ? { species: num("species"), nickname: member?.species === num("species") ? member.nickname : undefined, level: num("level"), hp: num("hp"), hpMax: num("hpMax") } : member,
   );
   const fraction = (m: Member) => (m.hpMax > 0 ? m.hp / m.hpMax : 0);
+  /** Progress through the current level (from the party copy); undefined without the growth data. */
+  const expFraction = $derived(
+    member?.exp !== undefined && member.expLevel !== undefined && member.expNext !== undefined
+      ? member.expNext > member.expLevel ? Math.min(1, (member.exp - member.expLevel) / (member.expNext - member.expLevel)) : 1
+      : undefined,
+  );
 
   /** Each slot shows the Poké Ball's bag icon (item 4) from the extracted atlas; the HP dot when it is missing. */
   const POKE_BALL = 4;
@@ -57,6 +63,11 @@
           <span class="ml-auto whitespace-nowrap text-xs opacity-80">{t("hud.level", { level: lead.level })}</span>
         </div>
         <HpBar fraction={fraction(lead)} role="meter" aria-label={t("hud.hp")} aria-valuemin={0} aria-valuemax={lead.hpMax} aria-valuenow={lead.hp} />
+        {#if expFraction !== undefined && !lead.egg}
+          <span class="block h-1 overflow-hidden rounded-[3px] bg-surface-raised" role="meter" aria-label={t("hud.exp")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(expFraction * 100)}>
+            <span class="block h-full bg-[#4fc3f7] [transition:width_0.2s]" style:width="{expFraction * 100}%"></span>
+          </span>
+        {/if}
         {#if fight}
           <div class="flex items-center gap-2">
             <span class="block h-[0.35rem] flex-1 overflow-hidden rounded-[3px] bg-surface-raised" role="meter" aria-label={t("hud.gauge")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={gauge}>
