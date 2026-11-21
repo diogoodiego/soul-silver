@@ -103,8 +103,12 @@ interface Actor {
   caster: Mesh<BufferGeometry, MeshBasicMaterial>;
   last: { x: number; y: number };
   moving: boolean;
-  /** Tile it stood on last frame, "tx,ty": entering a tall grass tile plays the rustle there. */
-  tile: string;
+  /** Where its last grass rustle started; null out of the grass, so stepping in rustles at once. */
+  rustledAt: { x: number; y: number } | null;
+  /** When its last rustle ends: until then the rustle covers the feet, after it the grass tuft does. */
+  rustleUntil: number;
+  /** The grass tuft over its feet while it stands in the grass (the rustle's settled last frame), so the cut sprite never shows a straight edge. */
+  cover?: Mesh<BufferGeometry, MeshBasicMaterial>;
 }
 
 /** A field effect playing its steps once, from `start`. */
@@ -568,16 +572,16 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   const actors = new Map<number, Actor>();
   const effects: Effect[] = [];
 
-  /** Starts the grass rustle on tile (tx, ty), in front of whoever stands in it. */
-  function rustleAt(tx: number, ty: number, ground: number, now: number): void {
+  /** Starts the grass rustle at the feet (x, y), in front of whoever stands there; it stays put as they walk on. */
+  function rustleAt(x: number, y: number, ground: number, now: number): void {
     if (rustle.length === 0) return;
     const geometry = new BufferGeometry();
     geometry.setIndex([0, 2, 1, 1, 2, 3]);
     const sprite = new Mesh(geometry, markerMaterial);
     sprite.frustumCulled = false;
     sprite.visible = false;
-    // Its foot on the tile's south edge: nearer the camera than an actor in the tile, so it covers the feet.
-    sprite.position.set(tx * MAP_TILE_PX + MAP_TILE_PX / 2, ground + SPRITE_DEPTH_BIAS, (ty + 1) * MAP_TILE_PX + SPRITE_DEPTH_BIAS * OBLIQUE);
+    // A pixel nearer the camera than the actor on the same feet, so it covers them.
+    sprite.position.set(Math.round(x), ground + SPRITE_DEPTH_BIAS, Math.round(y) + 1 + SPRITE_DEPTH_BIAS * OBLIQUE);
     scene.add(sprite);
     effects.push({ sprite, start: now });
   }
@@ -632,7 +636,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     if (!actor) {
       const geometry = new BufferGeometry();
       geometry.setIndex([0, 2, 1, 1, 2, 3]);
-      actor = { sprite: new Mesh(geometry, markerMaterial), caster: new Mesh(geometry, markerMaterial), last: { x: e.x, y: e.y }, moving: false, tile: "" };
+      actor = { sprite: new Mesh(geometry, markerMaterial), caster: new Mesh(geometry, markerMaterial), last: { x: e.x, y: e.y }, moving: false, rustledAt: { x: e.x, y: e.y }, rustleUntil: 0 };
       actor.sprite.frustumCulled = false;
       actor.caster.frustumCulled = false;
       actor.caster.castShadow = true;
@@ -654,10 +658,12 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     // Knocked out: still (no idle bounce), until a ball or the fight's end takes it.
     const knockedOut = e.kind === "pokemon" && e.data["hp"] === 0;
     const inGrass = tileAt(world.lookup, e.area, e.level, e.x, e.y)?.category === "tallGrass" && !cleared.some((c) => Math.hypot(c.x - e.x, c.y - e.y) <= CLEARING_RADIUS_PX);
-    const [tx, ty] = [Math.floor(e.x / MAP_TILE_PX), Math.floor(e.y / MAP_TILE_PX)];
-    if (actor.tile !== `${tx},${ty}`) {
-      if (actor.tile !== "" && inGrass) rustleAt(tx, ty, groundOf(e), now);
-      actor.tile = `${tx},${ty}`;
+    // One rustle per tile's worth of walking in the grass, at the feet, off the tile grid.
+    if (!inGrass) actor.rustledAt = null;
+    else if (!actor.rustledAt || Math.hypot(e.x - actor.rustledAt.x, e.y - actor.rustledAt.y) >= MAP_TILE_PX) {
+      rustleAt(e.x, e.y, groundOf(e), now);
+      actor.rustledAt = { x: e.x, y: e.y };
+      actor.rustleUntil = now + rustle.reduce((ms, s) => ms + s.ms, 0);
     }
     if (frame) {
       setQuad(actor.sprite.geometry, frame, inGrass ? Math.max(1, frame.frame.h - GRASS_COVER_PX) : frame.frame.h);
@@ -685,6 +691,22 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     // A hit target shakes sideways while its flash lasts.
     const shake = e.data["flash"] === true ? Math.round(Math.sin(now / 15) * 2) : 0;
     actor.sprite.position.set(Math.round(e.x) + shake, y, Math.round(e.y) + SPRITE_DEPTH_BIAS * OBLIQUE);
+    const settled = inGrass && actor.sprite.visible && now >= actor.rustleUntil ? frames.get(rustle.at(-1)?.frame ?? "") : undefined;
+    if (settled && !actor.cover) {
+      actor.cover = new Mesh(new BufferGeometry(), markerMaterial);
+      actor.cover.geometry.setIndex([0, 2, 1, 1, 2, 3]);
+      actor.cover.frustumCulled = false;
+      scene.add(actor.cover);
+    }
+    if (actor.cover) {
+      actor.cover.visible = settled !== undefined;
+      if (settled) {
+        setQuad(actor.cover.geometry, settled, settled.frame.h);
+        actor.cover.material = spriteMaterial(settled.page);
+        // As the rustle: a pixel nearer the camera than the feet it covers.
+        actor.cover.position.set(Math.round(e.x), groundOf(e) + SPRITE_DEPTH_BIAS, Math.round(e.y) + 1 + SPRITE_DEPTH_BIAS * OBLIQUE);
+      }
+    }
     actor.caster.visible = actor.sprite.material !== markerMaterial;
     if (actor.caster.visible) actor.caster.material = casterOf(actor.sprite.material);
     summonStep(e, actor, now);
@@ -776,6 +798,8 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         if (seen.has(id)) continue;
         actor.sprite.removeFromParent();
         actor.sprite.geometry.dispose();
+        actor.cover?.removeFromParent();
+        actor.cover?.geometry.dispose();
         actors.delete(id);
         balls.get(id)?.dispose();
         balls.delete(id);
@@ -865,7 +889,10 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     destroy(): void {
       observer.disconnect();
       for (const id of [...visuals.keys()]) drop(id);
-      for (const actor of actors.values()) actor.sprite.geometry.dispose();
+      for (const actor of actors.values()) {
+        actor.sprite.geometry.dispose();
+        actor.cover?.geometry.dispose();
+      }
       for (const effect of effects) effect.sprite.geometry.dispose();
       particles.dispose();
       flamethrower.dispose();
