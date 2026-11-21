@@ -55,7 +55,7 @@ const GOD_RAYS = {
       // The sun above the top left, the way the shadows fall.
       vec2 d = (vUv - vec2(0.2, 1.45)) * vec2(aspect, 1.0);
       float a = atan(d.x, -d.y);
-      float beams = (0.5 + 0.5 * sin(a * 29.0 + time * 0.23)) * (0.5 + 0.5 * sin(a * 47.0 - time * 0.17 + 1.3)) * (0.6 + 0.4 * sin(a * 11.0 + time * 0.09));
+      float beams = (0.5 + 0.5 * sin(a * 29.0 + time * 0.9)) * (0.5 + 0.5 * sin(a * 47.0 - time * 0.7 + 1.3)) * (0.6 + 0.4 * sin(a * 11.0 + time * 0.35));
       float fade = smoothstep(0.15, 1.0, vUv.y) * (1.0 - smoothstep(0.4, 1.6, length(d)));
       vec3 light = vec3(1.0, 0.94, 0.78) * amount * pow(beams, 1.6) * fade;
       gl_FragColor = vec4(1.0 - (1.0 - c) * (1.0 - light), 1.0);
