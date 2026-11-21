@@ -1000,7 +1000,7 @@
       renderer.setDark(darkMap && !lit);
       renderer.setVisual(currentSettings().visual, outdoorMap);
       const clock = game.clockAt(now);
-      if (page === "gear" && clock) gearClock = { minuteOfDay: Math.floor(clock.minuteOfDay), weekday: clock.weekday };
+      if (page === "clock" && clock) gearClock = { minuteOfDay: Math.floor(clock.minuteOfDay), weekday: clock.weekday };
       const tint = outdoorMap && clock ? tintAt(clock.minuteOfDay, spawnJson.value.timeBands, tintJson.value) : null;
       renderer.setTint(tint);
       renderer.setDaylight(tint ? daylight(tint, tintJson.value) : 0);
@@ -1132,7 +1132,8 @@
     {riding}
     pots={berryPots}
     apricorns={apricornBox}
-    gear={{ ...gear, clock: gearClock, onDial: (contact: number) => window.soulSilver.sendGame({ type: "phoneDial", contact }), onTune: (channel: string | null) => window.soulSilver.sendGame({ type: "radioTune", channel }) }}
+    clock={{ now: gearClock, canSet: mode !== "guest", onSet: (minuteOfDay: number | null) => window.soulSilver.sendGame({ type: "setClock", minuteOfDay }) }}
+    gear={{ ...gear, onDial: (contact: number) => window.soulSilver.sendGame({ type: "phoneDial", contact }), onTune: (channel: string | null) => window.soulSilver.sendGame({ type: "radioTune", channel }) }}
     card={trainerCard}
     savedAt={lastSaved}
     {leaving}

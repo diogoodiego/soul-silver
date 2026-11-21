@@ -16,6 +16,7 @@
   import PartyMenu from "./PartyMenu.svelte";
   import Pokedex from "./Pokedex.svelte";
   import Gear from "../gear/Gear.svelte";
+  import ClockTab from "../gear/ClockTab.svelte";
 
   type Member = Extract<ServerMessage, { type: "party" }>["members"][number];
   import type { MenuPage } from "./menu-page";
@@ -31,6 +32,7 @@
     pots,
     apricorns,
     gear,
+    clock,
     card,
     savedAt,
     leaving,
@@ -52,6 +54,8 @@
     apricorns: number[] | undefined;
     /** The Pokégear's tabs, already in text (spec 026). */
     gear: Omit<import("svelte").ComponentProps<typeof Gear>, "onBack">;
+    /** The Clock app (spec 026, block H): the session's time, which only the host sets. */
+    clock: { now: { minuteOfDay: number; weekday: number } | undefined; canSet: boolean; onSet: (minuteOfDay: number | null) => void };
     /** Block H: the Trainer Card, as the server last sent it. */
     card: Extract<ServerMessage, { type: "trainer-card" }> | undefined;
     /** Block H: when this client last wrote a save. */
@@ -105,6 +109,12 @@
     <TrainerCard {card} onRefresh={() => send({ type: "trainer-card-request" })} onBack={back} />
   {:else if page === "gear"}
     <Gear {...gear} onBack={back} />
+  {:else if page === "clock"}
+    <section class="grid gap-3" use:menu={{ onBack: back }}>
+      <h2 class="m-0">{t("pause.clock")}</h2>
+      {#if clock.now}<ClockTab {...clock.now} canSet={clock.canSet} onSet={clock.onSet} />{/if}
+      <div><Button onclick={back}>{t("common.back")}</Button></div>
+    </section>
   {:else if page === "field"}
     <FieldMenu {party} {bag} {riding} {onField} onBack={back} />
   {:else if page === "online"}

@@ -371,6 +371,7 @@ export const ptBR = {
   "phone.logIn": "{name} ligou ({at})",
   "phone.logOut": "Você ligou para {name} ({at})",
   "pause.gear": "Pokégear",
+  "pause.clock": "Relógio",
   "gear.title": "Pokégear",
   "gear.map": "Mapa",
   "gear.phone": "Telefone",

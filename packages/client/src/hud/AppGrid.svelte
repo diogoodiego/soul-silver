@@ -26,6 +26,7 @@
     dex: "pause.dex",
     trainer: "pause.trainer",
     gear: "pause.gear",
+    clock: "pause.clock",
     field: "pause.field",
     online: "pause.online",
     save: "pause.save",
@@ -38,6 +39,7 @@
     dex: "#c8333f",
     trainer: "#3f6fc4",
     gear: "#5a5f6e",
+    clock: "#c48a2f",
     field: "#3f9a5a",
     online: "#2f9db0",
     save: "#7a5ac4",
@@ -62,6 +64,8 @@
       <rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2.2" /><path d="M5.5 16c.6-1.6 2-2.4 3.5-2.4s2.9.8 3.5 2.4M14 10h4M14 13h4" />
     {:else if page === "gear"}
       <rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M10 18.5h4M10 6h4" />
+    {:else if page === "clock"}
+      <circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" />
     {:else if page === "field"}
       <path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z" /><path d="M5 19l7-7" />
     {:else if page === "online"}
