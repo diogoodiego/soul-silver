@@ -71,7 +71,7 @@ export function buildMapMesh(map: number, scene: SceneInput): MapMesh {
     const moving = playedOf(t, stillKey);
     const shown = moving ? moving.frames : [still];
     const translucent = t.alpha < 1 || shown.some((f) => blends(textures[f.texture]!));
-    const group = { frames: shown, repeat: t.sampler.repeat, flip: t.sampler.flip, alpha: t.alpha, translucent };
+    const group = { frames: shown, repeat: t.sampler.repeat, flip: t.sampler.flip, alpha: t.alpha, translucent, ...(t.building !== undefined && { building: t.building }) };
     const key = JSON.stringify({ ...group, frames: moving ? moving.key : stillKey });
     const entry = groups.get(key) ?? { group, triangles: [] };
     entry.triangles.push(t);

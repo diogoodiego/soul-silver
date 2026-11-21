@@ -57,6 +57,14 @@ describe("buildMapScene", () => {
     });
     expect(input.triangles[0]!.vertices[0].position).toEqual([-22, 18, -128]);
     expect(input.triangles[0]!.sampler.image.data.subarray(0, 4)).toEqual(new Uint8Array([0, 0, 255, 255]));
+    // Block H: a building's triangles carry its model's name (which ones cast shadows: content/maps/shadows.json).
+    expect(input.triangles[0]!.building).toBe(building[0]!.name);
+  });
+
+  it("leaves the terrain's triangles without a building", () => {
+    const land = buildLand({ model: model({ name: "g", texture: "ground" }, [0, 0, 0], [1, 0, 0], [0, 0, 1]) });
+    const { input } = buildMapScene({ cells: [{ x: 0, z: 0, piece: readPiece(land) }], areaTextures: area, buildings: noBuildings, animated: new Set() });
+    expect(input.triangles[0]!.building).toBeUndefined();
   });
 
   it("carries material alpha and the texture matrix with the raw texture coordinates", () => {

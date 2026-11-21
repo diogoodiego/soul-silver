@@ -47,6 +47,11 @@ describe("buildMapMesh", () => {
     expect([textures.length, file.groups[0]!.frames.length]).toEqual([1, 1]);
   });
 
+  it("keeps a placed model's triangles apart from the terrain's, under the model's name (shadows: content/maps/shadows.json)", () => {
+    const { file } = buildMapMesh(0, scene([triangle(grass), { ...triangle(grass), building: "ko_h01" }, { ...triangle(grass), building: "ko_h01" }]));
+    expect(file.groups.map((g) => [g.building, g.count])).toEqual([[undefined, 3], ["ko_h01", 6]]);
+  });
+
   it("gives frames only to triangles that change across the cycle", () => {
     const flowing = [triangle(water), triangle(water2, [0, 0.5])];
     const { file } = buildMapMesh(0, scene([{ ...triangle(grass), frames: [triangle(grass), triangle(grass)] }, { ...triangle(water), frames: flowing }]));

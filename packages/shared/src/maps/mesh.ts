@@ -22,6 +22,8 @@ const meshGroup = z.strictObject({
   alpha: z.number().min(0).max(1),
   /** Drawn blended, after the opaque groups: alpha below 1 or texels neither transparent nor opaque. */
   translucent: z.boolean(),
+  /** Block H: the placed model (NSBMD name) the group comes from; absent for the terrain, which casts no shadow. */
+  building: z.string().min(1).optional(),
   /** Vertex range in mesh.bin, three per triangle. */
   first: id(),
   count: int(3, 0xffffff),

@@ -24,7 +24,11 @@ import {
 } from "three";
 import type { MapMesh } from "./map-assets";
 import { CLEARING_RADIUS_PX, MAX_CLEARINGS } from "./grass-clearing";
+import shadowsJson from "../../../../content/maps/shadows.json";
 import { groundCover } from "./ground-cover";
+
+/** Placed models that cast no shadow: plants and flat or effect decor. */
+const NO_SHADOW: ReadonlySet<string> = new Set(shadowsJson.noShadow);
 
 // A map's mesh (shared/maps/mesh.ts) as three.js objects: one mesh per group, one texture view per
 // image of the group (wrap differs per group), its scale and offset set by the frame shown.
@@ -181,8 +185,9 @@ export function buildMapObject({ file, vertices, textures }: MapMesh, grid?: Col
     if (grass) clearGrass(material, grass, file);
     if (group.frames.length > 1) animated.push({ material, group, views });
     const mesh = new Mesh(geometry, material);
-    // Flowers and other decals on the ground receive shadows but cast none (their shadow would land beside them).
-    mesh.castShadow = !groundCover(file, vertices, group);
+    // Block H: only placed models cast (houses, buildings, furniture), not the terrain nor the plants and decor
+    // content/maps/shadows.json lists. Flowers and other decals on the ground cast none (their shadow would land beside them).
+    mesh.castShadow = group.building !== undefined && !NO_SHADOW.has(group.building) && !groundCover(file, vertices, group);
     root.add(mesh);
     if (!group.translucent) {
       const shade = new Mesh(geometry, SHADE);

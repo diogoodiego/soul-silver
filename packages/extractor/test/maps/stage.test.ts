@@ -146,7 +146,7 @@ describe("mapsStage", () => {
   it("declares its inputs and output", () => {
     expect(mapsStage).toMatchObject({
       id: "maps",
-      version: 12,
+      version: 13,
       inputs: [{ kind: "stage", stage: "rom-unpack", output: "narc" }, { kind: "stage", stage: "code-decompress", output: "code" }],
       outputs: ["maps"],
     });

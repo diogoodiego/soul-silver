@@ -31,6 +31,8 @@ export interface SceneTriangle {
   texMatrix: { scale: [number, number]; translation: [number, number] };
   /** 1 opaque, below 1 translucent. */
   alpha: number;
+  /** Block H: the placed model (a building's NSBMD name) the triangle comes from; absent for the terrain. */
+  building?: string;
   /** Texture state at each of the scene's ticks, when the material animates. */
   frames?: { sampler: Sampler; texMatrix: SceneTriangle["texMatrix"] }[];
 }
@@ -183,7 +185,7 @@ export function buildMapScene({ cells, areaTextures, buildings, animated, animat
   }
 
   const triangles: SceneTriangle[] = [];
-  function add(models: Model[], sets: TextureSet[], offset: [number, number, number], scale: [number, number, number]) {
+  function add(models: Model[], sets: TextureSet[], offset: [number, number, number], scale: [number, number, number], building = false) {
     for (const model of models) {
       for (const mesh of model.meshes) {
         const material = model.materials[mesh.material]!;
@@ -205,6 +207,7 @@ export function buildMapScene({ cells, areaTextures, buildings, animated, animat
         for (const t of mesh.triangles) {
           triangles.push({
             alpha: material.alpha / 31,
+            ...(building && { building: model.name }),
             sampler,
             texMatrix,
             ...(frames && { frames }),
@@ -229,7 +232,7 @@ export function buildMapScene({ cells, areaTextures, buildings, animated, animat
         continue;
       }
       const position: [number, number, number] = [offset[0] + b.position[0], b.position[1], offset[2] + b.position[2]];
-      add(source.models, source.textures ? [source.textures, areaTextures] : [areaTextures], position, b.scale);
+      add(source.models, source.textures ? [source.textures, areaTextures] : [areaTextures], position, b.scale, true);
     }
   }
 
