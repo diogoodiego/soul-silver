@@ -1,8 +1,8 @@
 import type { EncounterRecord, EncounterSlot, MapEventsFile, FieldItemsFile, FlyPointsFile, HeadbuttRecord, NewGameFile, NpcTradeRecord, RockSmashRecord, ScriptFile, ScriptRef } from "@soulsilver/shared/events";
 import { BLACKTHORN_START, blackthornFloor, blackthornPress, headbuttTree, pickUser, RIDER_OFFSET_PX, rideAt, gymProps, type AzaleaGym, type AzaleaGymState, type BlackthornGymState, type FieldMovesRules, type GymTile } from "@soulsilver/shared/field";
 import { rollLevel, rollSlot } from "@soulsilver/shared/wild";
-import { createRng, ringSource, stepMovement, tileAt, unstick, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
-import { isCounter, isIce, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
+import { createRng, ringSource, stepMovement, talkTile, tileAt, unstick, type NpcAction, type Entity, type PlayerInput, type ServerMessage, type WorldLookup, BUTTON } from "@soulsilver/shared/game";
+import { isIce, isPc, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { starterMember } from "@soulsilver/shared/progression";
 import { store } from "@soulsilver/shared/pc";
 import { canFight, HALL_OF_FAME_MAX, hasBadgeBit, PHOTO_ALBUM_MAX, SEAL_KINDS, SEAL_MAX, type PartyMember, type Save } from "@soulsilver/shared/save";
@@ -14,6 +14,7 @@ import { addItem, canAdd, removeItem, type PocketOf } from "@soulsilver/shared/i
 import { compatibility, compatibilityScore, cyclesToSubtract, daycareStep, eggWalk, makeGiftEgg, deposit, eggCheckDue, eggRoll, eggSpecies, grownLevel, makeEgg, motherIsFirst, retrieve, rollGender, type Parent } from "@soulsilver/shared/daycare";
 import type { ItemsData } from "./items";
 import type { Npcs } from "./npcs";
+import { npcRole, type NpcRole } from "./npc-roles";
 import type { ProgressionData } from "./progression";
 import type { World } from "./world";
 
@@ -71,7 +72,7 @@ const HIDDEN_VARS = [0x8000, 0x8001, 0x8002] as const;
 /** Kurt's "making balls today" flag (scr_seq_0874): a daily flag in the original, here the day of his order. */
 const KURT_DAILY_FLAG = 2722;
 /** The Pokémon Centers' ground floors, the original's sPokemonCenterMaps: only there does healing set the respawn point. */
-const POKEMON_CENTERS = new Set(["501", "475", "428", "434", "358", "393", "482", "508", "407", "69", "158", "166", "236", "185", "226", "81", "246", "293", "514", "511", "466", "169", "528", "534"]);
+export const POKEMON_CENTERS = new Set(["501", "475", "428", "434", "358", "393", "482", "508", "407", "69", "158", "166", "236", "185", "226", "81", "246", "293", "514", "511", "466", "169", "528", "534"]);
 /** Map sprites chosen by script variable (the field table has no entry for them). */
 const VAR_SPRITE_FIRST = 101;
 const VAR_SPRITE_LAST = 116;
@@ -171,6 +172,9 @@ export const INTRO_SCRIPT: ScriptFile = {
   unreachableBytes: 0,
   partial: false,
 };
+
+/** The healing machine's jingle the nurse's common script plays (std 2002). */
+const HEAL_FANFARE = 1183;
 
 /** The PC's common script (std 2010: the menu, then the storage). */
 const PC_SCRIPT = 2010;
@@ -328,8 +332,10 @@ interface State {
   lastDebug: string;
   /** The script waits on a trainer battle: the player fights meanwhile. */
   inBattle: boolean;
-  /** The script waits on a shop or a PC the server runs (spec 023). */
+  /** The script waits on a shop or a PC the server runs (spec 023), or block H's shop option opened one without a script. */
   inService: boolean;
+  /** Block H: talking to a clerk or a nurse says the lines only; their menu and question are answered "see you". */
+  talkOnly: boolean;
   /** Result of the last trainer battle, for CheckBattleWon. */
   won: boolean;
   /** Spec 030.9: the last wild battle's BattleOutcome (GetStaticEncounterOutcome), and the map it was fought on. */
@@ -388,13 +394,25 @@ export function createScripts(options: ScriptsOptions) {
     return { x: Math.floor(e.x / MAP_TILE_PX) + o.tx, z: Math.floor(e.y / MAP_TILE_PX) + o.ty };
   }
 
+  /** Block H: the service a person's script reaches, by script and whether the map is a Center. */
+  const roles = new Map<string, NpcRole | undefined>();
+  function roleOf(script: { file: number; entry: number } | null, area: string): NpcRole | undefined {
+    if (!script) return undefined;
+    const heals = POKEMON_CENTERS.has(area);
+    const key = `${script.file}:${script.entry}:${heals}`;
+    if (!roles.has(key)) roles.set(key, npcRole(script, (id) => data.file(id), (id) => data.resolve(id, Number(area)), heals));
+    return roles.get(key);
+  }
+
   function spawnPeople(area: string): void {
     if (people.has(area)) return;
     const ids = new Map<number, number>();
     people.set(area, ids);
     const o = origin(area);
     for (const n of eventsOf(area)?.npcs ?? []) {
-      const e = world.add({ kind: "npc", area, x: center(n.x - o.tx), y: center(n.z - o.ty), level: 0, facing: SCRIPT_DIRECTIONS[n.facing] ?? "south", data: { sprite: n.sprite, person: n.id } });
+      // An item ball or someone with nothing to say gets no options (the interact key still picks the ball up).
+      const role = n.trainer ? { role: "battle" } : !n.script || n.script.file === ITEM_BALL_FILE ? { role: "none" } : roleOf(n.script, area);
+      const e = world.add({ kind: "npc", area, x: center(n.x - o.tx), y: center(n.z - o.ty), level: 0, facing: SCRIPT_DIRECTIONS[n.facing] ?? "south", data: { sprite: n.sprite, person: n.id, ...role } });
       ids.set(n.id, e.id);
       options.npcs?.add(e.id, { person: n.id, movement: n.movement, xRange: n.xRange, yRange: n.yRange, tx: n.x - o.tx, ty: n.z - o.ty });
     }
@@ -744,13 +762,7 @@ export function createScripts(options: ScriptsOptions) {
       // shortcut: the save's Pokédex keeps no forms, so a caught Unown counts as one; keep forms in the Pokédex when the puzzles make Unown catchable (Marco 6).
       unownForms: () => (who.progress.pokedex.caught.includes(UNOWN) ? 1 : 0),
       boxMonCount: () => who.progress.boxes.reduce((n, b) => n + b.slots.filter((m) => m !== null).length, 0),
-      healParty() {
-        for (const m of who.progress.party) m.hp = options.hpMax(m);
-        // The nurse makes this Center the blackout respawn point, in front of her counter (spec 023); Mr. Pokémon and Mom heal too, but do not.
-        const e = me();
-        if (POKEMON_CENTERS.has(e.area)) who.progress.respawn = { area: e.area, x: e.x, y: e.y };
-        options.changed(who.playerId, "party");
-      },
+      healParty: () => heal(s),
       trainerFlag: (t) => who.flags.has(trainerFlagBase + t),
       setTrainerFlag: (t, on) => writeFlag(s, trainerFlagBase + t, on),
       battleWon: () => s.won,
@@ -895,6 +907,12 @@ export function createScripts(options: ScriptsOptions) {
       case "running":
         return;
       case "blocked":
+        // Block H: talking only, the clerk's menu takes its last item (See ya), the nurse's question no, and no service opens.
+        if (s.talkOnly && ["yes-no", "menu", "shop", "pc"].includes(state.request.kind)) {
+          s.runner!.resume(state.request.kind === "yes-no" ? 1 : state.request.kind === "menu" ? state.request.items.length - 1 : undefined);
+          settle(s);
+          return;
+        }
         if (state.request.kind === "wait") {
           s.waitUntil = tick + state.request.ticks;
         } else if (state.request.kind === "battle") {
@@ -1009,7 +1027,16 @@ export function createScripts(options: ScriptsOptions) {
     return { ...e, x: center(p.x - o.tx), y: center(p.z - o.ty), facing: p.facing };
   }
 
+  function heal(s: State): void {
+    for (const m of s.who.progress.party) m.hp = options.hpMax(m);
+    // The nurse makes this Center the blackout respawn point, in front of her counter (spec 023); Mr. Pokémon and Mom heal too, but do not.
+    const e = world.get(s.who.entityId)!;
+    if (POKEMON_CENTERS.has(e.area)) s.who.progress.respawn = { area: e.area, x: e.x, y: e.y };
+    options.changed(s.who.playerId, "party");
+  }
+
   function finish(s: State): void {
+    s.talkOnly = false;
     s.runner = undefined;
     s.waitUntil = undefined;
     s.ride = undefined;
@@ -1116,37 +1143,43 @@ export function createScripts(options: ScriptsOptions) {
     return { objects, triggers: [...frames, ...triggers] };
   }
 
+  /** The visible person on the tile a talk reaches, as this player sees them. */
+  function personInReach(s: State, front: { x: number; y: number }): Entity | undefined {
+    const e = world.get(s.who.entityId)!;
+    return world
+      .all()
+      .map((n) => viewOf(s, n))
+      .find((n) => n.kind === "npc" && n.area === e.area && Math.floor(n.x / MAP_TILE_PX) === front.x && Math.floor(n.y / MAP_TILE_PX) === front.y && visibleTo(s, n));
+  }
+
+  /** Talks to `npc`: a trainer's battle rules, else their script; `talkOnly` for block H's talk to a clerk or a nurse. */
+  function talkTo(s: State, npc: Entity, talkOnly = false): boolean {
+    const person = eventsOf(npc.area)?.npcs.find((n) => n.id === npc.data["person"]);
+    // Trainers run the battle rules, not a script of their own.
+    if (person?.trainer && options.talkTrainer) return options.talkTrainer(s.who.playerId, npc);
+    const ref = person?.script;
+    if (!ref) return false;
+    // Before the first step: FacePlayer usually runs in it.
+    s.talkedTo = npc.id;
+    s.talkOnly = talkOnly;
+    if (start(s, ref)) return true;
+    s.talkedTo = undefined;
+    s.talkOnly = false;
+    return false;
+  }
+
   function interact(s: State): boolean {
     const e = world.get(s.who.entityId)!;
-    const [dx, dy] = STEP[e.facing];
-    const front = { x: Math.floor(e.x / MAP_TILE_PX) + dx, y: Math.floor(e.y / MAP_TILE_PX) + dy };
-    // Across a counter, as the original does for clerks and nurses.
-    if (isCounter(tileAt(lookup, e.area, e.level, front.x * MAP_TILE_PX + MAP_TILE_PX / 2, front.y * MAP_TILE_PX + MAP_TILE_PX / 2))) {
-      front.x += dx;
-      front.y += dy;
-    }
+    const front = talkTile(lookup, e);
     // A PC tile runs the PC's common script, as the original does from the tile's behavior.
     if (isPc(tileAt(lookup, e.area, e.level, front.x * MAP_TILE_PX + MAP_TILE_PX / 2, front.y * MAP_TILE_PX + MAP_TILE_PX / 2))) {
       const ref = data.resolve(PC_SCRIPT, Number(e.area));
       return ref ? start(s, ref) : false;
     }
-    const npc = world
-      .all()
-      .map((n) => viewOf(s, n))
-      .find((n) => n.kind === "npc" && n.area === e.area && Math.floor(n.x / MAP_TILE_PX) === front.x && Math.floor(n.y / MAP_TILE_PX) === front.y && visibleTo(s, n));
+    const npc = personInReach(s, front);
     const events = eventsOf(e.area);
-    if (npc) {
-      const person = events?.npcs.find((n) => n.id === npc.data["person"]);
-      // Trainers run the battle rules, not a script of their own.
-      if (person?.trainer && options.talkTrainer) return options.talkTrainer(s.who.playerId, npc);
-      const ref = person?.script;
-      if (!ref) return false;
-      // Before the first step: FacePlayer usually runs in it.
-      s.talkedTo = npc.id;
-      if (start(s, ref)) return true;
-      s.talkedTo = undefined;
-      return false;
-    }
+    // Block H: the interact key is the talk option; a clerk's shop and a nurse's heal have options of their own.
+    if (npc) return talkTo(s, npc, npc.data["role"] === "shop" || npc.data["role"] === "heal");
     const o = origin(e.area);
     const sign = events?.signs.find((g) => g.script && g.x - o.tx === front.x && g.z - o.ty === front.y);
     if (sign?.script && sign.kind === HIDDEN_SIGN) {
@@ -1166,7 +1199,7 @@ export function createScripts(options: ScriptsOptions) {
 
   return {
     join(who: Storyteller): void {
-      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", walkedFrom: undefined, shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, won: false, outcome: 0, wildArea: undefined, strength: false, gymmick: undefined, blackthorn: undefined, ride: undefined, changes: [] };
+      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", walkedFrom: undefined, shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, talkOnly: false, won: false, outcome: 0, wildArea: undefined, strength: false, gymmick: undefined, blackthorn: undefined, ride: undefined, changes: [] };
       states.set(who.playerId, s);
       // Spec 024: a story not yet started runs _std_init to its end before any map, as RunInitScript does.
       const init = who.init && data.newGame ? data.resolve(data.newGame.initScript, data.newGame.map) : undefined;
@@ -1181,13 +1214,13 @@ export function createScripts(options: ScriptsOptions) {
     leave(playerId: number): void {
       states.delete(playerId);
     },
-    busy: (playerId: number) => states.get(playerId)?.runner !== undefined,
+    busy: (playerId: number) => states.get(playerId)?.runner !== undefined || states.get(playerId)?.inService === true,
     /** A shop or the PC the script opened is open: what the player trades there is saved at once (spec 024). */
     inService: (playerId: number) => states.get(playerId)?.inService === true,
-    /** In a script and not fighting its trainer battle: out of reach of combat (spec 021, US4). */
+    /** In a script and not fighting its trainer battle, or in a shop: out of reach of combat (spec 021, US4). */
     sheltered(playerId: number): boolean {
       const s = states.get(playerId);
-      return s?.runner !== undefined && !s.inBattle;
+      return (s?.runner !== undefined && !s.inBattle) || s?.inService === true;
     },
     /** True when the input is the script's: the player is locked, or interact started a script. */
     input(playerId: number, input: PlayerInput | undefined, pressed: number, now: number): boolean {
@@ -1195,6 +1228,7 @@ export function createScripts(options: ScriptsOptions) {
       const s = states.get(playerId);
       if (!s) return false;
       if (s.runner) return !s.inBattle;
+      if (s.inService) return true;
       return input !== undefined && (pressed & BUTTON.interact) !== 0 && interact(s);
     },
     /** Ends the running script where it stands, for "Estou preso"; false while it waits on a battle, a shop or the PC. */
@@ -1212,8 +1246,32 @@ export function createScripts(options: ScriptsOptions) {
       const s = states.get(playerId);
       if (!s?.inService) return;
       s.inService = false;
-      s.runner!.resume();
+      // Block H's shop option opened it without a script: the player just walks again.
+      if (!s.runner) return lock(s, false);
+      s.runner.resume();
       settle(s);
+    },
+    /** Block H: an option around the person in front; refused (logged) when they are out of reach or do not offer it. */
+    npcAction(playerId: number, npcId: number, action: NpcAction): void {
+      const s = states.get(playerId);
+      const e = s && world.get(s.who.entityId);
+      const npc = s && e && !s.runner && !s.inService ? personInReach(s, talkTile(lookup, e)) : undefined;
+      const role = npc?.data["role"];
+      if (!s || !npc || npc.id !== npcId || (action !== "talk" && action !== role && !(action === "sell" && role === "shop"))) {
+        options.log(`Refused ${action} from player ${playerId} on entity ${npcId}: not in reach, busy or not offered`);
+        return;
+      }
+      if (action === "talk") talkTo(s, npc, role === "shop" || role === "heal");
+      else if (action === "battle") options.talkTrainer?.(playerId, npc);
+      else if (action === "shop" || action === "sell") {
+        if (!options.shop?.(playerId, Number(npc.data["shop"]), action === "sell")) return options.log(`Player ${playerId}: shop ${String(npc.data["shop"])} could not open`);
+        s.inService = true;
+        lock(s, true);
+      } else {
+        heal(s);
+        send(s, { type: "script-event", event: { kind: "sound", sound: "fanfare", id: HEAL_FANFARE } });
+        send(s, { type: "healed" });
+      }
     },
     /** The trainer battle a script waited on is over: CheckBattleWon reads `won`. */
     battleEnded(playerId: number, won: boolean): void {

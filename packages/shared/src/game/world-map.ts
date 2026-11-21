@@ -1,5 +1,5 @@
-import { mapCells, mapNeighbors } from "../maps/areas.ts";
-import type { CollisionCell } from "../maps/collision.ts";
+import { mapCells, mapNeighbors, type Direction } from "../maps/areas.ts";
+import { isCounter, type CollisionCell } from "../maps/collision.ts";
 import { MAP_TILE_PX, PIECE_TILES } from "../maps/constants.ts";
 import type { MapArea } from "../maps/schemas.ts";
 import type { CollisionMap } from "./movement.ts";
@@ -108,4 +108,15 @@ export function tileAt(world: WorldLookup, mapId: string, level: number, x: numb
   if (insideMap(map, x, y)) return ownTile(map, level, x, y);
   const hit = neighborAt(world, map, x, y);
   return hit ? ownTile(hit.map, level, hit.x, hit.y) : BLOCKED;
+}
+
+const AHEAD: Record<Direction, [number, number]> = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+
+/** The tile, in map tiles, a talk reaches: the one ahead, or past a counter as the original does for clerks and nurses. */
+export function talkTile(world: WorldLookup, e: { area: string; level: number; x: number; y: number; facing: Direction }): { x: number; y: number } {
+  const [dx, dy] = AHEAD[e.facing];
+  const x = Math.floor(e.x / MAP_TILE_PX) + dx;
+  const y = Math.floor(e.y / MAP_TILE_PX) + dy;
+  const counter = isCounter(tileAt(world, e.area, e.level, x * MAP_TILE_PX + MAP_TILE_PX / 2, y * MAP_TILE_PX + MAP_TILE_PX / 2));
+  return counter ? { x: x + dx, y: y + dy } : { x, y };
 }

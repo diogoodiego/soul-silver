@@ -1,11 +1,14 @@
 <script lang="ts">
-  // The screen flow (spec 017): first run → title → main menu → play (save → mode → match) → game.
+  // The screen flow (spec 017): first run → title → main menu → play (save → mode → match) or arena → game.
   import type { AssetsState, UpdateState } from "@soulsilver/shared";
   import { onMount } from "svelte";
   import FirstRun from "./screens/FirstRun.svelte";
   import GameSession from "./screens/GameSession.svelte";
   import { t } from "./i18n";
   import type { PlayRequest } from "./play-request";
+  import { arenaSave } from "@soulsilver/shared/save";
+  import type { ArenaSpec } from "@soulsilver/shared/game";
+  import ArenaSetup from "./screens/ArenaSetup.svelte";
   import About from "./screens/About.svelte";
   import Home from "./screens/Home.svelte";
   import Play from "./screens/Play.svelte";
@@ -21,7 +24,7 @@
   /** How long "Assets prontos" stays up after an extraction before the title. */
   const READY_NOTICE_MS = 1000;
 
-  type Screen = "title" | "home" | "about" | "settings" | "play";
+  type Screen = "title" | "home" | "about" | "settings" | "play" | "arena";
   let screen = $state<Screen>("title");
   /** `dir` slides title ⇄ menu (1 up, -1 down); every other change is instant. */
   function go(next: Screen, dir: -1 | 0 | 1 = 0): void {
@@ -41,6 +44,7 @@
   /** From the Online tab: the old session saved and closed; join the new host with the same slot. */
   async function switchTo(address: string): Promise<void> {
     const slot = play!.slot;
+    if (slot === undefined) return;
     const result = await window.soulSilver.joinSession(slot, address);
     if (result.ok) {
       play = { save: result.save, slot, address };
@@ -52,11 +56,21 @@
     switchError = result.reason;
   }
 
+  let arenaBusy = $state(false);
+  /** The dev arena runs on no save: the session opens on no slot and the game gets a throwaway one. */
+  async function startArena(spec: ArenaSpec): Promise<void> {
+    if (arenaBusy) return;
+    arenaBusy = true;
+    await window.soulSilver.startArena();
+    arenaBusy = false;
+    play = { save: arenaSave(spec.trainer.name, spec.trainer.character, new Date().toISOString()), arena: spec };
+  }
+
   /** Bumped on reconnect so the game screen starts over. */
   let attempt = $state(0);
 
   async function reconnect(): Promise<string | undefined> {
-    if (!play?.address) return t("game.noAddress");
+    if (!play?.address || play.slot === undefined) return t("game.noAddress");
     const result = await window.soulSilver.joinSession(play.slot, play.address);
     if (!result.ok) return result.reason;
     play = { ...play, save: result.save };
@@ -129,7 +143,7 @@
   </filter>
 </svg>
 
-{#if showMain && !play && (screen === "title" || screen === "home" || screen === "settings" || screen === "play")}
+{#if showMain && !play && (screen === "title" || screen === "home" || screen === "settings" || screen === "play" || screen === "arena")}
   <div class="fixed inset-0 overflow-hidden bg-canvas" class:crt={$settings.crt} aria-hidden="true" use:backdrop></div>
   <div class="fixed inset-0 bg-overlay" aria-hidden="true"></div>
 {/if}
@@ -146,11 +160,13 @@
   {:else if screen === "title"}
     <Title version={appVersion} onStart={() => go("home", 1)} />
   {:else if screen === "home"}
-    <Home notice={switchError} {update} {serverReady} serverFailed={failed} onPlay={() => go("play")} onSettings={() => go("settings")} onAbout={() => go("about")} onBack={() => go("title", -1)} />
+    <Home notice={switchError} {update} {serverReady} serverFailed={failed} onPlay={() => go("play")} onArena={() => go("arena")} onSettings={() => go("settings")} onAbout={() => go("about")} onBack={() => go("title", -1)} />
   {:else if screen === "about"}
     <About version={appVersion} onBack={() => go("home")} />
   {:else if screen === "settings"}
     <Settings onBack={() => go("home")} />
+  {:else if screen === "arena"}
+    <ArenaSetup busy={arenaBusy} onStart={(spec: ArenaSpec) => void startArena(spec)} onBack={() => go("home")} />
   {:else}
     <Play onPlay={(request: PlayRequest) => (play = request)} onBack={() => go("home")} />
   {/if}

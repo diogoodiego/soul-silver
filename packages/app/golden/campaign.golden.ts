@@ -5,7 +5,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
-import { BUTTON, createRng, findDuplicates, surfable, tileAt, type PcSlot, type ServerMessage } from "@soulsilver/shared/game";
+import { BUTTON, createRng, findDuplicates, surfable, talkTile, tileAt, type NpcAction, type PcSlot, type ServerMessage } from "@soulsilver/shared/game";
 import { isIce, type Direction } from "@soulsilver/shared/maps";
 import { BLACKTHORN_START, blackthornFloor, blackthornPress, type BlackthornGymState } from "@soulsilver/shared/field";
 import { expForLevel, memberStats } from "@soulsilver/shared/progression";
@@ -268,6 +268,17 @@ function pilot(from?: Save) {
     if (wait) settle();
   }
 
+  /** Block H: turns to `dir` and picks an option of the person a talk reaches (shop, sell, heal), as the HUD does. */
+  function act(dir: Direction, action: NpcAction, wait = true): void {
+    tick(dir);
+    tick();
+    const at = talkTile(data.world!, me());
+    const npc = session.world.all().find((e) => e.kind === "npc" && e.area === me().area && Math.floor(e.x / 16) === at.x && Math.floor(e.y / 16) === at.y);
+    if (npc) client.send({ type: "npc-action", npcId: npc.id, action });
+    tick();
+    if (wait) settle();
+  }
+
   const count = (save: Save, item: number) => save.bag.find((b) => b.item === item)?.count ?? 0;
   const lastService = <T extends ServerMessage["type"]>(type: T) => services.findLast((m): m is Got<T> => m.type === type);
 
@@ -421,7 +432,7 @@ function pilot(from?: Save) {
   /** Every party member's HP back at the Cherrygrove nurse (map 69: she stands at (8, 11), the counter is row 12). */
   function heal(): void {
     warp(69, 8, 13);
-    talk("north");
+    act("north", "heal");
   }
 
   /** The isolation check (spec 020): the NPCs the second player sees follow their own flags, not the first player's. */
@@ -464,6 +475,7 @@ function pilot(from?: Save) {
     warp,
     walk,
     talk,
+    act,
     battle,
     routeTrainer,
     talkTo,
@@ -557,11 +569,10 @@ function shop(p: Pilot): Check {
     p.until(() => p.services.slice(n).some((m) => m.type === "shopResult"));
     return p.lastService("shopResult");
   };
-  // The clerk's menu: buy, then sell when it comes back, then quit.
-  p.answers.push(0, 1, 2);
+  // Block H: the clerk's shop option, then their sell option.
   p.warp(68, 4, 6);
   const n = p.services.length;
-  p.talk("west", false);
+  p.act("west", "shop", false);
   const buying = next(n);
   if (buying?.mode !== "buy") return fail(`a loja não abriu para compra (${JSON.stringify(buying)})`);
   const record = p.data.shops?.shop(buying.shopId);
@@ -574,14 +585,16 @@ function shop(p: Pilot): Check {
   const mid = p.fresh();
   if (!bought?.ok || bought.money !== before.money - price || mid.money !== bought.money || p.count(mid, POTION) !== p.count(before, POTION) + 1) return fail(`compra: ${JSON.stringify(bought)}, dinheiro ${mid.money}, Potions ${p.count(mid, POTION)}`);
   p.send({ type: "shop-leave" });
-  const selling = next();
-  if (selling?.mode !== "sell") return fail(`o menu do vendedor não voltou à venda (${JSON.stringify(selling)})`);
+  p.settle();
+  const leftAt = p.services.length;
+  p.act("west", "sell", false);
+  const selling = next(leftAt);
+  if (selling?.mode !== "sell") return fail(`a venda não abriu (${JSON.stringify(selling)})`);
   const sale = selling.stock.find((s) => s.item === POTION)?.price ?? 0;
   p.send({ type: "shop-sell", item: POTION, qty: 1 });
   const sold = result();
   p.send({ type: "shop-leave" });
   p.settle();
-  p.answers.length = 0;
   const after = p.fresh();
   if (!sold?.ok || after.money !== mid.money + sale || p.count(after, POTION) !== p.count(before, POTION)) return fail(`venda: ${JSON.stringify(sold)}, dinheiro ${after.money}, Potions ${p.count(after, POTION)}`);
   return { name: `${name}: loja ${buying.shopId}, ${offered.length} itens; Potion comprada por ${price} e vendida por ${sale}` };

@@ -72,7 +72,7 @@
   <ol class="m-0 flex list-none items-center gap-1.5 p-0">
     {#each SLOTS as i (i)}
       {@const m = party[i]}
-      <li class="grid size-6 place-items-center" title={m ? (m.egg ? t("party.egg") : (m.nickname ?? speciesName(m.species))) : t("hud.empty")}>
+      <li class="grid w-6 place-items-center" title={m ? (m.egg ? t("party.egg") : (m.nickname ?? speciesName(m.species))) : t("hud.empty")}>
         {#if !m}
           <span class="size-1.5 rounded-full bg-white/50"></span>
           <span class="sr-only">{t("hud.empty")}</span>
@@ -80,7 +80,7 @@
           {@const down = m.hp === 0 && !m.egg}
           <span class="grid justify-items-center gap-px">
             <span
-              class={["block [image-rendering:pixelated] drop-shadow-[0_1px_1px_#000]", i === out ? "[zoom:1]" : "[zoom:0.75]", down && "opacity-50 grayscale"]}
+              class={["block [image-rendering:pixelated] drop-shadow-[0_1px_1px_#000]", "[zoom:0.75]", i === out && "scale-[1.333]", down && "opacity-50 grayscale"]}
               aria-hidden="true"
               style:width="{ball.w}px"
               style:height="{ball.h}px"

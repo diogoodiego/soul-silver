@@ -91,10 +91,10 @@
   }
   &::-webkit-scrollbar-thumb {
     border-radius: 999px;
-    background: rgb(255 255 255 / 22%);
+    background: var(--background-color-selected);
   }
   &::-webkit-scrollbar-thumb:hover {
-    background: rgb(255 255 255 / 40%);
+    background: var(--text-color-disabled);
   }
 }
 
@@ -139,6 +139,12 @@
   --color-action-secondary-pressed: rgb(222 217 219 / 20%);
   --color-action-ghost-hover: rgb(222 217 219 / 10%);
   --color-action-ghost-pressed: rgb(222 217 219 / 20%);
+
+  /* Provisional semantic names with no token in the collection yet: components use these, so a future status
+   * (error) or elevation token only changes the value here. */
+  --text-color-error: var(--color-danger);
+  --outline-color-error: var(--color-danger);
+  --shadow-panel: 0 12px 40px rgb(0 0 0 / 45%);
 
   /* No semantic token yet (status is unfinished): errors and the frame of the game's text boxes. */
   --color-danger: #ff6b81;

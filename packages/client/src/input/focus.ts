@@ -61,12 +61,20 @@ const FOCUSABLE =":is(button, input, select, [tabindex]):not([disabled]):not([ta
  */
 export function menuNavigation(root: HTMLElement, input: Input, onCancel?: () => void, onAction?: (action: Action) => boolean) {
   const items = () => [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((e) => e.offsetParent !== null);
-  const first = items()[0];
+  // A text field never starts focused: it would take the keys before the player chose it.
+  const first = items().find((e) => !(e instanceof HTMLInputElement));
   if (!root.contains(document.activeElement)) first?.focus();
-  return input.onAction((action) => {
+  /** The last item focused: a text field left with Enter drops the focus, and the arrows go on from it. */
+  let last: HTMLElement | undefined;
+  const track = (e: FocusEvent) => {
+    if (e.target instanceof HTMLElement) last = e.target;
+  };
+  root.addEventListener("focusin", track);
+  const off = input.onAction((action) => {
     if (onAction?.(action)) return;
     const list = items();
-    const at = list.indexOf(document.activeElement as HTMLElement);
+    const focused = root.contains(document.activeElement) ? (document.activeElement as HTMLElement) : last;
+    const at = focused ? list.indexOf(focused) : -1;
     if (action === "up" || action === "down" || action === "left" || action === "right") {
       // Inside a text field the arrows move the caret.
       if (document.activeElement instanceof HTMLInputElement && (action === "left" || action === "right")) return;
@@ -74,9 +82,15 @@ export function menuNavigation(root: HTMLElement, input: Input, onCancel?: () =>
     } else if (action === "confirm") {
       // The input layer cancels the native Enter/Space click on bound keys, so this is the only click.
       if (document.activeElement instanceof HTMLInputElement) return;
-      if (at >= 0) list[at]!.click();
+      // Confirm on a text field left with Enter goes back into it.
+      if (at >= 0 && list[at] instanceof HTMLInputElement) list[at].focus();
+      else if (at >= 0) list[at]!.click();
     } else if (action === "cancel") {
       onCancel?.();
     }
   });
+  return () => {
+    off();
+    root.removeEventListener("focusin", track);
+  };
 }

@@ -1,4 +1,5 @@
 import { MAP_TILE_PX } from "../maps/index.ts";
+import { migrate } from "./migrate.ts";
 import { STORY_REV, type Save } from "./schema.ts";
 
 /** Flags NewGame_InitSaveData sets in code, not in a script (research R1): FLAG_UNK_960. */
@@ -36,4 +37,14 @@ export function applyNewGame(save: Save, start: NewGameStart): Save {
     // Block H: the trainer card's start date is the slot's creation.
     startedAt: save.savedAt,
   };
+}
+
+/**
+ * The dev arena's save (spec 013): a blank one in memory, never written, carrying only the arena's trainer.
+ * The arena is tied to no slot, so the hello and the HUD (bag, dex, name) read this instead.
+ */
+export function arenaSave(name: string, character: Save["character"], now: string): Save {
+  const result = migrate({ schemaVersion: 1, name: name.trim(), character, area: "0", x: 0, y: 0, facing: "south", playTimeMs: 0, savedAt: now, rev: 0 });
+  if (!result.ok) throw new Error(`arena save: ${result.message}`);
+  return result.save;
 }

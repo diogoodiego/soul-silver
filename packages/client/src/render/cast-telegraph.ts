@@ -1,12 +1,16 @@
-import { AdditiveBlending, BufferAttribute, BufferGeometry, CircleGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, PlaneGeometry, Points, PointsMaterial, RingGeometry, type Scene } from "three";
+import { AdditiveBlending, BufferAttribute, BufferGeometry, CircleGeometry, Color, DoubleSide, DynamicDrawUsage, Group, InstancedBufferAttribute, InstancedMesh, type Material, Matrix4, Mesh, MeshBasicMaterial, PlaneGeometry, Points, PointsMaterial, RingGeometry, type Scene, ShaderMaterial } from "three";
 import type { Entity } from "@soulsilver/shared/game";
 import { TYPE_KEYS } from "@soulsilver/shared/game-data";
 import { TYPE_COLORS } from "../game/type-colors";
+import { OBLIQUE } from "./camera";
 
 /**
  * Block H: a move being cast shows the ground it will cover in its type's colour: a faint area with a solid
  * border, and a charge that grows from the user out to that border as the cast runs. Moves without an area
  * (self-buffs) gather rising specks of light instead. The server sends the shape (shared `telegraph`).
+ * Every cast also has motes of energy circling the user, closing in and spinning faster as the charge
+ * builds, and lighting the ground under it in the type's colour (the map is unlit: the light is a glow
+ * added over the ground).
  */
 
 const AREA_OPACITY = 0.15;
@@ -18,6 +22,67 @@ const LIFT_PX = 0.5;
 const SPECKS = 24;
 const SPECK_RISE_PX = 28;
 const SPECK_CYCLE_MS = 700;
+export const ORBIT_MOTES = 12;
+/** How flat the orbit lies: the camera sees the ground almost from above, so a full circle reads as a ring on the floor. */
+export const ORBIT_FLAT = 0.45;
+const LIGHT_RADIUS_PX = 36;
+
+/**
+ * Mote `i` of the orbit, `t` ms into the cast at charge `p` (0..1), around the user's feet in px (y up).
+ * Its angle is the spin integrated over a charge growing with time, so the speed rises without the motes jumping.
+ */
+export function orbitMote(i: number, t: number, p: number) {
+  const base = (i * Math.PI * 2) / ORBIT_MOTES;
+  const angle = base + t * (0.004 + 0.004 * p);
+  const r = 18 - 8 * p + 1.5 * Math.sin(base * 3 + t * 0.006);
+  const y = 8 + (i % 3) * 5 + Math.sin(angle + i) * 3;
+  const glow = (0.4 + 0.6 * p) * (0.75 + 0.25 * Math.sin(t * 0.02 + i * 1.7));
+  return { x: Math.cos(angle) * r, y, z: Math.sin(angle) * r * ORBIT_FLAT, glow, size: 3 + 2 * p };
+}
+
+/** The ground light's strength: there from the start, full at the end of the charge, flickering a little. */
+export function orbitLight(p: number, t: number): number {
+  return (0.35 + 0.65 * p) * (0.85 + 0.15 * Math.sin(t * 0.03));
+}
+
+const MOTE_VERTEX = /* glsl */ `
+  attribute float glow;
+  varying float vGlow;
+  varying vec2 vUv;
+  void main() {
+    vGlow = glow;
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+  }
+`;
+/** A white-hot core inside a halo of the type's colour, added over the scene. */
+const MOTE_FRAGMENT = /* glsl */ `
+  uniform vec3 color;
+  varying float vGlow;
+  varying vec2 vUv;
+  void main() {
+    float d = length(vUv - 0.5) * 2.0;
+    float halo = pow(max(0.0, 1.0 - d), 2.0);
+    float core = smoothstep(0.45, 0.0, d);
+    gl_FragColor = vec4(mix(color, vec3(1.0), core) * (halo + core) * vGlow, 1.0);
+  }
+`;
+const LIGHT_VERTEX = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+const LIGHT_FRAGMENT = /* glsl */ `
+  uniform vec3 color;
+  uniform float level;
+  varying vec2 vUv;
+  void main() {
+    float d = length((vUv - 0.5) * 2.0);
+    gl_FragColor = vec4(color * pow(max(0.0, 1.0 - d), 1.8) * level * 0.8, 1.0);
+  }
+`;
 
 interface Cast {
   /** Changes with a new cast. */
@@ -29,17 +94,26 @@ interface Cast {
   charge: Mesh | undefined;
   rect: boolean;
   specks: Points | undefined;
-  materials: (MeshBasicMaterial | PointsMaterial)[];
+  /** At the user's feet, not at the area's origin. */
+  around: Group;
+  motes: InstancedMesh<PlaneGeometry, ShaderMaterial>;
+  light: Mesh<PlaneGeometry, ShaderMaterial>;
+  materials: Material[];
 }
 
 export function createCastTelegraphs(scene: Scene) {
   const casts = new Map<number, Cast>();
+  const mote = new Matrix4();
 
   function remove(id: number): void {
     const c = casts.get(id);
     if (!c) return;
-    c.root.removeFromParent();
-    c.root.traverse((o) => (o instanceof Mesh || o instanceof Points) && o.geometry.dispose());
+    for (const g of [c.root, c.around]) {
+      g.removeFromParent();
+      g.traverse((o) => {
+        if (o instanceof Mesh || o instanceof Points) (o.geometry as BufferGeometry).dispose();
+      });
+    }
     for (const m of c.materials) m.dispose();
     casts.delete(id);
   }
@@ -50,8 +124,26 @@ export function createCastTelegraphs(scene: Scene) {
     const size = Number(e.data["castSize"]);
     const span = Number(e.data["castSpan"]);
     const root = new Group();
+    const around = new Group();
+    const tint = new Color(color);
+    const motes = new InstancedMesh(
+      new PlaneGeometry(1, 1).setAttribute("glow", new InstancedBufferAttribute(new Float32Array(ORBIT_MOTES), 1).setUsage(DynamicDrawUsage)),
+      new ShaderMaterial({ vertexShader: MOTE_VERTEX, fragmentShader: MOTE_FRAGMENT, uniforms: { color: { value: tint } }, transparent: true, depthWrite: false, blending: AdditiveBlending }),
+      ORBIT_MOTES,
+    );
+    motes.instanceMatrix.setUsage(DynamicDrawUsage);
+    motes.frustumCulled = false;
+    const light = new Mesh(
+      new PlaneGeometry(LIGHT_RADIUS_PX * 2, LIGHT_RADIUS_PX * 2).rotateX(-Math.PI / 2),
+      new ShaderMaterial({ vertexShader: LIGHT_VERTEX, fragmentShader: LIGHT_FRAGMENT, uniforms: { color: { value: tint }, level: { value: 0 } }, transparent: true, depthWrite: false, blending: AdditiveBlending }),
+    );
+    light.position.y = LIFT_PX;
+    light.renderOrder = 3;
+    light.frustumCulled = false;
+    around.add(light, motes);
+    scene.add(around);
     // Seen a snapshot (one 20 Hz tick) after the server began it, so the charge meets the border as the move goes.
-    const cast: Cast = { key, start: now - 50, ms: Number(e.data["castMs"]), root, charge: undefined, rect: shape === "rect", specks: undefined, materials: [] };
+    const cast: Cast = { key, start: now - 50, ms: Number(e.data["castMs"]), root, charge: undefined, rect: shape === "rect", specks: undefined, around, motes, light, materials: [motes.material, light.material] };
     const material = (opacity: number) => {
       const m = new MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: DoubleSide });
       cast.materials.push(m);
@@ -130,6 +222,18 @@ export function createCastTelegraphs(scene: Scene) {
         const p = Math.min(1, Math.max(0, (now - c.start) / Math.max(1, c.ms)));
         const ground = groundOf(e);
         c.root.position.set(e.x + Number(e.data["castOx"] ?? 0), ground + LIFT_PX, e.y + Number(e.data["castOy"] ?? 0));
+        const t = now - c.start;
+        c.around.position.set(e.x, ground, e.y);
+        c.light.material.uniforms["level"]!.value = orbitLight(p, t);
+        const glow = c.motes.geometry.getAttribute("glow") as InstancedBufferAttribute;
+        for (let i = 0; i < ORBIT_MOTES; i++) {
+          const m = orbitMote(i, t, p);
+          // Upright quads: the camera shortens heights by OBLIQUE, so they are stretched back to round.
+          c.motes.setMatrixAt(i, mote.makeScale(m.size, m.size / OBLIQUE, 1).setPosition(m.x, m.y, m.z));
+          glow.setX(i, m.glow);
+        }
+        c.motes.instanceMatrix.needsUpdate = true;
+        glow.needsUpdate = true;
         if (c.charge) {
           const k = Math.max(0.001, p);
           const size = Number(e.data["castSize"]);

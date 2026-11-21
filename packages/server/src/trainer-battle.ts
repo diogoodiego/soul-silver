@@ -2,7 +2,7 @@ import { blocksSight, lineOfSight, type AiHooks, type AiTick, type SkillProfile 
 import { computeStats, effectiveness, toTicks, type Point, type StatOptions } from "@soulsilver/shared/combat";
 import { leadIndex } from "@soulsilver/shared/companion";
 import type { TrainerMusic, TrainerRecord } from "@soulsilver/shared/events";
-import { hpRestore, RING_RADIUS_PX, RING_SPOTS, ringArea, tileAt, type Entity, type HitEvent, type Rng, type ServerMessage, type WorldLookup } from "@soulsilver/shared/game";
+import { hpRestore, RING_RADIUS_PX, RING_SPOTS, ringArea, ringSource, tileAt, type Entity, type HitEvent, type Rng, type ServerMessage, type WorldLookup } from "@soulsilver/shared/game";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { canFight, type PartyMember, type Save } from "@soulsilver/shared/save";
 import type { HeldItem } from "@soulsilver/shared/items";
@@ -325,7 +325,8 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
   /** Item V.3: indoors, the fight moves to a ring of its own, the trainer's stand-in across from the player. */
   function enterRing(b: Battle): void {
     const me = world.get(b.fighter.entityId)!;
-    if (options.lookup(me.area)?.areaType !== "indoor") return;
+    // Already in a ring (the dev arena's): fought where it stands.
+    if (options.lookup(me.area)?.areaType !== "indoor" || ringSource(me.area) !== undefined) return;
     const area = ringArea(me.area, b.id);
     const person = trainerPerson(b);
     const standIn = person && world.add({ kind: "npc", area, ...RING_SPOTS.trainer, level: 0, facing: "west", data: { sprite: person.data["sprite"] ?? 0 } }).id;

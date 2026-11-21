@@ -3,7 +3,9 @@ import type { PartyMember, Save } from "@soulsilver/shared/save";
 import { describe, expect, it } from "vitest";
 import { BUNDLED_COMPANION_CONTENT, buildCompanionData } from "../src/companion-loader";
 import { combatData, MOVES, SPECIES } from "./combat-fixture";
-import { setup } from "./harness";
+import { RING_SPOTS } from "@soulsilver/shared/game";
+import type { CollisionMap } from "@soulsilver/shared/game";
+import { flatWorld, setup } from "./harness";
 
 // Spec 028.5: a duel through the session, two fake clients, each one's own Pokémon. Neither save changes:
 // no experience, no money, no HP, no item, no Pokédex entry, no move of the player, also with the party at level 50.
@@ -16,8 +18,8 @@ const START: Record<"Gold" | "Silver", Partial<Save>> = {
 /** What the duel must leave as it was. */
 const kept = (s: Save) => ({ party: s.party, bag: s.bag, money: s.money, pokedex: s.pokedex, pending: s.pending, area: s.area, x: s.x, y: s.y });
 
-function duel(rules: DuelRules) {
-  const t = setup({ combat: combatData(), companion: buildCompanionData(BUNDLED_COMPANION_CONTENT), spawn: () => ({ area: "a", x: 160, y: 160 }) });
+function duel(rules: DuelRules, over: Parameters<typeof setup>[0] = {}) {
+  const t = setup({ combat: combatData(), companion: buildCompanionData(BUNDLED_COMPANION_CONTENT), spawn: () => ({ area: "a", x: 160, y: 160 }), ...over });
   const gold = t.connect("Gold", undefined, { save: START.Gold });
   const silver = t.connect("Silver", undefined, { save: START.Silver });
   // What each sent in its hello, as the server reads it back in its first periodic save.
@@ -98,5 +100,47 @@ describe("duel through the session (spec 028.5)", () => {
     d.knockOut(d.silver);
     expect(d.state(d.silver)?.result).toBe("lost");
     expect(d.after()).toEqual(d.before);
+  });
+});
+
+describe("duel indoors (item V.3's ring)", () => {
+  const grid: CollisionMap = { width: 20, height: 20, tiles: Array.from({ length: 400 }, () => ({ category: "free" as const, raw: 0 })) };
+  const indoor = { world: (id: string) => ({ ...flatWorld(grid)(id)!, areaType: "indoor" as const }) };
+  const where = (d: ReturnType<typeof duel>, c: typeof d.gold) => {
+    const e = d.session.world.get(c.welcome!.entityId)!;
+    return { area: e.area, x: e.x, y: e.y };
+  };
+
+  it("takes both players to a ring of its own, the inviter west and the invited east", () => {
+    const d = duel({ level: "current", team: 1 }, indoor);
+    const arena = d.state(d.gold)?.arena;
+    expect(arena?.area).toMatch(/^ring:a:\d+$/);
+    expect(arena).toMatchObject({ ...RING_SPOTS.center });
+    expect(d.state(d.silver)?.arena).toEqual(arena);
+    expect(where(d, d.gold)).toEqual({ area: arena!.area, ...RING_SPOTS.player });
+    expect(where(d, d.silver)).toEqual({ area: arena!.area, ...RING_SPOTS.trainer });
+    expect(d.out(d.gold)?.area).toBe(arena!.area);
+  });
+
+  it("brings both back where they stood when it ends, and the saves keep that place", () => {
+    const d = duel({ level: "current", team: 1 }, indoor);
+    d.knockOut(d.gold);
+    expect(d.state(d.gold)?.result).toBe("lost");
+    expect(where(d, d.gold)).toEqual({ area: "a", x: 160, y: 160 });
+    expect(where(d, d.silver)).toEqual({ area: "a", x: 160, y: 160 });
+    expect(d.after()).toEqual(d.before);
+  });
+
+  it("a save during the duel keeps the place the player left, never the ring", () => {
+    const d = duel({ level: "current", team: 1 }, indoor);
+    const from = d.gold.saves().length;
+    for (let i = 0; i < 700 && d.gold.saves().length === from; i++) d.session.step();
+    expect(d.gold.saves().length).toBeGreaterThan(from);
+    for (const s of d.gold.saves().slice(from)) expect(s.save).toMatchObject({ area: "a", x: 160, y: 160 });
+  });
+
+  it("outdoors, stays between the two players on their own map", () => {
+    const d = duel({ level: "current", team: 1 });
+    expect(d.state(d.gold)?.arena?.area).toBe("a");
   });
 });

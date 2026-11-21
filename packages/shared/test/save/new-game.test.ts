@@ -20,3 +20,17 @@ describe("applyNewGame", () => {
     expect(migrate(save).ok).toBe(true);
   });
 });
+
+describe("arenaSave", () => {
+  it("is a valid, empty save with the arena's trainer and nothing caught or carried", async () => {
+    const { arenaSave } = await import("../../src/save/new-game.ts");
+    const save = arenaSave("Teste", "female", "2026-11-20T00:00:00.000Z");
+    expect(migrate(save)).toEqual({ ok: true, save });
+    expect(save).toMatchObject({ name: "Teste", character: "female", party: [], bag: [], pokedex: { seen: [], caught: [] }, flags: [], vars: {} });
+  });
+
+  it("trims the name, as a new game does", async () => {
+    const { arenaSave } = await import("../../src/save/new-game.ts");
+    expect(arenaSave("  Ash ", "male", "2026-11-20T00:00:00.000Z").name).toBe("Ash");
+  });
+});

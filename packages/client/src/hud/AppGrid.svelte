@@ -1,6 +1,6 @@
 <script lang="ts">
   // Block H: the Pokédex phone's home screen, its apps as a grid of icons. The pad moves between them as in
-  // any menu; B or the menu button put the phone away.
+  // any menu; B or the menu button put the phone away. The last tile saves and leaves to the main menu.
   import Button from "../ui/Button.svelte";
   import type { Action } from "@soulsilver/shared/input";
   import { onMount } from "svelte";
@@ -8,7 +8,17 @@
   import { t, type MessageKey } from "../i18n";
   import { menu } from "../input/menu";
 
-  let { onOpen, onClose, disabled = [] }: { onOpen: (page: MenuPage) => void; onClose: () => void; disabled?: readonly MenuPage[] } = $props();
+  let {
+    onOpen,
+    onClose,
+    onLeave,
+    leaving = false,
+    disabled = [],
+  }: { onOpen: (page: MenuPage) => void; onClose: () => void; onLeave: () => void; leaving?: boolean; disabled?: readonly MenuPage[] } = $props();
+
+  /** A tile: the icon lights while focused (by the pad too, so focus, not focus-visible). */
+  const TILE = "grid justify-items-center gap-1.5 p-1 text-[1em] text-[#ddd] disabled:opacity-35";
+  const ICON = "grid size-[3.6em] place-items-center rounded-[22%] text-white shadow-[0_2px_0_#0006] transition-transform group-hover:scale-105 group-focus:scale-110 group-focus:ring-4 group-focus:ring-white/80";
 
   const LABELS: Record<MenuPage, MessageKey> = {
     party: "pause.party",
@@ -66,16 +76,19 @@
 
 <nav bind:this={grid} class="grid h-full grid-cols-3 content-center gap-x-6 gap-y-4 px-10 py-4" aria-label={t("phone.home")} use:menu={{ onBack: onClose, onAction }}>
   {#each APPS as page (page)}
-    <Button
-      variant="ghost"
-      class="grid justify-items-center gap-1.5"
-      disabled={disabled.includes(page)}
-      onclick={() => onOpen(page)}
-    >
-      <span class="grid size-[3.6em] place-items-center rounded-[22%] text-white shadow-[0_2px_0_#0006] transition-transform group-hover:scale-105 group-focus-visible:scale-110 group-focus-visible:ring-4 group-focus-visible:ring-white/80" style:background={TINTS[page]}>
+    <Button variant="bare" class={TILE} disabled={disabled.includes(page)} onclick={() => onOpen(page)}>
+      <span class={ICON} style:background={TINTS[page]}>
         {@render glyph(page)}
       </span>
       <span class="text-[0.9em] font-semibold">{t(LABELS[page])}</span>
     </Button>
   {/each}
+  <Button variant="bare" class={TILE} disabled={leaving} onclick={onLeave}>
+    <span class={ICON} style:background="#8a3a3a">
+      <svg viewBox="0 0 24 24" class="size-[2.2em]" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 4H6v16h8" /><path d="M10 12h10M17 9l3 3-3 3" />
+      </svg>
+    </span>
+    <span class="text-[0.9em] font-semibold">{leaving ? t("pause.saving") : t("pause.leave")}</span>
+  </Button>
 </nav>

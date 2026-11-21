@@ -4,7 +4,7 @@
   // the combat HUD, the dialog box, the full menu that never pauses the world and the busy mark (spec 017).
   import Button from "../ui/Button.svelte";
   import { CUTSCENE_TEXT_BOOST, PROTOCOL_VERSION } from "@soulsilver/shared";
-  import { BUTTON, PLAYER_NAME_MAX, surfable, tileAt, type CutsceneActor, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics, type TradeOffer, type DuelRules, type WorldMap } from "@soulsilver/shared/game";
+  import { BUTTON, PLAYER_NAME_MAX, surfable, talkTile, tileAt, type CutsceneActor, type NpcAction, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics, type TradeOffer, type DuelRules, type WorldMap } from "@soulsilver/shared/game";
   import { POCKET_KEYS, type ItemRecord } from "@soulsilver/shared/game-data";
   import { formatText, parseTextId, screenText, textVariables } from "@soulsilver/shared/text";
   import { onMount, untrack } from "svelte";
@@ -15,6 +15,7 @@
   import type { MenuPage } from "../game/menu-page";
   import MovePanel from "../game/MovePanel.svelte";
   import TrainerCall from "../game/TrainerCall.svelte";
+  import NpcActions, { NPC_KEYS } from "../hud/NpcActions.svelte";
   import OnlinePanel from "../game/OnlinePanel.svelte";
   import TradePanel from "../game/TradePanel.svelte";
   import DuelPanel from "../game/DuelPanel.svelte";
@@ -197,6 +198,9 @@
   /** Marks over entities: who is in a fight or busy in a menu, and the companion's emotion bubble. */
   /** `capture`: a knocked-out wild one, with the button that throws a ball under its mark. */
   let marks = $state<{ key: string; x: number; y: number; text: string; capture?: boolean }[]>([]);
+  /** Block H: the person a talk reaches now and the options they offer, over their head. */
+  let npcOptions = $state<{ id: number; x: number; y: number; actions: readonly NpcAction[] } | undefined>();
+  const pickNpc = (action: NpcAction) => npcOptions && window.soulSilver.sendGame({ type: "npc-action", npcId: npcOptions.id, action });
   /** The trainer that spotted this player (spec 022): its "!" and its walk are drawn here only, the server never moves it. */
   let approach: { npcId: number; start: number; tiles: number } | undefined;
   /** Trainer battle arenas on this player's map, by battle id; drawn as rings on the ground. */
@@ -673,6 +677,8 @@
           const prize = ev.prize;
           if (ev.defeat) void trainerLine(ev.defeat).then(() => prize !== undefined && captureLines([t("trainer.won", { money: prize })]));
           else if (prize !== undefined) captureLines([t("trainer.won", { money: prize })]);
+        } else if (ev.type === "healed") {
+          captureLines([t("npc.healed")]);
         } else if (ev.type === "shopOpen") {
           shop = ev;
         } else if (ev.type === "shopResult") {
@@ -788,6 +794,11 @@
     // The menu action opens the full menu; once open, the menu screens take the input.
     const offAction = input.onAction((action) => {
       if (action === "menu" && !menuOpen && (!dialogOpen || scriptLocked) && picker === "closed" && flyMap === undefined && !progression && status === "playing") setMenu(true);
+      // Block H: moves 2 and 3 pick the options after talk; interact (talk) goes to the server with the input, as ever.
+      if ((action === "move2" || action === "move3") && npcOptions) {
+        const picked = npcOptions.actions[NPC_KEYS.indexOf(action)];
+        if (picked) pickNpc(picked);
+      }
     });
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "F3") {
@@ -956,6 +967,14 @@
       if (bubbleOver && emotion) nextMarks.push({ key: "emotion", ...over(bubbleOver), text: emotion.text });
       if (fishing && view.self) nextMarks.push({ key: "fishing", ...over(view.self), text: fishing === "bite" ? "!" : "…" });
       if (nextMarks.length > 0 || marks.length > 0) marks = nextMarks;
+      // Block H: the options around the person a talk reaches, while the trainer walks free.
+      const selfNow = view.self;
+      const free = selfNow?.kind === "player" && status === "playing" && !menuOpen && !dialogOpen && !scriptLocked && picker === "closed" && !progression && flyMap === undefined && !fishing;
+      const front = free && selfNow ? talkTile(world.lookup, selfNow) : undefined;
+      const person = front && view.others.find((e) => e.kind === "npc" && e.area === selfNow!.area && Math.floor(e.x / MAP_TILE_PX) === front.x && Math.floor(e.y / MAP_TILE_PX) === front.y);
+      const role = person?.data["role"];
+      const nextOptions = person && role !== "none" ? { id: person.id, ...over(person), actions: role === "battle" ? (["battle"] as const) : role === "shop" ? (["talk", "shop", "sell"] as const) : role === "heal" ? (["talk", "heal"] as const) : (["talk"] as const) } : undefined;
+      if (nextOptions?.id !== npcOptions?.id || nextOptions?.x !== npcOptions?.x || nextOptions?.y !== npcOptions?.y) npcOptions = nextOptions;
       const nextDoing: Record<string, string> = {};
       for (const e of shown) if (e.kind === "player" && e.id !== game.entityId) {
         const text = presenceText(e.data["presence"]) ?? (e.data["busy"] === true ? t("game.busy") : undefined);
@@ -1140,6 +1159,8 @@
     <p class={MESSAGE} role="status">{t("game.connecting")}</p>
   {/if}
 
+  {#if npcOptions}<NpcActions x={npcOptions.x} y={npcOptions.y} actions={npcOptions.actions} onPick={pickNpc} />{/if}
+
   {#each marks as m (m.key)}
     <!-- A lone glyph ("!", "…", "⚔", an emotion) is drawn large: in the screen's pixel font it is otherwise a few pixels tall. -->
     <span style:font-size={[...m.text].length <= 2 ? "2rem" : undefined} class="absolute -translate-x-1/2 -translate-y-full text-white font-bold text-[1.1rem] [text-shadow:0_1px_2px_#000] pointer-events-none z-1 grid justify-items-center" style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">
@@ -1320,6 +1341,8 @@
       }}
       onClose={() => setMenu(false)}
       onPage={(next: MenuPage | undefined) => setMenu(true, next)}
+      onLeave={leave}
+      {leaving}
       app={phoneApp}
     />
   {/if}

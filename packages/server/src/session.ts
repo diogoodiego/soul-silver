@@ -5,11 +5,15 @@ import {
   clientMessage,
   createRng,
   protocolMismatchMessage,
+  ringArea,
   ringMap,
   ringSource,
+  RING_RADIUS_PX,
+  RING_SPOTS,
   stepMovement,
   unstick,
   type CloseReason,
+  type Entity,
   type NoticeCode,
   type PlayerInput,
   type RecordingEvent,
@@ -64,7 +68,9 @@ import { createWorld, type World } from "./world";
 // One match of 1 to 4 players (spec 010, 012). Pure: time only advances through step().
 
 export const MAX_PLAYERS = 4;
-const MAX_QUEUED_INPUTS = 10;
+/** One input is applied per tick, at the rate the client sends them, so a backlog never drains by itself:
+ * a burst after a stall would stay as a standing delay. Two absorb a tick of jitter. */
+const MAX_QUEUED_INPUTS = 2;
 const TICK_MS = 50;
 /** 10 s at 20 Hz. */
 const DEFAULT_TIMEOUT_TICKS = 200;
@@ -187,6 +193,8 @@ interface Player {
   tradeRev?: number | undefined;
   /** Spec 028.5: the progress from before a duel, given back when it ends; saves taken meanwhile use it. */
   duelBackup?: Pick<Save, "party" | "bag" | "money" | "pending" | "pokedex"> | undefined;
+  /** Item V.3 for duels: where the player stood before an indoor duel took them to its ring. */
+  duelBack?: Pick<Entity, "area" | "x" | "y" | "level" | "facing"> | undefined;
   /** Rev of a save sent while closing that has not been acknowledged yet. */
   pendingAck: number | undefined;
   gone: boolean;
@@ -528,6 +536,7 @@ export function createSession(options: SessionOptions): Session {
 
   /** Spec 028.5: duels between players, in an arena like a trainer battle's (spec 022); nothing is won or lost. */
   const DUEL_BATTLE_BASE = 1_000_000;
+  const ARENA_RING_BASE = 2_000_000;
   let duelBattles = 0;
   const duels = createDuels({
     busy: (id) => {
@@ -543,9 +552,19 @@ export function createSession(options: SessionOptions): Session {
       const [pa, pb] = [players.get(a), players.get(b)];
       const [ea, eb] = [world.get(pa?.entityId ?? -1), world.get(pb?.entityId ?? -1)];
       if (!pa || !pb || !ea || !eb || !companions) return undefined;
-      // Between the two players, as wide as a trainer battle's.
-      const arena = { area: ea.area, x: (ea.x + eb.x) / 2, y: (ea.y + eb.y) / 2, radiusPx: (options.trainers?.tuning.arenaRadiusTiles ?? 4) * MAP_TILE_PX };
       const battle = DUEL_BATTLE_BASE + ++duelBattles;
+      // Indoors, a ring of its own as a trainer battle's (item V.3): who invited west, the other east.
+      // Outdoors, between the two players, as wide as a trainer battle's.
+      const indoor = lookup(ea.area)?.areaType === "indoor" && ringSource(ea.area) === undefined;
+      const arena = indoor
+        ? { area: ringArea(ea.area, battle), ...RING_SPOTS.center, radiusPx: RING_RADIUS_PX }
+        : { area: ea.area, x: (ea.x + eb.x) / 2, y: (ea.y + eb.y) / 2, radiusPx: (options.trainers?.tuning.arenaRadiusTiles ?? 4) * MAP_TILE_PX };
+      if (indoor) {
+        for (const [p, e, spot, facing] of [[pa, ea, RING_SPOTS.player, "east"], [pb, eb, RING_SPOTS.trainer, "west"]] as const) {
+          p.duelBack = { area: e.area, x: e.x, y: e.y, level: e.level, facing: e.facing };
+          world.update({ ...e, area: arena.area, ...spot, level: 0, facing });
+        }
+      }
       for (const p of [pa, pb]) {
         const { party, bag, money, pending, pokedex } = p.progress;
         p.duelBackup = structuredClone({ party, bag, money, pending, pokedex });
@@ -578,6 +597,10 @@ export function createSession(options: SessionOptions): Session {
   /** Spec 028.5: out of the duel's arena, with the progress from before it. */
   function giveBack(p: Player): void {
     companions?.leaveBattle(p.id);
+    // Out of the ring, unless something (a disconnect) already took the player away.
+    const e = world.get(p.entityId);
+    if (p.duelBack && e && ringSource(e.area) !== undefined) world.update({ ...e, ...p.duelBack });
+    p.duelBack = undefined;
     if (!p.duelBackup) return;
     Object.assign(p.progress, p.duelBackup);
     p.duelBackup = undefined;
@@ -854,8 +877,8 @@ export function createSession(options: SessionOptions): Session {
 
   /** The save state but the rev, the time and the PC, which change apart from scripts. */
   function capture(p: Player): BeforeScript {
-    // Item V.3: in a ring, the place the player left for it.
-    const e = trainerBattles?.returnOf(p.id) ?? world.get(p.entityId)!;
+    // Item V.3: in a ring (a trainer battle's or a duel's), the place the player left for it.
+    const e = trainerBattles?.returnOf(p.id) ?? p.duelBack ?? world.get(p.entityId)!;
     return {
       ...p.base,
       ...p.progress,
@@ -1073,6 +1096,9 @@ export function createSession(options: SessionOptions): Session {
     player.queue.splice(at === -1 ? player.queue.length : at, 0, input);
     if (player.queue.length > MAX_QUEUED_INPUTS) {
       const dropped = player.queue.splice(0, player.queue.length - MAX_QUEUED_INPUTS);
+      // A press only in a dropped input still happens.
+      const kept = player.queue[0]!;
+      player.queue[0] = { ...kept, buttons: dropped.reduce((b, q) => b | q.buttons, kept.buttons) };
       options.log(`Player ${player.id}: dropped ${dropped.length} queued inputs`);
     }
   }
@@ -1086,6 +1112,7 @@ export function createSession(options: SessionOptions): Session {
   /** Why this arena cannot be built, checked before anything enters the world; undefined when it can. */
   function arenaProblem(spec: ArenaSpec): string | undefined {
     if (!combat || !options.combat || !options.devArena) return "A arena de teste está desligada neste servidor.";
+    if (spec.ring !== undefined && options.world(String(spec.ring))?.areaType !== "indoor") return `Arena inválida: o mapa ${spec.ring} não é um lugar fechado da extração`;
     if (spec.foe.kind === "trainer" && !trainerBattles) return "Arena inválida: lutas de treinador precisam dos dados de treinadores e de scripts";
     if (spec.foe.kind === "trainer" && !options.trainers?.trainer(spec.foe.trainer)) return `Arena inválida: treinador ${spec.foe.trainer} não existe na extração`;
     if (spec.foe.kind === "wild" && spec.foe.behavior === "ai" && !wilds) return "Arena inválida: selvagens com IA precisam dos dados de selvagens";
@@ -1097,17 +1124,25 @@ export function createSession(options: SessionOptions): Session {
     return undefined;
   }
 
+  /** Where an arena starts: the open field, or a ring of its own built from the chosen indoor map (protocol 39). */
+  let arenaRings = 0;
+  function arenaStart(spec: ArenaSpec): typeof ARENA_SPAWN {
+    if (spec.ring === undefined) return ARENA_SPAWN;
+    // Numbered apart from trainer battles' and duels' rings, which share the ring:<map>:<n> form.
+    return { area: ringArea(String(spec.ring), ARENA_RING_BASE + ++arenaRings), ...RING_SPOTS.player, level: 0, facing: "east" };
+  }
+
   /** The arena's foes (arenaProblem passed): wild ones east of the player, or the trainer's battle, which keeps its own. */
-  function spawnFoes(p: Player, foe: ArenaSpec["foe"]): number[] {
+  function spawnFoes(p: Player, foe: ArenaSpec["foe"], area: string): number[] {
     if (foe.kind === "trainer") {
       trainerBattles?.startScripted(p.id, foe.trainer, 0, foe.team.map(trainerMember));
       return [];
     }
     return foe.team.map((c, i) => {
       const at = foeSpot(i);
-      if (foe.behavior === "ai") return wilds!.place(ARENA_AREA, at.x, at.y, c, tick);
+      if (foe.behavior === "ai") return wilds!.place(area, at.x, at.y, c, tick);
       // A still target: a wild combatant the AI never drives.
-      const e = world.add({ kind: "pokemon", area: ARENA_AREA, ...at, level: 0, facing: "west", data: {} });
+      const e = world.add({ kind: "pokemon", area, ...at, level: 0, facing: "west", data: {} });
       combat!.spawn(world, e.id, c, "wild");
       return e.id;
     });
@@ -1136,6 +1171,7 @@ export function createSession(options: SessionOptions): Session {
       reject(conn, "invalid-save", problem);
       return undefined;
     }
+    let arenaSpawn: typeof ARENA_SPAWN | undefined;
     if (msg.arena) {
       const arena = arenaProblem(msg.arena);
       if (arena) {
@@ -1144,7 +1180,8 @@ export function createSession(options: SessionOptions): Session {
       }
       // The arena's trainer and team stand in for the save's for this session, and a blackout comes back to the arena; nothing is ever saved.
       const { trainer, team } = msg.arena;
-      save = { ...save, name: trainer.name, character: trainer.character, party: team.map((c) => arenaMember(c, options.combat!, options.progression)), bag: [], pending: [], flags: [], vars: {}, respawn: { area: ARENA_AREA, x: ARENA_SPAWN.x, y: ARENA_SPAWN.y } };
+      arenaSpawn = arenaStart(msg.arena);
+      save = { ...save, name: trainer.name, character: trainer.character, party: team.map((c) => arenaMember(c, options.combat!, options.progression)), bag: [], pending: [], flags: [], vars: {}, respawn: { area: arenaSpawn.area, x: arenaSpawn.x, y: arenaSpawn.y } };
     }
     const key = nameKey(save.name);
     const held = reserved.get(key);
@@ -1165,8 +1202,8 @@ export function createSession(options: SessionOptions): Session {
     }
     if (msg.arena) {
       // shortcut: arena joins are not recorded, so a replay of an arena session does not rebuild it; record them if arena replays matter.
-      const player = add(save, conn, ARENA_SPAWN, options.newToken(), true);
-      player.arenaFoes = spawnFoes(player, msg.arena.foe);
+      const player = add(save, conn, arenaSpawn!, options.newToken(), true);
+      player.arenaFoes = spawnFoes(player, msg.arena.foe, arenaSpawn!.area);
       return { player, resumed: false };
     }
     // Spec 028.3: a save older than a trade this host still owes the player is replaced by the traded one.
@@ -1241,6 +1278,11 @@ export function createSession(options: SessionOptions): Session {
         case "script-answer":
           if (scripts) scripts.answer(player.id, msg.id, msg.answer, msg.text);
           else options.log(`Discarded script-answer from ${who}: this session has no scripts`);
+          return;
+        case "npc-action":
+          // Block H: as the interact key, never from a menu, a fight or a level-up screen.
+          if (player.menuOpen || (companions?.inCombat(player.id) ?? false) || (progression?.busy(player.id) ?? false) || (trainerBattles?.locked(player.id) ?? false)) notice(player, "action-refused");
+          else scripts?.npcAction(player.id, msg.npcId, msg.action);
           return;
         case "trainer-ready":
           trainerBattles?.ready(player.id);

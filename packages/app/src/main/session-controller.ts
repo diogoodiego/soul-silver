@@ -38,10 +38,11 @@ export interface SessionControllerDeps {
   log(message: string): void;
 }
 
-type Mode = "solo" | "host" | "guest";
+/** arena: the dev arena (spec 013), local and tied to no slot, so nothing is ever written. */
+type Mode = "solo" | "host" | "guest" | "arena";
 
 export function createSessionController(deps: SessionControllerDeps) {
-  let active: { slot: number; mode: Mode } | undefined;
+  let active: { slot: number; mode: Mode } | { slot?: undefined; mode: "arena" } | undefined;
   let stopAnnounce: (() => void) | undefined;
   let stopWatch: (() => void) | undefined;
   let closedWaiters: (() => void)[] = [];
@@ -79,7 +80,7 @@ export function createSessionController(deps: SessionControllerDeps) {
 
   function onMessage(msg: unknown): void {
     const m = msg as { type?: unknown; save?: unknown } | null;
-    if (typeof m === "object" && m !== null && m.type === "save" && active) void onSave(active.slot, m.save);
+    if (typeof m === "object" && m !== null && m.type === "save" && active?.slot !== undefined) void onSave(active.slot, m.save);
     deps.emit.gameMessage(msg);
   }
 
@@ -124,6 +125,13 @@ export function createSessionController(deps: SessionControllerDeps) {
         deps.server.connectGame();
         return Promise.resolve();
       }),
+
+    /** The dev arena: the local server with no slot; the renderer brings its own throwaway save. */
+    startArena(): Promise<{ ok: true }> {
+      deps.server.connectGame();
+      active = { mode: "arena" };
+      return Promise.resolve({ ok: true });
+    },
 
     startHost: (slot: number) =>
       start(slot, "host", async (save) => {

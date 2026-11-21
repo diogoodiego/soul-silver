@@ -32,6 +32,7 @@ export const IpcChannel = {
   SavesImport: "saves:import",
   SavesRestartStory: "saves:restart-story",
   SessionSolo: "session:solo",
+  SessionArena: "session:arena",
   SessionHost: "session:host",
   SessionJoin: "session:join",
   SessionOpenLan: "session:open-lan",
@@ -105,6 +106,8 @@ export interface SoulSilverApi {
   restartStory(slot: number): Promise<SaveResult>;
   /** Local session, never announced; the game connection is open when it resolves. */
   startSolo(slot: number): Promise<SessionResult>;
+  /** The dev arena: a local session on no slot, so nothing is saved; the renderer brings an arenaSave. */
+  startArena(): Promise<{ ok: true }>;
   /** Opens the LAN socket and announces the session; `reason` explains a port failure. */
   startHost(slot: number): Promise<SessionResult>;
   /** `address` is `ip` or `ip:port`; the game connection is open when it resolves. Without `password` (R.1), the last one given for that host is used. */

@@ -17,6 +17,8 @@
     onOpen,
     onClose,
     onPage,
+    onLeave,
+    leaving = false,
     app,
   }: {
     open: boolean;
@@ -27,6 +29,9 @@
     onClose: () => void;
     /** An app from the grid, or undefined back to the grid. */
     onPage: (page: MenuPage | undefined) => void;
+    /** Saves and leaves to the main menu (the grid's last tile). */
+    onLeave: () => void;
+    leaving?: boolean;
     app: Snippet<[MenuPage]>;
   } = $props();
 
@@ -75,7 +80,7 @@
         {#if page}
           {@render app(page)}
         {:else}
-          <AppGrid onOpen={(p: MenuPage) => onPage(p)} {onClose} {disabled} />
+          <AppGrid onOpen={(p: MenuPage) => onPage(p)} {onClose} {onLeave} {leaving} {disabled} />
         {/if}
       </div>
     {/if}

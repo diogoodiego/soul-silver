@@ -1,6 +1,6 @@
 import { applyDelta, serverMessage, type AiDebugRow, type ArenaSpec, type CloseReason, type Entity, type HitEvent, type MoveInput, type ServerMessage, type TickMetrics, type WorldLookup } from "@soulsilver/shared/game";
 import { createInterpolator } from "./interpolation";
-import { createPredictor } from "./prediction";
+import { createCombatPredictor, createPredictor } from "./prediction";
 import { npcOccupied } from "@soulsilver/shared/npc";
 import { runClock } from "@soulsilver/shared/time";
 
@@ -21,7 +21,7 @@ export interface GameConnectionOptions {
 export type GameStatus = "connecting" | "playing" | "rejected" | "closed";
 
 /** Companion and fight messages (spec 014), bag, Pokédex and capture ones (spec 015), and scripts (spec 020), for the screen. */
-export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "rescued" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" | "trainerSpotted" | "trainerSay" | "trainerBattleStart" | "trainerSendOut" | "trainerItem" | "trainerBattleEnd" | "shopOpen" | "shopResult" | "shopClose" | "pcOpen" | "pcResult" | "pcClose" | "tradeState" | "duelState" | "field-result" | "player-mode" | "field-launchable" | "field-fishing" | "field-fly-map" | "field-lit" | "phone-call" | "phone-state" | "radio-state" | "gear-map" | "items-state" | "dowse" | "berry-pots" | "apricorn-box" | "item-found" | "trainer-card" }>;
+export type CompanionEvent = Extract<ServerMessage, { type: "party" | "players" | "reaction" | "fainted" | "blackout" | "rescued" | "capture" | "captured" | "bag" | "pokedex" | "notice" | "exp-gain" | "progression" | "script" | "script-event" | "script-lock" | "script-debug" | "trainerSpotted" | "trainerSay" | "trainerBattleStart" | "trainerSendOut" | "trainerItem" | "trainerBattleEnd" | "shopOpen" | "shopResult" | "shopClose" | "healed" | "pcOpen" | "pcResult" | "pcClose" | "tradeState" | "duelState" | "field-result" | "player-mode" | "field-launchable" | "field-fishing" | "field-fly-map" | "field-lit" | "phone-call" | "phone-state" | "radio-state" | "gear-map" | "items-state" | "dowse" | "berry-pots" | "apricorn-box" | "item-found" | "trainer-card" }>;
 
 export function createGameConnection(options: GameConnectionOptions) {
   const entities = new Map<number, Entity>();
@@ -42,7 +42,10 @@ export function createGameConnection(options: GameConnectionOptions) {
   /** The session's clock as last sent (spec 026), and when it arrived. */
   let clock: { sample: Extract<ServerMessage, { type: "clock" }>; at: number } | undefined;
   /** Only the trainer walks the tile-based step; a Pokémon in combat is shown as the server has it. */
-  const predicting = () => entityId === undefined || entities.get(entityId)?.kind === "player";
+  /** Each Pokémon sent out starts its own prediction. */
+  let combatPredictor = createCombatPredictor();
+  /** The trainer steps on tiles; a Pokémon in combat moves freely. */
+  const active = () => (entityId !== undefined && entities.get(entityId)?.kind === "pokemon" ? combatPredictor : predictor);
 
   function receive(raw: unknown, now: number): void {
     const parsed = serverMessage.safeParse(raw);
@@ -81,6 +84,7 @@ export function createGameConnection(options: GameConnectionOptions) {
         return;
       case "control":
         // The trainer, or the Pokémon out in combat: input, camera and aim follow it.
+        if (msg.entityId !== entityId) combatPredictor = createCombatPredictor();
         entityId = msg.entityId;
         return;
       case "party":
@@ -109,6 +113,7 @@ export function createGameConnection(options: GameConnectionOptions) {
       case "shopOpen":
       case "shopResult":
       case "shopClose":
+      case "healed":
       case "pcOpen":
       case "pcResult":
       case "pcClose":
@@ -143,10 +148,10 @@ export function createGameConnection(options: GameConnectionOptions) {
         tick = msg.tick;
         const self = entityId === undefined ? undefined : entities.get(entityId);
         if (self) {
-          if (predicting()) predictor.reconcile(self, msg.lastInput, now);
+          active().reconcile(self, msg.lastInput, now);
           status = "playing";
         }
-        interpolator.push(msg.tick, now, [...entities.values()].filter((e) => e.id !== entityId || !predicting()));
+        interpolator.push(msg.tick, now, [...entities.values()].filter((e) => e.id !== entityId));
         return;
       }
     }
@@ -161,13 +166,11 @@ export function createGameConnection(options: GameConnectionOptions) {
     sendInput(move: MoveInput["move"], run: boolean, now: number, buttons = 0): void {
       if (status !== "playing") return;
       const input = { seq: seq++, move, run, buttons };
-      if (predicting()) predictor.apply(input, now);
+      active().apply(input, now);
       options.send({ type: "input", ...input });
     },
     view(now: number): { self: Entity | undefined; others: Entity[] } {
-      const sampled = interpolator.sample(now);
-      if (predicting()) return { self: predictor.view(now), others: sampled };
-      return { self: sampled.find((e) => e.id === entityId), others: sampled.filter((e) => e.id !== entityId) };
+      return { self: active().view(now), others: interpolator.sample(now) };
     },
     /** Combat events received since the last call. */
     takeCombatEvents(): HitEvent[] {

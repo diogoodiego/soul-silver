@@ -76,6 +76,34 @@ describe("solo", () => {
   });
 });
 
+describe("arena", () => {
+  it("connects locally without loading a slot, listening or announcing", async () => {
+    const load = vi.fn(() => Promise.resolve({ ok: true as const, save }));
+    const { controller, events, announced } = setup({ load });
+    expect(await controller.startArena()).toEqual({ ok: true });
+    expect(load).not.toHaveBeenCalled();
+    expect(events).toEqual(["connect"]);
+    expect(announced).toEqual([]);
+  });
+
+  it("never writes a save the server sends, and cannot be opened to the LAN", async () => {
+    const { controller, written, sent } = setup();
+    await controller.startArena();
+    controller.onServerMessage({ type: "save", save: { ...save, rev: 4 } });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(written).toEqual([]);
+    expect(sent).toEqual([]);
+    expect(await controller.openToLan()).toMatchObject({ ok: false });
+  });
+
+  it("ends like a solo session when the server closes", async () => {
+    const { controller, events } = setup();
+    await controller.startArena();
+    controller.onServerClosed();
+    expect(events).toEqual(["connect", "closed"]);
+  });
+});
+
 describe("saves from the server", () => {
   it("writes the save, acks it on the current transport and still forwards it", async () => {
     const { controller, written, sent, toRenderer, saved } = setup();

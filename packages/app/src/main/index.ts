@@ -293,6 +293,7 @@ if (!app.requestSingleInstanceLock()) {
       return result.canceled || !path ? { ok: false, reason: CANCELLED } : saves.importFrom(slot, path, overwrite === true);
     });
     handle(IpcChannel.SessionSolo, (slot) => (isSlot(slot) ? play.startSolo(slot) : invalid));
+    handle(IpcChannel.SessionArena, () => play.startArena());
     handle(IpcChannel.SessionHost, (slot) => (isSlot(slot) ? play.startHost(slot) : invalid));
     handle(IpcChannel.SessionOpenLan, async () => {
       const result = await play.openToLan();

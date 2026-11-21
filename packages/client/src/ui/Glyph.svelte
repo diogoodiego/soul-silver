@@ -19,7 +19,7 @@
 
 {#if round}
   <!-- A letter or a pad button (A, LB, ↑) is a circle; a key name (Enter, Esc) stretches into a pill. -->
-  <kbd class="inline-grid place-items-center h-[1.7em] {label && label.length <= 2 ? 'w-[1.7em] px-0' : 'min-w-[1.7em] px-[0.45em]'} rounded-full bg-[#262626] text-white [font-family:inherit] text-[0.7em] font-bold">{label}</kbd>
+  <kbd class="inline-grid place-items-center h-[1.7em] {label && label.length <= 2 ? 'w-[1.7em] px-0' : 'min-w-[1.7em] px-[0.45em]'} rounded-full bg-raised text-primary [font-family:inherit] text-[0.7em] font-bold">{label}</kbd>
 {:else}
   <kbd class="inline-block min-w-[1.4em] px-[0.3em] border border-current rounded-[4px] [font-family:inherit] text-[0.8em] text-center">{label}</kbd>
 {/if}

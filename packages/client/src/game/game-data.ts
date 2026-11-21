@@ -60,6 +60,9 @@ export const itemRecords = () => records("items").then((list) => new Map(list.ma
 /** The type key of every move, by id (for the HUD colors). */
 export const moveTypes = () => records("moves").then((list) => new Map(list.map((m) => [m.id, TYPE_KEYS[m.type] ?? "unknown"])));
 
+/** Every move's record (type, category, power, accuracy, PP), by id: the arena's move previews. */
+export const moveRecords = () => records("moves").then((list) => new Map(list.map((m) => [m.id, m])));
+
 /** The type keys of every species, by id (spec 024: the starter preview). */
 export const speciesTypes = () => records("species").then((list) => new Map(list.map((r) => [r.id, r.types.map((t) => TYPE_KEYS[t] ?? "unknown")])));
 

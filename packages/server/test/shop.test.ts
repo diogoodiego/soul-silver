@@ -32,9 +32,10 @@ const shops = buildShopData(
     { id: 450, price: 0, pocket: "key-items" },
   ],
 );
-const data = () => scriptData([clerk], { 60: mapEvents({ npcs: [npc(0, 1, 2, 0), npc(1, 2, 1, 1), npc(2, 0, 1, 2)] }) });
+// Block H: a clerk's interact is talk only (test/npc-actions.test.ts); a sign below the spawn runs the buy script whole.
+const data = () => scriptData([clerk], { 60: mapEvents({ npcs: [npc(1, 2, 1, 1), npc(2, 0, 1, 2)], signs: [{ script: { id: 1, file: 100, entry: 0 }, kind: 0, x: 1, z: 2, y: 0, dir: 0 }] }) });
 
-/** Talks to the clerk at (1, 2), below the spawn, or to the sell clerk at (0, 1), west of it. */
+/** Reads the buy sign at (1, 2), below the spawn, or talks to the sell clerk at (0, 1), west of it. */
 function atClerk(save: Record<string, unknown> = {}, players = 1, mode: "buy" | "sell" = "buy") {
   const t = story(data(), { shops });
   const cs = Array.from({ length: players }, () => t.connect(undefined, undefined, { save }));

@@ -75,7 +75,7 @@ export const ptBR = {
   "play.solo": "Sozinho",
   "play.host": "Hospedar",
   "play.join": "Entrar",
-  "play.arena": "Arena de teste",
+  "home.arena": "Arena de teste",
   "play.starting": "Abrindo a partida…",
 
   "saves.summary": "Slot {slot} · {time} de jogo · {badges} insígnias",
@@ -580,6 +580,14 @@ export const ptBR = {
   "swap.recall": "Recolher e fugir",
   "swap.back": "Voltar à luta",
   "swap.none": "Nenhum outro Pokémon da equipe pode lutar.",
+
+  "npc.options": "Opções",
+  "npc.talk": "Falar",
+  "npc.shop": "Loja",
+  "npc.sell": "Vender",
+  "npc.heal": "Curar",
+  "npc.battle": "Batalhar",
+  "npc.healed": "Seus Pokémon estão totalmente recuperados!",
 
   "progress.label": "Progresso do Pokémon",
   "progress.levelUp": "{name} subiu para o nível {level}!",

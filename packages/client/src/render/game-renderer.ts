@@ -27,6 +27,7 @@ import { loadBitmap, loadMapMesh, loadPropMesh, spriteUrl, type ClientWorld, typ
 import { CLEARING_RADIUS_PX, clearings } from "./grass-clearing";
 import { buildMapObject, groundAt, SHADE, setGrassClearings, type MapObject } from "./map-scene";
 import { createParticles, effectsOf } from "./particles";
+import { createFlamethrower, FLAMETHROWER_MOVE } from "./flamethrower";
 import { createCastTelegraphs } from "./cast-telegraph";
 import { createDebuffs } from "./debuff";
 import { createPost } from "./post";
@@ -124,7 +125,7 @@ export interface DrawView {
   focus?: { x: number; y: number } | undefined;
 }
 
-function pixelTexture(image: ImageBitmap): Texture {
+export function pixelTexture(image: ImageBitmap): Texture {
   const texture = new Texture(image);
   texture.flipY = false;
   texture.colorSpace = NoColorSpace;
@@ -335,6 +336,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     else log("Battle effect sprites missing; moves and statuses draw no particles");
   });
   const particles = createParticles(scene, (name) => frames.get(name));
+  const flamethrower = createFlamethrower(scene);
   const telegraphs = createCastTelegraphs(scene);
   const debuffs = createDebuffs(scene);
   /** Entities drawn last frame, so effects can follow them. */
@@ -401,6 +403,10 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
   function onMoveUsed(e: Entity, now: number): void {
     showReach(e, now);
     const move = Number(e.data["usedMove"]);
+    if (move === FLAMETHROWER_MOVE) {
+      flamethrower.play(anchorOf(e.id), { x: Number(e.data["usedDx"]), y: Number(e.data["usedDy"]) }, now);
+      return;
+    }
     if (!battleFx.has(`move/${move}`)) {
       blinkUntil.set(e.id, now + 400);
       return;
@@ -433,6 +439,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     }
     for (const key of [...particles.keys()]) if (!key.startsWith("once/") && !wanted.has(key)) particles.stop(key);
     particles.update(now);
+    flamethrower.update(now);
   }
 
   const spriteMaterials = new Map<Texture, MeshBasicMaterial>();
@@ -861,6 +868,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       for (const actor of actors.values()) actor.sprite.geometry.dispose();
       for (const effect of effects) effect.sprite.geometry.dispose();
       particles.dispose();
+      flamethrower.dispose();
       telegraphs.dispose();
       debuffs.dispose();
       for (const r of reaches) {

@@ -28,7 +28,7 @@
     /** Shown while focused: the action that presses it (a main-menu option shows confirm). */
     glyph?: Action;
     hold?: ButtonHold;
-    el?: HTMLButtonElement;
+    el?: HTMLButtonElement | undefined;
   } = $props();
 
   const SIZE = "rounded-full px-3 py-1 text-[0.85rem] font-semibold leading-snug";
@@ -40,7 +40,7 @@
   const LOOK: Record<ButtonVariant, string> = {
     secondary: `${SIZE} ${STATE} ${SECONDARY} text-action-secondary`,
     primary: `${SIZE} ${STATE} bg-action-primary text-action-primary font-bold enabled:hover:layer-primary-hover enabled:active:layer-primary-pressed`,
-    danger: `${SIZE} ${STATE} ${SECONDARY} text-danger`,
+    danger: `${SIZE} ${STATE} ${SECONDARY} text-error`,
     ghost: `${SIZE} ${STATE} ${GHOST} text-action-ghost`,
     menu: `rounded-full px-3 py-1.5 text-[1.15rem] font-semibold ${STATE} ${GHOST} text-primary focus:bg-action-primary focus:text-action-primary`,
     bare: "",

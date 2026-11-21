@@ -57,6 +57,7 @@ const api: SoulSilverApi = {
   importSave: (slot, overwrite) => ipcRenderer.invoke(IpcChannel.SavesImport, { slot, overwrite }) as Promise<SaveResult>,
   restartStory: (slot) => ipcRenderer.invoke(IpcChannel.SavesRestartStory, slot) as Promise<SaveResult>,
   startSolo: (slot) => ipcRenderer.invoke(IpcChannel.SessionSolo, slot) as Promise<SessionResult>,
+  startArena: () => ipcRenderer.invoke(IpcChannel.SessionArena) as Promise<{ ok: true }>,
   startHost: (slot) => ipcRenderer.invoke(IpcChannel.SessionHost, slot) as Promise<SessionResult>,
   joinSession: (slot, address, password) => ipcRenderer.invoke(IpcChannel.SessionJoin, { slot, address, password }) as Promise<SessionResult>,
   openToLan: () => ipcRenderer.invoke(IpcChannel.SessionOpenLan) as Promise<LanResult>,

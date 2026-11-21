@@ -16,7 +16,11 @@ const count = () => z.number().int().nonnegative();
 /** The most items a script choice menu has (spec 023). */
 const MENU_ITEMS_MAX = 32;
 /** Why a field move, ride or Fly was refused (spec 025). */
-export const FIELD_REFUSALS = ["badge", "move", "notHere", "indoors", "notVisited", "notAllowed", "busy"] as const;
+/** Block H: the options around a person; talk for anyone, sell beside shop, the rest for the person whose entity data.role names it. */
+export const NPC_ACTIONS = ["talk", "shop", "sell", "heal", "battle"] as const;
+export type NpcAction = (typeof NPC_ACTIONS)[number];
+
+export const FIELD_REFUSALS =["badge", "move", "notHere", "indoors", "notVisited", "notAllowed", "busy"] as const;
 const battleStats = stats(0, 0xffff);
 const direction = z.enum(["north", "south", "east", "west"]);
 /** A text id, "bank:index". */
@@ -59,6 +63,8 @@ export const arenaSpec = z.strictObject({
     z.strictObject({ kind: z.literal("wild"), behavior: z.enum(["ai", "idle"]), team: arenaTeam }),
     z.strictObject({ kind: z.literal("trainer"), trainer: count(), team: arenaTeam }),
   ]),
+  /** Protocol 39: an indoor map whose ring (item V.3) the arena is fought in; absent, the open field. */
+  ring: count().optional(),
 });
 export type ArenaSpec = z.infer<typeof arenaSpec>;
 
@@ -150,6 +156,8 @@ export const clientMessage = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("debugSetHp"), hp: z.number().int().min(1) }),
   /** Spec 025: interact with a field obstacle; the server answers with field-prompt when a move can clear it. */
   z.strictObject({ type: z.literal("field-interact"), objectId: count() }),
+  /** Block H: an option around the person in front; the server checks the person is in reach and offers it (data.role). */
+  z.strictObject({ type: z.literal("npc-action"), npcId: count(), action: z.enum(NPC_ACTIONS) }),
   /** Spec 025: use a field move by its key in content/field/moves.json; `objectId` is the obstacle it acts on. */
   z.strictObject({ type: z.literal("field-use"), move: z.string().regex(/^[a-z][A-Za-z]*$/), objectId: count().optional() }),
   z.strictObject({ type: z.literal("field-mount"), mode: z.enum(["bike", "surf"]) }),
@@ -497,6 +505,8 @@ export const serverMessage = z.discriminatedUnion("type", [
   /** Answers every shop request with the balance after it; a refusal changed nothing. */
   z.strictObject({ type: z.literal("shopResult"), ok: z.boolean(), reason: z.enum(SHOP_REFUSALS).optional(), money: count() }),
   z.strictObject({ type: z.literal("shopClose") }),
+  /** Block H: the nurse healed the party from the heal option, without her script. */
+  z.strictObject({ type: z.literal("healed") }),
   /** The PC opened (spec 023); every answer carries the boxes and items as they are now; party and bag come in their own messages. */
   z.strictObject({ type: z.literal("pcOpen"), boxes: saveSchema.shape.boxes, pcItems: saveSchema.shape.pcItems }),
   z.strictObject({ type: z.literal("pcResult"), ok: z.boolean(), reason: z.enum(PC_REFUSALS).optional(), boxes: saveSchema.shape.boxes, pcItems: saveSchema.shape.pcItems }),

@@ -7,7 +7,8 @@ import { BUNDLED_COMPANION_CONTENT, buildCompanionData } from "../src/companion-
 import { createMemoryConnectionPair } from "../src/connection";
 import { buildTrainerData } from "../src/trainer-loader";
 import { combatData, MOVES, SPECIES } from "./combat-fixture";
-import { setup } from "./harness";
+import { RING_SPOTS, type CollisionMap } from "@soulsilver/shared/game";
+import { flatWorld, setup } from "./harness";
 import { trainer } from "./trainer-fixture";
 import { scriptData } from "./scripts-fixture";
 import { wildData } from "./wild-fixture";
@@ -140,5 +141,48 @@ describe("dev arena", () => {
     expect(t.session.world.all().filter((e) => e.area === ARENA_AREA).length).toBeGreaterThanOrEqual(3);
     client.send({ type: "leave" });
     expect(t.session.world.all().filter((e) => e.area === ARENA_AREA)).toEqual([]);
+  });
+});
+
+describe("dev arena in a ring built from an indoor map (item V.3)", () => {
+  const grid: CollisionMap = { width: 20, height: 20, tiles: Array.from({ length: 400 }, () => ({ category: "free" as const, raw: 0 })) };
+  // 52 is a building, 53 a route; anything else is not in the extraction.
+  const world = (id: string) => (id === "52" ? { ...flatWorld(grid)(id)!, areaType: "indoor" as const } : id === "53" ? { ...flatWorld(grid)(id)!, areaType: "outdoor" as const } : undefined);
+  const trainerSpec = (ring: number): ArenaSpec => ({ trainer: { name: "Tester", character: "male" }, team: [cyndaquil], foe: { kind: "trainer", trainer: 7, team: [chikorita] }, ring });
+
+  it("puts the player in a ring of the chosen map, west, with the wild foes inside it", () => {
+    const t = enter({ world }, { ...wild("idle", [chikorita, chikorita]), ring: 52 });
+    const me = t.session.world.get(t.welcome!.entityId)!;
+    expect(me.area).toMatch(/^ring:52:\d+$/);
+    expect({ x: me.x, y: me.y }).toEqual(RING_SPOTS.player);
+    expect(t.foes().map((e) => e.area)).toEqual([me.area, me.area]);
+  });
+
+  it("fights a trainer battle in that same ring, without a ring inside the ring", () => {
+    const t = enter({ world }, trainerSpec(52));
+    const area = t.session.world.get(t.welcome!.entityId)!.area;
+    t.step(200);
+    const start = t.got.find((m): m is Extract<ServerMessage, { type: "trainerBattleStart" }> => m.type === "trainerBattleStart");
+    expect(start?.arena.area).toBe(area);
+    expect(t.session.world.get(t.welcome!.entityId)!.area).toBe(area);
+  });
+
+  it("a lost fight brings the player back to the ring, where the arena started", () => {
+    const t = enter({ world }, trainerSpec(52));
+    const area = t.session.world.get(t.welcome!.entityId)!.area;
+    t.step(200);
+    const mine = t.session.world.all().find((e) => t.session.combat?.get(e.id)?.owner === t.welcome!.playerId)!;
+    t.session.combat!.get(mine.id)!.hp = 0;
+    t.step(200);
+    expect(t.got).toContainEqual(expect.objectContaining({ type: "trainerBattleEnd", result: "lost" }));
+    expect(t.session.world.get(t.welcome!.entityId)?.area).toBe(area);
+  });
+
+  it("refuses a map that is not indoors or is not in the extraction, leaving nothing in the world", () => {
+    for (const ring of [53, 99]) {
+      const t = enter({ world }, { ...wild("idle"), ring });
+      expect(t.got.find((m) => m.type === "reject")).toMatchObject({ code: "invalid-message" });
+      expect(t.session.world.all()).toEqual([]);
+    }
   });
 });

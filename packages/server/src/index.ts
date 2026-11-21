@@ -23,3 +23,4 @@ export * from "./trainer-loader";
 export * from "./shop";
 export * from "./pc";
 export * from "./reference-bot";
+export * from "./npc-roles";

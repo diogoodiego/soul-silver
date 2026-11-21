@@ -15,6 +15,7 @@
     serverReady,
     serverFailed,
     onPlay,
+    onArena,
     onSettings,
     onAbout,
     onBack,
@@ -24,6 +25,8 @@
     serverReady: boolean;
     serverFailed: boolean;
     onPlay: () => void;
+    /** The dev arena: needs no save, so it sits next to Play. */
+    onArena: () => void;
     onSettings: () => void;
     onAbout: () => void;
     onBack: () => void;
@@ -56,6 +59,7 @@
   {/if}
   <nav class="flex flex-col items-end gap-1">
     <Button variant="menu" glyph="confirm" onclick={onPlay} disabled={!serverReady}>{t("home.play")}</Button>
+    <Button variant="menu" glyph="confirm" onclick={onArena} disabled={!serverReady}>{t("home.arena")}</Button>
     <Button variant="menu" glyph="confirm" onclick={onSettings}>{t("home.settings")}</Button>
     <Button variant="menu" glyph="confirm" onclick={onAbout}>{t("home.about")}</Button>
     <Button variant="menu" glyph="confirm" onclick={() => void window.soulSilver.quitApp()}>{t("home.quit")}</Button>
