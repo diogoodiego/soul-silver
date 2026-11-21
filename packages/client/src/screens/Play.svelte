@@ -95,7 +95,7 @@
 {:else if step === "mode"}
   <!-- The main menu's look: right edge, vertically centred, over the title backdrop. -->
   <section class="fixed inset-0 flex flex-col items-end justify-center gap-2 pr-12 text-right" use:menu={{ onBack: () => (step = "save") }}>
-    <h2 class="m-0 text-[1.4rem]">{t("play.chooseMode")}</h2>
+    <h2 class="m-0 text-2xl">{t("play.chooseMode")}</h2>
     {#if chosen?.status === "ok"}<p class="m-0 mb-2 text-secondary">{t("play.playingAs", { name: chosen.name, slot: chosen.index })}</p>{/if}
     <nav class="flex flex-col items-end gap-1">
       <Button variant="menu" glyph="confirm" disabled={busy} onclick={() => void begin((s) => api.startSolo(s))}>{t("play.solo")}</Button>

@@ -38,7 +38,7 @@
   /** The current option takes the focus when the list opens, scrolled into view. */
   const OPTION = $derived(
     preview
-      ? "flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-solid border-transparent p-2 text-center text-[0.85em] font-semibold text-primary enabled:hover:bg-hover focus:border-selected focus:bg-raised aria-selected:bg-selected"
+      ? "flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-solid border-transparent p-2 text-center text-sm font-semibold text-primary enabled:hover:layer-surface-hover focus:border-selected focus:layer-surface-selected aria-selected:layer-surface-selected"
       : "",
   );
 
@@ -57,7 +57,7 @@
   <Button
     variant="bare"
     bind:el={box}
-    class="box-border flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-solid border-default bg-sunken px-3 py-1.5 text-left text-[1em] text-primary focus:border-focus"
+    class="box-border flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-solid border-default bg-surface-sunken px-3 py-1.5 text-left text-base text-primary focus:border-focus"
     aria-haspopup="listbox"
     aria-expanded={open}
     aria-label={`${label}: ${current}`}
@@ -69,8 +69,8 @@
 </div>
 
 {#if open}
-  <div class="fixed inset-0 z-10 flex items-center justify-center gap-4 bg-overlay p-4" use:menu={{ onBack: () => void close() }}>
-    <div class={["scrollbar-clean grid max-h-[80vh] content-start overflow-y-auto rounded-xl bg-panel p-2 shadow-panel", preview ? "w-[min(46rem,60vw)] grid-cols-4 gap-1" : "w-[min(26rem,100%)] gap-0.5"]} role="listbox" aria-label={label}>
+  <div class="fixed inset-0 z-10 flex items-center justify-center gap-4 bg-surface-overlay p-4" use:menu={{ onBack: () => void close() }}>
+    <div class={["scrollbar-clean grid max-h-[80vh] content-start overflow-y-auto rounded-xl bg-surface-panel p-2 shadow-panel", preview ? "w-[min(46rem,60vw)] grid-cols-4 gap-1" : "w-[min(26rem,100%)] gap-0.5"]} role="listbox" aria-label={label}>
       {#each options as [v, text] (v)}
         {#if v === value}
           <Button variant={preview ? "bare" : "menu"} class={preview ? OPTION : "flex items-center gap-2 text-left"} role="option" aria-selected="true" onfocus={() => (focused = v)} onclick={() => void close({ value: v })} {@attach startHere}>{@render line(v, text)}</Button>
@@ -80,7 +80,7 @@
       {/each}
     </div>
     {#if preview}
-      <div class="grid w-[min(26rem,40vw)] content-start gap-3 rounded-xl bg-panel p-4 shadow-panel" aria-live="polite">{@render preview(focused)}</div>
+      <div class="grid w-[min(26rem,40vw)] content-start gap-3 rounded-xl bg-surface-panel p-4 shadow-panel" aria-live="polite">{@render preview(focused)}</div>
     {/if}
   </div>
 {/if}

@@ -27,12 +27,12 @@
   {...rest}
   class={[
     "box-border flex w-full items-center gap-3 rounded-xl border-2 border-solid p-4 text-left shadow-panel disabled:cursor-default disabled:opacity-50",
-    primary ? "border-transparent bg-action-primary text-action-primary focus:outline-2 focus:outline-offset-2 focus:outline-selected enabled:hover:layer-primary-hover" : "border-default bg-panel text-primary focus:border-selected focus:bg-raised enabled:hover:bg-raised",
+    primary ? "border-transparent bg-action-primary-bg text-action-primary-text [font-palette:--action-primary-text] focus:outline-2 focus:outline-offset-2 focus:outline-selected enabled:hover:layer-action-primary-bg-hover" : "border-default bg-surface-panel text-primary focus:border-selected focus:layer-surface-selected enabled:hover:layer-surface-hover",
   ]}
 >
   {#if media}<span class="grid shrink-0 place-items-center" aria-hidden="true">{@render media()}</span>{/if}
   <span class="grid min-w-0 flex-1 gap-1">
-  <span class="flex items-center gap-2 text-[1.15em] font-bold">{#if icon}<span class="grid size-[1.1em] shrink-0 place-items-center" aria-hidden="true">{@render icon()}</span>{/if}{title}</span>
-  {#if children}<span class="grid gap-0.5 text-[0.85em] text-secondary">{@render children()}</span>{/if}
+  <span class="flex items-center gap-2 text-lg font-bold">{#if icon}<span class="grid size-[1.1em] shrink-0 place-items-center" aria-hidden="true">{@render icon()}</span>{/if}{title}</span>
+  {#if children}<span class="grid gap-0.5 text-sm text-secondary">{@render children()}</span>{/if}
   </span>
 </Button>

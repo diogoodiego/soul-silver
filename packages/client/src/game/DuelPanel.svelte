@@ -23,7 +23,7 @@
   const rules = $derived(t("duel.rules", { level: duel.rules.level === "50" ? t("duel.level50") : t("duel.levelCurrent"), team: duel.rules.team }));
 </script>
 
-<section class="absolute inset-x-0 bottom-0 z-4 grid gap-2 p-4 bg-overlay text-primary" use:menu={{ onBack: () => (duel.phase === "ended" ? onClose() : duel.phase === "invited" ? onAnswer(false) : onCancel()) }}>
+<section class="absolute inset-x-0 bottom-0 z-4 grid gap-2 p-4 bg-surface-overlay text-primary" use:menu={{ onBack: () => (duel.phase === "ended" ? onClose() : duel.phase === "invited" ? onAnswer(false) : onCancel()) }}>
   {#if duel.phase === "invited"}
     <p class="m-0">{t("duel.invited", { name: partnerName })} {rules}</p>
     <div class="flex gap-2">

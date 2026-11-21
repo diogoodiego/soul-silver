@@ -36,6 +36,8 @@
   import BallPicker from "../hud/BallPicker.svelte";
   import BallIcon from "../hud/BallIcon.svelte";
   import PhoneDex from "../hud/PhoneDex.svelte";
+  import KeyHints from "../ui/KeyHints.svelte";
+  import type { Action } from "@soulsilver/shared/input";
   import CaptureCutscene from "../game/CaptureCutscene.svelte";
   import { t, type MessageKey } from "../i18n";
   import { input } from "../input/app-input";
@@ -221,6 +223,10 @@
   let hudSelf = $state<Entity | undefined>();
   /** The player controls a Pokémon: a fight is on. */
   let inCombat = $state(false);
+  /** The controls legend above the Pokédex: field or combat actions, labelled by their settings names. */
+  const legend = $derived(
+    ((inCombat ? ["dash", "recall", "items", "throw", "picker", "swapNext"] : ["interact", "run", "combat", "throw", "rod", "menu"]) as Action[]).map((a) => ({ actions: [a], label: t(`action.${a}`) })),
+  );
   /** Recall from the picker: the next input carries the recall bit. */
   let recallOnce = false;
 
@@ -1100,7 +1106,7 @@
     reconnecting = false;
   }
 
-  const DIALOG = "absolute left-1/2 top-4 -translate-x-1/2 w-[min(90%,32rem)] m-0 px-4 py-3 bg-overlay text-primary border-3 border-frame rounded-[6px] whitespace-pre-line z-3";
+  const DIALOG = "absolute left-1/2 top-4 -translate-x-1/2 w-[min(90%,32rem)] m-0 px-4 py-3 bg-surface-overlay text-primary border-3 border-frame rounded-[6px] whitespace-pre-line z-3";
   const MESSAGE = "absolute left-1/2 top-1/2 -translate-1/2 m-0 text-primary z-5";
 
   /** The Pokémon out: under control in a fight, else the one following the trainer. */
@@ -1163,13 +1169,13 @@
 
   {#each marks as m (m.key)}
     <!-- A lone glyph ("!", "…", "⚔", an emotion) is drawn large: in the screen's pixel font it is otherwise a few pixels tall. -->
-    <span style:font-size={[...m.text].length <= 2 ? "2rem" : undefined} class="absolute -translate-x-1/2 -translate-y-full text-white font-bold text-[1.1rem] [text-shadow:0_1px_2px_#000] pointer-events-none z-1 grid justify-items-center" style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">
+    <span class={["absolute -translate-x-1/2 -translate-y-full text-primary font-bold [text-shadow:0_1px_2px_#000] pointer-events-none z-1 grid justify-items-center", [...m.text].length <= 2 ? "text-3xl" : "text-lg"]} style:left="{m.x}px" style:top="{m.y}px" aria-hidden="true">
       {m.text}
       {#if m.capture}
         <!-- Hangs under the name so the mark keeps its place over the sprite. -->
-        <span class="absolute left-1/2 top-full -translate-x-1/2 flex items-center gap-1 text-[1.2em]">
+        <span class="absolute left-1/2 top-full -translate-x-1/2 flex items-center gap-1 text-xl">
           <!-- With no ball the key is crossed out: the throw is unavailable. -->
-          <span class="relative inline-grid place-items-center"><Glyph action="throw" round />{#if throwBall === undefined}<span class="absolute inset-0 grid place-items-center text-[#ff3030] text-[1.2em] leading-none [text-shadow:0_0_2px_#000]">✕</span>{/if}</span>
+          <span class="relative inline-grid place-items-center"><Glyph action="throw" round />{#if throwBall === undefined}<span class="absolute inset-0 grid place-items-center text-[#ff3030] text-xl leading-none [text-shadow:0_0_2px_#000]">✕</span>{/if}</span>
           <BallIcon item={throwBall} />
         </span>
       {/if}
@@ -1212,7 +1218,7 @@
   {/if}
   {#if status === "playing" && dowsing}
     <!-- The Dowsing MCHN (spec 027): a needle toward the nearest hidden item, brighter as it gets close. -->
-    <div class="absolute right-3 top-3 z-2 grid justify-items-center gap-1 px-2 py-1 bg-panel rounded-[6px] text-primary text-[0.8rem] pointer-events-none" role="img" aria-label={t("dowse.label")}>
+    <div class="absolute right-3 top-3 z-2 grid justify-items-center gap-1 px-2 py-1 bg-surface-panel rounded-[6px] text-primary text-xs pointer-events-none" role="img" aria-label={t("dowse.label")}>
       <svg class="size-8 text-icon-primary" viewBox="-16 -16 32 32" style:opacity={0.35 + 0.65 * dowsing.near} aria-hidden="true">
         <circle r="14" fill="none" stroke="currentColor" stroke-width="2" />
         <line x2="0" y2="-11" stroke="currentColor" stroke-width="3" stroke-linecap="round" transform="rotate({dowsing.dir})" />
@@ -1332,6 +1338,7 @@
         {#snippet beside()}<BallPicker {balls} selected={selectedBall} {itemName} onStep={stepBall} />{/snippet}
       </PartyStrip>
     </div>
+    {#if !menuOpen}<div class="pointer-events-none absolute bottom-24 right-4 z-2 w-64"><KeyHints hints={legend} /></div>{/if}
     <PhoneDex
       open={menuOpen}
       {page}
@@ -1347,10 +1354,10 @@
     />
   {/if}
 
-  {#if saveNote}<p class="absolute left-4 top-4 m-0 text-primary text-[0.85rem] opacity-80 z-1 [text-shadow:0_1px_2px_#000]" role="status">{saveNote}</p>{/if}
+  {#if saveNote}<p class="absolute left-4 top-4 m-0 text-primary text-sm opacity-80 z-1 [text-shadow:0_1px_2px_#000]" role="status">{saveNote}</p>{/if}
 
   {#if showDebug}
-    <dl class="debug fixed top-2 right-2 m-0 px-3 py-2 bg-overlay text-primary [font:12px_monospace] z-6" aria-label={t("debug.label")}>
+    <dl class="debug fixed top-2 right-2 m-0 px-3 py-2 bg-surface-overlay text-primary [font:12px_monospace] z-6" aria-label={t("debug.label")}>
       <dt>{t("debug.positionLabel")}</dt>
       <dd>{position}</dd>
       <dt>{t("debug.dex")}</dt>

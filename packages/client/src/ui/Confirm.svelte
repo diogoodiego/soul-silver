@@ -7,8 +7,8 @@
   let { question, onAnswer }: { question: string; onAnswer: (yes: boolean) => void } = $props();
 </script>
 
-<div class="fixed inset-0 grid place-items-center bg-overlay z-10">
-  <div class="max-w-[28rem] px-5 py-4 bg-panel border-2 border-default rounded-[6px]" role="alertdialog" aria-label={question} use:menu={{ onBack: () => onAnswer(false) }}>
+<div class="fixed inset-0 grid place-items-center bg-surface-overlay z-10">
+  <div class="max-w-[28rem] px-5 py-4 bg-surface-panel border-2 border-default rounded-[6px]" role="alertdialog" aria-label={question} use:menu={{ onBack: () => onAnswer(false) }}>
     <p>{question}</p>
     <div class="flex gap-2 justify-end">
       <Button onclick={() => onAnswer(false)}>{t("common.no")}</Button>

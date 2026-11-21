@@ -45,24 +45,24 @@
   void itemIcons().then((map) => (ball = map.get(POKE_BALL)));
 </script>
 
-<section class="pointer-events-none grid gap-2 text-white [text-shadow:0_1px_2px_#000]" aria-label={t("hud.party")}>
+<section class="pointer-events-none grid gap-2 text-primary [text-shadow:0_1px_2px_#000]" aria-label={t("hud.party")}>
   {#if lead}
-    <div class="grid w-[17rem] grid-cols-[auto_1fr] items-center gap-x-2 rounded-[10px] bg-black/45 px-2 py-1.5 backdrop-blur-[2px]">
+    <div class="grid w-[17rem] grid-cols-[auto_1fr] items-center gap-x-2 rounded-[10px] bg-surface-overlay px-2 py-1.5 backdrop-blur-[2px]">
       <PokemonIcon species={lead.species} />
       <div class="grid min-w-0 gap-1">
         <div class="flex min-w-0 items-baseline gap-2">
           <strong class="overflow-hidden text-ellipsis whitespace-nowrap">{lead.egg ? t("party.egg") : (lead.nickname ?? speciesName(lead.species))}</strong>
-          {#if fight && status}<span class="rounded-[3px] bg-[#7b1fa2] px-[0.3rem] text-[0.75rem]">{t(`status.${status}` as MessageKey)}</span>{/if}
-          {#if fight?.data["confused"]}<span class="rounded-[3px] bg-[#7b1fa2] px-[0.3rem] text-[0.75rem]">{t("status.confusion")}</span>{/if}
-          <span class="ml-auto whitespace-nowrap text-[0.8rem] opacity-80">{t("hud.level", { level: lead.level })}</span>
+          {#if fight && status}<span class="rounded-[3px] bg-[#7b1fa2] px-[0.3rem] text-xs">{t(`status.${status}` as MessageKey)}</span>{/if}
+          {#if fight?.data["confused"]}<span class="rounded-[3px] bg-[#7b1fa2] px-[0.3rem] text-xs">{t("status.confusion")}</span>{/if}
+          <span class="ml-auto whitespace-nowrap text-xs opacity-80">{t("hud.level", { level: lead.level })}</span>
         </div>
         <HpBar fraction={fraction(lead)} role="meter" aria-label={t("hud.hp")} aria-valuemin={0} aria-valuemax={lead.hpMax} aria-valuenow={lead.hp} />
         {#if fight}
           <div class="flex items-center gap-2">
-            <span class="block h-[0.35rem] flex-1 overflow-hidden rounded-[3px] bg-black/60" role="meter" aria-label={t("hud.gauge")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={gauge}>
+            <span class="block h-[0.35rem] flex-1 overflow-hidden rounded-[3px] bg-surface-raised" role="meter" aria-label={t("hud.gauge")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={gauge}>
               <span class={["block h-full", gauge >= 100 ? "bg-[#ffd54f]" : "bg-[#4fc3f7]"]} style:width="{gauge}%"></span>
             </span>
-            <small class="whitespace-nowrap text-[0.75rem]">{lead.hp} / {lead.hpMax}</small>
+            <small class="whitespace-nowrap text-xs">{lead.hp} / {lead.hpMax}</small>
           </div>
         {/if}
       </div>
@@ -91,7 +91,7 @@
           </span>
           {#if down}<span class="sr-only">{t("hud.fainted")}</span>{/if}
         {:else if m.hp === 0 && !m.egg}
-          <span class="grid size-4 place-items-center rounded-full border-2 border-white/40 bg-black/50 text-[0.6rem] leading-none text-white/70">×</span>
+          <span class="grid size-4 place-items-center rounded-full border-2 border-white/40 bg-black/50 text-xs leading-none text-white/70">×</span>
           <span class="sr-only">{t("hud.fainted")}</span>
         {:else}
           <span class={["size-4 rounded-full border-2 border-white shadow-[0_0_0_1px_#0008]", i === out && "size-5"]} style:background={m.egg ? "#e8e2c8" : hpColor(fraction(m))}></span>

@@ -19,7 +19,7 @@
         variant="bare"
         role="radio"
         aria-checked={value === v}
-        class="rounded-full border border-solid border-default px-3 py-1 text-[0.9em] font-semibold text-action-secondary hover:layer-secondary-hover focus:border-selected aria-checked:bg-selected aria-checked:text-primary"
+        class="rounded-full border border-solid border-default px-3 py-1 text-sm font-semibold text-action-secondary-text hover:layer-action-secondary-bg-hover focus:border-selected aria-checked:layer-surface-selected aria-checked:text-primary"
         onclick={() => (value = v)}
       >
         {text}

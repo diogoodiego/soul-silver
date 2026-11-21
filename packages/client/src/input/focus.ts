@@ -72,6 +72,12 @@ export function menuNavigation(root: HTMLElement, input: Input, onCancel?: () =>
   root.addEventListener("focusin", track);
   const off = input.onAction((action) => {
     if (onAction?.(action)) return;
+    // Typing in a TextField (entered with confirm): the arrows move the caret; cancel (Esc, pad B) goes back to its label.
+    const field = document.activeElement instanceof HTMLInputElement ? document.activeElement.closest<HTMLElement>("label[tabindex]") : null;
+    if (field) {
+      if (action === "cancel") field.focus();
+      return;
+    }
     const list = items();
     const focused = root.contains(document.activeElement) ? (document.activeElement as HTMLElement) : last;
     const at = focused ? list.indexOf(focused) : -1;

@@ -25,6 +25,11 @@
   font-family: "Sixtyfour Convergence";
   override-colors: 0 #eeeeff, 1 #eeeeff;
 }
+/* The value of --action-primary-text: dark text on action/primary/bg (a palette cannot read a CSS variable). */
+@font-palette-values --action-primary-text {
+  font-family: "Sixtyfour Convergence";
+  override-colors: 0 #0f0d0e, 1 #0f0d0e;
+}
 @font-palette-values --ink {
   font-family: "Sixtyfour Convergence";
   override-colors: 0 #222222, 1 #222222;
@@ -36,9 +41,9 @@
   font-palette: --screen;
 }
 
-/* An action's hover or pressed layer over its own fill: hover:layer-primary-hover. */
+/* A low-opacity color stacked over the background under it: hover:layer-surface-hover, hover:layer-action-primary-bg-hover. */
 @utility layer-* {
-  background-image: linear-gradient(--value(--color-action-*), --value(--color-action-*));
+  background-image: linear-gradient(--value(--color-*), --value(--color-*));
 }
 /* A CRT over a screen, above everything drawn in it, never taking clicks. The vignette is a V.1 effect.
  * --crt-px is the game pixel's height on the page (set by the renderer): one scanline per pixel row, so the lines
@@ -91,54 +96,87 @@
   }
   &::-webkit-scrollbar-thumb {
     border-radius: 999px;
-    background: var(--background-color-selected);
+    background: var(--surface-selected);
   }
   &::-webkit-scrollbar-thumb:hover {
-    background: var(--text-color-disabled);
+    background: var(--text-disabled);
   }
 }
 
 
-@theme {
-  /* Semantic tokens: the "Soul Silver" Figma collection, Dark mode. Each family has its own utility namespace,
-   * so names stay short: bg-panel, text-primary, border-default. */
-  --background-color-canvas: #0f0d0e;
-  --background-color-panel: #171516;
-  --background-color-raised: #262525;
-  --background-color-sunken: rgb(222 217 219 / 5%);
-  --background-color-hover: rgb(222 217 219 / 10%);
-  --background-color-selected: rgb(222 217 219 / 15%);
-  --background-color-overlay: rgb(38 37 37 / 80%);
-  --background-color-action-primary: #fff;
-  --background-color-action-disabled: rgb(222 217 219 / 5%);
+/* Semantic tokens: the "Soul Silver" Figma collection, Dark mode, named as in the document (surface/panel is
+ * --surface-panel: CSS names take no slash). status/* is left out: unfinished. */
+:root {
+  --surface-canvas: #0f0d0e;
+  --surface-panel: #171516;
+  --surface-raised: #262525;
+  --surface-sunken: rgb(222 217 219 / 5%);
+  --surface-hover: rgb(222 217 219 / 10%);
+  --surface-selected: rgb(222 217 219 / 15%);
+  --surface-overlay: rgb(38 37 37 / 80%);
+  --text-primary: #fff;
+  --text-secondary: rgb(222 217 219 / 80%);
+  --text-tertiary: rgb(222 217 219 / 70%);
+  --text-disabled: rgb(222 217 219 / 50%);
+  --icon-primary: #fff;
+  --icon-secondary: rgb(222 217 219 / 80%);
+  --border-subtle: rgb(222 217 219 / 5%);
+  --border-default: rgb(222 217 219 / 10%);
+  --border-focus: #fff;
+  --border-selected: #fff;
+  --action-primary-bg: #fff;
+  --action-primary-bg-hover: rgb(38 37 37 / 10%);
+  --action-primary-bg-pressed: rgb(38 37 37 / 20%);
+  --action-primary-text: #0f0d0e;
+  --action-secondary-bg: rgb(38 37 37 / 5%);
+  --action-secondary-bg-hover: rgb(222 217 219 / 10%);
+  --action-secondary-bg-pressed: rgb(222 217 219 / 20%);
+  --action-secondary-text: #d4cdcf;
+  --action-ghost-bg: rgb(38 37 37 / 5%);
+  --action-ghost-bg-hover: rgb(222 217 219 / 10%);
+  --action-ghost-bg-pressed: rgb(222 217 219 / 20%);
+  --action-ghost-text: #d4cdcf;
+  --action-disabled-bg: rgb(222 217 219 / 5%);
+  --action-disabled-text: rgb(222 217 219 / 60%);
+}
 
-  --text-color-primary: #fff;
-  --text-color-secondary: rgb(222 217 219 / 80%);
-  --text-color-tertiary: rgb(222 217 219 / 70%);
-  --text-color-disabled: rgb(222 217 219 / 50%);
-  --text-color-action-primary: #0f0d0e;
-  --text-color-action-secondary: #d4cdcf;
-  --text-color-action-ghost: #d4cdcf;
-  --text-color-action-disabled: rgb(222 217 219 / 60%);
-
-  --border-color-subtle: rgb(222 217 219 / 5%);
-  --border-color-default: rgb(222 217 219 / 10%);
-  --border-color-focus: #fff;
-  --border-color-selected: #fff;
-  --outline-color-selected: #fff;
-  --outline-color-focus: #fff;
-
-  /* icon-primary, icon-secondary: for text-, fill- and stroke-. */
-  --color-icon-primary: #fff;
-  --color-icon-secondary: rgb(222 217 219 / 80%);
-
-  /* Hover and pressed are layers over an action's own fill (layer-*), not fills of their own. */
-  --color-action-primary-hover: rgb(38 37 37 / 10%);
-  --color-action-primary-pressed: rgb(38 37 37 / 20%);
-  --color-action-secondary-hover: rgb(222 217 219 / 10%);
-  --color-action-secondary-pressed: rgb(222 217 219 / 20%);
-  --color-action-ghost-hover: rgb(222 217 219 / 10%);
-  --color-action-ghost-pressed: rgb(222 217 219 / 20%);
+@theme inline {
+  /* The document's tokens as utilities: bg-surface-panel, text-primary, border-default, text-icon-primary,
+   * bg-action-primary-bg, outline-focus. surface/hover, surface/selected and the actions' bg-hover and bg-pressed are
+   * layers over a background (layer-surface-hover), never one of their own; secondary and ghost buttons draw no bg. */
+  --color-surface-canvas: var(--surface-canvas);
+  --color-surface-panel: var(--surface-panel);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-selected: var(--surface-selected);
+  --color-surface-overlay: var(--surface-overlay);
+  --text-color-primary: var(--text-primary);
+  --text-color-secondary: var(--text-secondary);
+  --text-color-tertiary: var(--text-tertiary);
+  --text-color-disabled: var(--text-disabled);
+  --color-icon-primary: var(--icon-primary);
+  --color-icon-secondary: var(--icon-secondary);
+  --border-color-subtle: var(--border-subtle);
+  --border-color-default: var(--border-default);
+  --border-color-focus: var(--border-focus);
+  --border-color-selected: var(--border-selected);
+  --color-action-primary-bg: var(--action-primary-bg);
+  --color-action-primary-bg-hover: var(--action-primary-bg-hover);
+  --color-action-primary-bg-pressed: var(--action-primary-bg-pressed);
+  --color-action-primary-text: var(--action-primary-text);
+  --color-action-secondary-bg: var(--action-secondary-bg);
+  --color-action-secondary-bg-hover: var(--action-secondary-bg-hover);
+  --color-action-secondary-bg-pressed: var(--action-secondary-bg-pressed);
+  --color-action-secondary-text: var(--action-secondary-text);
+  --color-action-ghost-bg: var(--action-ghost-bg);
+  --color-action-ghost-bg-hover: var(--action-ghost-bg-hover);
+  --color-action-ghost-bg-pressed: var(--action-ghost-bg-pressed);
+  --color-action-ghost-text: var(--action-ghost-text);
+  --color-action-disabled-bg: var(--action-disabled-bg);
+  --color-action-disabled-text: var(--action-disabled-text);
+  --outline-color-focus: var(--border-focus);
+  --outline-color-selected: var(--border-selected);
 
   /* Provisional semantic names with no token in the collection yet: components use these, so a future status
    * (error) or elevation token only changes the value here. */
@@ -188,8 +226,8 @@
   }
   body {
     margin: 0;
-    background: var(--background-color-canvas);
-    color: var(--text-color-primary);
+    background: var(--surface-canvas);
+    color: var(--text-primary);
     font-family: system-ui, sans-serif;
   }
   /* No preflight: drop the native button look, so Button's variants start from nothing. */
@@ -204,9 +242,19 @@
   button:focus-visible {
     outline: none;
   }
+  /* Every text field sits on surface/sunken (no preflight: the native look would show otherwise). */
+  input:not([type="checkbox"], [type="radio"]),
+  textarea,
+  select {
+    font: inherit;
+    color: var(--text-primary);
+    background: var(--surface-sunken);
+    border: 1px solid var(--border-default);
+    border-radius: 0.375rem;
+  }
   input:focus-visible,
   select:focus-visible {
-    outline: 2px solid var(--border-color-focus);
+    outline: 2px solid var(--border-focus);
     outline-offset: 2px;
   }
 }

@@ -9,8 +9,8 @@
   let { points, onFly, onBack }: { points: { area: string; name: string }[]; onFly: (area: string) => void; onBack: () => void } = $props();
 </script>
 
-<div class="fixed inset-0 grid place-items-center bg-overlay z-10">
-  <section class="grid gap-2 min-w-[16rem] px-5 py-4 bg-panel border-2 border-default rounded-[6px]" aria-label={t("fly.title")} use:menu={{ onBack }}>
+<div class="fixed inset-0 grid place-items-center bg-surface-overlay z-10">
+  <section class="grid gap-2 min-w-[16rem] px-5 py-4 bg-surface-panel border-2 border-default rounded-[6px]" aria-label={t("fly.title")} use:menu={{ onBack }}>
     <h2 class="m-0">{t("fly.title")}</h2>
     {#each points as p (p.area)}
       <Button onclick={() => onFly(p.area)}>{p.name}</Button>

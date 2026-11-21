@@ -20,11 +20,11 @@
     </svg>
   {/if}
   <p class="m-0">{t("gear.here", { place: here })}</p>
-  <h3 class="m-0 text-[1rem]">{t("gear.visited")}</h3>
+  <h3 class="m-0 text-base">{t("gear.visited")}</h3>
   <ul class="m-0 pl-5">
     {#each visited as place (place)}<li>{place}</li>{:else}<li>{t("gear.none")}</li>{/each}
   </ul>
-  <h3 class="m-0 text-[1rem]">{t("gear.others")}</h3>
+  <h3 class="m-0 text-base">{t("gear.others")}</h3>
   <ul class="m-0 pl-5">
     {#each others as o (o.name)}<li>{o.name} — {o.place}</li>{:else}<li>{t("gear.alone")}</li>{/each}
   </ul>

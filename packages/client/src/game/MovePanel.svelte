@@ -44,7 +44,7 @@
       style:--ring="{waiting * 360}deg"
     >
       <!-- The key or button for this move: a dark disc, in the screen's light palette (block H). -->
-      <span class="relative z-1 shrink-0 text-[1.1rem] [font-palette:--screen]"><Glyph action={`move${slot}` as Action} round /></span>
+      <span class="relative z-1 shrink-0 text-lg [font-palette:--screen]"><Glyph action={`move${slot}` as Action} round /></span>
       <span class="overflow-hidden text-ellipsis whitespace-nowrap font-semibold">{move === undefined ? "—" : moveName(move)}</span>
     </div>
   {/each}

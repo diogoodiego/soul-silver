@@ -116,7 +116,7 @@
       data-control={c.id}
       data-side={c.onLeft ? "left" : "right"}
       variant="bare"
-      class="absolute p-0 text-[13px] leading-4 outline-none focus:bg-[#e8e8e8] focus:text-[#111] {c.onLeft ? 'text-right' : 'text-left'} {c.id === active ? 'text-white' : 'text-[#9a9a9a]'}"
+      class="absolute p-0 text-xs leading-4 outline-none focus:bg-action-primary-bg focus:text-action-primary-text focus:[font-palette:--action-primary-text] {c.onLeft ? 'text-right' : 'text-left'} {c.id === active ? 'text-primary' : 'text-tertiary'}"
       style="left: {c.onLeft ? 0 : bw - column}px; top: {c.y}px; width: {column}px"
       onfocus={() => handle?.pick(c.id)}
     >

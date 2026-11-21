@@ -59,7 +59,7 @@
   });
 </script>
 
-<figure class="pointer-events-none absolute right-4 top-4 z-2 m-0 overflow-hidden rounded-[10px] border-2 border-white/70 bg-black/55 shadow-[0_2px_10px_#0008]" style:width="{BOX_W}px" style:height="{BOX_H}px" aria-label={t("hud.minimap")}>
+<figure class="pointer-events-none absolute right-4 top-4 z-2 m-0 overflow-hidden rounded-[10px] border-2 border-default bg-surface-overlay shadow-[0_2px_10px_#0008]" style:width="{BOX_W}px" style:height="{BOX_H}px" aria-label={t("hud.minimap")}>
   <canvas bind:this={canvas} class="absolute inset-0 size-full opacity-85" aria-hidden="true"></canvas>
   {#each people as p (p.id)}
     <span class={["absolute size-2 -translate-1/2 rounded-full border border-black", p.self ? "size-2.5 bg-white ring-2 ring-[#e8433b]" : "bg-[#7fd0ff]"]} style:left="{p.x}px" style:top="{p.y}px" aria-hidden="true"></span>
@@ -84,7 +84,7 @@
                 style:background-position="-{ball.x}px -{ball.y}px"
               ></span>
             {:else}
-              <span class="absolute bottom-0 right-0 grid size-2.5 place-items-center rounded-full border border-white bg-[#2f9e57] text-[0.45rem] leading-none text-white" aria-hidden="true">✓</span>
+              <span class="absolute bottom-0 right-0 grid size-2.5 place-items-center rounded-full border border-white bg-[#2f9e57] text-xs leading-none text-white" aria-hidden="true">✓</span>
             {/if}
           {/if}
           <span class="sr-only">{label}{s.state === "caught" ? ` · ${t("hud.minimap.caught")}` : ""}</span>

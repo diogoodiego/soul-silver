@@ -11,9 +11,9 @@
   const focusNow = (node: HTMLElement) => node.focus();
 </script>
 
-<section class="absolute inset-0 z-4 grid place-content-center p-6 bg-overlay" use:menu={{ onBack: () => onDone("") }}>
+<section class="absolute inset-0 z-4 grid place-content-center p-6 bg-surface-overlay" use:menu={{ onBack: () => onDone("") }}>
   <form
-    class="grid gap-3 min-w-[18rem] px-4 py-3 bg-overlay text-primary border-3 border-frame rounded-[6px] text-[1.1rem]"
+    class="grid gap-3 min-w-[18rem] px-4 py-3 bg-surface-overlay text-primary border-3 border-frame rounded-[6px] text-lg"
     onsubmit={(e) => {
       e.preventDefault();
       onDone(text.trim());

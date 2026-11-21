@@ -5,4 +5,4 @@
   let { children }: { children: Snippet } = $props();
 </script>
 
-<span class="text-[0.8em] font-semibold text-secondary">{@render children()}</span>
+<span class="text-xs font-semibold text-secondary">{@render children()}</span>

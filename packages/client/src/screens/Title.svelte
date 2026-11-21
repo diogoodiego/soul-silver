@@ -29,13 +29,13 @@
 
 <section class="fixed inset-0 grid place-items-center content-center gap-6" in:slideUp out:slideUp>
   {#if artMissing}
-    <h1 class="relative text-[3rem] m-0">SoulSilver Desktop</h1>
+    <h1 class="relative text-5xl m-0">SoulSilver Desktop</h1>
   {:else}
     <div class="relative w-[min(90vw,calc(75vh*4/3))] aspect-[4/3]">
       <!-- The screen map is taller than the DS screen; the logo sits at its top. -->
       <img class="absolute inset-0 w-full h-full object-cover object-top [image-rendering:pixelated]" src="{ART}/logo.png" alt="Pokémon SoulSilver" onerror={() => (artMissing = true)} />
     </div>
   {/if}
-  <p class="relative text-[1.3rem] animate-title-pulse motion-reduce:animate-none" aria-live="polite">{t("title.press")} <Glyph action="confirm" round /> {t("title.toStart")}</p>
-  <p class="absolute right-4 bottom-3 m-0 text-tertiary text-[0.85rem]">{t("app.version", { version: version ?? "—" })}</p>
+  <p class="relative text-xl animate-title-pulse motion-reduce:animate-none" aria-live="polite">{t("title.press")} <Glyph action="confirm" round /> {t("title.toStart")}</p>
+  <p class="absolute right-4 bottom-3 m-0 text-tertiary text-sm">{t("app.version", { version: version ?? "—" })}</p>
 </section>

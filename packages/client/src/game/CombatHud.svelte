@@ -15,7 +15,7 @@
 {#each bars as b (b.key)}
   <span class="absolute w-14 -translate-x-1/2 -translate-y-full pointer-events-none z-1" style="left: {b.x}px; top: {b.y}px" aria-hidden="true">
     <HpBar fraction={b.fraction} />
-    <span class="block h-[0.25rem] mt-px bg-black/60 rounded-[2px] overflow-hidden"><span class="block h-full bg-[#4fc3f7]" style:width="{b.gauge * 100}%"></span></span>
-    {#if b.scared}<span class="absolute left-full top-1/2 ml-1 -translate-y-1/2 text-[0.9rem] leading-none">😨</span>{/if}
+    <span class="block h-[0.25rem] mt-px bg-surface-raised rounded-[2px] overflow-hidden"><span class="block h-full bg-[#4fc3f7]" style:width="{b.gauge * 100}%"></span></span>
+    {#if b.scared}<span class="absolute left-full top-1/2 ml-1 -translate-y-1/2 text-sm leading-none">😨</span>{/if}
   </span>
 {/each}

@@ -56,13 +56,13 @@
 
 <svelte:window ondragover={onDragOver} ondragleave={() => (dragging = false)} ondrop={onDrop} />
 
-<section class={["max-w-[36rem] px-5 py-4 border-2 rounded-[6px]", dragging ? "border-dashed border-selected bg-selected" : "border-transparent"]} aria-live="polite" use:menu>
+<section class={["max-w-[36rem] px-5 py-4 border-2 rounded-[6px]", dragging ? "border-dashed border-selected layer-surface-selected" : "border-transparent"]} aria-live="polite" use:menu>
   {#if assets.status === "checking"}
-    <p class="text-tertiary text-[0.9rem]">{t("firstRun.checking")}</p>
+    <p class="text-tertiary text-sm">{t("firstRun.checking")}</p>
   {:else if assets.status === "needs-rom" || assets.status === "rejected"}
-    <h2 class="text-[1.2rem] mt-0 mx-0 mb-3">{t("firstRun.welcome")}</h2>
+    <h2 class="text-xl mt-0 mx-0 mb-3">{t("firstRun.welcome")}</h2>
     <p>{t("firstRun.needRom")}</p>
-    <p class="text-tertiary text-[0.9rem]">{t("firstRun.local")}</p>
+    <p class="text-tertiary text-sm">{t("firstRun.local")}</p>
 
     {#if assets.status === "needs-rom" && assets.previousRomInvalid}
       <div class="my-4 mx-0 px-4 py-3 border-l-4 border-alarm bg-[rgb(176_0_32/18%)]" role="alert">
@@ -98,7 +98,7 @@
   {:else if assets.status === "validating"}
     <p>{t("firstRun.validating")}</p>
   {:else if assets.status === "extracting"}
-    <h2 class="text-[1.2rem] mt-0 mx-0 mb-3">{t(`firstRun.mode.${assets.mode}`)}</h2>
+    <h2 class="text-xl mt-0 mx-0 mb-3">{t(`firstRun.mode.${assets.mode}`)}</h2>
     <p>{assets.stageTitle}</p>
     <progress class="w-full h-4" max="100" value={assets.percent}></progress>
     <p class="tabular-nums">{assets.percent}%</p>
@@ -117,7 +117,7 @@
       <Button variant="ghost" onclick={() => void api.openExtractionLog()}>{t("firstRun.openLog")}</Button>
     </div>
   {:else if assets.status === "ready"}
-    <h2 class="text-[1.2rem] mt-0 mx-0 mb-3">{t("firstRun.ready")}</h2>
+    <h2 class="text-xl mt-0 mx-0 mb-3">{t("firstRun.ready")}</h2>
   {/if}
 </section>
 

@@ -24,7 +24,7 @@
   $effect(() => stage?.playMove(move));
 </script>
 
-<div class={["relative overflow-hidden rounded-lg border border-solid border-default bg-sunken", extra]} style:aspect-ratio="{STAGE_W} / {STAGE_H}">
+<div class={["relative overflow-hidden rounded-lg border border-solid border-default bg-surface-raised", extra]} style:aspect-ratio="{STAGE_W} / {STAGE_H}">
   <canvas bind:this={canvas} class="size-full [image-rendering:pixelated]" aria-hidden="true"></canvas>
   {#if user}
     <!-- Feet on the spot the move starts from. -->

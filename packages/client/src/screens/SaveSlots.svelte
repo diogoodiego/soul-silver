@@ -104,13 +104,13 @@
 
 <!-- The main menu's look: right edge, vertically centred, over the title backdrop. -->
 <section class="fixed inset-0 flex flex-col items-end justify-center gap-2 pr-12 text-right" use:menu={{ onBack, onAction }} onfocusin={(event) => (current = Number((event.target as HTMLElement).dataset["slot"]) || undefined)}>
-  <h2 class="m-0 text-[1.4rem]">{t("play.chooseSave")}</h2>
+  <h2 class="m-0 text-2xl">{t("play.chooseSave")}</h2>
   <ul class="m-0 grid list-none justify-items-stretch gap-3 p-0" bind:this={list}>
     {#each slots as s (s.index)}
       <li class="grid justify-items-end gap-[0.4rem]">
         {#if s.status === "ok"}
           <Button variant="menu" class={SLOT} data-slot={s.index} onclick={() => (s.staleStory ? (stale = s.index) : onPick(s.index))}>
-            <strong class="flex items-center gap-2 text-[1.15rem]"><span class="hidden group-focus:inline-flex"><Glyph action="confirm" round /></span>{s.name}</strong>
+            <strong class="flex items-center gap-2 text-lg"><span class="hidden group-focus:inline-flex"><Glyph action="confirm" round /></span>{s.name}</strong>
             <span>{t("saves.summary", { slot: s.index, time: playTime(s.playTimeMs), badges: s.badges })}</span>
             {#if s.staleStory}<span class="text-danger">{t("saves.staleStory")}</span>{/if}
           </Button>
@@ -128,7 +128,7 @@
           </div>
         {:else if s.status === "empty"}
           <Button variant="menu" class={SLOT} data-slot={s.index} onclick={() => onNew(s.index)}>
-            <strong class="flex items-center gap-2 text-[1.15rem]"><span class="hidden group-focus:inline-flex"><Glyph action="confirm" round /></span>{t("saves.newGame")}</strong>
+            <strong class="flex items-center gap-2 text-lg"><span class="hidden group-focus:inline-flex"><Glyph action="confirm" round /></span>{t("saves.newGame")}</strong>
             <span>{t("saves.emptySlot", { slot: s.index })}</span>
           </Button>
           <div class="flex gap-2">

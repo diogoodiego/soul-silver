@@ -12,6 +12,6 @@
   <p>{t("app.version", { version: version ?? "—" })}</p>
   <h3>{t("about.creditsTitle")}</h3>
   <p>{t("about.credits")}</p>
-  <p class="px-4 py-3 border-l-4 border-default bg-panel">{t("about.disclaimer")}</p>
+  <p class="px-4 py-3 border-l-4 border-default bg-surface-panel">{t("about.disclaimer")}</p>
   <Button onclick={onBack}>{t("common.back")}</Button>
 </section>

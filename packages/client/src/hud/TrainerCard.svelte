@@ -26,12 +26,12 @@
 </script>
 
 <section class="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] gap-3 px-6 py-4" use:menu={{ onBack }}>
-  <h2 class="m-0 text-[1.3em]">{t("card.title")}</h2>
+  <h2 class="m-0 text-xl">{t("card.title")}</h2>
   {#if card}
-    <div class="grid grid-cols-[minmax(0,1fr)_auto] content-start gap-x-8 gap-y-3 rounded-[12px] bg-[linear-gradient(135deg,#2b3f6b,#1a2440)] p-5 text-white shadow-[inset_0_0_0_2px_#ffffff22]">
+    <div class="grid grid-cols-[minmax(0,1fr)_auto] content-start gap-x-8 gap-y-3 rounded-[12px] bg-[linear-gradient(135deg,#2b3f6b,#1a2440)] p-5 text-primary shadow-[inset_0_0_0_2px_#ffffff22]">
       <div class="grid gap-1">
-        <span class="text-[0.8em] uppercase tracking-wide opacity-70">{t("card.id")} {String(card.trainerId).padStart(5, "0")}</span>
-        <strong class="text-[1.6em]">{card.name}</strong>
+        <span class="text-xs uppercase tracking-wide opacity-70">{t("card.id")} {String(card.trainerId).padStart(5, "0")}</span>
+        <strong class="text-2xl">{card.name}</strong>
       </div>
       <dl class="m-0 grid grid-cols-[auto_auto] gap-x-4 gap-y-1 self-start text-right">
         <dt class="opacity-70">{t("card.money")}</dt>
@@ -46,7 +46,7 @@
         <dd class="m-0">{card.hallOfFame > 0 ? t("card.hallOfFame.count", { count: card.hallOfFame }) : t("card.hallOfFame.none")}</dd>
       </dl>
       <div class="col-span-full grid gap-2">
-        <span class="text-[0.8em] uppercase tracking-wide opacity-70">{t("card.badges")}</span>
+        <span class="text-xs uppercase tracking-wide opacity-70">{t("card.badges")}</span>
         {#each REGIONS as region, r (r)}
           <ol class="m-0 flex list-none gap-2 p-0">
             {#each region as bit (bit)}

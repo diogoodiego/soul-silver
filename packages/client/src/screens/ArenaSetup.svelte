@@ -231,7 +231,7 @@
 {#snippet speciesPreview(id: number)}
   <div class="grid justify-items-center gap-2">
     <Sprite frame={frontOf(id)} scale={2} label={names.species[id] ?? ""} />
-    <span class="text-[1.2em] font-bold text-primary">#{id} {names.species[id] ?? ""}</span>
+    <span class="text-xl font-bold text-primary">#{id} {names.species[id] ?? ""}</span>
     <span class="flex gap-1">{#each typesOf.get(id) ?? [] as type (type)}<TypeBadge type={type as never} />{/each}</span>
   </div>
 {/snippet}
@@ -254,7 +254,7 @@
   {@const info = trainerInfo.get(id)}
   <div class="grid justify-items-center gap-2">
     {#if info}<Sprite frame={trainerFrame(info.pic)} scale={1.5} label={info.name} />{/if}
-    <span class="text-[1.2em] font-bold text-primary">{info?.name ?? `nº ${id}`}</span>
+    <span class="text-xl font-bold text-primary">{info?.name ?? `nº ${id}`}</span>
     <span class="text-secondary">{info?.className ?? ""}</span>
     <span class="flex flex-wrap justify-center gap-1">{#each originals.get(id) ?? [] as m, j (j)}<PokemonIcon species={m.species} />{/each}</span>
   </div>
@@ -348,7 +348,7 @@
     {#if row}
       {@const error = rowError(row)}
       <!-- One member's fields over the editor: X or Back keeps them and returns to its card. -->
-      <div class="fixed inset-0 z-10 grid place-items-center bg-overlay" use:menu={{ onBack: () => void closeMember(), onAction: (action) => action === SAVE && (void closeMember(), true) }}>
+      <div class="fixed inset-0 z-10 grid place-items-center bg-surface-overlay" use:menu={{ onBack: () => void closeMember(), onAction: (action) => action === SAVE && (void closeMember(), true) }}>
         <Panel title={names.species[row.species] ?? `#${row.species}`} class="max-h-[calc(100dvh-4rem)] w-[min(32rem,calc(100vw-2rem))]">
           <Card invalid={error !== undefined}>
             <div class="flex items-center gap-3">

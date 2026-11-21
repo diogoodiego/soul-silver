@@ -77,15 +77,15 @@
   </p>
 
   <section class="grid gap-2">
-    <h3 class="m-0 text-[1rem]">{t("online.players", { n: players.length })}</h3>
+    <h3 class="m-0 text-base">{t("online.players", { n: players.length })}</h3>
     <ul class="list-none m-0 p-0 grid gap-1">
       {#each players as p (p.id)}
-        <li class="flex gap-2 items-baseline px-3 py-2 rounded-[4px] bg-sunken">
+        <li class="flex gap-2 items-baseline px-3 py-2 rounded-[4px] bg-surface-raised">
           <strong>{p.name}</strong>
-          {#if p.host}<span class="text-[0.8rem] text-primary">{t("online.host")}</span>{/if}
-          <span class="text-[0.8rem] text-secondary">{p.place ?? p.area}</span>
-          {#if p.id !== me && doing[p.name]}<span class="text-[0.8rem] text-secondary">{doing[p.name]}</span>{/if}
-          {#if p.id === me}<span class="ml-auto text-[0.8rem] text-secondary">{t("online.you")}</span>{:else}
+          {#if p.host}<span class="text-xs text-primary">{t("online.host")}</span>{/if}
+          <span class="text-xs text-secondary">{p.place ?? p.area}</span>
+          {#if p.id !== me && doing[p.name]}<span class="text-xs text-secondary">{doing[p.name]}</span>{/if}
+          {#if p.id === me}<span class="ml-auto text-xs text-secondary">{t("online.you")}</span>{:else}
             {#if onTrade}<Button class="ml-auto" onclick={() => onTrade(p.id)}>{t("trade.propose")}</Button>{/if}
             {#if onDuel}<Button onclick={() => onDuel(p.id, { level: duelLevel, team: duelTeam })}>{t("duel.propose")}</Button>{/if}
           {/if}
@@ -93,7 +93,7 @@
       {/each}
     </ul>
     {#if onDuel && players.length > 1}
-      <div class="flex gap-3 items-center text-[0.9rem]">
+      <div class="flex gap-3 items-center text-sm">
         <label class="flex gap-1 items-center">{t("duel.level")}
           <select bind:value={duelLevel}>
             <option value="current">{t("duel.levelCurrent")}</option>
@@ -119,7 +119,7 @@
   {/if}
   {#if mode === "host"}
     <section class="grid gap-2">
-      <h3 class="m-0 text-[1rem]">{t("online.internet")}</h3>
+      <h3 class="m-0 text-base">{t("online.internet")}</h3>
       {#if internetAddress}
         <p class="m-0" role="status">{t("online.internetAddress", { address: internetAddress })}</p>
       {:else}
@@ -133,7 +133,7 @@
 
   {#if mode !== "arena"}
     <section class="grid gap-2">
-      <h3 class="m-0 text-[1rem]">{t("online.join")}</h3>
+      <h3 class="m-0 text-base">{t("online.join")}</h3>
       <small class="text-secondary">{t("online.joinNote")}</small>
       {#if sessions.length === 0}<p class="m-0 text-secondary" role="status">{t("join.searching")}</p>{/if}
       {#each sessions as s (s.address + s.sessionId)}

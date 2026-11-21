@@ -26,6 +26,12 @@ Dados de design em `content/`.
 - Mudou protocolo ou save: suba a versão (`packages/shared/src/protocol-version.ts`, `schemaVersion`)
   e escreva a migração com teste.
 - Código, identificadores e commits em inglês; documentação em PT-BR.
+- Tipografia no cliente: só a escala do Tailwind (`text-xs`, `text-sm`, `text-base`, `text-lg`...). Nada de tamanhos
+  customizados como `text-[0.8em]`, `text-[0.75rem]`, `text-[11px]` ou `font-size` inline.
+- Cores do cliente: só os tokens semânticos do `@theme` em `packages/client/src/app.css` (coleção "Soul Silver" do
+  Figma). `surface/sunken` é só fundo de input; `surface/hover`, `surface/selected` e os `bg-hover`/`bg-pressed`
+  das ações são camadas sobre o fundo (`layer-*`), nunca fundo próprio; botão secundário e ghost são transparentes;
+  `status/*` ainda não é usado.
 - Pare e pergunte antes de apagar arquivos, adicionar dependência, mudar schema de dados
   extraídos ou mudar regras de combate. Pare e relate se a mesma falha persistir após 3 tentativas.
 - Não faça commit. O desenvolvedor commita, com o ID do item na mensagem: `feat(030.7): ...`.

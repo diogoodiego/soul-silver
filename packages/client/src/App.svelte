@@ -144,15 +144,15 @@
 </svg>
 
 {#if showMain && !play && (screen === "title" || screen === "home" || screen === "settings" || screen === "play" || screen === "arena")}
-  <div class="fixed inset-0 overflow-hidden bg-canvas" class:crt={$settings.crt} aria-hidden="true" use:backdrop></div>
-  <div class="fixed inset-0 bg-overlay" aria-hidden="true"></div>
+  <div class="fixed inset-0 overflow-hidden bg-surface-canvas" class:crt={$settings.crt} aria-hidden="true" use:backdrop></div>
+  <div class="fixed inset-0 bg-surface-overlay" aria-hidden="true"></div>
 {/if}
 <!-- Positioned, so it paints over the fixed backdrop above it (static content would sit under it). -->
 <main class="relative p-8">
   {#if !showMain}
     <h1>SoulSilver Desktop</h1>
     <FirstRun {assets} />
-    <p class="text-tertiary text-[0.85rem]">{t("app.version", { version: appVersion ?? "—" })}</p>
+    <p class="text-tertiary text-sm">{t("app.version", { version: appVersion ?? "—" })}</p>
   {:else if play}
     {#key attempt}
       <GameSession {play} onExit={() => ((play = undefined), go("home"))} onReconnect={play.address ? reconnect : undefined} onSwitch={play.arena ? undefined : (address: string) => void switchTo(address)} />

@@ -109,14 +109,14 @@
   <div class="grid gap-2 max-w-[40rem] mb-2">
     <label class="grid gap-1">
       {t("join.inviteCode")}
-      <textarea class="text-[0.75rem] break-all" rows="3" bind:value={inviteCode} spellcheck="false" disabled={answering}></textarea>
+      <textarea class="text-xs break-all" rows="3" bind:value={inviteCode} spellcheck="false" disabled={answering}></textarea>
     </label>
     {#if !answer}
       <Button class="justify-self-start" disabled={inviteCode.trim() === "" || answering || busy} onclick={() => void answerIt()}>{answering ? t("join.answering") : t("join.answer")}</Button>
     {:else}
       <label class="grid gap-1">
         {t("join.answerCode")}
-        <textarea class="text-[0.75rem] break-all" rows="3" readonly value={answer.code}></textarea>
+        <textarea class="text-xs break-all" rows="3" readonly value={answer.code}></textarea>
       </label>
       <Button class="justify-self-start" onclick={() => void copyAnswer()}>{copied ? t("invite.copied") : t("invite.copy")}</Button>
       {#if answering}<p class="m-0" role="status">{t("join.waitingHost")}</p>{/if}

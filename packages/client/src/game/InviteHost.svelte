@@ -58,7 +58,7 @@
 </script>
 
 <section class="grid gap-2">
-  <h3 class="m-0 text-[1rem]">{t("invite.title")}</h3>
+  <h3 class="m-0 text-base">{t("invite.title")}</h3>
   <small class="text-secondary">{t("invite.note")}</small>
   {#if step === "idle" || step === "connected"}
     {#if step === "connected"}<p class="m-0" role="status">{t("invite.connected")}</p>{/if}
@@ -68,12 +68,12 @@
   {:else if invite}
     <label class="grid gap-1">
       {t("invite.code")}
-      <textarea class="[font:inherit] text-[0.75rem] break-all" rows="3" readonly value={invite.code}></textarea>
+      <textarea class="[font:inherit] text-xs break-all" rows="3" readonly value={invite.code}></textarea>
     </label>
     <Button class="justify-self-start" onclick={() => void copy()}>{copied ? t("invite.copied") : t("invite.copy")}</Button>
     <label class="grid gap-1">
       {t("invite.answer")}
-      <textarea class="[font:inherit] text-[0.75rem] break-all" rows="3" bind:value={answer} spellcheck="false"></textarea>
+      <textarea class="[font:inherit] text-xs break-all" rows="3" bind:value={answer} spellcheck="false"></textarea>
     </label>
     <div class="flex gap-2">
       <Button disabled={answer.trim() === "" || step === "connecting"} onclick={() => void connect()}>{step === "connecting" ? t("invite.connecting") : t("invite.connect")}</Button>

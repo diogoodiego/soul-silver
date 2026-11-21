@@ -17,8 +17,8 @@
   }: { onOpen: (page: MenuPage) => void; onClose: () => void; onLeave: () => void; leaving?: boolean; disabled?: readonly MenuPage[] } = $props();
 
   /** A tile: the icon lights while focused (by the pad too, so focus, not focus-visible). */
-  const TILE = "grid justify-items-center gap-1.5 p-1 text-[1em] text-[#ddd] disabled:opacity-35";
-  const ICON = "grid size-[3.6em] place-items-center rounded-[22%] text-white shadow-[0_2px_0_#0006] transition-transform group-hover:scale-105 group-focus:scale-110 group-focus:ring-4 group-focus:ring-white/80";
+  const TILE = "grid justify-items-center gap-1.5 p-1 text-base text-secondary disabled:opacity-35";
+  const ICON = "grid size-[3.6em] place-items-center rounded-[22%] text-icon-primary shadow-[0_2px_0_#0006] transition-transform group-hover:scale-105 group-focus:scale-110 group-focus:outline-4 group-focus:outline-focus";
 
   const LABELS: Record<MenuPage, MessageKey> = {
     party: "pause.party",
@@ -80,7 +80,7 @@
       <span class={ICON} style:background={TINTS[page]}>
         {@render glyph(page)}
       </span>
-      <span class="text-[0.9em] font-semibold">{t(LABELS[page])}</span>
+      <span class="text-sm font-semibold">{t(LABELS[page])}</span>
     </Button>
   {/each}
   <Button variant="bare" class={TILE} disabled={leaving} onclick={onLeave}>
@@ -89,6 +89,6 @@
         <path d="M14 4H6v16h8" /><path d="M10 12h10M17 9l3 3-3 3" />
       </svg>
     </span>
-    <span class="text-[0.9em] font-semibold">{leaving ? t("pause.saving") : t("pause.leave")}</span>
+    <span class="text-sm font-semibold">{leaving ? t("pause.saving") : t("pause.leave")}</span>
   </Button>
 </nav>

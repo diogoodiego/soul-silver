@@ -12,7 +12,7 @@
   }: { title: string; footer?: Snippet; class?: string; children: Snippet } = $props();
 </script>
 
-<section class={["grid grid-rows-[auto_1fr_auto] overflow-hidden rounded-xl bg-panel shadow-panel", extra]} aria-label={title}>
+<section class={["grid grid-rows-[auto_1fr_auto] overflow-hidden rounded-xl bg-surface-panel shadow-panel", extra]} aria-label={title}>
   <header class="grid gap-1 border-b border-default px-6 py-4">
     <Heading level={2}>{title}</Heading>
   </header>

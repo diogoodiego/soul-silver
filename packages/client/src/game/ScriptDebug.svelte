@@ -13,8 +13,8 @@
   const valid = $derived(Number.isInteger(id) && id >= 1 && id <= 0xffff);
 </script>
 
-<section class="fixed bottom-2 right-2 max-w-[28rem] max-h-[45vh] overflow-auto m-0 px-3 py-2 bg-overlay text-primary [font:12px_monospace] z-6" aria-label={t("scriptDebug.label")}>
-  <h2 class="m-0 mb-1 text-[12px]">{t("scriptDebug.label")}</h2>
+<section class="fixed bottom-2 right-2 max-w-[28rem] max-h-[45vh] overflow-auto m-0 px-3 py-2 bg-surface-overlay text-primary [font:12px_monospace] z-6" aria-label={t("scriptDebug.label")}>
+  <h2 class="m-0 mb-1 text-xs">{t("scriptDebug.label")}</h2>
   {#if view?.at}
     <p class="m-0">{t("scriptDebug.at", { file: view.at.file, entry: view.at.entry, pc: view.at.pc, depth: view.at.depth })}</p>
     <p class="m-0 font-bold">{view.at.command}</p>
@@ -23,19 +23,19 @@
   {/if}
   <p class="m-0 mt-1">{t("scriptDebug.flags")}: {view?.flags.join(", ") || "—"}</p>
   <p class="m-0">{t("scriptDebug.vars")}: {Object.entries(view?.vars ?? {}).map(([k, v]) => `0x${Number(k).toString(16)}=${v}`).join(", ") || "—"}</p>
-  <h3 class="m-0 mt-1 text-[12px]">{t("scriptDebug.objects")}</h3>
+  <h3 class="m-0 mt-1 text-xs">{t("scriptDebug.objects")}</h3>
   {#each view?.objects ?? [] as o (o.id)}
     <p class="m-0" class:opacity-50={!o.visible}>#{o.id} · sprite {o.sprite} · {o.hideFlag === null ? t("scriptDebug.noHideFlag") : t("scriptDebug.hideFlag", { flag: o.hideFlag })} · {o.visible ? t("scriptDebug.shown") : t("scriptDebug.hidden")}</p>
   {:else}
     <p class="m-0">—</p>
   {/each}
-  <h3 class="m-0 mt-1 text-[12px]">{t("scriptDebug.conditions")}</h3>
+  <h3 class="m-0 mt-1 text-xs">{t("scriptDebug.conditions")}</h3>
   {#each view?.triggers ?? [] as c, i (i)}
     <p class="m-0">{c.met ? "✓" : "✗"} {c.kind === "mapScript" ? t("scriptDebug.mapScript") : t("scriptDebug.trigger")} {c.script} · {c.condition}</p>
   {:else}
     <p class="m-0">—</p>
   {/each}
-  <h3 class="m-0 mt-1 text-[12px]">{t("scriptDebug.changes")}</h3>
+  <h3 class="m-0 mt-1 text-xs">{t("scriptDebug.changes")}</h3>
   {#each [...(view?.changes ?? [])].reverse() as c, i (i)}
     <p class="m-0">{c.tick} · {c.kind === "flag" ? t("scriptDebug.flag") : t("scriptDebug.var")} {c.kind === "flag" ? c.id : `0x${c.id.toString(16)}`} = {c.value} · {c.script}</p>
   {:else}
@@ -43,7 +43,7 @@
   {/each}
   <form class="flex gap-1 mt-1" onsubmit={(e) => e.preventDefault()}>
     <label class="sr-only" for="script-debug-flag">{t("scriptDebug.flag")}</label>
-    <input id="script-debug-flag" class="w-20 bg-sunken text-primary px-1" inputmode="numeric" placeholder={t("scriptDebug.flag")} bind:value={flag} />
+    <input id="script-debug-flag" class="w-20 bg-surface-sunken text-primary px-1" inputmode="numeric" placeholder={t("scriptDebug.flag")} bind:value={flag} />
     <Button disabled={!valid} onclick={() => onSetFlag(id, true)}>{t("scriptDebug.set")}</Button>
     <Button disabled={!valid} onclick={() => onSetFlag(id, false)}>{t("scriptDebug.clear")}</Button>
   </form>

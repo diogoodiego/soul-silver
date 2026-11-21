@@ -45,7 +45,7 @@
   });
 </script>
 
-<div class="absolute left-1/2 bottom-4 -translate-x-1/2 grid gap-1 w-[min(90%,28rem)] p-3 bg-overlay text-primary text-[13px]" role="dialog" aria-label={t("progress.label")} use:menu>
+<div class="absolute left-1/2 bottom-4 -translate-x-1/2 grid gap-1 w-[min(90%,28rem)] p-3 bg-surface-overlay text-primary text-xs" role="dialog" aria-label={t("progress.label")} use:menu>
   {#if item.kind === "level-up"}
     <p class="mt-0 mb-1">{t("progress.levelUp", { name, level: item.level })}</p>
     {#if prompt.stats && prompt.gains}
@@ -68,7 +68,7 @@
     <Button variant="ghost" class="text-left" onclick={() => onLearn(null)}>{t("progress.dontLearn", { move: moveName(item.move) })}</Button>
   {:else}
     <p class="mt-0 mb-1">{t("progress.evolving", { name })}</p>
-    <p class="relative h-6 mt-0 mb-1 text-[18px] font-bold" aria-live="polite"><span class="absolute animate-blink motion-reduce:animate-none">{name}</span><span class="absolute animate-blink [animation-delay:0.25s] motion-reduce:hidden">{speciesName(item.into)}</span></p>
+    <p class="relative h-6 mt-0 mb-1 text-lg font-bold" aria-live="polite"><span class="absolute animate-blink motion-reduce:animate-none">{name}</span><span class="absolute animate-blink [animation-delay:0.25s] motion-reduce:hidden">{speciesName(item.into)}</span></p>
     <Button variant="ghost" class="text-left" onclick={() => onEvolve(false)}>{t("progress.cancelEvolution")}</Button>
   {/if}
 </div>

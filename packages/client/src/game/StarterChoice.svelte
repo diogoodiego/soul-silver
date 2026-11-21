@@ -66,7 +66,7 @@
       {/each}
     </div>
   </div>
-  <div class="m-3 px-4 py-3 bg-overlay text-primary border-3 border-frame rounded-[6px] text-[1.1rem] leading-[1.5]">
+  <div class="m-3 px-4 py-3 bg-surface-overlay text-primary border-3 border-frame rounded-[6px] text-lg leading-[1.5]">
     {#if asking === undefined}
       <p class="m-0">{t("starter.touch")}</p>
     {:else}

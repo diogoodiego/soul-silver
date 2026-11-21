@@ -11,13 +11,13 @@
     {#each contacts as c (c.id)}
       <li class="flex items-center gap-3">
         <Button onclick={() => onDial(c.id)}>{t("phone.call", { name: c.name })}</Button>
-        {#if c.seeking}<span class="text-[0.85rem]">{t("phone.seeking")}</span>{/if}
+        {#if c.seeking}<span class="text-sm">{t("phone.seeking")}</span>{/if}
       </li>
     {:else}
       <li>{t("phone.empty")}</li>
     {/each}
   </ul>
-  <h3 class="m-0 text-[1rem]">{t("phone.log")}</h3>
+  <h3 class="m-0 text-base">{t("phone.log")}</h3>
   <ul class="m-0 pl-5">
     {#each [...log].reverse() as l, i (i)}<li>{t(l.direction === "in" ? "phone.logIn" : "phone.logOut", { name: l.name, at: new Date(l.at).toLocaleString("pt-BR") })}</li>{:else}<li>{t("gear.none")}</li>{/each}
   </ul>

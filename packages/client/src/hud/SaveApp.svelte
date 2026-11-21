@@ -17,10 +17,10 @@
 </script>
 
 <section class="grid h-full content-center justify-items-center gap-4 px-6 py-4 text-center" use:menu={{ onBack }}>
-  <h2 class="m-0 text-[1.3em]">{t("saveApp.title")}</h2>
-  <p class="m-0 text-[1.1em]" role="status">{time ? t("saveApp.done", { time }) : asked ? t("pause.saving") : t("saveApp.never")}</p>
+  <h2 class="m-0 text-xl">{t("saveApp.title")}</h2>
+  <p class="m-0 text-lg" role="status">{time ? t("saveApp.done", { time }) : asked ? t("pause.saving") : t("saveApp.never")}</p>
   <Button class="min-w-[14rem]" onclick={save}>{t("saveApp.now")}</Button>
-  <p class="m-0 max-w-[30rem] text-[0.9em] opacity-70">{t("saveApp.auto")}</p>
+  <p class="m-0 max-w-[30rem] text-sm opacity-70">{t("saveApp.auto")}</p>
   <div class="flex gap-3">
     <Button disabled={leaving} onclick={onLeave}>{leaving ? t("pause.saving") : t("pause.leave")}</Button>
     <Button onclick={onBack}>{t("common.back")}</Button>

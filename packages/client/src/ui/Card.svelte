@@ -5,6 +5,6 @@
   let { invalid = false, children }: { invalid?: boolean; children: Snippet } = $props();
 </script>
 
-<div class={["grid gap-2 rounded-lg bg-sunken p-3", invalid && "outline-1 outline-error"]}>
+<div class={["grid gap-2 rounded-lg bg-surface-raised p-3", invalid && "outline-1 outline-error"]}>
   {@render children()}
 </div>

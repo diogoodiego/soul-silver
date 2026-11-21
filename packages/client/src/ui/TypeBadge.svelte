@@ -9,6 +9,6 @@
   let { type }: { type: (typeof TYPE_KEYS)[number] | "unknown" } = $props();
 </script>
 
-<span class="inline-block rounded-full px-2 py-0.5 text-[0.75em] font-bold uppercase text-white [text-shadow:0_1px_1px_rgb(0_0_0/60%)]" style:background={type === "unknown" ? "#888" : TYPE_COLORS[type]}>
+<span class="inline-block rounded-full px-2 py-0.5 text-xs font-bold uppercase text-white [text-shadow:0_1px_1px_rgb(0_0_0/60%)]" style:background={type === "unknown" ? "#888" : TYPE_COLORS[type]}>
   {type === "unknown" ? "?" : t(`type.${type}` as MessageKey)}
 </span>

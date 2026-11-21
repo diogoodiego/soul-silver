@@ -52,25 +52,25 @@
 </script>
 
 <!-- The world shows through: only a light veil while the phone is up, as the old menu had. -->
-{#if open}<div class="pointer-events-none absolute inset-0 z-4 bg-black/35" aria-hidden="true"></div>{/if}
+{#if open}<div class="pointer-events-none absolute inset-0 z-4 bg-surface-overlay" aria-hidden="true"></div>{/if}
 <div bind:this={host} class="pointer-events-none absolute inset-0 z-5 overflow-hidden" aria-label={t("phone.label")} role="region">
   <div
     bind:this={screen}
-    class="pointer-events-auto flex flex-col font-[system-ui,sans-serif] text-[length:calc(1rem/var(--dex-scale,1))] text-[#cfcfcf]"
+    class="pointer-events-auto flex flex-col font-[system-ui,sans-serif] text-[length:calc(1rem/var(--dex-scale,1))] text-secondary"
     class:crt={$settings.crt}
     class:dither={$settings.dither}
     style:width="{DEX_SCREEN_W}px"
     style:height="{DEX_SCREEN_H}px"
   >
-    <div class="flex shrink-0 items-center gap-3 pr-5 text-[0.85em] font-bold uppercase" style:height="{DEX_STRIP_H}px" style:padding-left="{DEX_STRIP_LEFT}px">
+    <div class="flex shrink-0 items-center gap-3 pr-5 text-sm font-bold uppercase" style:height="{DEX_STRIP_H}px" style:padding-left="{DEX_STRIP_LEFT}px">
       {#if open}
-        <Button tabindex={-1} variant="bare" class="p-0 text-[1em] font-bold uppercase text-[#ddd]" onclick={() => (page ? onPage(undefined) : onClose())}>
+        <Button tabindex={-1} variant="bare" class="p-0 text-base font-bold uppercase text-secondary" onclick={() => (page ? onPage(undefined) : onClose())}>
           {page ? `‹ ${t("phone.home")}` : t("phone.home")}
         </Button>
-        <span class="ml-auto rounded-full bg-[#b23b3b] px-3 py-0.5 text-[0.85em] normal-case text-white" role="status">{t("pause.live")}</span>
+        <span class="ml-auto rounded-full bg-[#b23b3b] px-3 py-0.5 text-sm normal-case text-white" role="status">{t("pause.live")}</span>
       {:else}
         <!-- Docked: the whole strip raises the phone. -->
-        <Button tabindex={-1} variant="bare" class="flex size-full items-center gap-2 p-0 text-[1.4em] font-bold uppercase text-[#ddd]" onclick={onOpen} aria-label={t("phone.open")}>
+        <Button tabindex={-1} variant="bare" class="flex size-full items-center gap-2 p-0 text-2xl font-bold uppercase text-secondary" onclick={onOpen} aria-label={t("phone.open")}>
           {t("phone.home")}
         </Button>
       {/if}

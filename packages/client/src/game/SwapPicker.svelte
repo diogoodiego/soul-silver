@@ -38,7 +38,7 @@
 
 </script>
 
-<div class="absolute left-1/2 bottom-4 -translate-x-1/2 grid gap-1 p-3 bg-overlay text-primary text-[13px]" role="dialog" aria-label={t("swap.title")} use:menu={{ onBack: () => !fainted && onClose() }}>
+<div class="absolute left-1/2 bottom-4 -translate-x-1/2 grid gap-1 p-3 bg-surface-overlay text-primary text-xs" role="dialog" aria-label={t("swap.title")} use:menu={{ onBack: () => !fainted && onClose() }}>
   <p class="mt-0 mb-1">{fainted ? t("swap.fainted") : t("swap.title")}</p>
   {#each members as m, i (i)}
     <Button variant="ghost" class="text-left" disabled={m.egg || m.hp === 0 || i === active || launchable?.[i] === false} onclick={() => onPick(i)}>

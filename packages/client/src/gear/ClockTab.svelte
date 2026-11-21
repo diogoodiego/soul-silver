@@ -7,6 +7,6 @@
 </script>
 
 <div class="grid gap-1 place-items-center py-4">
-  <p class="m-0 text-[2.4rem] tabular-nums">{pad(minuteOfDay / 60)}:{pad(minuteOfDay % 60)}</p>
-  <p class="m-0 text-[1.2rem]">{t(`weekday.${weekday}` as MessageKey)}</p>
+  <p class="m-0 text-4xl tabular-nums">{pad(minuteOfDay / 60)}:{pad(minuteOfDay % 60)}</p>
+  <p class="m-0 text-xl">{t(`weekday.${weekday}` as MessageKey)}</p>
 </div>

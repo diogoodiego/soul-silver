@@ -9,7 +9,11 @@
   import { menu } from "../input/menu";
   import { createPokedex, DEX_SCREEN_H, DEX_SCREEN_W, DEX_STRIP_H, DEX_STRIP_LEFT } from "../render/pokedex-model";
   import { saveSettings, settings } from "../settings";
+  import Checkbox from "../ui/Checkbox.svelte";
   import Confirm from "../ui/Confirm.svelte";
+  import SegmentedTabs from "../ui/SegmentedTabs.svelte";
+  import SlantBar from "../ui/SlantBar.svelte";
+  import TextField from "../ui/TextField.svelte";
   import DexRow from "../ui/DexRow.svelte";
   import Glyph from "../ui/Glyph.svelte";
   import GamepadFigure from "../ui/GamepadFigure.svelte";
@@ -51,19 +55,23 @@
     adjust?: (by: -1 | 1) => void;
     /** Confirm, when it is not a step forward. */
     activate?: () => void;
+    /** Drawn by a component instead of the plain value. */
+    view?: { kind: "toggle"; on: boolean } | { kind: "bar"; level: number; cells: number } | { kind: "tabs"; options: string[]; current: string };
   }
 
+  /** Up to four options show side by side as tabs; more (window sizes) as "< value >". */
   function choice<T>(id: string, label: string, options: readonly T[], current: T, name: (option: T) => string, apply: (option: T) => void): Row {
     const at = Math.max(0, options.indexOf(current));
-    return { id, label, value: `< ${name(current)} >`, adjust: (by) => apply(options[(at + by + options.length) % options.length]!) };
+    const adjust = (by: -1 | 1) => apply(options[(at + by + options.length) % options.length]!);
+    if (options.length <= 4) return { id, label, value: name(current), adjust, view: { kind: "tabs", options: options.map(name), current: name(current) } };
+    return { id, label, value: `< ${name(current)} >`, adjust };
   }
   function toggle(id: string, label: string, on: boolean, apply: (on: boolean) => void): Row {
-    return { id, label, value: on ? `[x] ${t("settings.on")}` : `[ ] ${t("settings.off")}`, adjust: () => apply(!on) };
+    return { id, label, value: t(on ? "settings.on" : "settings.off"), adjust: () => apply(!on), view: { kind: "toggle", on } };
   }
   /** 0–100 in steps of `step` (5 by default), drawn as a 10-cell bar. */
   function slider(id: string, label: string, value: number, apply: (value: number) => void, step = 5): Row {
-    const cells = Math.round(value / 10);
-    return { id, label, value: `[${"#".repeat(cells)}${"-".repeat(10 - cells)}] ${value}%`, adjust: (by) => apply(Math.max(0, Math.min(100, value + by * step))) };
+    return { id, label, value: `${value}%`, adjust: (by) => apply(Math.max(0, Math.min(100, value + by * step))), view: { kind: "bar", level: value, cells: Math.min(20, 100 / step) } };
   }
 
   const FULLSCREEN = "fullscreen";
@@ -172,14 +180,21 @@
       </div>
       <div bind:this={list} class="scrollbar-clean flex-1 overflow-y-auto px-4 py-2" role="tabpanel">
         {#each rows as row (row.id)}
-          <DexRow label={row.label} value={row.value} adjustable={row.adjust !== undefined} onclick={() => (row.activate ? row.activate() : row.adjust?.(1))} onfocus={() => (focused = row.id)} />
+          {@const view = row.view}
+          <DexRow label={row.label} value={row.value} pressed={view?.kind === "toggle" ? view.on : undefined} adjustable={row.adjust !== undefined} onclick={() => (row.activate ? row.activate() : row.adjust?.(1))} onfocus={() => (focused = row.id)}>
+            {#snippet children()}
+              {#if view?.kind === "toggle"}<Checkbox checked={view.on} />
+              {:else if view?.kind === "bar"}<SlantBar value={view.level} cells={view.cells} />
+              {:else if view?.kind === "tabs"}<SegmentedTabs options={view.options} current={view.current} />
+              {:else}{row.value}{/if}
+            {/snippet}
+          </DexRow>
         {/each}
         {#if tab === "game"}
-          {#each [{ id: "roomPassword", max: 64, placeholder: "" }, { id: "stunServer", max: 200, placeholder: "stun:stun.l.google.com:19302" }] as field (field.id)}
-            <label class="flex items-center justify-between gap-6 px-3 py-[0.35em] text-[1.15em] font-bold focus-within:bg-action-primary focus-within:text-action-primary">
-              <span class="pl-[1.4ch]">{t(`settings.${field.id}` as Parameters<typeof t>[0])}</span>
-              <input
-                class="w-[22rem] border-0 border-b-2 border-dashed border-current bg-transparent text-right text-[0.9em] text-inherit outline-none"
+          <div class="grid gap-3 px-3 pt-2">
+            {#each [{ id: "roomPassword", max: 64, placeholder: "" }, { id: "stunServer", max: 200, placeholder: "stun:stun.l.google.com:19302" }] as field (field.id)}
+              <TextField
+                label={t(`settings.${field.id}` as Parameters<typeof t>[0])}
                 value={field.id === "roomPassword" ? $settings.roomPassword : $settings.stunServer}
                 maxlength={field.max}
                 placeholder={field.placeholder}
@@ -197,7 +212,7 @@
         {/if}
       </div>
       <div class="mx-5 border-t-2 border-dashed border-default"></div>
-      <p class="m-0 min-h-[2.6em] px-5 pt-2 text-[1em] font-semibold text-secondary" role="status">{note ? `> ${note}` : ""}</p>
+      <p class="m-0 min-h-[2.6em] px-5 pt-2 text-base font-semibold text-secondary" role="status">{note ? `> ${note}` : ""}</p>
       <div class="flex justify-end px-5 pb-3"><KeyHints {hints} /></div>
 {/snippet}
 
@@ -210,7 +225,7 @@
     {/if}
   </section>
 {:else}
-  <section class="fixed inset-0 bg-overlay" use:menu={{ onBack: () => waiting === undefined && onBack(), onAction }}>
+  <section class="fixed inset-0 bg-surface-overlay" use:menu={{ onBack: () => waiting === undefined && onBack(), onAction }}>
     <h2 class="sr-only">{t("settings.title")}</h2>
     <div bind:this={host} class="absolute inset-0 overflow-hidden">
       <!-- Transparent: the model draws the black screen, diagonal included; the tabs sit in its raised strip. -->

@@ -51,7 +51,7 @@
   }
 </script>
 
-<section class="absolute inset-0 z-4 grid place-content-center p-4 bg-overlay text-primary" use:menu={{ onBack: () => (trading || trade.phase === "waiting" || trade.phase === "invited" ? onCancel() : onClose()) }}>
+<section class="absolute inset-0 z-4 grid place-content-center p-4 bg-surface-overlay text-primary" use:menu={{ onBack: () => (trading || trade.phase === "waiting" || trade.phase === "invited" ? onCancel() : onClose()) }}>
   <div class="grid gap-3 max-w-[52rem]">
     <h2 class="m-0">{t("trade.title", { name: partnerName })}</h2>
 
@@ -67,7 +67,7 @@
     {:else if trading}
       <div class="grid gap-4 grid-cols-2">
         <div class="grid content-start gap-2">
-          <h3 class="m-0 text-[1rem]">{t("trade.mine")} {#if trade.confirmed.mine}<span class="text-primary">✓</span>{/if}</h3>
+          <h3 class="m-0 text-base">{t("trade.mine")} {#if trade.confirmed.mine}<span class="text-primary">✓</span>{/if}</h3>
           {#each party as m, i (i)}
             <label class="flex gap-2 items-center">
               <input type="checkbox" checked={trade.mine.party.includes(i)} onchange={() => togglePokemon(i)} />
@@ -84,7 +84,7 @@
           {/each}
         </div>
         <div class="grid content-start gap-2">
-          <h3 class="m-0 text-[1rem]">{t("trade.theirs", { name: partnerName })} {#if trade.confirmed.theirs}<span class="text-primary">✓</span>{/if}</h3>
+          <h3 class="m-0 text-base">{t("trade.theirs", { name: partnerName })} {#if trade.confirmed.theirs}<span class="text-primary">✓</span>{/if}</h3>
           {#if trade.theirs.party.length === 0 && trade.theirs.items.length === 0}<p class="m-0 text-secondary">{t("trade.nothing")}</p>{/if}
           {#each trade.theirs.party as i (i)}<p class="m-0">{t("trade.theirPokemon", { slot: i + 1 })}</p>{/each}
           {#each trade.theirs.items as it (it.item)}<p class="m-0">{it.count} × {itemName(it.item)}</p>{/each}

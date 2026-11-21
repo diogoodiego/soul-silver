@@ -72,7 +72,7 @@
   }
 </script>
 
-<section class="absolute inset-0 z-4 grid place-content-center p-4 bg-overlay text-primary" use:menu={{ onBack: () => (held ? (held = undefined) : onLeave()), onAction }}>
+<section class="absolute inset-0 z-4 grid place-content-center p-4 bg-surface-overlay text-primary" use:menu={{ onBack: () => (held ? (held = undefined) : onLeave()), onAction }}>
   <div class="grid gap-3 grid-cols-[minmax(10rem,auto)_minmax(18rem,auto)] max-w-[52rem]">
     <h2 class="m-0 col-span-2">{t("pc.title")}</h2>
     <div class="col-span-2 flex gap-2" role="tablist">

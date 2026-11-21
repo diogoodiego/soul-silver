@@ -48,7 +48,7 @@
     <!-- Keys and the pad advance through the menu action; the click is the mouse's way. -->
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
     <p
-      class="m-0 min-h-[3.5em] px-4 py-3 bg-overlay text-primary border-3 border-frame rounded-[6px] text-[1.1rem] leading-[1.5] whitespace-pre-line cursor-pointer"
+      class="m-0 min-h-[3.5em] px-4 py-3 bg-surface-overlay text-primary border-3 border-frame rounded-[6px] text-lg leading-[1.5] whitespace-pre-line cursor-pointer"
       onclick={() => {
         queue.confirm();
         refresh();
@@ -57,7 +57,7 @@
       {view.text}{#if view.complete && !view.choosing}<span class="ml-[0.4rem] animate-bob motion-reduce:animate-none" aria-hidden="true">▼</span>{/if}
     </p>
     {#if view.choosing}
-      <div class="absolute right-0 bottom-[calc(100%+0.4rem)] grid gap-1 p-[0.4rem] bg-overlay border-3 border-frame rounded-[6px]">
+      <div class="absolute right-0 bottom-[calc(100%+0.4rem)] grid gap-1 p-[0.4rem] bg-surface-overlay border-3 border-frame rounded-[6px]">
         {#each view.options.length > 0 ? view.options : [t("common.yes"), t("common.no")] as label, i (i)}
           <Button variant="ghost" class={["text-left", view.cursor === i && "before:content-['▶_']"]} onclick={() => choose(i)}>{label}</Button>
         {/each}
