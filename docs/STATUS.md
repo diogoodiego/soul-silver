@@ -6,7 +6,7 @@ cada item (ver `CLAUDE.md`).
 
 **Próximo item: 034.5 Balanceamento de Johto**
 
-Versões atuais: protocolo 40, save 20.
+Versões atuais: protocolo 43, save 21.
 
 ## Concluídos
 
@@ -210,3 +210,6 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Bloco H: todo golpe leva ao menos 0,5 s de preparo (`minCastS` em `content/combat/tuning.json`), para a área e a carga serem vistas e desviadas; os testes de mecânica usam `minCastS: 0` (`combatData()`).
 - Bloco H: nenhum golpe prende o Pokémon durante o preparo (o campo `rooted` das archetypes ficou sem uso); a direção do golpe é a do início do preparo.
 - Bloco H: o papel de uma pessoa (`data.role`: shop, heal, battle, none) vem dos comandos que o script dela alcança (`packages/server/src/npc-roles.ts`); "Falar" (a tecla de interagir) num vendedor ou enfermeira roda o script respondendo "até logo" ao menu e "não" à pergunta; "Loja", "Vender" e "Curar" agem sem script (`npc-action`, protocolo 40). As opções usam os botões dos golpes: interagir (A, o do golpe 1 no controle), golpe 2, golpe 3. O caminho em que o script abre a loja ficou para placas e scripts de história (test/shop.test.ts usa uma placa).
+- Bloco H: só modelos posicionados projetam sombra (casas, prédios, portões, móveis); terreno, árvores e grama não. O mesh marca o nome do modelo em `groups[].building` (etapa maps v13) e `content/maps/shadows.json` lista os modelos sem sombra (plantas e decoração plana ou de efeito).
+- Bloco H: a loja aparece na Pokédex 3D com casca azul (`mountPokedex(..., shell)`, pose `raised`), as abas na faixa de cima da tela; as abas Comprar/Vender mandam `shop-mode` (protocolo 43) e o servidor reenvia `shopOpen` no outro modo.
+- Uma tecla, uma função: Esc é só voltar (`cancel`) e o menu (o celular) abre só no Tab; `readSettings` tira o Esc do `menu` salvo quando ele também é `cancel`.
