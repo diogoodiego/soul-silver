@@ -1,6 +1,7 @@
 import type { ServerMessage } from "@soulsilver/shared/game";
 import { describe, expect, it } from "vitest";
 import { buildItemsData } from "../src/items";
+import { TALK_COOLDOWN_TICKS } from "../src/scripts";
 import { at, mapEvents, npc, scriptData, scriptFile, story } from "./scripts-fixture";
 
 // Spec 027, US5/US6 (layer 2): items on the ground and hidden, per player (principle VII); the Dowsing MCHN;
@@ -173,6 +174,8 @@ describe("apricorns and Kurt (US5)", () => {
     g.step(3);
     expect(g.of(a, "script").at(-1)!.request).toEqual({ kind: "apricorn", counts: [2, 0, 0, 0, 0, 0, 0] });
     g.answer(a, 0);
+    // Block H: interact talks again only once the answer's cooldown is over.
+    g.step(TALK_COOLDOWN_TICKS);
     g.press(a);
     g.step(3);
     expect(g.bag(a)).toEqual([]);

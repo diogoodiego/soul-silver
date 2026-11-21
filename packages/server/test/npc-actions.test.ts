@@ -1,6 +1,7 @@
 import type { NpcAction } from "@soulsilver/shared/game";
 import type { PartyMember } from "@soulsilver/shared/save";
 import { describe, expect, it } from "vitest";
+import { TALK_COOLDOWN_TICKS } from "../src/scripts";
 import { buildShopData } from "../src/shop";
 import { combatData, SPECIES } from "./combat-fixture";
 import { at, mapEvents, npc, scriptData, scriptFile, story } from "./scripts-fixture";
@@ -186,6 +187,19 @@ describe("the options around a person (block H)", () => {
     act(1, "talk");
     answerAll();
     expect(t.of(c, "script").map((m) => m.request.kind)).toEqual(["say"]);
+  });
+
+  it("waits a moment after a talk ends before the interact key talks again (the key that closed the last line)", () => {
+    const { t, c, answerAll } = scene("clerk");
+    t.walk(c, { x: -1, y: 0 }, 1);
+    t.press(c);
+    answerAll();
+    expect(t.of(c, "script")).toHaveLength(1);
+    t.press(c);
+    expect(t.of(c, "script")).toHaveLength(1);
+    t.step(TALK_COOLDOWN_TICKS);
+    t.press(c);
+    expect(t.of(c, "script")).toHaveLength(2);
   });
 
   it("refuses a person out of reach and a service the person does not offer", () => {

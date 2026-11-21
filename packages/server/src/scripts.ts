@@ -57,6 +57,8 @@ const TEMP_VARS = { from: 0x4000, to: 0x401f };
 const MAPTEMP_FLAGS = { from: 0x1, to: 0x40 };
 /** A script waits this long for an answer before the player is let go: 60 s at 20 Hz. */
 export const SCRIPT_TIMEOUT_TICKS = 1200;
+/** Block H: ticks after the player answers a script before interact talks again; the key that closed the last line would reopen it. */
+export const TALK_COOLDOWN_TICKS = 10;
 /** Requests the server ends itself, never timed out: waits, trainer battles, shops and the PC (spec 024). */
 const OPEN_ENDED = new Set(["wait", "battle", "wild", "shop", "pc"]);
 const STEP: Record<Direction, [number, number]> = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
@@ -336,6 +338,8 @@ interface State {
   inService: boolean;
   /** Block H: talking to a clerk or a nurse says the lines only; their menu and question are answered "see you". */
   talkOnly: boolean;
+  /** Block H: the tick from which interact may start a script again (TALK_COOLDOWN_TICKS after the last answer). */
+  talkAgainAt: number;
   /** Result of the last trainer battle, for CheckBattleWon. */
   won: boolean;
   /** Spec 030.9: the last wild battle's BattleOutcome (GetStaticEncounterOutcome), and the map it was fought on. */
@@ -1199,7 +1203,7 @@ export function createScripts(options: ScriptsOptions) {
 
   return {
     join(who: Storyteller): void {
-      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", walkedFrom: undefined, shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, talkOnly: false, won: false, outcome: 0, wildArea: undefined, strength: false, gymmick: undefined, blackthorn: undefined, ride: undefined, changes: [] };
+      const s: State = { who, runner: undefined, script: undefined, asked: 0, askedAt: 0, waitUntil: undefined, locked: false, talkedTo: undefined, area: undefined, tile: "", walkedFrom: undefined, shown: new Map(), moved: new Map(), framesOff: false, resume: false, frameRunning: false, debug: false, lastDebug: "", inBattle: false, inService: false, talkOnly: false, talkAgainAt: 0, won: false, outcome: 0, wildArea: undefined, strength: false, gymmick: undefined, blackthorn: undefined, ride: undefined, changes: [] };
       states.set(who.playerId, s);
       // Spec 024: a story not yet started runs _std_init to its end before any map, as RunInitScript does.
       const init = who.init && data.newGame ? data.resolve(data.newGame.initScript, data.newGame.map) : undefined;
@@ -1229,7 +1233,7 @@ export function createScripts(options: ScriptsOptions) {
       if (!s) return false;
       if (s.runner) return !s.inBattle;
       if (s.inService) return true;
-      return input !== undefined && (pressed & BUTTON.interact) !== 0 && interact(s);
+      return input !== undefined && (pressed & BUTTON.interact) !== 0 && tick >= s.talkAgainAt && interact(s);
     },
     /** Ends the running script where it stands, for "Estou preso"; false while it waits on a battle, a shop or the PC. */
     abort(playerId: number): boolean {
@@ -1255,7 +1259,7 @@ export function createScripts(options: ScriptsOptions) {
     npcAction(playerId: number, npcId: number, action: NpcAction): void {
       const s = states.get(playerId);
       const e = s && world.get(s.who.entityId);
-      const npc = s && e && !s.runner && !s.inService ? personInReach(s, talkTile(lookup, e)) : undefined;
+      const npc = s && e && !s.runner && !s.inService && tick >= s.talkAgainAt ? personInReach(s, talkTile(lookup, e)) : undefined;
       const role = npc?.data["role"];
       if (!s || !npc || npc.id !== npcId || (action !== "talk" && action !== role && !(action === "sell" && role === "shop"))) {
         options.log(`Refused ${action} from player ${playerId} on entity ${npcId}: not in reach, busy or not offered`);
@@ -1327,6 +1331,8 @@ export function createScripts(options: ScriptsOptions) {
         options.log(`Discarded script-answer ${id} from player ${playerId}: nothing waits for it`);
         return;
       }
+      // The key that answered (often the interact key) must not start the talk again once the script ends.
+      s.talkAgainAt = tick + TALK_COOLDOWN_TICKS;
       if (request.kind === "cutscene") stage(s, request.steps);
       if (request.kind === "starter") s.resume = true;
       s.runner!.resume(answer, text);
