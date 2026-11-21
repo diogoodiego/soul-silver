@@ -4,6 +4,7 @@
   import Confirm from "../ui/Confirm.svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
+  import { etaSeconds, type ProgressSample } from "./eta";
 
   let { assets }: { assets: AssetsState } = $props();
 
@@ -13,6 +14,22 @@
   const acceptsRom = $derived(assets.status === "needs-rom" || assets.status === "rejected");
 
   let askingCancel = $state(false);
+
+  // First progress sample of the current extraction; the ETA uses the average rate since it.
+  let first: ProgressSample | undefined;
+  const eta = $derived.by(() => {
+    if (assets.status !== "extracting") {
+      first = undefined;
+      return undefined;
+    }
+    const now = { t: performance.now(), percent: assets.percent };
+    first ??= now;
+    return etaSeconds(first, now);
+  });
+
+  function etaText(seconds: number): string {
+    return seconds < 60 ? t("firstRun.etaSeconds", { n: Math.max(5, Math.ceil(seconds / 5) * 5) }) : t("firstRun.etaMinutes", { n: Math.ceil(seconds / 60) });
+  }
 
   function formatBytes(bytes: number): string {
     const gb = bytes / 1024 ** 3;
@@ -101,7 +118,7 @@
     <h2 class="text-xl mt-0 mx-0 mb-3">{t(`firstRun.mode.${assets.mode}`)}</h2>
     <p>{assets.stageTitle}</p>
     <progress class="w-full h-4" max="100" value={assets.percent}></progress>
-    <p class="tabular-nums">{assets.percent}%</p>
+    <p class="tabular-nums">{assets.percent}%{eta === undefined ? "" : ` · ${etaText(eta)}`}</p>
     <div class="flex gap-2">
       <Button variant="ghost" onclick={cancel}>{t("common.cancel")}</Button>
     </div>

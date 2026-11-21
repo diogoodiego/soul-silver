@@ -77,13 +77,16 @@ function now(): string {
   return new Date().toISOString();
 }
 
-function progressReporter(planned: readonly PlannedStage[], onProgress: RunArgs["onProgress"]) {
+/** Share of the bar given to checking saved outputs when a previous manifest exists. */
+const VERIFY_PERCENT = 10;
+
+function progressReporter(planned: readonly PlannedStage[], onProgress: RunArgs["onProgress"], base: number) {
   const total = planned.reduce((sum, p) => sum + p.stage.weight, 0);
   let done = 0;
   let last = -1;
   const report = (stage: Stage, fraction: number) => {
     const clamped = Math.min(1, Math.max(0, fraction));
-    const percent = Math.floor((100 * (done + stage.weight * clamped)) / total);
+    const percent = base + Math.floor(((100 - base) * (done + stage.weight * clamped)) / total);
     if (percent <= last) return;
     last = percent;
     onProgress?.({ stageId: stage.id, stageTitle: stage.title, percent });
@@ -162,6 +165,9 @@ async function execute(args: RunArgs, facts: RunFacts): Promise<RunResult> {
   await cleanup(workspaceDir, previous);
   checkpoint("after-cleanup");
 
+  const toVerify = Object.values(previous?.stages ?? {}).reduce((sum, s) => sum + Object.keys(s.outputs).length, 0);
+  const base = toVerify > 0 ? VERIFY_PERCENT : 0;
+  let verified = 0;
   const plan = await planRun({
     registry,
     manifest: previous,
@@ -170,6 +176,9 @@ async function execute(args: RunArgs, facts: RunFacts): Promise<RunResult> {
     ...(args.force ? { force: args.force } : {}),
     isOutputValid: async (id, output, record) => {
       const actual = await digestTree(outputDir(workspaceDir, id, output)).catch(() => undefined);
+      verified++;
+      const percent = Math.floor((base * Math.min(verified, toVerify)) / toVerify);
+      args.onProgress?.({ stageId: "verify", stageTitle: "Conferindo os arquivos extraídos", percent });
       return actual?.sha256 === record.sha256;
     },
   });
@@ -204,7 +213,7 @@ async function execute(args: RunArgs, facts: RunFacts): Promise<RunResult> {
   }
   for (const id of stale) await rm(stageDir(workspaceDir, id), { recursive: true, force: true });
 
-  const progress = progressReporter(plan.stages, args.onProgress);
+  const progress = progressReporter(plan.stages, args.onProgress, base);
   const ran: string[] = [];
   for (const { stage } of plan.stages) {
     args.signal?.throwIfAborted();

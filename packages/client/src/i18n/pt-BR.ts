@@ -56,6 +56,8 @@ export const ptBR = {
   "firstRun.mode.update": "Atualizando os arquivos do jogo",
   "firstRun.mode.repair": "Reparando os arquivos do jogo",
   "firstRun.mode.resume": "Retomando a preparação do jogo",
+  "firstRun.etaSeconds": "cerca de {n} s restantes",
+  "firstRun.etaMinutes": "cerca de {n} min restantes",
   "firstRun.cancelling": "Cancelando…",
   "firstRun.confirmCancel": "Cancelar a preparação do jogo? Você pode retomar depois sem escolher o arquivo de novo.",
   "firstRun.failed": "Não foi possível preparar o jogo.",

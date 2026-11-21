@@ -99,6 +99,20 @@ describe("runPipeline", () => {
     expect([...titles]).toEqual(["Stage a", "Stage b"]);
   });
 
+  it("reports progress while checking the saved outputs, then runs stages past that share", async () => {
+    const a = fakeStage("a", { outputs: ["out", "y"] });
+    await runPipeline(args([a, fakeStage("b")]));
+    const seen: { stageId: string; percent: number }[] = [];
+    await runPipeline(
+      args([a, fakeStage("b")], { force: ["b"], onProgress: ({ stageId, percent }) => seen.push({ stageId, percent }) }),
+    );
+    const verify = seen.filter((p) => p.stageId === "verify").map((p) => p.percent);
+    expect(verify.length).toBeGreaterThan(0);
+    expect(Math.max(...verify)).toBeLessThanOrEqual(10);
+    expect(seen.filter((p) => p.stageId === "b").every((p) => p.percent >= 10)).toBe(true);
+    expect(seen.at(-1)!.percent).toBe(100);
+  });
+
   it("cancels mid-stage without recording the stage", async () => {
     const controller = new AbortController();
     const b = fakeStage("b", {
