@@ -30,6 +30,9 @@
   /** The focused row's id, for the note at the bottom of the screen. */
   let focused = $state<string | undefined>();
   let askingRescue = $state(false);
+  let askingDelete = $state(false);
+  /** Held to delete the extracted data (title screen only: a running session reads it). */
+  const DELETE = "picker";
   /** The controls tab: the action waiting for its new key, and its outcome. */
   let waiting = $state<Action | undefined>();
   let controlsMessage = $state<string | undefined>();
@@ -203,8 +206,13 @@
                 onfocus={() => (focused = field.id)}
                 onchange={(event) => void saveSettings(field.id === "roomPassword" ? { roomPassword: event.currentTarget.value } : { stunServer: event.currentTarget.value.trim() })}
               />
-            </label>
-          {/each}
+            {/each}
+            {#if !onRescue}
+              <div class="flex justify-end">
+                <Button variant="danger" hold={{ action: DELETE, armed: !askingDelete, onHeld: () => (askingDelete = true), ms: 1500 }}>{t("settings.deleteExtraction")}</Button>
+              </div>
+            {/if}
+          </div>
         {:else if tab === "gamepad"}
           <GamepadFigure labels={padLabels} idle={t("settings.pad.idle")} />
         {:else if tab === "controls"}
@@ -220,6 +228,9 @@
   <section class="relative flex size-full flex-col" use:menu={{ onBack: () => waiting === undefined && onBack(), onAction }}>
     <h2 class="sr-only">{t("settings.title")}</h2>
     {@render content()}
+    {#if askingDelete}
+      <Confirm question={t("settings.deleteExtraction.confirm")} onAnswer={(yes) => { askingDelete = false; if (yes) void window.soulSilver.deleteExtraction(); }} />
+    {/if}
     {#if askingRescue}
       <Confirm question={t("settings.stuck.confirm")} onAnswer={(yes) => { askingRescue = false; if (yes) onRescue?.(); }} />
     {/if}
@@ -233,6 +244,9 @@
         {@render content()}
       </div>
     </div>
+    {#if askingDelete}
+      <Confirm question={t("settings.deleteExtraction.confirm")} onAnswer={(yes) => { askingDelete = false; if (yes) void window.soulSilver.deleteExtraction(); }} />
+    {/if}
     {#if askingRescue}
       <Confirm question={t("settings.stuck.confirm")} onAnswer={(yes) => { askingRescue = false; if (yes) onRescue?.(); }} />
     {/if}

@@ -29,7 +29,7 @@ class FakeHost extends EventEmitter implements ExtractorProcess {
 
 const paths = { romCopy: "C:\\data\\rom\\soulsilver.nds", workspace: "C:\\data\\extraction", logFile: "C:\\data\\logs\\extractor.log" };
 
-function setup(check: AssetsCheckResult, dialogPath: string | null = "C:\\roms\\ss.nds") {
+function setup(check: AssetsCheckResult, dialogPath: string | null = "C:\\roms\\ss.nds", removeWorkspace = vi.fn((_dir: string) => Promise.resolve())) {
   const hosts: FakeHost[] = [];
   const states: AssetsState[] = [];
   const showItemInFolder = vi.fn();
@@ -44,6 +44,7 @@ function setup(check: AssetsCheckResult, dialogPath: string | null = "C:\\roms\\
     },
     showOpenDialog: vi.fn(() => Promise.resolve(dialogPath ?? undefined)),
     showItemInFolder,
+    removeWorkspace,
     onState: (s) => states.push(s),
     log: () => {},
   });
@@ -299,5 +300,24 @@ describe("assets controller: failures and log", () => {
     await controller.start();
     controller.openLog();
     expect(showItemInFolder).toHaveBeenCalledWith(paths.logFile);
+  });
+});
+
+describe("assets controller: delete extraction", () => {
+  it("removes the workspace when idle", async () => {
+    const removeWorkspace = vi.fn((_dir: string) => Promise.resolve());
+    const { controller } = setup({ status: "ready" }, null, removeWorkspace);
+    await controller.start();
+    expect(await controller.deleteExtraction()).toBe(true);
+    expect(removeWorkspace).toHaveBeenCalledWith(paths.workspace);
+  });
+
+  it("refuses while extracting", async () => {
+    const removeWorkspace = vi.fn((_dir: string) => Promise.resolve());
+    const { controller } = setup({ status: "needs-extraction", romAvailable: true, reason: "no-manifest" }, null, removeWorkspace);
+    await controller.start();
+    expect(controller.getState().status).toBe("extracting");
+    expect(await controller.deleteExtraction()).toBe(false);
+    expect(removeWorkspace).not.toHaveBeenCalled();
   });
 });

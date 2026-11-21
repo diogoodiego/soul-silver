@@ -41,6 +41,7 @@ const api: SoulSilverApi = {
   startExtraction: () => ipcRenderer.invoke(IpcChannel.AssetsStart) as Promise<void>,
   cancelExtraction: () => ipcRenderer.invoke(IpcChannel.AssetsCancel) as Promise<void>,
   openExtractionLog: () => ipcRenderer.invoke(IpcChannel.AssetsOpenLog) as Promise<void>,
+  deleteExtraction: () => ipcRenderer.invoke(IpcChannel.AssetsDelete) as Promise<void>,
   sendGame: (msg) => {
     ipcRenderer.send(IpcChannel.GameSend, msg);
   },

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkAssets, createConsoleLogger, createRegistry, defaultStages } from "@soulsilver/extractor";
@@ -147,6 +148,7 @@ if (!app.requestSingleInstanceLock()) {
       showItemInFolder: (path) => {
         shell.showItemInFolder(path);
       },
+      removeWorkspace: (dir) => rm(dir, { recursive: true, force: true }),
       onState: (state) => {
         startServer(state);
         send(IpcChannel.AssetsState, state);
@@ -185,6 +187,12 @@ if (!app.requestSingleInstanceLock()) {
     });
     handle(IpcChannel.AssetsOpenLog, () => {
       assets.openLog();
+    });
+    // The server read the extraction once at start: relaunch, and the next boot asks to extract again.
+    handle(IpcChannel.AssetsDelete, async () => {
+      if (!(await assets.deleteExtraction())) return;
+      app.relaunch();
+      app.exit(0);
     });
 
     const stagesDir = join(userData, "extraction", "stages");

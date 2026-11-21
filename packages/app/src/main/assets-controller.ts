@@ -37,6 +37,8 @@ export interface AssetsControllerOptions {
   /** Resolves to the chosen path, or undefined when the dialog is cancelled. */
   showOpenDialog(): Promise<string | undefined>;
   showItemInFolder(path: string): void;
+  /** Deletes the extraction folder (recursive, no error when missing). */
+  removeWorkspace(dir: string): Promise<void>;
   onState(state: AssetsState): void;
   log(message: string): void;
   /** Kill the host if it has not exited this long after a cancel. */
@@ -52,6 +54,8 @@ export interface AssetsController {
   cancel(): void;
   openLog(): void;
   isBusy(): boolean;
+  /** Deletes the extracted data, keeping the ROM copy; false while a task runs. The caller relaunches the app. */
+  deleteExtraction(): Promise<boolean>;
   /** Cancels any running task and resolves once the host has exited. */
   shutdown(): Promise<void>;
 }
@@ -255,6 +259,11 @@ export function createAssetsController(options: AssetsControllerOptions): Assets
       options.showItemInFolder(options.paths.logFile);
     },
     isBusy,
+    async deleteExtraction() {
+      if (isBusy()) return false;
+      await options.removeWorkspace(options.paths.workspace);
+      return true;
+    },
     async shutdown() {
       const current = task;
       if (!current) return;

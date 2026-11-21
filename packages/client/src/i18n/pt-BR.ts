@@ -226,6 +226,8 @@ export const ptBR = {
   "settings.note.clouds": "Sombras de nuvens passando pelo chão, de dia e ao ar livre.",
   "settings.note.uiScale": "Tamanho dos textos e menus da interface.",
   "settings.stuck.confirm": "Voltar ao último Centro Pokémon visitado, ou para casa se ainda não visitou nenhum? Uma cena em andamento será interrompida.",
+  "settings.deleteExtraction": "Apagar dados extraídos da ROM",
+  "settings.deleteExtraction.confirm": "Apagar os dados extraídos da ROM? O jogo vai reiniciar e extrair tudo de novo a partir da cópia da ROM. Seus saves não são apagados.",
   "settings.audio.master": "Volume geral",
   "settings.audio.music": "Música",
   "settings.audio.effects": "Efeitos",

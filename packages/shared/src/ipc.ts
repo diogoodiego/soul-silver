@@ -20,6 +20,7 @@ export const IpcChannel = {
   AssetsStart: "assets:start",
   AssetsCancel: "assets:cancel",
   AssetsOpenLog: "assets:open-log",
+  AssetsDelete: "assets:delete",
   GameSend: "game:send",
   GameMessage: "game:message",
   GameClosed: "game:closed",
@@ -86,6 +87,8 @@ export interface SoulSilverApi {
   cancelExtraction(): Promise<void>;
   /** Shows extractor.log in Explorer. */
   openExtractionLog(): Promise<void>;
+  /** Deletes the extracted data (the ROM copy stays) and relaunches the app; nothing while extracting. */
+  deleteExtraction(): Promise<void>;
   /** A game protocol message (spec 010); the server validates it. */
   sendGame(msg: unknown): void;
   /** Raw server messages; validate with serverMessage. Returns a function that cancels the subscription. */
