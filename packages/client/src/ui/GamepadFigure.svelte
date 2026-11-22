@@ -29,7 +29,7 @@
   import { spread } from "./callouts";
 
   /** `labels`: control id -> "A · Confirmar / Golpe 1"; a control with no action ("… · —") gets no label. */
-  let { labels, idle }: { labels: Record<string, string>; idle: string } = $props();
+  let { labels, idle, onPick }: { labels: Record<string, string>; idle: string; onPick: (id: string) => void } = $props();
 
   /** The stage is the figure's viewBox at 1:1, so anchors are pixels from its corner. */
   const SW = 400;
@@ -48,7 +48,7 @@
   const left = $derived(Math.max(0, (bw - SW) / 2));
   const top = $derived(Math.max(0, (bh - SH) / 2));
   const column = $derived(Math.max(80, left - GUTTER));
-  const active = $derived(Object.keys(labels).find((id) => labels[id] === caption));
+  const active = $derived(caption in labels ? caption : undefined);
 
   /** One label per control with an action, in the column on its side, spread so none overlaps. */
   const callouts = $derived.by(() => {
@@ -73,7 +73,8 @@
       if (gone) return;
       HL.inject(document);
       stage.dataset["hairline"] = f.name;
-      stage.dataset["labels"] = JSON.stringify(labels);
+      // The figure names controls by id: their actions change as the player rebinds them.
+      stage.dataset["labels"] = JSON.stringify(Object.fromEntries(Object.keys(labels).map((id) => [id, id])));
       const svg = HL.mk("svg", { viewBox: `0 0 ${SW} ${SH}`, "aria-hidden": "true" }, stage);
       const read = {
         get textContent() {
@@ -119,9 +120,10 @@
       class="absolute p-0 text-xs leading-4 outline-none focus:bg-action-primary-bg focus:text-action-primary-text focus:[font-palette:--action-primary-text] {c.onLeft ? 'text-right' : 'text-left'} {c.id === active ? 'text-primary' : 'text-tertiary'}"
       style="left: {c.onLeft ? 0 : bw - column}px; top: {c.y}px; width: {column}px"
       onfocus={() => handle?.pick(c.id)}
+      onclick={() => onPick(c.id)}
     >
       <b class="text-inherit">{c.name}</b> {c.actions}
     </Button>
   {/each}
-  <p class="sr-only" aria-live="polite">{caption === "rest" ? idle : caption}</p>
+  <p class="sr-only" aria-live="polite">{labels[caption] ?? idle}</p>
 </div>

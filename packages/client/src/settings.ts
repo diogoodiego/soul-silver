@@ -8,7 +8,7 @@ export const settings = writable<AppSettings>(DEFAULT_SETTINGS);
 
 function apply(next: AppSettings): void {
   settings.set(next);
-  input.setBindings(next.bindings);
+  input.setBindings(next.bindings, next.pad);
   audio.setVolumes(next.audio);
   document.documentElement.style.setProperty("--ui-scale", String(next.uiScale));
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BUTTON } from "@soulsilver/shared/game";
-import { DEFAULT_KEYS, rebind } from "@soulsilver/shared/input";
-import { createRepeater, keyboardVector, moveButtons, REPEAT_DELAY_MS, REPEAT_EVERY_MS, stickVector, STICK_DEADZONE } from "../../src/input/input";
+import { DEFAULT_KEYS, PAD_BUTTONS, rebind } from "@soulsilver/shared/input";
+import { createPadCapture, createRepeater, keyboardVector, moveButtons, REPEAT_DELAY_MS, REPEAT_EVERY_MS, stickVector, STICK_DEADZONE } from "../../src/input/input";
 
 describe("keyboardVector", () => {
   it("is zero with nothing held", () => {
@@ -97,6 +97,20 @@ describe("bindings (spec 017)", () => {
   it("puts interact on A with move 1: the server reads each in its own mode (walk, combat)", () => {
     expect(moveButtons(new Set(), (i) => i === 0)).toBe(BUTTON.interact | 0b0001);
     expect(moveButtons(new Set(), (i) => i === 12)).toBe(0);
+  });
+});
+
+describe("pad buttons", () => {
+  it("follow a remapped button and drop the old one", () => {
+    const pad = { ...PAD_BUTTONS, recall: 12 };
+    expect(moveButtons(new Set(), (i) => i === 12, DEFAULT_KEYS, pad)).toBe(BUTTON.recall);
+    expect(moveButtons(new Set(), (i) => i === 7, DEFAULT_KEYS, pad)).toBe(0);
+  });
+
+  it("capture the first press after the confirm is released, and give it on its release", () => {
+    const step = createPadCapture();
+    for (const down of [0, 0, -1, 7, 7]) expect(step(down)).toBeUndefined();
+    expect(step(-1)).toBe(7);
   });
 });
 

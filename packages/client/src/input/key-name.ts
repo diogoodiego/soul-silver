@@ -1,5 +1,10 @@
 import { t } from "../i18n";
 
+const PAD_NAMES = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "View", "Start", "LS", "RS", "↑", "↓", "←", "→"];
+
+/** Standard Gamepad button to its Xbox name. */
+export const padName = (button: number): string => PAD_NAMES[button] ?? String(button);
+
 /** KeyboardEvent.code to a short label for the screen. */
 export function keyName(code: string): string {
   if (code.startsWith("Key")) return code.slice(3);

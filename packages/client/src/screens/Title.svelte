@@ -4,7 +4,7 @@
   import { t } from "../i18n";
   import { playTitleMusic } from "../audio";
   import { input } from "../input/app-input";
-  import { PAD_BUTTONS } from "@soulsilver/shared/input";
+  import { settings } from "../settings";
   import Glyph from "../ui/Glyph.svelte";
   import { slideUp } from "./slide-up";
 
@@ -17,7 +17,7 @@
   onMount(() => {
     void playTitleMusic();
     // Confirm (Enter, Space, pad A) or the pad's Start; "menu" is also Tab, so Start is read off the pad.
-    const startPressed = () => navigator.getGamepads().some((p) => p?.buttons[PAD_BUTTONS.menu]?.pressed);
+    const startPressed = () => navigator.getGamepads().some((p) => p?.buttons[$settings.pad.menu]?.pressed);
     const offAction = input.onAction((action) => {
       if (action === "confirm" || (action === "menu" && startPressed())) onStart();
     });

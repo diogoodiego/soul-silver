@@ -1,6 +1,6 @@
 // Logical actions and their keyboard and gamepad buttons (spec 017, research R3,
 // contracts/ui-actions.md). Keys are KeyboardEvent.code values; pad buttons are Standard Gamepad
-// (Xbox layout) indices and are not remappable.
+// (Xbox layout) indices; the directions are not remappable.
 
 export const DIRECTIONS = ["up", "down", "left", "right"] as const;
 const MENU_ACTIONS = ["confirm", "cancel", "tabPrev", "tabNext"] as const;
@@ -53,7 +53,9 @@ export const DEFAULT_KEYS: Readonly<Bindings> = {
   items: ["KeyO"],
 };
 
-export const PAD_BUTTONS: Readonly<Record<Action, number>> = {
+export type PadBindings = Record<Action, number>;
+
+export const PAD_BUTTONS: Readonly<PadBindings> = {
   up: 12,
   down: 13,
   left: 14,
@@ -84,6 +86,27 @@ export const PAD_BUTTONS: Readonly<Record<Action, number>> = {
   /** Spec 027: the quick item selector in combat, on the D-pad like nextBall; tap cycles, hold uses. */
   items: 14,
 };
+
+const isDirection = (action: Action) => (DIRECTIONS as readonly string[]).includes(action);
+/** Actions whose pad button the player may change: the D-pad always navigates menus. */
+export const PAD_ACTIONS = ACTIONS.filter((a) => !isDirection(a));
+
+/**
+ * Moves `action` to a pad button. Actions it clashes with there take its old button, those that clash
+ * with them on it come to the new one, and so on. Throws for a direction, or a menu action on the D-pad.
+ */
+export function rebindPad(pad: Readonly<PadBindings>, action: Action, button: number): { pad: PadBindings; swapped: Action[] } {
+  const dpad = button >= PAD_BUTTONS.up && button <= PAD_BUTTONS.right;
+  if (isDirection(action) || (dpad && (MENU_ACTIONS as readonly string[]).includes(action))) throw new Error(`reserved button: ${button}`);
+  const old = pad[action];
+  const moved = new Set<Action>([action]);
+  // A set may grow while it is iterated, so this walks the whole chain of clashes.
+  for (const m of moved) for (const a of PAD_ACTIONS) if ((pad[a] === old || pad[a] === button) && pad[a] !== pad[m] && sameContext(a, m)) moved.add(a);
+  const next = { ...pad };
+  for (const m of moved) next[m] = pad[m] === old ? button : old;
+  moved.delete(action);
+  return { pad: next, swapped: [...moved] };
+}
 
 /** Keys the OS or the app keeps for itself (fullscreen, close window, Start menu). */
 export const RESERVED_KEYS: ReadonlySet<string> = new Set(["F11", "F4", "AltLeft", "AltRight", "MetaLeft", "MetaRight", "ContextMenu"]);

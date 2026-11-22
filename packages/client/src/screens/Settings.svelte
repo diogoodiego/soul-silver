@@ -3,7 +3,7 @@
   // left/right change the focused option. Each change is saved by the main process and applies at once.
   import Button from "../ui/Button.svelte";
   import { STEP_1_EFFECTS, TEXT_SPEEDS, UI_SCALES, VISUAL_EFFECTS, VISUAL_QUALITIES, WINDOW_SIZES } from "@soulsilver/shared";
-  import { type Action, ACTIONS, PAD_BUTTONS } from "@soulsilver/shared/input";
+  import { type Action, ACTIONS, PAD_ACTIONS } from "@soulsilver/shared/input";
   import { onMount, tick } from "svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
@@ -113,7 +113,7 @@
   });
 
   const note = $derived.by(() => {
-    if (tab === "controls" && (controlsMessage || focused?.startsWith("action."))) return controlsMessage ?? t("controls.hint");
+    if ((tab === "controls" || tab === "gamepad") && (controlsMessage || focused?.startsWith("action."))) return controlsMessage ?? t(tab === "gamepad" ? "controls.hintPad" : "controls.hint");
     return focused ? t(`settings.note.${focused}` as Parameters<typeof t>[0]) : "";
   });
 
@@ -151,18 +151,25 @@
     return true;
   }
 
-  /** The controller tab's read-out: each control's name and every action on its button (the pad layout is fixed). */
+  /** The controller tab's read-out: each control's name and every action on its button. */
   const PAD = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "View", "Start", "LS", "RS", "D-pad", "D-pad", "D-pad", "D-pad"];
-  const padLabels = (() => {
+  const padId = (button: number) => PAD[button]!.toLowerCase().replace("-", "");
+  const padLabels = $derived.by(() => {
     const actions: Record<string, string[]> = { LS: [t("settings.pad.walk")] };
     for (const action of ACTIONS) {
-      const name = PAD[PAD_BUTTONS[action]]!;
+      const name = PAD[$settings.pad[action]]!;
       actions[name] = [...(actions[name] ?? []), t(`action.${action}`)];
     }
     const labels: Record<string, string> = {};
-    for (const name of PAD) labels[name.toLowerCase().replace("-", "")] = `${name} · ${(actions[name] ?? ["—"]).join(" / ")}`;
+    for (const [button, name] of PAD.entries()) labels[padId(button)] = `${name} · ${(actions[name] ?? ["—"]).join(" / ")}`;
     return labels;
-  })();
+  });
+
+  /** A label of the figure goes to the row of its first action. */
+  function pickControl(id: string): void {
+    const action = PAD_ACTIONS.find((a) => padId($settings.pad[a]) === id);
+    if (action) list.querySelector<HTMLElement>(`[data-action="${action}"] button`)?.focus();
+  }
 
   const hints = [
     { actions: ["tabPrev" as const], label: t("hints.prevSection") },
@@ -205,7 +212,8 @@
             {/if}
           </div>
         {:else if tab === "gamepad"}
-          <GamepadFigure labels={padLabels} idle={t("settings.pad.idle")} />
+          <GamepadFigure labels={padLabels} idle={t("settings.pad.idle")} onPick={pickControl} />
+          <Controls pad bind:waiting onMessage={(m: string | undefined) => (controlsMessage = m)} onFocus={(action: Action) => (focused = `action.${action}`)} />
         {:else if tab === "controls"}
           <Controls bind:waiting onMessage={(m: string | undefined) => (controlsMessage = m)} onFocus={(action: Action) => (focused = `action.${action}`)} />
         {/if}

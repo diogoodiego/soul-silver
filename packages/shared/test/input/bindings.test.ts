@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACTIONS, DEFAULT_KEYS, DIRECTIONS, PAD_BUTTONS, rebind, sameContext } from "../../src/input";
+import { ACTIONS, DEFAULT_KEYS, DIRECTIONS, PAD_BUTTONS, rebind, rebindPad, sameContext } from "../../src/input";
 import { readSettings } from "../../src/settings.ts";
 
 describe("defaults", () => {
@@ -83,6 +83,43 @@ describe("rebind", () => {
     const before = structuredClone(DEFAULT_KEYS);
     rebind(DEFAULT_KEYS, "combat", "KeyR");
     expect(DEFAULT_KEYS).toEqual(before);
+  });
+});
+
+describe("rebindPad", () => {
+  const free = ACTIONS.filter((a) => !(DIRECTIONS as readonly string[]).includes(a));
+
+  it("swaps with the action on the new button, and leaves the other context alone", () => {
+    expect(rebindPad(PAD_BUTTONS, "combat", 7)).toEqual({ pad: { ...PAD_BUTTONS, combat: 7, recall: 6 }, swapped: ["recall"] });
+    expect(rebindPad(PAD_BUTTONS, "tabNext", 7)).toEqual({ pad: { ...PAD_BUTTONS, tabNext: 7 }, swapped: [] });
+  });
+
+  it("never leaves two actions of one context on a button, whatever the action and button", () => {
+    for (const action of free)
+      for (let button = 0; button <= 15; button++) {
+        let pad: ReturnType<typeof rebindPad>["pad"];
+        try {
+          ({ pad } = rebindPad(PAD_BUTTONS, action, button));
+        } catch {
+          continue;
+        }
+        expect(pad[action]).toBe(button);
+        for (const a of free) for (const b of free) if (a < b && sameContext(a, b)) expect(pad[a], `${action}->${button}: ${a}/${b}`).not.toBe(pad[b]);
+      }
+  });
+
+  it("keeps menu navigation: directions are fixed and menu actions stay off the D-pad", () => {
+    expect(() => rebindPad(PAD_BUTTONS, "up", 0)).toThrow();
+    expect(() => rebindPad(PAD_BUTTONS, "confirm", 12)).toThrow();
+    expect(rebindPad(PAD_BUTTONS, "rod", 12).pad.rod).toBe(12);
+  });
+});
+
+describe("saved pad buttons", () => {
+  it("default when missing, keep the player's, and refuse an unknown button", () => {
+    expect(readSettings({}).pad).toEqual(PAD_BUTTONS);
+    expect(readSettings({ pad: { rod: 12 } }).pad).toEqual({ ...PAD_BUTTONS, rod: 12 });
+    expect(readSettings({ pad: { rod: 99 } }).pad).toEqual(PAD_BUTTONS);
   });
 });
 

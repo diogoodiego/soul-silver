@@ -238,7 +238,11 @@ export const ptBR = {
   "settings.audio.up": "Aumentar {label}",
 
   "controls.title": "Controles",
-  "controls.hint": "Escolha uma ação e pressione a nova tecla (Esc cancela). O gamepad usa o layout padrão de Xbox.",
+  "controls.hint": "Escolha uma ação e pressione a nova tecla (Esc cancela).",
+  "controls.hintPad": "Escolha uma ação e pressione o novo botão do controle (Esc cancela).",
+  "controls.pressButton": "Pressione o novo botão para \"{action}\" (Esc cancela)…",
+  "controls.swappedPad": "Botão {button} definido; também trocaram de botão: {others}.",
+  "controls.reservedPad": "{button} não pode ser usado nesta ação.",
   "controls.action": "Ação",
   "controls.keyboard": "Teclado",
   "controls.gamepad": "Gamepad",
@@ -367,6 +371,7 @@ export const ptBR = {
   "stat.specialDefense": "Def. Esp.",
   "stat.speed": "Velocidade",
 
+  "pause.paused": "Jogo pausado",
   "pause.live": "O jogo continua enquanto você está no menu",
   "phone.incoming": "Ligação de {name}",
   "phone.call": "Ligar para {name}",

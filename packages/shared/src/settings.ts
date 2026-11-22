@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PLAYER_NAME_MAX } from "./game/limits";
-import { ACTIONS, DEFAULT_KEYS, RESERVED_KEYS, type Bindings } from "./input/bindings";
+import { ACTIONS, DEFAULT_KEYS, PAD_BUTTONS, RESERVED_KEYS, type Bindings } from "./input/bindings";
 
 // Per-PC settings (spec 017, data-model.md). The file never blocks startup: a missing or
 // invalid field falls back to its default on its own.
@@ -36,6 +36,9 @@ const visual = z.strictObject({
 });
 // An action added later takes its default key, so older settings keep their bindings.
 const bindings = z.strictObject(Object.fromEntries(ACTIONS.map((a) => [a, keys.default(() => [...DEFAULT_KEYS[a]])])) as Record<keyof Bindings, z.ZodDefault<typeof keys>>);
+// Standard Gamepad buttons, D-pad included.
+const button = z.number().int().min(0).max(15);
+const pad = z.strictObject(Object.fromEntries(ACTIONS.map((a) => [a, button.default(PAD_BUTTONS[a])])) as Record<keyof Bindings, z.ZodDefault<typeof button>>);
 
 /** A team member in the arena's menu: its 4 move slots (block C), 0 for an empty one. */
 const arenaTeam = z.array(z.strictObject({ species: z.number().int().min(1), level: z.number().int().min(1).max(100), moves: z.array(z.number().int().min(0)).length(4) })).min(1).max(6);
@@ -70,6 +73,7 @@ const fields = {
   /** V.1: HD-2D post-processing over the field. */
   visual,
   bindings,
+  pad,
   /** Spec 018: volumes 0–100 in steps of 5. */
   audio: z.strictObject({ master: volume, music: volume, effects: volume, muteUnfocused: z.boolean() }),
   /** R.1: what guests must type to join a session this PC hosts; empty means no password. */
@@ -93,6 +97,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dither: true,
   visual: { ...VISUAL_DEFAULTS },
   bindings: structuredClone(DEFAULT_KEYS),
+  pad: { ...PAD_BUTTONS },
   audio: { master: 80, music: 80, effects: 80, muteUnfocused: false },
   roomPassword: "",
   stunServer: "stun:stun.l.google.com:19302",
