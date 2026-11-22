@@ -22,7 +22,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from "three";
-import { clampCamera, fillView, OBLIQUE, obliqueProjection, VIEW_H, VIEW_W, type Bounds } from "./camera";
+import { clampCamera, fillView, OBLIQUE, obliqueProjection, SPRITE_DEPTH_BIAS, VIEW_H, VIEW_W, type Bounds } from "./camera";
 import { loadBitmap, loadMapMesh, loadPropMesh, spriteUrl, type ClientWorld, type MapMesh } from "./map-assets";
 import { CLEARING_RADIUS_PX, clearings } from "./grass-clearing";
 import { buildMapObject, groundAt, SHADE, setGrassClearings, type MapObject } from "./map-scene";
@@ -68,11 +68,6 @@ const IDLE_BOUNCE_MS = 500;
 const IDLE_BOUNCE_PX = 2;
 /** Peak height of a ledge hop arc. */
 const HOP_ARC_PX = 12;
-/**
- * Sprites are moved this far toward the camera (up and south, which keeps them on the same pixels)
- * so their feet win over the ground they stand on.
- */
-const SPRITE_DEPTH_BIAS = 8;
 /** Where the light comes from (x east, y up, z south): a fixed sun from the north-west, and nearly overhead indoors and in caves. */
 // A high sun (~75°): a standing sprite's shadow is about a third of its height, pooled at the feet, not a long streak below them.
 export const SUN_FROM = new Vector3(-0.4, 2.5, -0.5).normalize();
@@ -109,7 +104,18 @@ interface Actor {
   rustleUntil: number;
   /** The grass tuft over its feet while it stands in the grass (the rustle's settled last frame), so the cut sprite never shows a straight edge. */
   cover?: Mesh<BufferGeometry, MeshBasicMaterial>;
+  /** Block C: its double while it dodges, sharing the sprite's quad. */
+  ghost?: Mesh<BufferGeometry, MeshBasicMaterial>;
 }
+
+/** Block C: a dodging Pokémon is drawn twice, the two swapping sides this often, this far apart. */
+const DODGE_SWAP_MS = 40;
+const DODGE_SPREAD_PX = 5;
+/** Block C: a stunned (parried) Pokémon lies on its side, fallen back from the way it faces. */
+const STUN_TILT = Math.PI / 2;
+/** Block C: the light band crossing a parrying or guarding Pokémon: this many pixels a second, once every this many pixels. */
+const GLOW_SPEED_PX = 160;
+const GLOW_PERIOD_PX = 80;
 
 /** A field effect playing its steps once, from `start`. */
 interface Effect {
@@ -141,7 +147,8 @@ export function pixelTexture(image: ImageBitmap): Texture {
 }
 
 /** A standing quad: `rows` of the frame from its top, feet (the anchor) at the origin, 1:1 on screen. */
-function setQuad(geometry: BufferGeometry, { frame, page }: Frame, rows: number): void {
+/** `tilt` (radians, + clockwise on screen) topples the sprite over the bottom corner it falls toward. */
+function setQuad(geometry: BufferGeometry, { frame, page }: Frame, rows: number, tilt = 0): void {
   const image = page.image as ImageBitmap;
   const corners = [
     [0, 0],
@@ -149,7 +156,12 @@ function setQuad(geometry: BufferGeometry, { frame, page }: Frame, rows: number)
     [0, rows],
     [frame.w, rows],
   ] as const;
-  geometry.setAttribute("position", new BufferAttribute(new Float32Array(corners.flatMap(([c, r]) => [c - frame.anchor.x, (frame.anchor.y - r) / OBLIQUE, 0])), 3));
+  const pivot = tilt > 0 ? frame.w - frame.anchor.x : -frame.anchor.x;
+  const cos = Math.cos(tilt);
+  const sin = Math.sin(tilt);
+  // Rotated in screen pixels (y up), then stretched as the oblique view wants.
+  const at = (x: number, y: number) => [pivot + (x - pivot) * cos + y * sin, (-(x - pivot) * sin + y * cos) / OBLIQUE, 0];
+  geometry.setAttribute("position", new BufferAttribute(new Float32Array(corners.flatMap(([c, r]) => at(c - frame.anchor.x, frame.anchor.y - r))), 3));
   geometry.setAttribute("uv", new BufferAttribute(new Float32Array(corners.flatMap(([c, r]) => [(frame.x + c) / image.width, (frame.y + r) / image.height])), 2));
 }
 
@@ -352,6 +364,20 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     return e && { x: e.x, y: e.y, ground: groundOf(e) };
   };
 
+  /** Where a status plays: nowhere once its Pokémon is knocked out, which ends it at once. */
+  const statusAnchor = (id: number) => {
+    const anchor = anchorOf(id);
+    return () => (latest.get(id)?.data["hp"] === 0 ? undefined : anchor());
+  };
+  /** Where statuses start, as a share of the sprite's height: behind the body these would hardly show. Others, mid-height. */
+  const STATUS_HEIGHT: Record<string, number | undefined> = { freeze: 1, paralysis: 1, sleep: 1, poison: 0.75, toxic: 0.75 };
+  /** Height of the top of a drawn sprite over its feet (setQuad's first corner). */
+  const heightOf = (id: number) => actors.get(id)?.sprite.geometry.getAttribute("position")?.getY(0);
+  const statusLift = (id: number, share: number) => () => {
+    const height = heightOf(id);
+    return height === undefined ? undefined : height * share;
+  };
+
   /** A move's emitters placed `at` (the script's placement); old extractions without one count as the user's. */
   const emittersAt = (move: number, at: NonNullable<SpriteEmitter["at"]>) => battleFx.get(`move/${move}`)?.filter((d) => (d.at ?? "attacker") === at);
   /** Last `used` counter seen per Pokémon: a change means it just used a move. */
@@ -431,14 +457,18 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         usedSeen.set(e.id, e.data["used"]);
         if (seen !== undefined && seen !== e.data["used"]) onMoveUsed(e, now);
       }
-      const effects: Array<[string, SpriteEmitter[] | undefined]> = [];
-      if (e.kind === "projectile" && typeof e.data["move"] === "number") effects.push([`move/${e.data["move"]}`, emittersAt(e.data["move"], "travel")]);
-      if (e.kind === "pokemon" && typeof e.data["status"] === "string" && e.data["status"] !== "") effects.push([`status/${e.data["status"]}`, battleFx.get(`status/${e.data["status"]}`)]);
-      if (e.kind === "pokemon" && e.data["confused"] === true) effects.push(["status/confusion", battleFx.get("status/confusion")]);
-      for (const [effect, defs] of effects) {
-        const key = `${e.id}/${effect}`;
+      if (e.kind === "projectile" && typeof e.data["move"] === "number") {
+        const key = `${e.id}/move/${e.data["move"]}`;
         wanted.add(key);
-        particles.play(defs, anchorOf(e.id), now, key, true);
+        particles.play(emittersAt(e.data["move"], "travel"), anchorOf(e.id), now, key, true);
+      }
+      if (e.kind !== "pokemon" || e.data["hp"] === 0) continue;
+      const statuses = [...(typeof e.data["status"] === "string" && e.data["status"] !== "" ? [e.data["status"]] : []), ...(e.data["confused"] === true ? ["confusion"] : [])];
+      for (const status of statuses) {
+        const key = `${e.id}/status/${status}`;
+        const share = STATUS_HEIGHT[status];
+        wanted.add(key);
+        particles.play(battleFx.get(`status/${status}`), statusAnchor(e.id), now, key, true, undefined, { lift: share === undefined ? undefined : statusLift(e.id, share) });
       }
     }
     for (const key of [...particles.keys()]) if (!key.startsWith("once/") && !wanted.has(key)) particles.stop(key);
@@ -456,6 +486,30 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     return material;
   };
   const markerMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide });
+  // Block C: parrying and guarding, a sprite turns white and a band of light sweeps across it.
+  const glowTime = { value: 0 };
+  const glowMaterials = new Map<Texture, MeshBasicMaterial>();
+  const glowMaterial = (page: Texture) => {
+    let material = glowMaterials.get(page);
+    if (!material) {
+      material = new MeshBasicMaterial({ map: page, alphaTest: 0.5, side: DoubleSide });
+      material.customProgramCacheKey = () => "block-c-glow";
+      material.onBeforeCompile = (shader) => {
+        shader.uniforms["uGlowTime"] = glowTime;
+        shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nvarying vec2 vGlow;").replace("#include <begin_vertex>", "#include <begin_vertex>\nvGlow = position.xy;");
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", "#include <common>\nvarying vec2 vGlow;\nuniform float uGlowTime;")
+          .replace(
+            "#include <map_fragment>",
+            `#include <map_fragment>
+            float band = fract((vGlow.x - vGlow.y - uGlowTime * ${GLOW_SPEED_PX.toFixed(1)}) / ${GLOW_PERIOD_PX.toFixed(1)});
+            diffuseColor.rgb = mix(vec3(0.86), vec3(1.0), smoothstep(0.82, 0.9, band) * (1.0 - smoothstep(0.9, 0.98, band)));`,
+          );
+      };
+      glowMaterials.set(page, material);
+    }
+    return material;
+  };
   // Item V.2: a sprite material that writes neither colour nor depth; the shadow pass still reads its map and alpha test.
   const casters = new Map<MeshBasicMaterial, MeshBasicMaterial>();
   const casterOf = (material: MeshBasicMaterial) => {
@@ -655,8 +709,9 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       balls.delete(e.id);
     }
     const frame = inBall.has(e.id) ? undefined : frameFor(e, actor.moving, running, now);
-    // Knocked out: still (no idle bounce), until a ball or the fight's end takes it.
+    // Knocked out: still (no idle bounce) and with none of the fight's effects, until a ball or the fight's end takes it.
     const knockedOut = e.kind === "pokemon" && e.data["hp"] === 0;
+    const fight: Entity["data"] = knockedOut ? {} : e.data;
     const inGrass = tileAt(world.lookup, e.area, e.level, e.x, e.y)?.category === "tallGrass" && !cleared.some((c) => Math.hypot(c.x - e.x, c.y - e.y) <= CLEARING_RADIUS_PX);
     // One rustle per tile's worth of walking in the grass, at the feet, off the tile grid.
     if (!inGrass) actor.rustledAt = null;
@@ -666,9 +721,12 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
       actor.rustleUntil = now + rustle.reduce((ms, s) => ms + s.ms, 0);
     }
     if (frame) {
-      setQuad(actor.sprite.geometry, frame, inGrass ? Math.max(1, frame.frame.h - GRASS_COVER_PX) : frame.frame.h);
+      // Pushed back by the parry, it falls away from the way it faces.
+      const tilt = fight["stun"] === true ? (e.facing === "east" ? -STUN_TILT : STUN_TILT) : 0;
+      setQuad(actor.sprite.geometry, frame, inGrass ? Math.max(1, frame.frame.h - GRASS_COVER_PX) : frame.frame.h, tilt);
       const shiny = e.data["shiny"] === true;
-      actor.sprite.material = spriteMaterial((shiny && shinyOf.get(frame.page)) || frame.page);
+      const page = (shiny && shinyOf.get(frame.page)) || frame.page;
+      actor.sprite.material = fight["parry"] === true || fight["guard"] === true ? glowMaterial(page) : spriteMaterial(page);
       // A shiny glints when it first comes into view.
       // shortcut: a blink stands in for the sparkle; use the ROM's shiny sparkle animation once it is extracted.
       if (shiny && !sparkled.has(e.id)) {
@@ -686,11 +744,27 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     const bounce = ((e.kind === "pokemon" && !actor.moving && !knockedOut) || e.data["mode"] === "surf") && Math.floor(now / (IDLE_BOUNCE_MS / 2)) % 2 === 0 ? IDLE_BOUNCE_PX : 0;
     const hop = e.data["hop"];
     // shortcut: the arc steps once per server tick (the counter is not interpolated); smooth it if it reads choppy.
-    const lift = typeof hop === "number" ? Math.round(Math.sin((Math.PI * (HOP_TICKS - hop + 0.5)) / HOP_TICKS) * HOP_ARC_PX) : 0;
+    // Block C: a contact move's leap takes the same arc.
+    const leap = fight["leap"];
+    const airborne = typeof hop === "number" ? (HOP_TICKS - hop + 0.5) / HOP_TICKS : typeof leap === "number" ? leap : 0;
+    const lift = Math.round(Math.sin(Math.PI * airborne) * HOP_ARC_PX);
     const y = groundOf(e) + SPRITE_DEPTH_BIAS + bounce + lift;
     // A hit target shakes sideways while its flash lasts.
     const shake = e.data["flash"] === true ? Math.round(Math.sin(now / 15) * 2) : 0;
-    actor.sprite.position.set(Math.round(e.x) + shake, y, Math.round(e.y) + SPRITE_DEPTH_BIAS * OBLIQUE);
+    // Block C: dodging, it and its double swap sides fast.
+    const dodging = fight["dodge"] === true && actor.sprite.material !== markerMaterial;
+    const spread = dodging ? (Math.floor(now / DODGE_SWAP_MS) % 2 === 0 ? DODGE_SPREAD_PX : -DODGE_SPREAD_PX) : 0;
+    actor.sprite.position.set(Math.round(e.x) + shake + spread, y, Math.round(e.y) + SPRITE_DEPTH_BIAS * OBLIQUE);
+    if (dodging && !actor.ghost) {
+      actor.ghost = new Mesh(actor.sprite.geometry, actor.sprite.material);
+      actor.ghost.frustumCulled = false;
+      scene.add(actor.ghost);
+    }
+    if (actor.ghost) {
+      actor.ghost.visible = dodging && actor.sprite.visible;
+      actor.ghost.material = actor.sprite.material;
+      actor.ghost.position.set(actor.sprite.position.x - 2 * spread, y, actor.sprite.position.z);
+    }
     const settled = inGrass && actor.sprite.visible && now >= actor.rustleUntil ? frames.get(rustle.at(-1)?.frame ?? "") : undefined;
     if (settled && !actor.cover) {
       actor.cover = new Mesh(new BufferGeometry(), markerMaterial);
@@ -767,6 +841,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     draw(view: DrawView, running: boolean, now: number): void {
       const self = view.self;
       if (!self) return;
+      glowTime.value = now / 1000;
       if (self.area !== currentArea) {
         // Rebase what is already placed onto the new map at once, so nothing is drawn at stale offsets while enterArea loads.
         const origin = placement.get(self.area);
@@ -800,6 +875,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         actor.sprite.geometry.dispose();
         actor.cover?.removeFromParent();
         actor.cover?.geometry.dispose();
+        actor.ghost?.removeFromParent();
         actors.delete(id);
         balls.get(id)?.dispose();
         balls.delete(id);

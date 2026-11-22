@@ -1,5 +1,23 @@
+import type { Entity } from "@soulsilver/shared/game";
+import { Scene } from "three";
 import { describe, expect, it } from "vitest";
-import { ORBIT_FLAT, ORBIT_MOTES, orbitLight, orbitMote } from "../../src/render/cast-telegraph";
+import { createCastTelegraphs, ORBIT_FLAT, ORBIT_MOTES, orbitLight, orbitMote } from "../../src/render/cast-telegraph";
+
+describe("createCastTelegraphs", () => {
+  it("turns and moves with a contact move's aim, without starting the charge over", () => {
+    const scene = new Scene();
+    const casts = createCastTelegraphs(scene);
+    const draw = (data: Entity["data"], now: number) =>
+      casts.draw([{ id: 1, kind: "pokemon", area: "a", x: 0, y: 0, level: 0, facing: "east", data: { casting: 1, castMs: 400, castType: 0, castShape: "arc", castSize: 28, castSpan: 100, ...data } }], () => 0, now, 1);
+    draw({ castDx: 100, castDy: 0, castOx: 44, castOy: 0 }, 0);
+    const before = [...scene.children];
+    const root = before.find((o) => o.position.x === 44)!;
+    draw({ castDx: 0, castDy: 100, castOx: 0, castOy: 44 }, 200);
+    expect(scene.children).toEqual(before);
+    expect(root.position).toMatchObject({ x: 0, z: 44 });
+    expect(root.children[0]!.children[0]!.rotation.z).toBeCloseTo(-Math.PI / 2);
+  });
+});
 
 const motes = Array.from({ length: ORBIT_MOTES }, (_, i) => i);
 

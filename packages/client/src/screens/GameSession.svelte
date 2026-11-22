@@ -11,6 +11,7 @@
   import { SvelteMap } from "svelte/reactivity";
   import { audio, createAudioReactions } from "../audio";
   import { leadIndex } from "@soulsilver/shared/companion";
+  import BattleOver from "../game/BattleOver.svelte";
   import CombatHud from "../game/CombatHud.svelte";
   import type { MenuPage } from "../game/menu-page";
   import MovePanel from "../game/MovePanel.svelte";
@@ -161,6 +162,8 @@
   let outdoorMap = false;
   let reaction = $state<string | undefined>();
   let notice = $state<string | undefined>();
+  /** Protocol 47: the trainer battle was decided and is about to close. */
+  let battleOver = $state<{ battleId: number; result: "won" | "lost" } | undefined>();
   /** The Pokégear's tabs in text (spec 026), from the server's gear-map, phone-state and radio-state. */
   let gear = $state<{ map: { here: string; visited: string[]; others: { name: string; place: string }[]; region: ReturnType<typeof regionView> }; phone: { contacts: { id: number; name: string; seeking: boolean }[]; log: { name: string; direction: "in" | "out"; at: string }[] }; radio: { stations: { id: string; title: string }[]; tuned: string | null; lines: string[] } }>({
     map: { here: "", visited: [], others: [], region: regionView([], []) },
@@ -211,7 +214,11 @@
   /** A trainer line (bank 728); trainer lines may name the player through buffer 0. */
   const trainerLine = async (text: string) => dialog.say(await scriptPages(text, { 0: { kind: "player" } }));
   /** HP and action bars over the foes while fighting: wild ones and other players' Pokémon (spec 017, PvP). */
-  let bars = $state<{ key: string; x: number; y: number; fraction: number; gauge: number; scared: boolean }[]>([]);
+  let bars = $state<{ key: string; x: number; y: number; fraction: number; scared: boolean }[]>([]);
+  let bosses = $state<{ key: string; name: string; level: number; hp: number; hpMax: number }[]>([]);
+  /** Block C: the mark around a CPU Pokémon charging a move or just parried, and combo counters. */
+  let warnings = $state<{ key: string; x: number; y: number; mark: "normal" | "special" | "parried"; zoom: number }[]>([]);
+  let combos = $state<{ key: string; x: number; y: number; count: number }[]>([]);
   /** A trainer calling out the last move seen in the fight (bottom-left), until `until`. */
   let moveCall = $state<{ key: number; pic: number; move: string; until: number } | undefined>();
   /** Each combatant's move use count last seen, to notice a new use. */
@@ -567,6 +574,11 @@
     }
     /** Screen point above a standing sprite: 40 px north of its feet on the ground. */
     const over = (e: Entity) => renderer.project(e.x, e.y, 40);
+    /** Where a cast's mark sits: its arc rises from the middle of the sprite, under the HP bar. */
+    const around = (e: Entity) => {
+      const at = renderer.project(e.x, e.y, 14);
+      return { ...at, zoom: (renderer.project(e.x, e.y).y - at.y) / 14 };
+    };
     /** A map's place name, from its header's MAPSEC; the map id when it has none. */
     const placeName = async (area: string) => {
       const h = await world.header(area);
@@ -676,12 +688,20 @@
           captureLines([t("trainer.item")]);
         } else if (ev.type === "trainerBattleStart") {
           arenas.set(ev.battleId, ev.arena);
+        } else if (ev.type === "trainerBattleOver") {
+          battleOver = ev;
         } else if (ev.type === "trainerBattleEnd") {
           arenas.delete(ev.battleId);
+          if (battleOver?.battleId === ev.battleId) battleOver = undefined;
           approach = undefined;
           // Only the winner gets the trainer's line and the prize; the others just see the arena go.
           const prize = ev.prize;
-          if (ev.defeat) void trainerLine(ev.defeat).then(() => prize !== undefined && captureLines([t("trainer.won", { money: prize })]));
+          if (ev.defeat)
+            void trainerLine(ev.defeat).then(() => {
+              if (prize !== undefined) captureLines([t("trainer.won", { money: prize })]);
+              // The arena's Gym Leader waits for the line to close before challenging.
+              if (play.arena) api.sendGame({ type: "trainer-ready" });
+            });
           else if (prize !== undefined) captureLines([t("trainer.won", { money: prize })]);
         } else if (ev.type === "healed") {
           captureLines([t("npc.healed")]);
@@ -797,6 +817,18 @@
     // The main process opened the connection before this screen.
     game.start();
 
+    // Block C: presses of combat buttons go out (and show) at once; the input timer only catches the releases.
+    const COMBAT_BITS = 0b1111 | BUTTON.dash | BUTTON.guard;
+    let pressedBits = 0;
+    const inputBlocked = () => menuOpen || dialogOpen || scriptLocked || flyMap !== undefined;
+    const sendPresses = () => {
+      const bits = inputBlocked() || !inCombat ? 0 : input.buttons() & COMBAT_BITS;
+      const down = bits & ~pressedBits;
+      pressedBits = bits;
+      if (down !== 0) game.press(down, input.read().move, performance.now());
+    };
+    const offPress = input.onAction(sendPresses);
+
     // The menu action opens the full menu; once open, the menu screens take the input.
     const offAction = input.onAction((action) => {
       if (action === "menu" && !menuOpen && (!dialogOpen || scriptLocked) && picker === "closed" && flyMap === undefined && !shop && !progression && status === "playing") setMenu(true);
@@ -828,7 +860,8 @@
 
     const inputTimer = setInterval(() => {
       // Menus, the text box and a running script take the input; the world keeps going without it (FR-012).
-      const blocked = menuOpen || dialogOpen || scriptLocked || flyMap !== undefined;
+      const blocked = inputBlocked();
+      sendPresses();
       const read = input.read();
       const move = blocked ? { x: 0, y: 0 } : read.move;
       const run = !blocked && read.run;
@@ -933,10 +966,22 @@
       const fighting = hudSelf !== undefined;
       // Block H: scared (😨) while a stat stage is lowered, until knocked out: beside a foe's bars, else over the Pokémon.
       const lowered = (e: Entity) => e.data["hp"] !== 0 && Object.entries(e.data).some(([k, v]) => k.startsWith("stg_") && Number(v) < 0);
-      const nextBars = fighting
-        ? shown.filter((e) => e.kind === "pokemon" && e.data["owner"] !== hudSelf!.data["owner"] && Number(e.data["hpMax"] ?? 0) > 0 && e.data["hp"] !== 0).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]), gauge: Number(e.data["gauge"] ?? 0) / 100, scared: lowered(e) }))
-        : [];
+      const foes = fighting ? shown.filter((e) => e.kind === "pokemon" && e.data["owner"] !== hudSelf!.data["owner"] && Number(e.data["hpMax"] ?? 0) > 0 && e.data["hp"] !== 0) : [];
+      const nextBosses = foes.filter((e) => e.data["boss"] === true).map((e) => ({ key: `boss-${e.id}`, name: speciesName(Number(e.data["species"])), level: Number(e.data["level"]), hp: Number(e.data["hp"]), hpMax: Number(e.data["hpMax"]) }));
+      if (nextBosses.length > 0 || bosses.length > 0) bosses = nextBosses;
+      const nextBars = foes.filter((e) => e.data["boss"] !== true).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]), scared: lowered(e) }));
       if (nextBars.length > 0 || bars.length > 0) bars = nextBars;
+      // Block C: the server marks the casts to warn about (CPU Pokémon, not self-buffs) and counts the combos.
+      const nextWarnings = fighting
+        ? shown.flatMap((e) => {
+            // The newest state: the 100 ms the others are shown late would eat the parry window.
+            const mark = (game.latest(e.id) ?? e.data)["castMark"];
+            return e.kind === "pokemon" && e.data["hp"] !== 0 && (mark === "normal" || mark === "special" || mark === "parried") ? [{ key: `warn-${e.id}`, ...around(e), mark: mark as "normal" | "special" | "parried" }] : [];
+          })
+        : [];
+      if (nextWarnings.length > 0 || warnings.length > 0) warnings = nextWarnings;
+      const nextCombos = fighting ? shown.filter((e) => e.kind === "pokemon" && e.data["hp"] !== 0 && Number(e.data["combo"] ?? 0) > 1).map((e) => ({ key: `combo-${e.id}`, ...over(e), count: Number(e.data["combo"]) })) : [];
+      if (nextCombos.length > 0 || combos.length > 0) combos = nextCombos;
       const barred = new Set(nextBars.map((b) => b.key));
       // A trainer's Pokémon (the player's or an NPC trainer's) used a move: the trainer calls it out.
       const fighters = fighting ? shown.filter((e) => e.kind === "pokemon" && typeof e.data["trainerPic"] === "number") : [];
@@ -970,6 +1015,8 @@
       for (const e of wildsShown) if (e.data["hp"] === 0) nextMarks.push({ key: `ko-${e.id}`, ...over(e), text: t("game.knockedOut"), capture: e === aimed });
       const bubbleOver = emotion && now < emotion.until ? shown.find((e) => e.id === emotion!.id) : undefined;
       for (const e of shown) if (e.kind === "pokemon" && !barred.has(`hp-${e.id}`) && lowered(e)) nextMarks.push({ key: `debuff-${e.id}`, ...over(e), text: "😨" });
+      // Block C: dazed (💫) while a parry's stun lasts, over the HP bar of those that show one.
+      for (const e of shown) if (e.kind === "pokemon" && e.data["stun"] === true && e.data["hp"] !== 0) nextMarks.push({ key: `stun-${e.id}`, ...renderer.project(e.x, e.y, barred.has(`hp-${e.id}`) ? 46 : 40), text: "💫" });
       if (bubbleOver && emotion) nextMarks.push({ key: "emotion", ...over(bubbleOver), text: emotion.text });
       if (fishing && view.self) nextMarks.push({ key: "fishing", ...over(view.self), text: fishing === "bite" ? "!" : "…" });
       if (nextMarks.length > 0 || marks.length > 0) marks = nextMarks;
@@ -1051,6 +1098,7 @@
       clearInterval(inputTimer);
       window.removeEventListener("keydown", onKeyDown);
       offAction();
+      offPress();
       fx.destroy();
       renderer.destroy();
       unsubscribeMessage();
@@ -1106,7 +1154,8 @@
     reconnecting = false;
   }
 
-  const DIALOG = "absolute left-1/2 top-4 -translate-x-1/2 w-[min(90%,32rem)] m-0 px-4 py-3 bg-surface-overlay text-primary border-3 border-frame rounded-[6px] whitespace-pre-line z-3";
+  // Below a boss's bar.
+  const DIALOG = $derived(["absolute left-1/2 -translate-x-1/2 w-[min(90%,32rem)] m-0 px-4 py-3 bg-surface-overlay text-primary border-3 border-frame rounded-[6px] whitespace-pre-line z-3", bosses.length > 0 ? "top-20" : "top-4"]);
   const MESSAGE = "absolute left-1/2 top-1/2 -translate-1/2 m-0 text-primary z-5";
 
   /** The Pokémon out: under control in a fight, else the one following the trainer. */
@@ -1204,9 +1253,10 @@
   {#if reaction}<p class={DIALOG} role="status">{reaction}</p>{/if}
   {#if notice}<p class={DIALOG} role="alert">{notice}</p>{/if}
   {#if captureLine}<p class={DIALOG} role="status">{captureLine}</p>{/if}
+  {#if battleOver}<BattleOver result={battleOver.result} />{/if}
 
   {#if status === "playing" && (hudSelf || play.arena)}
-    <CombatHud {bars} />
+    <CombatHud {bars} {warnings} {combos} {bosses} />
   {/if}
   {#if status === "playing" && hudSelf && (wheel.open || itemUse.endsTick !== undefined)}
     <ItemWheel

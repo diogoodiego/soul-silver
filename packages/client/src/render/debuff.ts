@@ -44,6 +44,10 @@ export function createDebuffs(scene: Scene) {
         drawn.add(e.id);
         const before = seen.get(e.id);
         seen.set(e.id, e.data);
+        if (e.data["hp"] === 0) {
+          remove(e.id);
+          continue;
+        }
         let d = live.get(e.id);
         if (before && stageDropped(before, e.data)) {
           if (!d) {

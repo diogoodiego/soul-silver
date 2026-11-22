@@ -5,13 +5,40 @@ import { createInterpolator } from "../../src/net/interpolation";
 const at = (x: number, area = "a"): Entity => ({ id: 7, kind: "player", area, x, y: 0, level: 0, facing: "east", data: {} });
 
 describe("createInterpolator", () => {
-  it("renders 100 ms in the past, interpolating linearly", () => {
+  it("starts 100 ms in the past, interpolating linearly", () => {
     const it = createInterpolator();
     it.push(0, 0, [at(0)]);
     it.push(1, 50, [at(10)]);
     it.push(2, 100, [at(20)]);
     expect(it.sample(125)[0]?.x).toBe(5);
-    expect(it.sample(150)[0]?.x).toBe(10);
+    expect(it.sample(125)[0]?.x).toBe(5);
+    // The states came on time: it starts to catch up, a tenth faster.
+    expect(it.sample(150)[0]?.x).toBeCloseTo(10.5);
+  });
+
+  /** How late it shows things after `ticks` states, each arriving `late(tick)` ms after its time. */
+  function lateness(ticks: number, late: (tick: number) => number) {
+    const it = createInterpolator();
+    for (let tick = 0; tick < ticks; tick++) {
+      it.push(tick, tick * 50 + late(tick), [at(tick * 50)]);
+      it.sample(tick * 50 + late(tick));
+    }
+    const now = (ticks - 1) * 50 + late(ticks - 1);
+    return now - it.sample(now)[0]!.x;
+  }
+
+  it("settles one tick in the past when states arrive steadily", () => {
+    expect(lateness(60, () => 7)).toBeCloseTo(57, 0);
+  });
+
+  it("stays as far back as the latest arrivals need, and no farther than 150 ms", () => {
+    expect(lateness(60, (tick) => (tick % 3 === 0 ? 30 : 0))).toBeCloseTo(80, 0);
+    expect(lateness(200, (tick) => (tick % 3 === 0 ? 400 : 0))).toBeLessThanOrEqual(150.5);
+  });
+
+  it("moves forward again after a late start, with no drift between the clocks", () => {
+    expect(lateness(200, (tick) => (tick === 0 ? 90 : 0))).toBeCloseTo(50, 0);
+    expect(lateness(400, (tick) => tick * 0.1)).toBeLessThan(40 + 60);
   });
 
   it("holds the last position when no newer data arrives", () => {
@@ -50,7 +77,8 @@ describe("createInterpolator", () => {
       if (x === undefined) continue;
       if (prev !== undefined) {
         expect(x).toBeGreaterThanOrEqual(prev);
-        expect(x - prev).toBeLessThanOrEqual(3 * (16 / 50) + 1e-9);
+        // It catches up at most a tenth faster.
+        expect(x - prev).toBeLessThanOrEqual(1.15 * 3 * (16 / 50));
       }
       prev = x;
     }

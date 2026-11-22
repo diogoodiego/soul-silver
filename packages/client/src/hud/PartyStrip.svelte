@@ -20,7 +20,7 @@
   }: {
     party: Member[];
     out: number | undefined;
-    /** The Pokémon under control in a fight: the lead card shows its live HP, status and action bar. */
+    /** The Pokémon under control in a fight: the lead card shows its live HP and status. */
     fight?: Entity | undefined;
     speciesName: (species: number) => string;
     /** Drawn at the end of the slots' row (the ball picker). */
@@ -28,7 +28,6 @@
   } = $props();
 
   const num = (key: string) => Number(fight?.data[key] ?? 0);
-  const gauge = $derived(num("gauge"));
   const status = $derived(String(fight?.data["status"] ?? ""));
 
   const SLOTS = [0, 1, 2, 3, 4, 5] as const;
@@ -69,10 +68,7 @@
           </span>
         {/if}
         {#if fight}
-          <div class="flex items-center gap-2">
-            <span class="block h-[0.35rem] flex-1 overflow-hidden rounded-[3px] bg-surface-raised" role="meter" aria-label={t("hud.gauge")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={gauge}>
-              <span class={["block h-full", gauge >= 100 ? "bg-[#ffd54f]" : "bg-[#4fc3f7]"]} style:width="{gauge}%"></span>
-            </span>
+          <div class="flex items-center justify-end gap-2">
             <small class="whitespace-nowrap text-xs">{lead.hp} / {lead.hpMax}</small>
           </div>
         {/if}

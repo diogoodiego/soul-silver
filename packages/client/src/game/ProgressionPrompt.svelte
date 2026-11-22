@@ -1,7 +1,8 @@
 <script lang="ts">
   // Progression after a fight (spec 016): one queued item at a time, never during combat (the
   // server only sends them out of it). Level up and a free move slot just need OK; a fifth move asks
-  // which to forget; an evolution plays and can be cancelled, as in the original.
+  // which to forget (block C: only one of its own class, normal or special, as the server lists); an evolution
+  // plays and can be cancelled, as in the original.
   import Button from "../ui/Button.svelte";
   import type { ServerMessage } from "@soulsilver/shared/game";
   import { onMount } from "svelte";
@@ -36,7 +37,9 @@
 
   const item = $derived(prompt.item);
   const name = $derived(speciesName(species));
-  const full = $derived(item.kind === "learn" && (prompt.moves?.length ?? 0) >= 4);
+  const full = $derived(item.kind === "learn" && (prompt.replaceable !== undefined || (prompt.moves?.length ?? 0) >= 4));
+  /** Block C: the slots the new move may take; every one when the server does not say. */
+  const replaceable = $derived(prompt.replaceable ?? (prompt.moves ?? []).map((_, i) => i));
 
   onMount(() => {
     if (item.kind !== "evolve") return;
@@ -62,8 +65,9 @@
     <Button variant="ghost" class="text-left" onclick={onAck}>{t("common.ok")}</Button>
   {:else if item.kind === "learn"}
     <p class="mt-0 mb-1">{t("progress.wantsToLearn", { name, move: moveName(item.move) })}</p>
-    {#each prompt.moves ?? [] as move, i (i)}
-      <Button variant="ghost" class="text-left" onclick={() => onLearn(i)}>{t("progress.forget", { move: moveName(move) })}</Button>
+    {#if prompt.replaceable}<p class="mt-0 mb-1 text-secondary">{t("learn.sameClass")}</p>{/if}
+    {#each replaceable as i (i)}
+      <Button variant="ghost" class="text-left" onclick={() => onLearn(i)}>{t("progress.forget", { move: moveName(prompt.moves?.[i] ?? 0) })}</Button>
     {/each}
     <Button variant="ghost" class="text-left" onclick={() => onLearn(null)}>{t("progress.dontLearn", { move: moveName(item.move) })}</Button>
   {:else}

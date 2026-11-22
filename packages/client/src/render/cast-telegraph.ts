@@ -94,6 +94,8 @@ interface Cast {
   charge: Mesh | undefined;
   rect: boolean;
   specks: Points | undefined;
+  /** Turned to the aim, which a contact move's charge follows. */
+  aim: Group;
   /** At the user's feet, not at the area's origin. */
   around: Group;
   motes: InstancedMesh<PlaneGeometry, ShaderMaterial>;
@@ -124,6 +126,7 @@ export function createCastTelegraphs(scene: Scene) {
     const size = Number(e.data["castSize"]);
     const span = Number(e.data["castSpan"]);
     const root = new Group();
+    const aim = new Group();
     const around = new Group();
     const tint = new Color(color);
     const motes = new InstancedMesh(
@@ -143,7 +146,7 @@ export function createCastTelegraphs(scene: Scene) {
     around.add(light, motes);
     scene.add(around);
     // Seen a snapshot (one 20 Hz tick) after the server began it, so the charge meets the border as the move goes.
-    const cast: Cast = { key, start: now - 50, ms: Number(e.data["castMs"]), root, charge: undefined, rect: shape === "rect", specks: undefined, around, motes, light, materials: [motes.material, light.material] };
+    const cast: Cast = { key, start: now - 50, ms: Number(e.data["castMs"]), root, charge: undefined, rect: shape === "rect", specks: undefined, aim, around, motes, light, materials: [motes.material, light.material] };
     const material = (opacity: number) => {
       const m = new MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: DoubleSide });
       cast.materials.push(m);
@@ -164,8 +167,6 @@ export function createCastTelegraphs(scene: Scene) {
     // Drawn flat in a plane where +x is the aim: local +y becomes world -z, so the world aim (dx, dy) is the angle atan2(-dy, dx).
     const flat = new Group();
     flat.rotation.x = -Math.PI / 2;
-    const aim = new Group();
-    aim.rotation.z = Math.atan2(-Number(e.data["castDy"]), Number(e.data["castDx"]));
     flat.add(aim);
     root.add(flat);
     const area = material(AREA_OPACITY);
@@ -212,7 +213,7 @@ export function createCastTelegraphs(scene: Scene) {
       for (const e of entities) {
         if (e.kind !== "pokemon" || typeof e.data["castShape"] !== "string") continue;
         seen.add(e.id);
-        const key = ["casting", "castShape", "castSize", "castSpan", "castType", "castDx", "castDy", "castMs"].map((k) => e.data[k]).join("/");
+        const key = ["casting", "castShape", "castSize", "castSpan", "castType", "castMs"].map((k) => e.data[k]).join("/");
         let c = casts.get(e.id);
         if (c?.key !== key) {
           remove(e.id);
@@ -222,6 +223,7 @@ export function createCastTelegraphs(scene: Scene) {
         const p = Math.min(1, Math.max(0, (now - c.start) / Math.max(1, c.ms)));
         const ground = groundOf(e);
         c.root.position.set(e.x + Number(e.data["castOx"] ?? 0), ground + LIFT_PX, e.y + Number(e.data["castOy"] ?? 0));
+        c.aim.rotation.z = Math.atan2(-Number(e.data["castDy"]), Number(e.data["castDx"]));
         const t = now - c.start;
         c.around.position.set(e.x, ground, e.y);
         c.light.material.uniforms["level"]!.value = orbitLight(p, t);

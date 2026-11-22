@@ -9,7 +9,7 @@ import { writable } from "svelte/store";
 
 export const STICK_DEADZONE = 0.2;
 const MOVE_ACTIONS = ["move1", "move2", "move3", "move4"] as const;
-const ACTION_BITS = { dash: BUTTON.dash, combat: BUTTON.combat, recall: BUTTON.recall, interact: BUTTON.interact, throw: BUTTON.throw } as const;
+const ACTION_BITS = { dash: BUTTON.dash, guard: BUTTON.guard, combat: BUTTON.combat, recall: BUTTON.recall, interact: BUTTON.interact, throw: BUTTON.throw } as const;
 export const DASH_BIT = BUTTON.dash;
 /** Pad hold-to-repeat for menu actions: first repeat after REPEAT_DELAY_MS, then every REPEAT_EVERY_MS. */
 export const REPEAT_DELAY_MS = 400;

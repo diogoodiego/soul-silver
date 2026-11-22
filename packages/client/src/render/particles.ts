@@ -1,10 +1,11 @@
 import type { SpriteEmitter, SpriteSetFile } from "@soulsilver/shared/sprites";
 import { BufferAttribute, BufferGeometry, Color, DoubleSide, Mesh, MeshBasicMaterial, type Scene, type Texture } from "three";
-import { OBLIQUE } from "./camera";
+import { OBLIQUE, SPRITE_DEPTH_BIAS } from "./camera";
 
 // ROM battle particles (battle-fx sprite set) played in the world: each emitter spawns tinted
 // billboards on the 30 fps clock of the original.
-// shortcut: SPL units are mapped at UNIT_PX and emission is radial; child emitters, spin,
+// shortcut: SPL units are mapped at UNIT_PX and emission is radial (straight up for statuses, whose emitters
+// all are in the ROM); child emitters, spin,
 // magnets and the scripts' camera moves are ignored. Revisit if a move looks wrong.
 
 const FRAME_MS = 1000 / 30;
@@ -17,6 +18,17 @@ const DEFAULT_LIFE = 30;
 const LIFT_PX = 12;
 /** Same idea as the sprites' depth bias, a bit more, so particles cover the Pokémon they play on. */
 const DEPTH_BIAS = 10;
+
+/**
+ * Peak of a scale curve that starts and ends at 0, poison's in the ROM.
+ * shortcut: the extraction keeps a curve's start and end, not its middle; extract that when an effect needs another peak.
+ */
+const ZERO_CURVE_PEAK = 0.8;
+
+/** A status plays behind its Pokémon's sprite, rising from `lift` (world height over its feet; mid-height without one). */
+export interface StatusPlay {
+  lift?: (() => number | undefined) | undefined;
+}
 
 export interface ParticleFrame {
   frame: { x: number; y: number; w: number; h: number };
@@ -36,6 +48,8 @@ interface Particle {
   vx: number;
   vh: number;
   vy: number;
+  /** Set for a status: where its Pokémon stands now, to stay behind its sprite and go with it. */
+  behind: Running["at"] | undefined;
 }
 
 interface Running {
@@ -48,6 +62,7 @@ interface Running {
   /** Travelling effects: where they fly to. */
   to?: (() => Point3 | undefined) | undefined;
   loop: boolean;
+  status: StatusPlay | undefined;
 }
 
 /** Effect keys: `move/<id>` or `status/<id>`. */
@@ -69,7 +84,7 @@ export function createParticles(scene: Scene, frameOf: (name: string) => Particl
   const running = new Map<string, Running>();
   let next = 0;
 
-  function spawn(def: SpriteEmitter, at: Point3, now: number, toward?: Point3): void {
+  function spawn(def: SpriteEmitter, at: Point3, now: number, toward: Point3 | undefined, run: Running): void {
     const f = frameOf(def.frame);
     if (!f) return;
     const image = f.page.image as { width: number; height: number };
@@ -86,6 +101,7 @@ export function createParticles(scene: Scene, frameOf: (name: string) => Particl
     const angle = Math.random() * Math.PI * 2;
     const r = Math.random() * def.radius * UNIT_PX;
     const speed = def.speed * UNIT_PX;
+    const sideways = run.status ? 0 : speed;
     // A travelling emitter streams its particles to the target over their life.
     const life = Math.max(1, def.particleLife);
     const [fx, fy] = toward ? [(toward.x - at.x) / life, (toward.y - at.y) / life] : [0, 0];
@@ -96,10 +112,11 @@ export function createParticles(scene: Scene, frameOf: (name: string) => Particl
       last: now,
       x: at.x + Math.cos(angle) * r,
       y: at.y + Math.sin(angle) * r * 0.5,
-      h: at.ground + LIFT_PX,
-      vx: Math.cos(angle) * speed + fx,
-      vy: Math.sin(angle) * speed * 0.5 + fy,
+      h: at.ground + (run.status?.lift?.() ?? LIFT_PX),
+      vx: Math.cos(angle) * sideways + fx,
+      vy: Math.sin(angle) * sideways * 0.5 + fy,
       vh: speed * 0.5,
+      behind: run.status && run.at,
     });
   }
 
@@ -118,7 +135,7 @@ export function createParticles(scene: Scene, frameOf: (name: string) => Particl
         const to = run.to?.();
         const t = Math.min(1, (f - def.delay) / life);
         const from = to ? { x: lerp(at.x, to.x, t), y: lerp(at.y, to.y, t), ground: lerp(at.ground, to.ground, t) } : at;
-        for (; run.owed[k]! >= 1; run.owed[k]!--) spawn(def, from, now, to);
+        for (; run.owed[k]! >= 1; run.owed[k]!--) spawn(def, from, now, to, run);
       }
     });
     run.last = frame;
@@ -126,11 +143,11 @@ export function createParticles(scene: Scene, frameOf: (name: string) => Particl
   }
 
   return {
-    /** Plays an effect once; `at` is read every frame, and the effect stops when it returns undefined. */
-    play(defs: SpriteEmitter[] | undefined, at: Running["at"], now: number, key = `once/${next++}`, loop = false, to?: Running["to"]): void {
+    /** Plays an effect once; `at` is read every frame, and the effect stops when it returns undefined. `status` plays it as a status of the Pokémon there. */
+    play(defs: SpriteEmitter[] | undefined, at: Running["at"], now: number, key = `once/${next++}`, loop = false, to?: Running["to"], status?: StatusPlay): void {
 
       if (!defs || defs.length === 0 || running.has(key)) return;
-      running.set(key, { defs, start: now, owed: defs.map(() => 0), last: -1, at, loop, to });
+      running.set(key, { defs, start: now, owed: defs.map(() => 0), last: -1, at, loop, to, status });
     },
     stop(key: string): void {
       running.delete(key);
@@ -145,7 +162,8 @@ export function createParticles(scene: Scene, frameOf: (name: string) => Particl
       for (let i = live.length - 1; i >= 0; i--) {
         const p = live[i]!;
         const k = (now - p.born) / FRAME_MS / Math.max(1, p.def.particleLife);
-        if (k >= 1) {
+        const stands = p.behind?.();
+        if (k >= 1 || (p.behind && !stands)) {
           p.mesh.removeFromParent();
           p.mesh.geometry.dispose();
           p.mesh.material.dispose();
@@ -158,11 +176,15 @@ export function createParticles(scene: Scene, frameOf: (name: string) => Particl
         p.y += p.vy * dt;
         p.vh += p.def.gravityY * UNIT_PX * dt;
         p.h += p.vh * dt;
-        const scale = p.def.scale * lerp(p.def.scaleFrom, p.def.scaleTo, k);
+        const curve = p.def.scaleFrom === 0 && p.def.scaleTo === 0 ? ZERO_CURVE_PEAK * (1 - Math.abs(2 * k - 1)) : lerp(p.def.scaleFrom, p.def.scaleTo, k);
+        const scale = p.def.scale * curve;
         p.mesh.scale.setScalar(Math.max(0.01, scale * SIZE));
         p.mesh.material.color = p.def.colorEnd ? hex(p.def.color).lerp(hex(p.def.colorEnd), k) : hex(p.def.color);
         p.mesh.material.opacity = p.def.alpha * (k < 0.7 ? 1 : (1 - k) / 0.3);
-        p.mesh.position.set(p.x, p.h + DEPTH_BIAS, p.y + DEPTH_BIAS * OBLIQUE);
+        const z = p.y + DEPTH_BIAS * OBLIQUE;
+        // A standing sprite is a plane of constant z: a pixel north of it, the same screen point is farther all along.
+        const plane = stands ? Math.min(z, stands.y + SPRITE_DEPTH_BIAS * OBLIQUE - 1) : z;
+        p.mesh.position.set(p.x, p.h + DEPTH_BIAS - (z - plane) / OBLIQUE, plane);
       }
     },
     dispose(): void {

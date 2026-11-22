@@ -161,6 +161,10 @@ export function createAudioReactions(options: AudioReactionsOptions) {
       else if (ev.type === "trainerBattleStart" && ev.player === options.playerId()) {
         trainer = ev.music;
         void updateMusic();
+      } else if (ev.type === "trainerBattleOver" && ev.result === "won") {
+        // The fanfare starts with the win and goes on past the fight's end.
+        won = victory = true;
+        void updateMusic();
       } else if (ev.type === "trainerBattleEnd" && ev.prize !== undefined) {
         won = true;
         // The fight may have ended in an earlier frame than this message.

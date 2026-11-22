@@ -1,15 +1,16 @@
 <script lang="ts">
   // Dev arena setup: the player's trainer and team (spec 013, US6) against an NPC trainer, with a team of the
   // tester's choosing, or wild Pokémon with no trainer, fighting with the AI or standing still as targets.
-  // Block H: a menu at the right edge, as the other menus: three cards (scene, you, the opponent) sum up the
+  // Block H: a menu at the right edge, as the other menus: four cards (scene, you, the opponent, the last fight) sum up the
   // fight and confirm opens the one in focus beside them to edit; Fight comes last, back leaves.
   import Button from "../ui/Button.svelte";
   import type { ArenaCombatant, ArenaSpec } from "@soulsilver/shared/game";
   import type { Action } from "@soulsilver/shared/input";
   import { parseTextFile } from "@soulsilver/shared/text";
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
+  import { currentSettings, saveSettings } from "../settings";
   import Card from "../ui/Card.svelte";
   import Caption from "../ui/Caption.svelte";
   import ChoiceGroup from "../ui/ChoiceGroup.svelte";
@@ -21,6 +22,9 @@
   import SelectField from "../ui/SelectField.svelte";
   import TextField from "../ui/TextField.svelte";
   import { TYPE_KEYS, type MoveRecord } from "@soulsilver/shared/game-data";
+  import { isSpecial, slotIndices } from "@soulsilver/shared/combat";
+  import { GYM_LEADERS } from "@soulsilver/shared/trainer";
+  import { LEGENDARIES } from "@soulsilver/shared/wild";
   import { moveRecords, pokemonFronts, speciesTypes, trainerSprites } from "../game/game-data";
   import PokemonIcon from "../game/PokemonIcon.svelte";
   import MoveSheet from "../ui/MoveSheet.svelte";
@@ -33,27 +37,35 @@
   interface Row {
     species: number;
     level: number;
-    moves: string;
+    /** Block C: the 4 slots, normal 1–2 and special 1–2; 0 leaves one empty. */
+    moves: number[];
   }
   const MAX_TEAM = 6;
+  const SLOT_LABELS = ["Normal 1", "Normal 2", "Especial 1", "Especial 2"];
 
-  let name = $state("Teste");
-  let character = $state<"male" | "female">("male");
-  // Cyndaquil (Ember, Tackle, SmokeScreen, Quick Attack) against Chikorita (Tackle, Growl, Razor Leaf, Vine Whip).
-  let mine = $state<Row[]>([{ species: 155, level: 10, moves: "52, 33, 108, 98" }]);
-  let foeKind = $state<"trainer" | "wild">("wild");
-  let behavior = $state<"ai" | "idle">("ai");
+  /** The menu as it was left, in this PC's settings. */
+  const saved = currentSettings().arena;
+  let name = $state(saved?.name ?? "Teste");
+  let character = $state<"male" | "female">(saved?.character ?? "male");
+  // Cyndaquil (Tackle, Ember | Leer, SmokeScreen) against Chikorita (Tackle, Razor Leaf | Growl, PoisonPowder).
+  let mine = $state<Row[]>(saved?.mine ?? [{ species: 155, level: 10, moves: [33, 52, 43, 108] }]);
+  let foeKind = $state<"trainer" | "wild">(saved?.foeKind ?? "wild");
+  let behavior = $state<"ai" | "idle">(saved?.behavior ?? "ai");
   // Falkner.
-  let trainerId = $state(20);
-  let theirs = $state<Row[]>([{ species: 152, level: 10, moves: "33, 45, 75, 22" }]);
-  let names = $state<{ species: string[]; moves: string[]; trainers: string[] }>({ species: [], moves: [], trainers: [] });
+  let trainerId = $state(saved?.trainerId ?? 20);
+  let theirs = $state<Row[]>(saved?.theirs ?? [{ species: 152, level: 10, moves: [33, 75, 45, 77] }]);
+  /** Protocol 45: the Gym Leader who comes once the opponent is beaten, with the story's team; undefined for none. */
+  let leader = $state<number | undefined>(saved?.leader);
+  /** Protocol 48: a legendary's species, in the leader's place. */
+  let legendary = $state<number | undefined>(saved?.legendary);
+  let names = $state<{ species: string[]; moves: string[] }>({ species: [], moves: [] });
   let originals = $state<Map<number, Row[]>>(new Map());
   /** Each trainer's name and class (its class id is its battle sprite), for the trainer picker. */
   let trainerInfo = $state<Map<number, { name: string; pic: number; className: string }>>(new Map());
   let moveData = $state<Map<number, MoveRecord>>(new Map());
   let typesOf = $state<Map<number, string[]>>(new Map());
   /** Protocol 39: the indoor map whose ring (item V.3) the fight is in; undefined, the open field. */
-  let ring = $state<number | undefined>();
+  let ring = $state<number | undefined>(saved?.ring);
   /** The extraction's indoor maps, as "place (map n)". */
   let rings = $state<[number, string][]>([]);
 
@@ -72,51 +84,61 @@
   }
 
   onMount(() => {
-    void Promise.all([bank(237), bank(750), bank(729)]).then(([species, moves, trainers]) => (names = { species, moves, trainers }));
+    void Promise.all([bank(237), bank(750)]).then(([species, moves]) => (names = { species, moves }));
     void Promise.all([json("maps/maps/map-headers.json"), bank(279)]).then(([file, places]) => {
       const records = (file as { records?: { id: number; mapsec: number; areaType: string }[] } | undefined)?.records ?? [];
       rings = records.filter((h) => h.areaType === "indoor").map((h) => [h.id, `${places[h.mapsec] ?? "?"} (mapa ${h.id})`]);
       // Starts on a building rather than the open field; the "Mystery Zone" maps are unused ones.
-      ring ??= (rings.find(([, place]) => !place.startsWith("Mystery Zone")) ?? rings[0])?.[0];
+      if (!saved) ring ??= (rings.find(([, place]) => !place.startsWith("Mystery Zone")) ?? rings[0])?.[0];
     });
     void moveRecords().then((m) => (moveData = m));
     void speciesTypes().then((m) => (typesOf = m));
     // The extraction's trainers, for their names and original teams; moves left to the level are left for the tester.
-    void json("events/events/trainers.json").then((file) => {
-      const records = (file as { records?: { id: number; name: string; class: { id: number; text: string }; team: { species: number; level: number; moves: number[] | null }[] }[] } | undefined)?.records ?? [];
-      trainerInfo = new Map(records.map((t) => [t.id, { name: t.name, pic: t.class.id, className: t.class.text }]));
-      originals = new Map(records.map((t) => [t.id, t.team.map((m) => ({ species: m.species, level: m.level, moves: (m.moves ?? []).filter((id) => id > 0).join(", ") }))]));
+    void Promise.all([json("events/events/trainers.json"), bank(729), bank(730)]).then(([file, trainers, classes]) => {
+      const records = (file as { records?: { id: number; class: { id: number }; team: { species: number; level: number; moves: number[] | null }[] }[] } | undefined)?.records ?? [];
+      trainerInfo = new Map(records.map((t) => [t.id, { name: trainers[t.id] ?? `nº ${t.id}`, pic: t.class.id, className: classes[t.class.id] ?? "" }]));
+      originals = new Map(records.map((t) => [t.id, t.team.map((m) => ({ species: m.species, level: m.level, moves: (m.moves ?? []).filter((id) => id > 0) }))]));
     });
   });
 
-  const moveIds = (text: string) => text.split(/[\s,]+/).filter(Boolean).map(Number);
+  const moveIds = (slots: number[]) => slots.filter((m) => m > 0);
+  // shortcut: fixed-damage moves are told by power 1 (as in MoveSheet); the server also reads the combat data's damage kind.
+  const special = (id: number) => isSpecial({ power: moveData.get(id)?.power ?? 0 });
+  /** Block C: a move list laid out in the 4 slots as a fight does; a class's extra moves are left out. */
+  const slotted = (ids: number[]) => slotIndices(ids, special).slots.map((i) => (i === undefined ? 0 : ids[i]!));
   /** What is wrong with a team row, in the tester's words; undefined when it can fight. */
   const rowError = (r: Row): string | undefined => {
-    const ids = moveIds(r.moves);
     if (!Number.isInteger(r.species) || r.species < 1) return "Escolha uma espécie (número da Pokédex).";
     if (!Number.isInteger(r.level) || r.level < 1 || r.level > 100) return "O nível vai de 1 a 100.";
-    if (ids.length < 1 || ids.length > 4) return "Informe de 1 a 4 golpes, separados por vírgula.";
-    if (!ids.every((m) => Number.isInteger(m) && m > 0)) return "Golpes são números inteiros, separados por vírgula.";
+    if (moveIds(r.moves).length < 1) return "Escolha ao menos um golpe.";
     return undefined;
   };
   /** Real entries of a name bank: index 0 and the "-----" fillers are no species or move. */
   const optionsOf = (bankNames: string[]): [number, string][] => bankNames.flatMap((n, i) => (i > 0 && n.trim() !== "" && !/^-+$/.test(n.trim()) ? [[i, n] as [number, string]] : []));
   const speciesOptions = $derived(optionsOf(names.species));
   const moveOptions = $derived(optionsOf(names.moves));
+  const normalOptions = $derived(moveOptions.filter(([id]) => !special(id)));
+  const specialOptions = $derived(moveOptions.filter(([id]) => special(id)));
   const trainerOptions = $derived([...trainerInfo].map(([id, info]): [number, string] => [id, `${info.name} · ${info.className}`]));
+  const leaderOptions = $derived([...GYM_LEADERS.keys()].flatMap((id): [number, string][] => (trainerInfo.has(id) ? [[id, trainerInfo.get(id)!.name]] : [])));
+  /** One list for both: leaders by trainer id, legendaries by species, negative. */
+  const lastOptions = $derived<[number | undefined, string][]>([
+    [undefined, "Nenhum"],
+    ...leaderOptions,
+    ...[...LEGENDARIES.keys()].flatMap((id): [number, string][] => (names.species[id] ? [[-id, names.species[id]]] : [])),
+  ]);
+  const lastValue = $derived(legendary !== undefined ? -legendary : leader);
+  function pickLast(v: number | undefined): void {
+    leader = v !== undefined && v > 0 ? v : undefined;
+    legendary = v !== undefined && v < 0 ? -v : undefined;
+  }
+  const lastName = $derived(legendary !== undefined ? (names.species[legendary] ?? `#${legendary}`) : leader !== undefined ? (trainerInfo.get(leader)?.name ?? `nº ${leader}`) : undefined);
   const frontOf = (species: number) => pokemonFronts().then((m) => m.get(species));
   const trainerFrame = (pic: number) => trainerSprites().then((m) => m.get(pic));
   const moveType = (id: number) => {
     const move = moveData.get(id);
     return move ? (TYPE_KEYS[move.type] ?? "unknown") : "unknown";
   };
-  /** Move slot `slot` of a team row set to `id`; 0 empties it, and the later ones move up. */
-  function setMove(row: Row, slot: number, id: number): void {
-    const ids = moveIds(row.moves);
-    if (id > 0) ids[slot] = id;
-    else ids.splice(slot, 1);
-    row.moves = ids.filter((m) => m > 0).join(", ");
-  }
   const combatant = (r: Row): ArenaCombatant => ({ species: r.species, level: r.level, moves: moveIds(r.moves) });
   const blocker = $derived(
     name.trim() === ""
@@ -129,10 +151,10 @@
   );
 
   /** The card being edited; its fields open beside the cards. */
-  type Section = "scene" | "player" | "foe";
+  type Section = "scene" | "player" | "foe" | "leader";
   let editing = $state<Section | undefined>();
-  const cards: Record<Section, HTMLButtonElement | undefined> = { scene: undefined, player: undefined, foe: undefined };
-  const TITLES: Record<Section, string> = { scene: "Cenário", player: "Você", foe: "Adversário" };
+  const cards: Record<Section, HTMLButtonElement | undefined> = { scene: undefined, player: undefined, foe: undefined, leader: undefined };
+  const TITLES: Record<Section, string> = { scene: "Cenário", player: "Você", foe: "Adversário", leader: "Líder ou lendário" };
 
   /** Back from the fields: the focus returns to their card. */
   async function closeEditor(): Promise<void> {
@@ -144,6 +166,7 @@
 
   const sceneName = $derived(ring === undefined ? "Campo aberto" : (rings.find(([id]) => id === ring)?.[1] ?? `Mapa ${ring}`));
   const teamLine = (rows: Row[]) => rows.map((r) => `${names.species[r.species] ?? `#${r.species}`} Nv ${r.level}`).join(", ");
+  const lastTeam = $derived(legendary !== undefined ? teamLine([{ species: legendary, level: LEGENDARIES.get(legendary) ?? 0, moves: [] }]) : leader !== undefined ? teamLine(originals.get(leader) ?? []) : "");
   const playerError = $derived(name.trim() === "" ? "Dê um nome ao seu treinador." : mine.some((r) => rowError(r)) ? "Corrija os Pokémon marcados." : undefined);
   const foeError = $derived(
     theirs.some((r) => rowError(r)) ? "Corrija os Pokémon marcados." : foeKind === "trainer" && !(Number.isInteger(trainerId) && trainerId > 0) ? "Informe o número do treinador." : undefined,
@@ -183,7 +206,7 @@
   }
   function duplicate(rows: Row[], i: number): void {
     if (rows.length >= MAX_TEAM) return;
-    rows.splice(i + 1, 0, { ...rows[i]! });
+    rows.splice(i + 1, 0, { ...rows[i]!, moves: [...rows[i]!.moves] });
     void focusMember(i + 1);
   }
   /** Up or down the team order; the first one is sent out first. */
@@ -217,9 +240,23 @@
     return true;
   }
 
+  /** Keeps the menu for the next time; one that cannot fight stays unsaved. */
+  function persist(): void {
+    if (blocker !== undefined) return;
+    const arena = $state.snapshot({ name, character, mine, foeKind, behavior, trainerId, theirs, ring, leader, legendary });
+    if (JSON.stringify(arena) !== JSON.stringify(currentSettings().arena)) void saveSettings({ arena });
+  }
+  // Whenever a card's or a member's fields open, close or give way to another's.
+  let opened = false;
+  $effect(() => {
+    if (editing !== undefined || member) opened = true;
+    if (opened) untrack(persist);
+  });
+
   function start(): void {
+    persist();
     const foe: ArenaSpec["foe"] = foeKind === "wild" ? { kind: "wild", behavior, team: theirs.map(combatant) } : { kind: "trainer", trainer: trainerId, team: theirs.map(combatant) };
-    onStart({ trainer: { name: name.trim(), character }, team: mine.map(combatant), foe, ...(ring !== undefined ? { ring } : {}) });
+    onStart({ trainer: { name: name.trim(), character }, team: mine.map(combatant), foe, ...(ring !== undefined ? { ring } : {}), ...(leader !== undefined ? { leader } : {}), ...(legendary !== undefined ? { legendary } : {}) });
   }
 
 </script>
@@ -260,6 +297,10 @@
   </div>
 {/snippet}
 
+{#snippet lastPreview(id: number | undefined)}
+  {#if id === undefined}<span class="text-secondary">A luta acaba no primeiro adversário.</span>{:else if id < 0}{@render speciesPreview(-id)}{:else}{@render trainerPreview(id)}{/if}
+{/snippet}
+
 {#snippet ringPreview(id: number | undefined)}
   <RingPreview ring={id} />
   <span class="text-center text-secondary">{id === undefined ? "Campo aberto" : (rings.find(([r]) => r === id)?.[1] ?? `Mapa ${id}`)}</span>
@@ -281,7 +322,11 @@
         <li class="grid gap-1.5">
           <MenuCard title={`${names.species[row.species] ?? `#${row.species}`} · Nv ${row.level}`} data-member={i} onclick={() => (member = { side, index: i })}>
             {#snippet media()}<Sprite frame={frontOf(row.species)} scale={0.75} />{/snippet}
-            <span class="flex flex-wrap items-center gap-1">{#each moveIds(row.moves) as m, j (j)}<TypeBadge type={moveType(m)} /><span class="mr-1.5">{names.moves[m] ?? `#${m}`}</span>{/each}</span>
+            {#each [["Normais", row.moves.slice(0, 2)], ["Especiais", row.moves.slice(2)]] as const as [group, ids] (group)}
+              {#if moveIds([...ids]).length > 0}
+                <span class="flex flex-wrap items-center gap-1"><span class="mr-1 text-tertiary">{group}</span>{#each moveIds([...ids]) as m, j (j)}<TypeBadge type={moveType(m)} /><span class="mr-1.5">{names.moves[m] ?? `#${m}`}</span>{/each}</span>
+              {/if}
+            {/each}
             {#if error}<ErrorText role="status">{error}</ErrorText>{/if}
           </MenuCard>
           <div class="flex flex-wrap gap-1.5">
@@ -320,6 +365,9 @@
               <Sprite frame={trainerFrame(character === "male" ? 0 : 1)} scale={0.75} label={character === "male" ? "Menino" : "Menina"} />
             </div>
             {@render team("mine", "Seu time")}
+          {:else if editing === "leader"}
+            <SelectField label="Luta final" options={lastOptions} bind:value={() => lastValue, pickLast} preview={lastPreview} />
+            {#if lastName !== undefined}<span class="text-sm text-secondary">Aparece depois que o adversário perde: {lastTeam}</span>{/if}
           {:else}
             <ChoiceGroup label="Quem luta" options={[["wild", "Selvagens"], ["trainer", "Treinador"]]} bind:value={foeKind} />
             {#if foeKind === "wild"}
@@ -330,7 +378,7 @@
                 {#if trainerInfo.get(trainerId)}<Sprite frame={trainerFrame(trainerInfo.get(trainerId)!.pic)} scale={0.75} />{/if}
               </div>
               <div>
-                <Button disabled={!originals.has(trainerId)} onclick={() => (theirs = (originals.get(trainerId) ?? []).map((r) => ({ ...r })))}>Usar o time original</Button>
+                <Button disabled={!originals.has(trainerId)} onclick={() => (theirs = (originals.get(trainerId) ?? []).map((r) => ({ ...r, moves: slotted(r.moves) })))}>Usar o time original</Button>
               </div>
             {/if}
             {@render team("theirs", foeKind === "wild" ? "Pokémon selvagens" : "Time do treinador")}
@@ -358,11 +406,12 @@
                 <TextField label="Nível" type="number" min="1" max="100" bind:value={row.level} />
               </div>
             </div>
-            {#each Array.from({ length: Math.min(4, moveIds(row.moves).length + 1) }, (_, k) => k) as k (k)}
+            <!-- Block C: 2 normal moves (no cooldown, parryable) and 2 special ones (cooldown, dodge only). -->
+            {#each SLOT_LABELS as label, k (k)}
               <SelectField
-                label={`Golpe ${k + 1}`}
-                options={k === 0 ? moveOptions : [[0, "—"], ...moveOptions]}
-                bind:value={() => moveIds(row.moves)[k] ?? 0, (id: number) => setMove(row, k, id)}
+                {label}
+                options={[[0, "—"], ...(k < 2 ? normalOptions : specialOptions)]}
+                bind:value={() => row.moves[k] ?? 0, (id: number) => (row.moves[k] = id)}
                 row={moveRow}
                 preview={movePreview}
               />
@@ -393,9 +442,17 @@
         {#if foeKind === "trainer" && trainerInfo.get(trainerId)}<Sprite frame={trainerFrame(trainerInfo.get(trainerId)!.pic)} scale={0.75} />
         {:else if theirs[0]}<Sprite frame={frontOf(theirs[0].species)} scale={0.75} />{/if}
       {/snippet}
-      <span>{foeKind === "wild" ? `Selvagens · ${behavior === "ai" ? "lutam com a IA" : "ficam parados"}` : `Treinador · ${trainerInfo.get(trainerId)?.name ?? names.trainers[trainerId] ?? `nº ${trainerId}`}`}</span>
+      <span>{foeKind === "wild" ? `Selvagens · ${behavior === "ai" ? "lutam com a IA" : "ficam parados"}` : `Treinador · ${trainerInfo.get(trainerId)?.name ?? `nº ${trainerId}`}`}</span>
       <span class="truncate">{teamLine(theirs)}</span>
       {#if foeError}<ErrorText role="status">{foeError}</ErrorText>{/if}
+    </MenuCard>
+    <MenuCard title={TITLES.leader} bind:el={cards.leader} onclick={() => (editing = "leader")}>
+      {#snippet media()}
+        {#if legendary !== undefined}<Sprite frame={frontOf(legendary)} scale={0.75} />
+        {:else if leader !== undefined && trainerInfo.get(leader)}<Sprite frame={trainerFrame(trainerInfo.get(leader)!.pic)} scale={0.75} />{/if}
+      {/snippet}
+      <span>{lastName === undefined ? "Nenhum" : `Final · ${lastName}`}</span>
+      {#if lastName !== undefined}<span class="truncate">{lastTeam}</span>{/if}
     </MenuCard>
     <MenuCard title="Lutar" primary disabled={busy || blocker !== undefined} onclick={start} />
   </nav>

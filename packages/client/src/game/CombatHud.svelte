@@ -1,21 +1,66 @@
 <script lang="ts">
-  // Combat HUD (spec 017, US3): an HP and action bar over each foe. Block H: the controlled Pokémon's HP,
-  // status and action bar live in the team's lead card (PartyStrip), and the trainer's call-out stacks with
-  // the moves in the bottom-left column.
+  // Combat HUD (spec 017, US3): an HP bar over each foe. Block H: the controlled Pokémon's HP and status live in
+  // the team's lead card (PartyStrip), and the trainer's call-out stacks with the moves in the bottom-left column.
+  // Block C: the mark around a CPU Pokémon (the project's own art): white while it charges a normal move, which can be
+  // parried all along; red for a special, only dodged; broken for a moment once parried. And a combo's hit counter.
+  // A boss (a wild legendary, the last Pokémon of a Gym Leader or the League) has its bar at the top of the screen instead.
+  import { t } from "../i18n";
   import HpBar from "../ui/HpBar.svelte";
+  import normalMark from "../../../../art/Normal.svg?inline";
+  import parryMark from "../../../../art/Parry.svg?inline";
+  import specialMark from "../../../../art/Special.svg?inline";
 
   let {
     bars,
+    warnings = [],
+    combos = [],
+    bosses = [],
   }: {
-    /** HP and action bars over the foes (wild and other players'), in screen pixels; `gauge` from 0 to 1; `scared` while a stat stage is lowered. */
-    bars: { key: string; x: number; y: number; fraction: number; gauge: number; scared: boolean }[];
+    /** HP bars over the foes (wild and other players'), in screen pixels; `scared` while a stat stage is lowered. */
+    bars: { key: string; x: number; y: number; fraction: number; scared: boolean }[];
+    /** Block C: a CPU Pokémon's mark, over the point at the bottom of the arc; `zoom` screen pixels per map pixel. */
+    warnings?: { key: string; x: number; y: number; mark: "normal" | "special" | "parried"; zoom: number }[];
+    /** Block C: hits in a row of a Pokémon's combo. */
+    combos?: { key: string; x: number; y: number; count: number }[];
+    bosses?: { key: string; name: string; level: number; hp: number; hpMax: number }[];
   } = $props();
+
+  /** Each mark's art and its width on the map, in map pixels: all three are drawn at one scale (the normal arc, 179 wide, spans 36). */
+  const MARKS = { normal: { src: normalMark, widthPx: 36 }, special: { src: specialMark, widthPx: 36 }, parried: { src: parryMark, widthPx: (36 * 207) / 179 } } as const;
 </script>
 
+{#if bosses.length > 0}
+  <div class="absolute left-1/2 top-4 z-2 grid w-[min(60%,40rem)] -translate-x-1/2 gap-2 pointer-events-none">
+    {#each bosses as b (b.key)}
+      <div class="grid gap-1">
+        <span class="text-center text-lg font-bold leading-none text-primary [text-shadow:0_1px_2px_#000]">{t("hud.boss", { name: b.name, level: b.level })}</span>
+        <HpBar size="lg" fraction={b.hp / b.hpMax} role="meter" aria-label={t("hud.hp")} aria-valuemin={0} aria-valuemax={b.hpMax} aria-valuenow={b.hp} />
+      </div>
+    {/each}
+  </div>
+{/if}
 {#each bars as b (b.key)}
   <span class="absolute w-14 -translate-x-1/2 -translate-y-full pointer-events-none z-1" style="left: {b.x}px; top: {b.y}px" aria-hidden="true">
     <HpBar fraction={b.fraction} />
-    <span class="block h-[0.25rem] mt-px bg-surface-raised rounded-[2px] overflow-hidden"><span class="block h-full bg-[#4fc3f7]" style:width="{b.gauge * 100}%"></span></span>
     {#if b.scared}<span class="absolute left-full top-1/2 ml-1 -translate-y-1/2 text-sm leading-none">😨</span>{/if}
+  </span>
+{/each}
+{#each warnings as w (w.key)}
+  <img
+    class={["absolute max-w-none origin-bottom -translate-x-1/2 -translate-y-full pointer-events-none z-1", w.mark === "normal" && "scale-110"]}
+    style:left="{w.x}px"
+    style:top="{w.y}px"
+    style:width="{MARKS[w.mark].widthPx * w.zoom}px"
+    decoding="sync"
+    src={MARKS[w.mark].src}
+    alt=""
+    aria-hidden="true"
+  />
+{/each}
+{#each combos as c (c.key)}
+  <span class="absolute translate-x-6 -translate-y-full pointer-events-none z-1" style:left="{c.x}px" style:top="{c.y}px" aria-hidden="true">
+    {#key c.count}
+      <span class="block text-lg font-bold leading-none text-primary [text-shadow:0_1px_2px_#000] animate-combo-pop">{c.count}×</span>
+    {/key}
   </span>
 {/each}

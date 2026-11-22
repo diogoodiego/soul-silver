@@ -38,6 +38,11 @@ export function fillView(width: number, height: number): ViewSize & { scale: num
 
 /** Screen pixels up per pixel of height: the DS-like oblique view, where ground keeps its grid. */
 export const OBLIQUE = 0.75;
+/**
+ * Sprites are moved this far toward the camera (up and south, which keeps them on the same pixels)
+ * so their feet win over the ground they stand on.
+ */
+export const SPRITE_DEPTH_BIAS = 8;
 /** Pixels of depth mapped over the clip range, around the middle of the view. */
 const DEPTH_RANGE = 2048;
 

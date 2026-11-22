@@ -66,6 +66,18 @@ describe("createGameConnection", () => {
     expect(game.view(10_000).others).toHaveLength(1);
   });
 
+  it("gives an entity's newest data at once, ahead of the view shown late", () => {
+    const { session, game, tick, now } = setup(0);
+    tick();
+    const id = session.world.add({ kind: "pokemon", area: "a", x: 40, y: 24, level: 0, facing: "west", data: { castMark: "" } }).id;
+    for (let i = 0; i < 4; i++) tick();
+    session.world.update({ ...session.world.get(id)!, data: { castMark: "normal" } });
+    tick();
+    expect(game.latest(id)).toMatchObject({ castMark: "normal" });
+    expect(game.view(now()).others.find((e) => e.id === id)!.data).toMatchObject({ castMark: "" });
+    expect(game.latest(-1)).toBeUndefined();
+  });
+
   it("drops invalid server messages", () => {
     const { game } = setup(0);
     expect(() => game.receive({ type: "state", tick: "x" }, 0)).not.toThrow();

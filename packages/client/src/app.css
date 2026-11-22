@@ -201,6 +201,8 @@
   --animate-title-pulse: title-pulse 1.6s ease-in-out infinite;
   --animate-bob: bob 0.8s steps(2) infinite;
   --animate-blink: blink 0.5s steps(1) infinite;
+  /* Block C: each new hit of a combo pops the counter. */
+  --animate-combo-pop: combo-pop 0.2s ease-out;
 
   @keyframes title-pulse {
     50% {
@@ -215,6 +217,11 @@
   @keyframes blink {
     50% {
       visibility: hidden;
+    }
+  }
+  @keyframes combo-pop {
+    from {
+      transform: scale(1.6);
     }
   }
 }

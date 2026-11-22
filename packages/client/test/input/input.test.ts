@@ -53,7 +53,12 @@ describe("moveButtons", () => {
     expect(moveButtons(new Set(), pad([0]))).toBe(0b0001 | BUTTON.interact); // A also interacts on the map
     expect(moveButtons(new Set(), pad([2, 3]))).toBe(0b0110);
     expect(moveButtons(new Set(), pad([5]))).toBe(0b1000);
-    expect(moveButtons(new Set(), pad([1]))).toBe(0); // B runs
+    // B runs on the map; block C: in combat it is the guard (tap to parry, hold to guard).
+    expect(moveButtons(new Set(), pad([1]))).toBe(BUTTON.guard);
+  });
+
+  it("maps H to the guard (block C)", () => {
+    expect(moveButtons(new Set(["KeyH"]), () => false)).toBe(BUTTON.guard);
   });
 
   it("maps the companion actions to their bits: F/LT combat, R/RT recall, A interact", () => {
