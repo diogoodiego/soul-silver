@@ -737,7 +737,9 @@ export function createSession(options: SessionOptions): Session {
     for (const p of players.values()) p.conn?.send(msg);
   }
 
-  /** The menu does not pause anything; it only shows the player as busy to the others (spec 017, FR-012). */
+  /** Alone in the session, the open menu pauses the game: time stands still for everything that counts ticks. */
+  const paused = () => players.size + reserved.size === 1 && [...players.values()][0]?.menuOpen === true;
+  /** With others in the session the menu pauses nothing; it only shows the player as busy to them (spec 017, FR-012). */
   function setBusy(p: Player, busy: boolean): void {
     const e = world.get(p.entityId);
     if (!e || (e.data["busy"] === true) === busy) return;
@@ -1482,14 +1484,11 @@ export function createSession(options: SessionOptions): Session {
           else player.conn?.send(radio.state(player.id, world.get(player.entityId)?.area ?? ""));
           return;
         case "gearOpen":
-          if (companions?.inCombat(player.id)) notice(player, "menu-blocked");
-          else {
-            player.gearOpen = true;
-            setBusy(player, true);
-            sendGear(player);
-            phone.sync(player.id);
-            player.conn?.send(radio.state(player.id, world.get(player.entityId)?.area ?? ""));
-          }
+          player.gearOpen = true;
+          setBusy(player, true);
+          sendGear(player);
+          phone.sync(player.id);
+          player.conn?.send(radio.state(player.id, world.get(player.entityId)?.area ?? ""));
           return;
         case "save-now":
           saveNow(player);
@@ -1524,11 +1523,8 @@ export function createSession(options: SessionOptions): Session {
           player.conn?.send({ type: "field-result", ok: false, reason: "notAllowed" } satisfies ServerMessage);
           return;
         case "menu":
-          if (msg.open && companions?.inCombat(player.id)) notice(player, "menu-blocked");
-          else {
-            player.menuOpen = msg.open;
-            setBusy(player, msg.open || (scripts?.busy(player.id) ?? false));
-          }
+          player.menuOpen = msg.open;
+          setBusy(player, msg.open || (scripts?.busy(player.id) ?? false));
           return;
         case "rescue":
           if (!rescue(player)) notice(player, "action-refused");
@@ -1587,6 +1583,10 @@ export function createSession(options: SessionOptions): Session {
     });
   }
 
+  function sendState(p: Player, entities: Entity[]): void {
+    p.conn?.send(replicate(p.replica, world.get(p.entityId)!, scripts ? entities.filter((e) => scripts.visible(p.id, e)).map((e) => scripts.view(p.id, e)) : entities, tick, p.lastInputSeq, p.lastPress));
+  }
+
   function step(): void {
     if (state === "closed") return;
     if (state === "closing") {
@@ -1614,6 +1614,18 @@ export function createSession(options: SessionOptions): Session {
       roster = ids;
       const list = [...players.values()].map((p) => ({ id: p.id, name: p.base.name, host: p.id === hostId, area: areaOf(p) }));
       for (const p of players.values()) p.conn?.send({ type: "players", players: list } satisfies ServerMessage);
+    }
+    if (paused()) {
+      for (const p of players.values()) {
+        // Taken but not played, so the client's prediction keeps nothing to replay.
+        p.lastInputSeq = p.queue.at(-1)?.seq ?? p.lastInputSeq;
+        p.queue.length = 0;
+        sendCard(p);
+      }
+      // What an item used in the menu starts (a level, a move, an evolution) is answered there.
+      progression?.step();
+      for (const p of players.values()) sendState(p, world.all());
+      return;
     }
     tick++;
     // The clients run the clock on between these (spec 026); a change made with debugSetClock goes at once.
@@ -1646,13 +1658,7 @@ export function createSession(options: SessionOptions): Session {
       } else captures?.input(p.id, input);
       // In combat the input moves the Pokémon and the trainer stands still.
       // Spec 027: with lockMovement on, the Pokémon stands still while its trainer uses an item.
-      if (companions?.input(p.id, input && items.locked(p.id) ? { ...input, move: { x: 0, y: 0 } } : input, tick)) {
-        // A fight that starts with the menu open closes it (spec 017, FR-013).
-        p.menuOpen = false;
-        p.gearOpen = false;
-        setBusy(p, false);
-        continue;
-      }
+      if (companions?.input(p.id, input && items.locked(p.id) ? { ...input, move: { x: 0, y: 0 } } : input, tick)) continue;
       // Every tick, so ledge hops and warp transitions run out without input.
       scripts?.push(p.id, input);
       const me = world.get(p.entityId)!;
@@ -1694,7 +1700,7 @@ export function createSession(options: SessionOptions): Session {
     const entities = world.all();
     for (const p of players.values()) {
       const entity = world.get(p.entityId)!;
-      p.conn?.send(replicate(p.replica, entity, scripts ? entities.filter((e) => scripts.visible(p.id, e)).map((e) => scripts.view(p.id, e)) : entities, tick, p.lastInputSeq, p.lastPress));
+      sendState(p, entities);
       const seen = hits.filter((h) => world.get(h.target)?.area === entity.area);
       if (seen.length > 0) p.conn?.send({ type: "combat-event", tick, events: seen } satisfies ServerMessage);
       if (p.debugAi && wilds && tick % aiDebugEvery === 0) p.conn?.send({ type: "aiDebug", tick, ais: wilds.ai.debug(entity.area, entity, aiDebugRadiusPx) } satisfies ServerMessage);

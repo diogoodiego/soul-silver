@@ -1,7 +1,7 @@
 <script lang="ts">
   // The Pokédex phone's apps (spec 017, US5–US7; block H): each page drawn on the phone's screen. Opening
-  // the menu never pauses the shared world (FR-012); the phone's strip says so, and the others see the
-  // player as busy.
+  // the menu pauses the game of a player alone; a shared world never pauses (FR-012), and the others see the
+  // player as busy. The phone's strip says which.
   import Button from "../ui/Button.svelte";
   import type { ServerMessage } from "@soulsilver/shared/game";
   import type { ItemRecord } from "@soulsilver/shared/game-data";

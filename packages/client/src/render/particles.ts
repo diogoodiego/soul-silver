@@ -12,6 +12,10 @@ const FRAME_MS = 1000 / 30;
 const UNIT_PX = 8;
 /** ROM particles are sized for the big battle sprites; the world draws overworld-sized Pokémon. */
 const SIZE = 0.5;
+/** Punches and kicks (Mega Punch, Ice Punch, Mega Kick...): the ROM starts their fist or foot bigger than the Pokémon it lands on. */
+const PUNCHES_AND_KICKS = new Set([4, 5, 7, 8, 9, 24, 25, 26, 27, 67, 136, 146, 167, 183, 223, 264, 299, 309, 325, 327, 359, 389, 409, 418]);
+/** Longest side of their particles, in map pixels: half an ordinary Pokémon. */
+const STRIKE_MAX_PX = 16;
 /** Emitters with no life of their own (0) stop after this many frames. */
 const DEFAULT_LIFE = 30;
 /** Particles drawn above the ground point, about mid-height of a Pokémon. */
@@ -68,9 +72,14 @@ interface Running {
 /** Effect keys: `move/<id>` or `status/<id>`. */
 export function effectsOf(set: SpriteSetFile): Map<string, SpriteEmitter[]> {
   const out = new Map<string, SpriteEmitter[]>();
+  const sides = new Map(set.frames.map((f) => [f.name, Math.max(f.w, f.h)]));
+  const capped = (e: SpriteEmitter): SpriteEmitter => {
+    const max = STRIKE_MAX_PX / ((sides.get(e.frame) ?? 0) * e.scale * SIZE);
+    return { ...e, scaleFrom: Math.min(e.scaleFrom, max), scaleTo: Math.min(e.scaleTo, max) };
+  };
   for (const s of set.sprites) {
     if (!s.emitters) continue;
-    if (s.move !== undefined) out.set(`move/${s.move}`, s.emitters);
+    if (s.move !== undefined) out.set(`move/${s.move}`, PUNCHES_AND_KICKS.has(s.move) ? s.emitters.map(capped) : s.emitters);
     if (s.status !== undefined) out.set(`status/${s.status}`, s.emitters);
   }
   return out;

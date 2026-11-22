@@ -6,6 +6,7 @@
   // A boss (a wild legendary, the last Pokémon of a Gym Leader or the League) has its bar at the top of the screen instead.
   import { t } from "../i18n";
   import HpBar from "../ui/HpBar.svelte";
+  import blockArt from "../../../../art/Block.svg?inline";
   import normalMark from "../../../../art/Normal.svg?inline";
   import parryMark from "../../../../art/Parry.svg?inline";
   import specialMark from "../../../../art/Special.svg?inline";
@@ -14,6 +15,7 @@
     bars,
     warnings = [],
     combos = [],
+    blocks = [],
     bosses = [],
   }: {
     /** HP bars over the foes (wild and other players'), in screen pixels; `scared` while a stat stage is lowered. */
@@ -22,11 +24,15 @@
     warnings?: { key: string; x: number; y: number; mark: "normal" | "special" | "parried"; zoom: number }[];
     /** Block C: hits in a row of a Pokémon's combo. */
     combos?: { key: string; x: number; y: number; count: number }[];
+    /** Block C: the impact of a successful parry, centered on the point; `zoom` as above. */
+    blocks?: { key: number; x: number; y: number; zoom: number }[];
     bosses?: { key: string; name: string; level: number; hp: number; hpMax: number }[];
   } = $props();
 
   /** Each mark's art and its width on the map, in map pixels: all three are drawn at one scale (the normal arc, 179 wide, spans 36). */
   const MARKS = { normal: { src: normalMark, widthPx: 36 }, special: { src: specialMark, widthPx: 36 }, parried: { src: parryMark, widthPx: (36 * 207) / 179 } } as const;
+  /** The impact of a parry, at the marks' scale. */
+  const BLOCK_WIDTH_PX = (36 * 143) / 179;
 </script>
 
 {#if bosses.length > 0}
@@ -56,6 +62,11 @@
     alt=""
     aria-hidden="true"
   />
+{/each}
+{#each blocks as b (b.key)}
+  <span class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-1" style:left="{b.x}px" style:top="{b.y}px" style:width="{BLOCK_WIDTH_PX * b.zoom}px" aria-hidden="true">
+    <img class="block w-full animate-block-burst" decoding="sync" src={blockArt} alt="" />
+  </span>
 {/each}
 {#each combos as c (c.key)}
   <span class="absolute translate-x-6 -translate-y-full pointer-events-none z-1" style:left="{c.x}px" style:top="{c.y}px" aria-hidden="true">

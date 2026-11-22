@@ -1,6 +1,6 @@
 <script lang="ts">
   // Block H: the Pokédex phone. Docked in the bottom-right corner with only its top strip showing; the menu
-  // button (or a click on the strip) raises it, whole, over the game, which keeps running behind. Its screen
+  // button (or a click on the strip) raises it, whole, over the game, which pauses when the player is alone. Its screen
   // shows the home grid of apps or the open app, which `app` draws.
   import Button from "../ui/Button.svelte";
   import { onMount, type Snippet } from "svelte";
@@ -12,6 +12,7 @@
 
   let {
     open,
+    paused,
     page,
     disabled = [],
     onOpen,
@@ -22,6 +23,8 @@
     app,
   }: {
     open: boolean;
+    /** The open phone pauses the game: nobody else is in the session. */
+    paused: boolean;
     page: MenuPage | undefined;
     disabled?: readonly MenuPage[];
     /** The strip was clicked while docked. */
@@ -52,8 +55,8 @@
 </script>
 
 <!-- The world shows through: only a light veil while the phone is up, as the old menu had. -->
-{#if open}<div class="pointer-events-none absolute inset-0 z-4 bg-surface-overlay" aria-hidden="true"></div>{/if}
-<div bind:this={host} class="pointer-events-none absolute inset-0 z-5 overflow-hidden" aria-label={t("phone.label")} role="region">
+{#if open}<div class="pointer-events-none absolute inset-0 z-6 bg-surface-overlay" aria-hidden="true"></div>{/if}
+<div bind:this={host} class={["pointer-events-none absolute inset-0 overflow-hidden", open ? "z-7" : "z-5"]} aria-label={t("phone.label")} role="region">
   <div
     bind:this={screen}
     class="pointer-events-auto flex flex-col font-[system-ui,sans-serif] text-[length:calc(1rem/var(--dex-scale,1))] text-secondary"
@@ -67,7 +70,7 @@
         <Button tabindex={-1} variant="bare" class="p-0 text-base font-bold uppercase text-secondary" onclick={() => (page ? onPage(undefined) : onClose())}>
           {page ? `‹ ${t("phone.home")}` : t("phone.home")}
         </Button>
-        <span class="ml-auto rounded-full bg-[#b23b3b] px-3 py-0.5 text-sm normal-case text-white" role="status">{t("pause.live")}</span>
+        <span class="ml-auto rounded-full bg-[#b23b3b] px-3 py-0.5 text-sm normal-case text-white" role="status">{t(paused ? "pause.paused" : "pause.live")}</span>
       {:else}
         <!-- Docked: the whole strip raises the phone. -->
         <Button tabindex={-1} variant="bare" class="flex size-full items-center gap-2 p-0 text-2xl font-bold uppercase text-secondary" onclick={onOpen} aria-label={t("phone.open")}>

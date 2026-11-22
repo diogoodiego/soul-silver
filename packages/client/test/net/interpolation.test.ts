@@ -55,6 +55,32 @@ describe("createInterpolator", () => {
     expect(it.sample(200)).toEqual([]);
   });
 
+  it("flies a removed move projectile to its last position before dropping it", () => {
+    const it = createInterpolator();
+    const shot = (x: number): Entity => ({ ...at(x), kind: "projectile", data: { move: 1 } });
+    it.push(0, 0, [shot(0)]);
+    it.push(1, 50, [shot(10)]);
+    it.push(2, 100, []);
+    expect(it.sample(125)[0]?.x).toBe(5);
+    expect(it.sample(160)).toEqual([]);
+    expect(it.sample(200)).toEqual([]);
+  });
+
+  it("goes on smoothly from the last tick after a pause", () => {
+    const it = createInterpolator();
+    for (let tick = 0; tick <= 10; tick++) it.push(tick, tick * 50, [at(tick * 10)]);
+    for (let now = 550; now < 60_000; now += 50) {
+      it.push(10, now, [at(100)]);
+      it.sample(now);
+    }
+    expect(it.sample(59_990)[0]?.x).toBe(100);
+    it.push(11, 60_000, [at(110)]);
+    expect(it.sample(60_000)[0]?.x).toBeCloseTo(100, 0);
+    const x = it.sample(60_025)[0]!.x;
+    expect(x).toBeGreaterThan(102);
+    expect(x).toBeLessThan(108);
+  });
+
   it("does not slide across an area change", () => {
     const it = createInterpolator();
     it.push(0, 0, [at(0, "a")]);

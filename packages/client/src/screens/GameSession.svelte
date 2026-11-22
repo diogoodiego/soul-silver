@@ -1,7 +1,7 @@
 <script lang="ts">
   // The game screen: renderer, input, pause menu and the debug overlay (specs 010, 011 and 012);
   // the companion's reactions, the quick swap and the fight notices (spec 014); progression after a fight (spec 016);
-  // the combat HUD, the dialog box, the full menu that never pauses the world and the busy mark (spec 017).
+  // the combat HUD, the dialog box, the full menu, which pauses the game of a player alone, and the busy mark (spec 017).
   import Button from "../ui/Button.svelte";
   import { CUTSCENE_TEXT_BOOST, PROTOCOL_VERSION } from "@soulsilver/shared";
   import { BUTTON, PLAYER_NAME_MAX, surfable, talkTile, tileAt, type CutsceneActor, type NpcAction, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics, type TradeOffer, type DuelRules, type WorldMap } from "@soulsilver/shared/game";
@@ -220,6 +220,13 @@
   /** Block C: the mark around a CPU Pokémon charging a move or just parried, and combo counters. */
   let warnings = $state<{ key: string; x: number; y: number; mark: "normal" | "special" | "parried"; zoom: number }[]>([]);
   let combos = $state<{ key: string; x: number; y: number; count: number }[]>([]);
+  /** Block C: the impact of each successful parry; on the map, `at` is unset until a shot still flying on screen gets there. */
+  let blocks = $state<{ key: number; x: number; y: number; zoom: number }[]>([]);
+  let parries: { key: number; x: number; y: number; attacker: number; move: number; at: number | undefined }[] = [];
+  let parryCount = 0;
+  const BLOCK_MS = 600;
+  /** How far from the parrier the impact is at most: the edge of its body, for a move from afar. */
+  const BLOCK_REACH_PX = 12;
   /** A trainer calling out the last move seen in the fight (bottom-left), until `until`. */
   let moveCall = $state<{ key: number; pic: number; move: string; until: number } | undefined>();
   /** Each combatant's move use count last seen, to notice a new use. */
@@ -487,12 +494,16 @@
   }
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
+  /** At any time, but over a level-up prompt on screen, which waits for its answer. */
+  function raiseMenu(): void {
+    if (menuOpen || (progression && !inCombat) || status !== "playing") return;
+    picker = "closed";
+    if (flyMap) closeFlyMap();
+    setMenu(true);
+  }
+
   /** Opening and closing the full menu tells the server, so the others see the player as busy. */
   function setMenu(open: boolean, to?: MenuPage): void {
-    if (open && inCombat) {
-      showNotice(t("notice.menu-blocked"));
-      return;
-    }
     const wasGear = page === "gear";
     page = open ? to : undefined;
     // The Pokégear counts as a menu on the server and brings its tabs (spec 026).
@@ -576,7 +587,7 @@
     /** Screen point above a standing sprite: 40 px north of its feet on the ground. */
     const over = (e: Entity) => renderer.project(e.x, e.y, 40);
     /** Where a cast's mark sits: its arc rises from the middle of the sprite, under the HP bar. */
-    const around = (e: Entity) => {
+    const around = (e: { x: number; y: number }) => {
       const at = renderer.project(e.x, e.y, 14);
       return { ...at, zoom: (renderer.project(e.x, e.y).y - at.y) / 14 };
     };
@@ -830,9 +841,9 @@
     };
     const offPress = input.onAction(sendPresses);
 
-    // The menu action opens the full menu; once open, the menu screens take the input.
+    // The menu action opens the full menu at any time; once open, the menu screens take the input.
     const offAction = input.onAction((action) => {
-      if (action === "menu" && !menuOpen && (!dialogOpen || scriptLocked) && picker === "closed" && flyMap === undefined && !shop && !progression && status === "playing") setMenu(true);
+      if (action === "menu") raiseMenu();
       // Block H: moves 2 and 3 pick the options after talk; interact (talk) goes to the server with the input, as ever.
       if ((action === "move2" || action === "move3") && npcOptions) {
         const picked = npcOptions.actions[NPC_KEYS.indexOf(action)];
@@ -860,7 +871,7 @@
     window.addEventListener("keydown", onKeyDown);
 
     const inputTimer = setInterval(() => {
-      // Menus, the text box and a running script take the input; the world keeps going without it (FR-012).
+      // Menus, the text box and a running script take the input.
       const blocked = inputBlocked();
       sendPresses();
       const read = input.read();
@@ -953,15 +964,31 @@
       renderer.combatEvents(events, now);
       fx.show(events, (id) => shown.find((e) => e.id === id), now);
       fx.update(now);
+      for (const ev of events) {
+        if (ev.kind !== "parried") continue;
+        const attacker = shown.find((e) => e.id === ev.attacker);
+        const target = shown.find((e) => e.id === ev.target);
+        if (!attacker || !target) continue;
+        const dx = attacker.x - target.x;
+        const dy = attacker.y - target.y;
+        const k = Math.min(0.5, BLOCK_REACH_PX / (Math.hypot(dx, dy) || 1));
+        parries.push({ key: parryCount++, x: target.x + dx * k, y: target.y + dy * k, attacker: ev.attacker, move: ev.move, at: undefined });
+      }
+      for (const p of parries) {
+        // The shot is gone on the server, but is shown a little late.
+        const flying = shown.some((e) => e.kind === "projectile" && e.data["caster"] === p.attacker && e.data["move"] === p.move && game.latest(e.id) === undefined);
+        if (!flying) p.at ??= now;
+      }
+      parries = parries.filter((p) => p.at === undefined || now - p.at < BLOCK_MS);
+      const nextBlocks = parries.filter((p) => p.at !== undefined).map((p) => ({ key: p.key, ...around(p) }));
+      if (nextBlocks.length > 0 || blocks.length > 0) blocks = nextBlocks;
       companionEvents(now);
       dialogOpen = dialog.view() !== undefined;
+      const fightStarted = !inCombat && view.self?.kind === "pokemon";
       inCombat = view.self?.kind === "pokemon";
       sounds.frame(view, events, inCombat, { x: view.self?.x ?? 0, y: view.self?.y ?? 0, halfWidthPx: VIEW_W / 2 });
-      // A fight closes the menu (FR-013); the server already cleared the busy mark.
-      if (inCombat && menuOpen) {
-        menuOpen = false;
-        page = undefined;
-      }
+      // A fight that starts closes the menu (FR-013); it can be opened again.
+      if (fightStarted && menuOpen) setMenu(false);
       if (!inCombat && picker !== "closed") picker = "closed";
       hudSelf = view.self?.kind === "pokemon" ? view.self : undefined;
       const fighting = hudSelf !== undefined;
@@ -1257,7 +1284,7 @@
   {#if battleOver}<BattleOver result={battleOver.result} />{/if}
 
   {#if status === "playing" && (hudSelf || play.arena)}
-    <CombatHud {bars} {warnings} {combos} {bosses} />
+    <CombatHud {bars} {warnings} {combos} {blocks} {bosses} />
   {/if}
   {#if status === "playing" && hudSelf && (wheel.open || itemUse.endsTick !== undefined)}
     <ItemWheel
@@ -1393,10 +1420,11 @@
     {#if !menuOpen}<div class="pointer-events-none absolute bottom-24 right-4 z-2 w-64"><KeyHints hints={legend} /></div>{/if}
     <PhoneDex
       open={menuOpen}
+      paused={players.length <= 1}
       {page}
       disabled={appsOff}
       onOpen={() => {
-        if (!inCombat && !progression && picker === "closed" && flyMap === undefined) setMenu(true);
+        raiseMenu();
       }}
       onClose={() => setMenu(false)}
       onPage={(next: MenuPage | undefined) => setMenu(true, next)}

@@ -1,8 +1,8 @@
-import type { SpriteEmitter } from "@soulsilver/shared/sprites";
+import type { SpriteEmitter, SpriteSetFile } from "@soulsilver/shared/sprites";
 import { Scene, Texture } from "three";
 import { describe, expect, it } from "vitest";
 import { OBLIQUE, SPRITE_DEPTH_BIAS } from "../../src/render/camera";
-import { createParticles } from "../../src/render/particles";
+import { createParticles, effectsOf } from "../../src/render/particles";
 
 const FRAME = 1000 / 30;
 const def: SpriteEmitter = {
@@ -61,6 +61,18 @@ describe("particles", () => {
     particles.update(4 * FRAME);
     const xs = scene.children.map((m) => m.position.x);
     expect(Math.max(...xs)).toBeGreaterThan(40);
+  });
+
+  it("of punches and kicks are at most half a Pokémon wide; other moves keep their size", () => {
+    const big = { ...def, scaleFrom: 5, scaleTo: 0.5 };
+    const set = {
+      frames: [{ name: def.frame, page: 0, x: 0, y: 0, w: 32, h: 32, anchor: { x: 16, y: 16 } }],
+      sprites: [{ name: "ice-punch", move: 8, emitters: [big] }, { name: "tackle", move: 33, emitters: [big] }],
+    } as unknown as SpriteSetFile;
+    const effects = effectsOf(set);
+    // 32 px at half size: a scale of 1 is 16 px.
+    expect(effects.get("move/8")).toEqual([{ ...big, scaleFrom: 1 }]);
+    expect(effects.get("move/33")).toEqual([big]);
   });
 
   describe("of a status", () => {

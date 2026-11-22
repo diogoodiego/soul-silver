@@ -80,19 +80,33 @@ describe("busy in a menu (US6)", () => {
     expect(g.notice()).toBe("action-refused");
   });
 
-  it("refuses the menu in combat and says why", () => {
+  it("opens in combat too, and stays open", () => {
     const g = game([member("cyndaquil", 20)]);
     g.fight();
     g.send({ type: "menu", open: true });
-    expect(g.me().data["busy"]).toBeUndefined();
-    expect(g.notice()).toBe("menu-blocked");
+    g.session.step();
+    expect(g.me().data["busy"]).toBe(true);
+    expect(g.notice()).toBeUndefined();
   });
 
-  it("clears busy when a fight starts with the menu open", () => {
-    const g = game([member("cyndaquil", 20)]);
-    g.send({ type: "menu", open: true });
-    g.fight();
-    expect(g.me().data["busy"]).toBeUndefined();
+  it("pauses the game only while its player is alone in the session", () => {
+    const t = setup({ spawn: () => ({ area: "a", x: 160, y: 160 }) });
+    const p = t.connect("Gold");
+    t.session.step();
+    p.conn.send({ type: "menu", open: true });
+    const tick = t.session.tick;
+    for (let seq = 0; seq < 5; seq++) {
+      p.input(seq, "east");
+      t.session.step();
+    }
+    expect(t.session.tick).toBe(tick);
+    expect(p.lastState()).toMatchObject({ tick, lastInput: 4 });
+    t.connect("Silver");
+    t.session.step();
+    expect(t.session.tick).toBe(tick + 1);
+    p.conn.send({ type: "menu", open: false });
+    t.session.step();
+    expect(t.session.tick).toBe(tick + 2);
   });
 });
 

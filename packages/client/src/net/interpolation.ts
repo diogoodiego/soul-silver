@@ -21,30 +21,52 @@ interface Sample {
 
 export function createInterpolator() {
   const history = new Map<number, Sample[]>();
+  /** Move projectiles gone from the latest state, still flying to their last position until the shown time gets there. */
+  const ending = new Set<number>();
   /** Arrival minus server time of the latest states; the smallest is the clocks' offset, the rest is lateness. */
   const arrivals: number[] = [];
   /** Local time minus the server time shown, what it should be, and when it last changed. */
   let behind: number | undefined;
   let wanted = 0;
   let adjustedAt: number | undefined;
+  let lastTick: number | undefined;
+  /** The server repeats its tick: the game is paused. */
+  let stalled = false;
 
   return {
     /** The full set of remote entities at a server tick, received at local time `arrival`. */
     push(tick: number, arrival: number, entities: Entity[]): void {
       const time = tick * TICK_MS;
-      arrivals.push(arrival - time);
-      if (arrivals.length > WINDOW) arrivals.shift();
+      const repeated = tick === lastTick;
+      lastTick = tick;
+      if (repeated) stalled = true;
+      else {
+        if (stalled) {
+          // Back from a pause: the server's time is now that much further behind, and goes on from the last tick.
+          arrivals.length = 0;
+          behind = arrival - time + TICK_MS;
+          stalled = false;
+        }
+        arrivals.push(arrival - time);
+        if (arrivals.length > WINDOW) arrivals.shift();
+      }
       wanted = Math.min(Math.max(...arrivals) + TICK_MS, Math.min(...arrivals) + MAX_MS);
       behind ??= arrival - time + START_MS;
       const present = new Set<number>();
       for (const entity of entities) {
         present.add(entity.id);
         const samples = history.get(entity.id) ?? [];
+        if (repeated && samples.at(-1)?.time === time) samples.pop();
         samples.push({ time, entity });
         if (samples.length > MAX_HISTORY) samples.shift();
         history.set(entity.id, samples);
       }
-      for (const id of history.keys()) if (!present.has(id)) history.delete(id);
+      for (const [id, samples] of history) {
+        const { entity } = samples[samples.length - 1]!;
+        if (present.has(id)) ending.delete(id);
+        else if (entity.kind === "projectile" && entity.data["move"] !== undefined) ending.add(id);
+        else history.delete(id);
+      }
     },
     sample(now: number): Entity[] {
       if (behind === undefined) return [];
@@ -52,6 +74,12 @@ export function createInterpolator() {
       behind += Math.max(-most, Math.min(most, wanted - behind));
       adjustedAt = now;
       const t = now - behind;
+      for (const id of ending) {
+        const samples = history.get(id)!;
+        if (samples[samples.length - 1]!.time > t) continue;
+        history.delete(id);
+        ending.delete(id);
+      }
       const out: Entity[] = [];
       for (const samples of history.values()) {
         const next = samples.findIndex((s) => s.time > t);
