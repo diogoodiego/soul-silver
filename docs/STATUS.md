@@ -4,9 +4,9 @@ Fonte da verdade do que já foi feito. Os prompts dos itens pendentes estão em 
 exportados do documento "Roadmap — SoulSilver Desktop" (uma aba por marco), onde o plano é feito. Atualize este arquivo ao terminar
 cada item (ver `CLAUDE.md`).
 
-**Próximo item: 034.5 Balanceamento de Johto**
+**Próximo item: 034.5 Balanceamento de Johto** (refeito sobre o combate do bloco C)
 
-Versões atuais: protocolo 43, save 21.
+Versões atuais: protocolo 48, save 22.
 
 ## Concluídos
 
@@ -64,6 +64,7 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] 034.3 Elite Four
 - [x] 034.4 Lance, Hall da Fama e retorno
 - [x] H Tela única com HUD e Pokédex-celular (avulso; roteiro manual pendente em `.evidence/H/roteiro.md`)
+- [x] C.1–C.9 Combate de ação (avulso, bloco C em `docs/roadmap/combate.md`; roteiro manual pendente em `.evidence/C/roteiro.md`)
 - [ ] 034.5–034.6 Balanceamento e verificação
 - [ ] 034.7 Pendências dos blocos 033 e 034 (lista no roadmap)
 
@@ -78,6 +79,11 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 Itens dados como concluídos com algo ainda em aberto. Resolva quando o item atual tocar no
 assunto, ou quando o desenvolvedor pedir.
 
+- C: roteiro manual em `.evidence/C/roteiro.md` (indicadores, esquiva, parry, defesa, finta, combo, IA, aprender golpe).
+- C: fora do combate, o painel de golpes mostra a lista compacta do membro (normais e depois especiais), e não os slots 1–4 fixos do combate.
+- C: o tutor de golpes (scripts do original, `tutor.ts`) ainda oferece esquecer qualquer golpe; a entrada no jogo e o combate encaixam depois em 2 + 2.
+- C: o golden não mede o tempo para nocaute (TTK) com `normalDamageMul` 1/3; fica para o 034.5.
+- C: golden da campanha passa do Petrel (5F), com o piloto agora trocando de Pokémon após um desmaio, e para no marco 72: o rival do armazém (treinador 271) começa a luta em (4, 9), no ringue, antes de (19, 5). Na base esse marco nunca rodava (a campanha parava no Gyarados vermelho). Seguem falhando como na base: a árvore de Cut (`field.golden.ts`) e o Lapras de sexta-feira (`strength-surf.golden.ts`, flag 778).
 - H: roteiro manual em `.evidence/H/roteiro.md` (pose e animação da Pokédex, apps cabendo na tela, minimapa, time, golpes em combate).
 - H: dois goldens já falham na base (`f56c77f`), independentemente do bloco H: a árvore de Cut do mapa 10 (1041, 219) continua bloqueando em `field.golden.ts`, e a luta com o Gyarados vermelho não começa em `campaign.golden.ts`.
 - V.1/V.2: roteiro manual em `.evidence/V.1/roteiro.md` (visual, ajuste das forças em `MAX`/`BLOOM_THRESHOLD`/`MAX_SHADE`, `shadow.bias`, FPS em Alta).
@@ -160,10 +166,16 @@ assunto, ou quando o desenvolvedor pedir.
 - R.4: `scripts-perf` também falha às vezes na suíte cheia e passa isolado (como `perf`/`trainer-perf`); não é do bloco R.
 - R.5: UPnP com roteador real não testado (roteiro manual, seção 4); só IPv4 e TCP; sem NAT-PMP/PCP; se o app morrer sem fechar, a porta fica aberta até 1 h (ou até reiniciar o roteador, nos que só aceitam mapeamento permanente).
 - 031.7: comparação com as páginas 6–20 do detonado pendente (sem capturas; verificação só no servidor); roteiro manual em `.evidence/031/roteiro-manual.md`.
+- Partículas de status (medidas com a ROM): a confusão de verdade, em laço, ainda solta uns 200 ícones pequenos; em espécies de sprite 64x64 a queimadura fica quase toda atrás do corpo. O meio da curva de escala dos emissores não é extraído (o cliente assume 0,8 quando ela começa e termina em 0); extrair muda o schema.
 
 ## Decisões
 
 Só o que muda o rumo de itens futuros, uma linha cada.
+
+- Bloco C: o combate passa a ser normais (<80, sem cooldown, combo) + especiais (≥80, status e dano fixo, com cooldown), com parry, esquiva e defesa no lugar da barra de ação; regras em `docs/roadmap/combate.md`; o 034.5 balanceia sobre ele.
+- Bloco C: slots 0–1 normais e 2–3 especiais são montados no spawn do combate (`slotIndices`); o save guarda a lista compacta, encaixada em 2 + 2 na entrada (`fitMoves`), e o excedente vai para `forgottenMoves`.
+- Bloco C: um HM em `forgottenMoves` continua valendo no campo (`pickUser`); em combate só os slots contam.
+- Bloco C: os números do combate de ação ficam em `content/combat/tuning.json` (`action`) e `content/ai/tuning.json` (`action`); os testes de mecânica usam `MECHANICS` (preparo 0, dano cheio) e os do bloco usam `"real"`.
 
 - Hora do jogo escolhida pelo host (app Relógio na tela de início da Pokédex, `setClock`, protocolo 41): o relógio anda a partir dela; a diferença para o PC fica em `clockOffsetMs` no save do host (save v21) e vale para toda a sessão.
 
@@ -208,8 +220,23 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - V.3: luta de treinador em mapa `indoor` vai para a área `ring:<mapa>:<batalha>` (18×18, só o lutador); scripts e roamers ignoram a ida e a volta; o save guarda a posição de antes.
 - R.5: abrir para a internet é opcional e explícito (botão no painel Online), nunca automático ao hospedar; o mapeamento UPnP vive e morre com a porta do host (`unlisten`).
 - Bloco H: todo golpe leva ao menos 0,5 s de preparo (`minCastS` em `content/combat/tuning.json`), para a área e a carga serem vistas e desviadas; os testes de mecânica usam `minCastS: 0` (`combatData()`).
-- Bloco H: nenhum golpe prende o Pokémon durante o preparo (o campo `rooted` das archetypes ficou sem uso); a direção do golpe é a do início do preparo.
+- Bloco H: nenhum golpe prende o Pokémon durante o preparo (o campo `rooted` das archetypes ficou sem uso); a direção do golpe é a do início do preparo (menos a dos de contato, bloco C).
+- Bloco C (ajuste): golpe de contato (`melee`/`dash`), normal ou especial, carrega mirando o adversário (andando, se quiser), pula no fim do preparo (`leapMaxPx`, `leapSpeedPx`) e sai ao pousar (`casting.lunge`, `goesOffAt`). O dado `leap` da entidade serve à previsão e ao arco do pulo; `MECHANICS` (fixture) usa pulo instantâneo.
 - Bloco H: o papel de uma pessoa (`data.role`: shop, heal, battle, none) vem dos comandos que o script dela alcança (`packages/server/src/npc-roles.ts`); "Falar" (a tecla de interagir) num vendedor ou enfermeira roda o script respondendo "até logo" ao menu e "não" à pergunta; "Loja", "Vender" e "Curar" agem sem script (`npc-action`, protocolo 40). As opções usam os botões dos golpes: interagir (A, o do golpe 1 no controle), golpe 2, golpe 3. O caminho em que o script abre a loja ficou para placas e scripts de história (test/shop.test.ts usa uma placa).
 - Bloco H: só modelos posicionados projetam sombra (casas, prédios, portões, móveis); terreno, árvores e grama não. O mesh marca o nome do modelo em `groups[].building` (etapa maps v13) e `content/maps/shadows.json` lista os modelos sem sombra (plantas e decoração plana ou de efeito).
 - Bloco H: a loja aparece na Pokédex 3D com casca azul (`mountPokedex(..., shell)`, pose `raised`), as abas na faixa de cima da tela; as abas Comprar/Vender mandam `shop-mode` (protocolo 43) e o servidor reenvia `shopOpen` no outro modo.
 - Uma tecla, uma função: Esc é só voltar (`cancel`) e o menu (o celular) abre só no Tab; `readSettings` tira o Esc do `menu` salvo quando ele também é `cancel`.
+- Configurações salvas antes do bloco H guardavam os golpes em 1–4; `readSettings` passa para J/K/L/I quando os quatro ainda são exatamente Digit1–4 (teclas trocadas pelo jogador ficam).
+- Bloco C (ajuste): a arena de teste monta cada Pokémon em 2 slots normais + 2 especiais, cada um filtrado pela classe; "Usar o time original" encaixa o time pela mesma regra do combate (`slotIndices`), deixando de fora o excedente de uma classe.
+- Arena de teste: o menu fica em `settings.arena` (`settings.json` do PC, `null` antes da primeira vez); um campo novo do menu entra opcional ou com padrão, senão a arena salva é descartada. A gravação de configurações só reaplica a janela quando o patch traz `window` ou `fullscreen`.
+- Luta de treinador decidida segura `endS` (2 s, `content/trainer/tuning.json`) antes de fechar: `trainerBattleOver` (protocolo 47) avisa na hora quem luta; o último Pokémon fica caído em campo e a derrota só faz o blackout depois. Selvagens, PvP e duelos não mudam.
+- Arena de teste: `leader` opcional (protocolo 45, `GYM_LEADERS` em `shared/src/trainer/leaders.ts`): o líder de ginásio aparece quando o primeiro adversário perde e desafia com o time da extração, sem cura entre as lutas; depois de um treinador, espera o `trainer-ready` que o cliente manda ao fechar a fala de derrota.
+- Bloco C (ajuste): a janela de parry é o preparo inteiro do golpe normal. O golpe guarda quem apertou (`casting.parriedBy`, levado ao projétil) e o parry só acontece no contato; segurar H sem parry registrado já defende. `parryPoseS` (0,5 s) é só a pose. O indicador lê o estado mais recente (`game.latest`), não a visão atrasada.
+- Bloco C (ajuste): errar o 1º normal da sequência põe 1 s de cooldown nesse golpe (`action.normalMissCooldownS`) e reinicia a sequência; `cd1`/`cd2` só vão ao cliente durante essa espera. Ether e Elixir seguem só nos especiais.
+- Arena de teste: `legendary` opcional (protocolo 48, `LEGENDARIES` em `shared/src/wild/legendaries.ts`), no lugar do líder: depois que o adversário perde, o lendário surge como selvagem com a IA, no nível dele.
+- Chefes: lendário selvagem (`LEGENDARIES`, decidido em `combat.spawn`) e o último da equipe de um `BOSS_TRAINERS` (líderes, Elite Four e Lance, com as revanches da Liga) têm `bossHpMul` (2×, `content/combat/tuning.json`) e `data.boss`, que vira a barra no topo da tela; a captura devolve o HP à escala normal.
+- Bando: selvagem nascido no mapa (grama, caverna, água) rola uma vez, ao entrar em luta ou tomar o primeiro dano, `packCall` (33%, 4; `content/wild/spawn.json`) para chamar mais da mesma espécie e nível; chamados, pescados, errantes e os fixos de script não chamam.
+- Bloco C (latência): o servidor decide, o cliente responde. Golpe, esquiva e parry vão na mensagem `press` (protocolo 46), na hora do aperto e à frente da fila de inputs, com `seen` (o tick na tela de quem apertou); `state.lastPress` confirma. Parry, defesa e esquiva valem pelo `seen`, até `action.lagMaxS` (0,15 s) atrás; por isso o contato num Pokémon de jogador só se resolve 0,1 s depois (`contacts` em `combat.ts`). `createCombatPredictor` mostra no mesmo quadro o preparo (`kit1..4`), o pulo, a esquiva e a pose, e some com eles se o servidor recusar. Os testes usam `lagMaxS: 0` (`combatData()`), menos `combat-lag` e `combat-prediction-server`.
+- Os outros são mostrados um tick mais o tremor medido no passado (`interpolation.ts`), não mais 100 ms fixos.
+- Arte própria em `art/` entra no cliente com `?inline` (data URI): o pacote não aceita arquivos de imagem.
+- Partículas de status contínuo (`status/*`) sobem retas (como na ROM) num plano atrás do sprite (`particles.play(..., status)`), da altura de `STATUS_HEIGHT`; as de golpes seguem na frente. Nocauteado não mostra nenhum efeito de luta. O atordoamento do parry é o ícone 💫.
