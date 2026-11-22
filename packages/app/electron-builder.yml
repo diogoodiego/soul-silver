@@ -10,6 +10,9 @@ files:
 asar: true
 npmRebuild: false
 win:
+  # Signs only when WIN_SIGN_COMMAND is set (build/sign.cjs); unsigned builds keep working.
+  signtoolOptions:
+    sign: ./build/sign.cjs
   target:
     - target: nsis
       arch:

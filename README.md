@@ -268,6 +268,38 @@ as versões já publicadas. Nunca reaproveite uma tag publicada.
 
 Para gerar o instalador localmente, sem publicar: `npm run dist` (saída em `packages/app/dist/`).
 
+### Assinatura de código (aviso do SmartScreen)
+
+O aviso "O Windows protegeu o computador" aparece porque o instalador não tem assinatura de código.
+Ele não pode ser removido só com código: é preciso um certificado de assinatura emitido no nome do
+desenvolvedor. As atualizações automáticas não passam pelo SmartScreen (o app baixa e instala a
+versão nova sozinho); o aviso só aparece na primeira instalação, baixada pelo navegador.
+
+O build já está pronto para assinar. Sem certificado, ele segue sem assinatura e o workflow só
+emite um aviso. Com certificado, o `electron-builder` chama [packages/app/build/sign.cjs](packages/app/build/sign.cjs)
+para cada executável, e esse script roda o comando da variável `WIN_SIGN_COMMAND` trocando `{file}`
+pelo caminho do arquivo. Para ativar na release:
+
+1. Obtenha um certificado de assinatura de código para pessoa física. Hoje os certificados novos
+   ficam num token físico ou num serviço de assinatura na nuvem, e não podem mais ser exportados
+   como arquivo `.pfx`; para assinar no GitHub Actions, escolha um com assinatura na nuvem e acesso
+   por linha de comando (por exemplo, o eSigner da SSL.com, usado pelo `CodeSignTool`). O Azure
+   Artifact Signing só aceita pessoa física dos EUA e do Canadá. Projetos de código aberto podem
+   pedir assinatura gratuita à SignPath Foundation, que avalia cada projeto.
+2. Em **Settings → Secrets and variables → Actions** do repositório, crie o secret
+   `WIN_SIGN_COMMAND` com o comando do serviço escolhido, usando `{file}` no lugar do arquivo e as
+   variáveis `WIN_SIGN_USERNAME`, `WIN_SIGN_PASSWORD`, `WIN_SIGN_CREDENTIAL_ID` e
+   `WIN_SIGN_TOTP_SECRET` (também secrets) para as credenciais. Se o serviço precisar de uma
+   ferramenta instalada, acrescente um passo antes de "Build installer" no `release.yml`.
+3. Publique uma versão. O passo "Signature" do workflow falha se o instalador não sair com
+   assinatura válida.
+
+Mesmo assinado, um certificado comum (IV ou OV) ainda mostra o aviso nas primeiras instalações,
+até a Microsoft acumular reputação para ele; o que muda logo de início é o nome do editor no aviso,
+no lugar de "Editor desconhecido". Depois de passar a assinar, não volte a publicar versões sem
+assinatura: se `publisherName` for configurado no `electron-builder.yml`, o atualizador recusa
+versões assinadas por outro editor ou sem assinatura.
+
 ## Problemas comuns
 
 - **`npm install` falha com `EBADENGINE`**: a versão do Node não é a 24. Instale o Node 24 LTS

@@ -37,7 +37,27 @@ jobs:
       - name: Test
         run: npm test
       - name: Build installer
+        env:
+          # Empty until a code signing certificate exists (README, "Assinatura de código").
+          WIN_SIGN_COMMAND: ${{ secrets.WIN_SIGN_COMMAND }}
+          WIN_SIGN_USERNAME: ${{ secrets.WIN_SIGN_USERNAME }}
+          WIN_SIGN_PASSWORD: ${{ secrets.WIN_SIGN_PASSWORD }}
+          WIN_SIGN_CREDENTIAL_ID: ${{ secrets.WIN_SIGN_CREDENTIAL_ID }}
+          WIN_SIGN_TOTP_SECRET: ${{ secrets.WIN_SIGN_TOTP_SECRET }}
         run: npm run dist
+      - name: Signature
+        shell: pwsh
+        env:
+          WIN_SIGN_COMMAND: ${{ secrets.WIN_SIGN_COMMAND }}
+        run: |
+          $exe = Get-ChildItem packages/app/dist/SoulSilver-Desktop-Setup-*.exe | Select-Object -First 1
+          $sig = Get-AuthenticodeSignature $exe.FullName
+          if ($env:WIN_SIGN_COMMAND) {
+            if ($sig.Status -ne 'Valid') { Write-Error "Instalador sem assinatura válida: $($sig.Status)"; exit 1 }
+            Write-Host "Assinado por $($sig.SignerCertificate.Subject)"
+          } else {
+            Write-Host "::warning::Instalador sem assinatura de código: o SmartScreen vai avisar na instalação."
+          }
       - name: Verify package
         run: node scripts/verify-package.ts packages/app/dist/win-unpacked
       - name: Release notes
