@@ -2,12 +2,12 @@
   "kind": "statuses",
   "formatVersion": 1,
   "records": [
-    { "id": "burn", "major": true, "durationS": { "min": 8, "max": 8 }, "intervalS": 2, "tickDamage": 0.125, "attackMul": 0.5, "immuneTypes": [10] },
-    { "id": "poison", "major": true, "durationS": { "min": 10, "max": 10 }, "intervalS": 2, "tickDamage": 0.125, "immuneTypes": [3, 8] },
-    { "id": "toxic", "major": true, "durationS": { "min": 12, "max": 12 }, "intervalS": 2, "tickDamage": 0.0625, "toxic": true, "immuneTypes": [3, 8] },
-    { "id": "paralysis", "major": true, "durationS": { "min": 10, "max": 10 }, "speedMul": 0.25, "skipMove": 25, "immuneTypes": [] },
-    { "id": "sleep", "major": true, "durationS": { "min": 1.5, "max": 4 }, "immobile": true, "immuneTypes": [] },
-    { "id": "freeze", "major": true, "durationS": { "min": 6, "max": 6 }, "intervalS": 1, "thaw": 20, "immobile": true, "immuneTypes": [15] },
-    { "id": "confusion", "major": false, "durationS": { "min": 2, "max": 5 }, "misdirect": 50, "deviationDeg": 120, "immuneTypes": [] }
+    { "id": "burn", "durationS": { "min": 3.3, "max": 3.3 }, "intervalS": 0.8, "tickDamage": 0.0625, "attackMul": 0.5, "immuneTypes": [10] },
+    { "id": "poison", "durationS": { "min": 4.2, "max": 4.2 }, "intervalS": 0.8, "tickDamage": 0.0625, "immuneTypes": [3, 8] },
+    { "id": "toxic", "durationS": { "min": 5, "max": 5 }, "intervalS": 0.8, "tickDamage": 0.03125, "toxic": true, "immuneTypes": [3, 8] },
+    { "id": "paralysis", "durationS": { "min": 4.2, "max": 4.2 }, "speedMul": 0.25, "skipMove": 25, "immuneTypes": [] },
+    { "id": "sleep", "durationS": { "min": 0.6, "max": 1.7 }, "immobile": true, "immuneTypes": [] },
+    { "id": "freeze", "durationS": { "min": 2.5, "max": 2.5 }, "intervalS": 0.4, "thaw": 20, "immobile": true, "immuneTypes": [15] },
+    { "id": "confusion", "durationS": { "min": 0.8, "max": 2.1 }, "misdirect": 50, "deviationDeg": 120, "immuneTypes": [] }
   ]
 }

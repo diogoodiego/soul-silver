@@ -6,20 +6,22 @@ import type { Ball } from "../../src/wild/schemas.ts";
 // Reference values worked out by hand from the Gen 3–4 formula (research R8).
 describe("catchValue", () => {
   it.each([
-    // hpMax, hp, rate, ball, status → a
-    [20, 20, 255, 1, undefined, 85], // full HP: a third of the rate
-    [20, 10, 255, 1, undefined, 170], // half HP
-    [20, 1, 255, 1, undefined, 246], // 1 HP: almost the whole rate
-    [20, 1, 45, 1.5, "sleep", 130],
-    [20, 1, 45, 1.5, "freeze", 130],
-    [20, 1, 45, 1.5, "paralysis", 97],
-    [20, 1, 45, 1.5, "burn", 97],
-    [20, 1, 45, 1.5, "poison", 97],
-    [20, 1, 45, 1.5, "toxic", 97],
-    [20, 1, 45, 1.5, undefined, 65],
-    [100, 100, 3, 1, undefined, 1],
-  ] as const)("hpMax %i, hp %i, rate %i, ball ×%s, %s → %i", (hpMax, hp, catchRate, ball, status, a) => {
-    expect(catchValue({ hpMax, hp, catchRate, ball, status })).toBe(a);
+    // hpMax, hp, rate, ball, statuses → a
+    [20, 20, 255, 1, [], 85], // full HP: a third of the rate
+    [20, 10, 255, 1, [], 170], // half HP
+    [20, 1, 255, 1, [], 246], // 1 HP: almost the whole rate
+    [20, 1, 45, 1.5, ["sleep"], 130],
+    [20, 1, 45, 1.5, ["freeze"], 130],
+    [20, 1, 45, 1.5, ["paralysis"], 97],
+    [20, 1, 45, 1.5, ["burn"], 97],
+    [20, 1, 45, 1.5, ["poison"], 97],
+    [20, 1, 45, 1.5, ["toxic"], 97],
+    [20, 1, 45, 1.5, ["burn", "sleep", "confusion"], 130], // the best one counts
+    [20, 1, 45, 1.5, ["confusion"], 65],
+    [20, 1, 45, 1.5, [], 65],
+    [100, 100, 3, 1, [], 1],
+  ] as const)("hpMax %i, hp %i, rate %i, ball ×%s, %s → %i", (hpMax, hp, catchRate, ball, statuses, a) => {
+    expect(catchValue({ hpMax, hp, catchRate, ball, statuses })).toBe(a);
   });
 });
 

@@ -34,11 +34,12 @@ describe("move scoring (US2)", () => {
     expect(scores.map((s) => s.slot)).toEqual([0]);
   });
 
-  it("status only on a target without one", () => {
-    const sleep = move({ id: 79, behavior: "target-debuff", category: "status", power: 0, damages: false, status: true, hitbox: { shape: "capsule", lengthPx: 64, widthPx: 12 } });
+  it("status only on a target without that one", () => {
+    const sleep = move({ id: 79, behavior: "target-debuff", category: "status", power: 0, damages: false, status: "sleep", hitbox: { shape: "capsule", lengthPx: 64, widthPx: 12 } });
     const s = self({ moves: [sleep] });
     expect(scoreMoves(s, foe(), ctx())[0]!.utility).toBeGreaterThan(0);
-    expect(scoreMoves(s, foe({ hasStatus: true }), ctx())[0]!.utility).toBe(0);
+    expect(scoreMoves(s, foe({ statuses: ["sleep"] }), ctx())[0]!.utility).toBe(0);
+    expect(scoreMoves(s, foe({ statuses: ["burn"] }), ctx())[0]!.utility).toBeGreaterThan(0);
   });
 
   it("heal only below the HP threshold", () => {

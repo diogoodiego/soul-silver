@@ -6,7 +6,7 @@ cada item (ver `CLAUDE.md`).
 
 **Próximo item: 034.5 Balanceamento de Johto** (refeito sobre o combate do bloco C)
 
-Versões atuais: protocolo 48, save 22.
+Versões atuais: protocolo 49, save 22.
 
 ## Concluídos
 
@@ -88,6 +88,7 @@ assunto, ou quando o desenvolvedor pedir.
 - H: dois goldens já falham na base (`f56c77f`), independentemente do bloco H: a árvore de Cut do mapa 10 (1041, 219) continua bloqueando em `field.golden.ts`, e a luta com o Gyarados vermelho não começa em `campaign.golden.ts`.
 - V.1/V.2: roteiro manual em `.evidence/V.1/roteiro.md` (visual, ajuste das forças em `MAX`/`BLOOM_THRESHOLD`/`MAX_SHADE`, `shadow.bias`, FPS em Alta).
 - V.3: mapa 306 sem piso reconhecível (ringue invisível, colisão ok); 4 interiores só com piso, sem parede. Roteiro manual: ida/volta do ringue, texturas, câmera perto das paredes.
+- Combate: em `combat.ts`, `"chance" in e` faz estágios e flinch sem `chance` explícita usarem 100%, e não a chance original do golpe (o acúmulo de status já usa a certa); decidir no 034.5.
 - V.3: batalha roteirizada usa a pessoa mais próxima (até 2 tiles) como sprite do treinador no ringue (`shortcut:` em `trainer-battle.ts`).
 - V.2: testes de tempo do servidor (`perf`, `trainer-perf`) falham às vezes na suíte cheia e passam isolados; não é do V.2.
 - 024: jogada humana do `walkthrough.md` sem comandos de desenvolvimento (manual).
@@ -222,6 +223,7 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Bloco H: todo golpe leva ao menos 0,5 s de preparo (`minCastS` em `content/combat/tuning.json`), para a área e a carga serem vistas e desviadas; os testes de mecânica usam `minCastS: 0` (`combatData()`).
 - Bloco H: nenhum golpe prende o Pokémon durante o preparo (o campo `rooted` das archetypes ficou sem uso); a direção do golpe é a do início do preparo (menos a dos de contato, bloco C).
 - Bloco C (ajuste): golpe de contato (`melee`/`dash`), normal ou especial, carrega mirando o adversário (andando, se quiser), pula no fim do preparo (`leapMaxPx`, `leapSpeedPx`) e sai ao pousar (`casting.lunge`, `goesOffAt`). O dado `leap` da entidade serve à previsão e ao arco do pulo; `MECHANICS` (fixture) usa pulo instantâneo.
+- Menu (Pokédex-celular): abre a qualquer momento, também em combate (substitui a FR-013 da spec 017), e com um só jogador na sessão pausa o servidor: o tick não avança (`paused` em `session.ts`) e os estados repetem o mesmo tick. Com outros na sessão nada pausa.
 - Bloco H: o papel de uma pessoa (`data.role`: shop, heal, battle, none) vem dos comandos que o script dela alcança (`packages/server/src/npc-roles.ts`); "Falar" (a tecla de interagir) num vendedor ou enfermeira roda o script respondendo "até logo" ao menu e "não" à pergunta; "Loja", "Vender" e "Curar" agem sem script (`npc-action`, protocolo 40). As opções usam os botões dos golpes: interagir (A, o do golpe 1 no controle), golpe 2, golpe 3. O caminho em que o script abre a loja ficou para placas e scripts de história (test/shop.test.ts usa uma placa).
 - Bloco H: só modelos posicionados projetam sombra (casas, prédios, portões, móveis); terreno, árvores e grama não. O mesh marca o nome do modelo em `groups[].building` (etapa maps v13) e `content/maps/shadows.json` lista os modelos sem sombra (plantas e decoração plana ou de efeito).
 - Bloco H: a loja aparece na Pokédex 3D com casca azul (`mountPokedex(..., shell)`, pose `raised`), as abas na faixa de cima da tela; as abas Comprar/Vender mandam `shop-mode` (protocolo 43) e o servidor reenvia `shopOpen` no outro modo.
@@ -234,6 +236,7 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Bloco C (ajuste): a janela de parry é o preparo inteiro do golpe normal. O golpe guarda quem apertou (`casting.parriedBy`, levado ao projétil) e o parry só acontece no contato; segurar H sem parry registrado já defende. `parryPoseS` (0,5 s) é só a pose. O indicador lê o estado mais recente (`game.latest`), não a visão atrasada.
 - Bloco C (ajuste): errar o 1º normal da sequência põe 1 s de cooldown nesse golpe (`action.normalMissCooldownS`) e reinicia a sequência; `cd1`/`cd2` só vão ao cliente durante essa espera. Ether e Elixir seguem só nos especiais.
 - Arena de teste: `legendary` opcional (protocolo 48, `LEGENDARIES` em `shared/src/wild/legendaries.ts`), no lugar do líder: depois que o adversário perde, o lendário surge como selvagem com a IA, no nível dele.
+- Status por acúmulo (protocolo 49): cada acerto soma a chance do golpe (%) à barra do status (`bld_<status>`), que ativa em 100; os status são independentes e simultâneos (`status` é uma lista separada por vírgula, sem `confused`), não enchem enquanto ativos e duram até 5 s. O save do errante guarda só um.
 - Chefes: lendário selvagem (`LEGENDARIES`, decidido em `combat.spawn`) e o último da equipe de um `BOSS_TRAINERS` (líderes, Elite Four e Lance, com as revanches da Liga) têm `bossHpMul` (2×, `content/combat/tuning.json`) e `data.boss`, que vira a barra no topo da tela; a captura devolve o HP à escala normal.
 - Bando: selvagem nascido no mapa (grama, caverna, água) rola uma vez, ao entrar em luta ou tomar o primeiro dano, `packCall` (33%, 4; `content/wild/spawn.json`) para chamar mais da mesma espécie e nível; chamados, pescados, errantes e os fixos de script não chamam.
 - Bloco C (latência): o servidor decide, o cliente responde. Golpe, esquiva e parry vão na mensagem `press` (protocolo 46), na hora do aperto e à frente da fila de inputs, com `seen` (o tick na tela de quem apertou); `state.lastPress` confirma. Parry, defesa e esquiva valem pelo `seen`, até `action.lagMaxS` (0,15 s) atrás; por isso o contato num Pokémon de jogador só se resolve 0,1 s depois (`contacts` em `combat.ts`). `createCombatPredictor` mostra no mesmo quadro o preparo (`kit1..4`), o pulo, a esquiva e a pose, e some com eles se o servidor recusar. Os testes usam `lagMaxS: 0` (`combatData()`), menos `combat-lag` e `combat-prediction-server`.

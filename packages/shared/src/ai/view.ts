@@ -1,4 +1,4 @@
-import type { Behavior, Hitbox } from "../combat/schemas.ts";
+import type { Behavior, Hitbox, StatusId } from "../combat/schemas.ts";
 import type { Rng } from "../game/rng.ts";
 
 // What the AI may know (spec 019, research R3): its own Pokémon in full, and of everyone else only
@@ -27,8 +27,8 @@ export interface MoveView {
   /** Block C: a special (cooldown, red warning: only dodged). */
   special: boolean;
   damages: boolean;
-  /** Inflicts a status on the target. */
-  status: boolean;
+  /** The status it builds up on the target. */
+  status: StatusId | undefined;
   /** Raises the user's stats. */
   buff: boolean;
   /** Lowers the target's stats. */
@@ -72,7 +72,8 @@ export interface OpponentView extends Point {
   specialDefense: number;
   hp: number;
   hpMax: number;
-  hasStatus: boolean;
+  /** Active statuses. */
+  statuses: StatusId[];
   casting: CastView | undefined;
 }
 

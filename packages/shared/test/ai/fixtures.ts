@@ -34,7 +34,7 @@ export const move = (patch: Partial<MoveView> & Pick<MoveView, "id">): MoveView 
   speedPx: 0,
   ready: true,
   damages: true,
-  status: false,
+  status: undefined,
   buff: false,
   debuff: false,
   heals: false,
@@ -71,7 +71,7 @@ export const foe = (patch: Partial<OpponentView> = {}): OpponentView => ({
   specialDefense: 25,
   hp: 30,
   hpMax: 30,
-  hasStatus: false,
+  statuses: [],
   casting: undefined,
   ...patch,
 });

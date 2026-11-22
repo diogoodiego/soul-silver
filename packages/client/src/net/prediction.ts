@@ -1,4 +1,4 @@
-import { castData, DODGE_PX, DODGE_TICKS, unpackKit, type Point } from "@soulsilver/shared/combat";
+import { castData, DODGE_PX, DODGE_TICKS, statusesOf, unpackKit, type Point } from "@soulsilver/shared/combat";
 import { BUTTON, stepMovement, type Entity, type EntityData, type Occupied, type PlayerInput, type WorldLookup } from "@soulsilver/shared/game";
 import type { Direction } from "@soulsilver/shared/maps";
 import combatTuning from "../../../../content/combat/tuning.json";
@@ -103,7 +103,7 @@ const VECTORS: Record<Direction, Point> = { north: { x: 0, y: -1 }, south: { x: 
 const { action, bodyRadiusPx } = combatTuning.value;
 const num = (d: EntityData, key: string): number => (typeof d[key] === "number" ? d[key] : 0);
 /** It cannot act: what the server refuses, the prediction must not show. */
-const helpless = (d: EntityData) => d["hp"] === 0 || d["stun"] === true || d["status"] === "sleep" || d["status"] === "freeze";
+const helpless = (d: EntityData) => d["hp"] === 0 || d["stun"] === true || statusesOf(d).some((s) => s === "sleep" || s === "freeze");
 const guards = (d: EntityData) => d["parry"] === true || d["guard"] === true;
 
 function without(d: EntityData, test: (key: string) => boolean): EntityData {

@@ -215,8 +215,8 @@
   /** A trainer line (bank 728); trainer lines may name the player through buffer 0. */
   const trainerLine = async (text: string) => dialog.say(await scriptPages(text, { 0: { kind: "player" } }));
   /** HP and action bars over the foes while fighting: wild ones and other players' Pokémon (spec 017, PvP). */
-  let bars = $state<{ key: string; x: number; y: number; fraction: number; scared: boolean }[]>([]);
-  let bosses = $state<{ key: string; name: string; level: number; hp: number; hpMax: number }[]>([]);
+  let bars = $state<{ key: string; x: number; y: number; fraction: number; scared: boolean; data: Entity["data"] }[]>([]);
+  let bosses = $state<{ key: string; name: string; level: number; hp: number; hpMax: number; data: Entity["data"] }[]>([]);
   /** Block C: the mark around a CPU Pokémon charging a move or just parried, and combo counters. */
   let warnings = $state<{ key: string; x: number; y: number; mark: "normal" | "special" | "parried"; zoom: number }[]>([]);
   let combos = $state<{ key: string; x: number; y: number; count: number }[]>([]);
@@ -995,9 +995,9 @@
       // Block H: scared (😨) while a stat stage is lowered, until knocked out: beside a foe's bars, else over the Pokémon.
       const lowered = (e: Entity) => e.data["hp"] !== 0 && Object.entries(e.data).some(([k, v]) => k.startsWith("stg_") && Number(v) < 0);
       const foes = fighting ? shown.filter((e) => e.kind === "pokemon" && e.data["owner"] !== hudSelf!.data["owner"] && Number(e.data["hpMax"] ?? 0) > 0 && e.data["hp"] !== 0) : [];
-      const nextBosses = foes.filter((e) => e.data["boss"] === true).map((e) => ({ key: `boss-${e.id}`, name: speciesName(Number(e.data["species"])), level: Number(e.data["level"]), hp: Number(e.data["hp"]), hpMax: Number(e.data["hpMax"]) }));
+      const nextBosses = foes.filter((e) => e.data["boss"] === true).map((e) => ({ key: `boss-${e.id}`, name: speciesName(Number(e.data["species"])), level: Number(e.data["level"]), hp: Number(e.data["hp"]), hpMax: Number(e.data["hpMax"]), data: e.data }));
       if (nextBosses.length > 0 || bosses.length > 0) bosses = nextBosses;
-      const nextBars = foes.filter((e) => e.data["boss"] !== true).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]), scared: lowered(e) }));
+      const nextBars = foes.filter((e) => e.data["boss"] !== true).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]), scared: lowered(e), data: e.data }));
       if (nextBars.length > 0 || bars.length > 0) bars = nextBars;
       // Block C: the server marks the casts to warn about (CPU Pokémon, not self-buffs) and counts the combos.
       const nextWarnings: typeof warnings = fighting

@@ -103,7 +103,7 @@ const member = (species: number, level: number): PartyMember => {
         g.send({ type: "debugSetStatus", status: effect.cures[0]! });
         g.send({ type: "use-item-combat", item }, 50);
         const e = id === undefined ? undefined : g.session.world.get(id);
-        if (!e || e.data["status"] !== "" || e.data["confused"] === true) failed = `o status ${effect.cures[0]} ficou`;
+        if (!e || e.data["status"] !== "") failed = `o status ${effect.cures[0]} ficou`;
         break;
       }
       case "pp-ether": {

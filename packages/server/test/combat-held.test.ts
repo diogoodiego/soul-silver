@@ -47,14 +47,14 @@ describe("held items in combat", () => {
   it("a Cheri Berry cures paralysis as soon as it lands", () => {
     const { t, b } = duel(held(149, "berries", 5, 0));
     expect(t.combat.inflict(b, "paralysis", 1)).toBe(true);
-    expect(t.combat.get(b)!.major).toBeUndefined();
+    expect(t.combat.get(b)!.statuses.size).toBe(0);
     expect(t.combat.get(b)!.held).toBeUndefined();
   });
 
   it("a Cheri Berry leaves burn alone", () => {
     const { t, b } = duel(held(149, "berries", 5, 0));
     t.combat.inflict(b, "burn", 1);
-    expect(t.combat.get(b)!.major?.id).toBe("burn");
+    expect(t.combat.get(b)!.statuses.has("burn")).toBe(true);
     expect(t.combat.get(b)!.held?.item).toBe(149);
   });
 

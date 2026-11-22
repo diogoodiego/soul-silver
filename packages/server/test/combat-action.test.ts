@@ -312,7 +312,7 @@ describe("the charge and leap of contact moves (C.4)", () => {
     const { t, a, b, ca } = lunge(tackle.id, 60);
     const ys: number[] = [];
     for (let i = 0; i < 20; i++) {
-      ca.confusion = { id: "confusion", startTick: t.tick, untilTick: 9999, count: 0 };
+      ca.statuses.set("confusion", { id: "confusion", startTick: t.tick, untilTick: 9999, count: 0 });
       bag(t, b, { x: 60, y: 0 });
       bag(t, a, { x: 0, y: 0 });
       t.press(a, 1, east);

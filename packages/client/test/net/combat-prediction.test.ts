@@ -123,7 +123,7 @@ describe("createCombatPredictor", () => {
       ["a dodge while it charges", BUTTON.dash, { casting: 1 }],
       ["a parry on cooldown", BUTTON.guard, { cdGuard: 600 }],
       ["anything while stunned", 1, { stun: true }],
-      ["anything asleep", 1, { status: "sleep" }],
+      ["anything asleep", 1, { status: "burn,sleep" }],
       ["anything knocked out", BUTTON.dash, { hp: 0 }],
     ])("shows nothing the server would refuse: %s", (_name, buttons, data) => {
       const f = fight(data);

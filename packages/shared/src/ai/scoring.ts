@@ -59,7 +59,7 @@ export function scoreMoves(self: SelfView, target: OpponentView, ctx: ScoreConte
       damage = (100 * hp) / Math.max(1, target.hpMax);
     }
     let utility = 0;
-    if (m.status && !target.hasStatus && seen > 0) utility += k.statusUsefulness * hit;
+    if (m.status && !target.statuses.includes(m.status) && seen > 0) utility += k.statusUsefulness * hit;
     if ((m.buff || m.debuff) && (ctx.fightS < k.buffEarlyS || ctx.safe)) utility += k.buffUsefulness;
     if (m.heals && self.hp / self.hpMax < k.healHpFraction) utility += k.healUsefulness;
     const total = seen === 0 ? k.immuneScore : Math.max(k.immuneScore, damage * hit + utility);

@@ -1,6 +1,7 @@
 import {
   AIMED,
   applyStage,
+  BUILDUP_FULL,
   canApply,
   castData,
   castKit,
@@ -113,8 +114,9 @@ export interface Combatant {
   stats: Stats;
   hp: number;
   stages: Record<StageKey, number>;
-  major: StatusState | undefined;
-  confusion: StatusState | undefined;
+  statuses: Map<StatusId, StatusState>;
+  /** How full each status's bar is, up to BUILDUP_FULL. */
+  buildup: Map<StatusId, number>;
   /** Block C: the tick each slot can be used again (a normal waits only after missing the first of a chain), and how long its last cooldown was. */
   readyAt: number[];
   cooldownLen: number[];
@@ -237,8 +239,8 @@ export function createCombat(options: CombatOptions) {
   let events: HitEvent[] = [];
 
   const statusDef = (id: StatusId) => data.statuses.get(id)!;
-  const majorDef = (c: Combatant) => (c.major ? statusDef(c.major.id) : undefined);
-  const immobile = (c: Combatant) => majorDef(c)?.immobile === true;
+  const activeDefs = (c: Combatant) => [...c.statuses.keys()].map(statusDef);
+  const immobile = (c: Combatant) => activeDefs(c).some((d) => d.immobile);
   const pos = (c: Combatant) => world.get(c.entityId)!;
   const body = (c: Combatant): Body => ({ x: pos(c).x, y: pos(c).y, r: tuning.bodyRadiusPx });
   const foes = (c: Combatant) => [...combatants.values()].filter((t) => t.hp > 0 && canHarm(c.owner, t.owner) && c.battle === t.battle);
@@ -258,7 +260,7 @@ export function createCombat(options: CombatOptions) {
 
   function speedOf(c: Combatant): number {
     const held = c.held?.effect.trigger === "speed-mul" ? c.held.effect.mul : 1;
-    return Math.floor(c.stats.speed * stageMultiplier(c.stages.speed) * (majorDef(c)?.speedMul ?? 1) * held);
+    return Math.floor(c.stats.speed * stageMultiplier(c.stages.speed) * activeDefs(c).reduce((mul, d) => mul * (d.speedMul ?? 1), 1) * held);
   }
   const movePx = (c: Combatant) => speedScale(tuning.speed, speedOf(c)).movePx / TICKS_PER_S;
   const action = tuning.action;
@@ -320,18 +322,25 @@ export function createCombat(options: CombatOptions) {
 
   function inflict(t: Combatant, id: StatusId): boolean {
     const def = statusDef(id);
-    if (!canApply(def, t.types, { major: t.major?.id, confused: t.confusion !== undefined })) return false;
-    const state = startStatus(def, tick, rng);
-    if (def.major) t.major = state;
-    else t.confusion = state;
+    if (!canApply(def, t.types, t.statuses.has(id))) return false;
+    t.statuses.set(id, startStatus(def, tick, rng));
+    t.buildup.delete(id);
     if (def.immobile) t.casting = undefined;
     const e = t.held?.effect;
     if (e?.trigger === "cure" && e.statuses.includes(id)) {
-      if (def.major) t.major = undefined;
-      else t.confusion = undefined;
+      t.statuses.delete(id);
       useHeld(t);
     }
     return true;
+  }
+
+  /** A hit fills the bar of a status; true when it got full and the status set in. While active, or on an immune type, the bar does not fill. */
+  function buildUp(t: Combatant, id: StatusId, amount: number): boolean {
+    if (!canApply(statusDef(id), t.types, t.statuses.has(id))) return false;
+    const filled = (t.buildup.get(id) ?? 0) + amount;
+    if (filled >= BUILDUP_FULL) return inflict(t, id);
+    t.buildup.set(id, filled);
+    return false;
   }
 
   function weatherMul(type: number): number {
@@ -358,7 +367,7 @@ export function createCombat(options: CombatOptions) {
       defenseStage: physical ? t.stages.defense : t.stages.specialDefense,
       stab: c.types.includes(move.type),
       typeMultipliers: [...new Set(t.types)].map((type) => (row?.against[type] ?? 10) / 10),
-      burned: physical && majorDef(c)?.attackMul !== undefined,
+      burned: physical && activeDefs(c).some((d) => d.attackMul !== undefined),
       weather: weatherMul(move.type),
       crit,
       random: rollRandom(rng),
@@ -439,7 +448,7 @@ export function createCombat(options: CombatOptions) {
       }
       // Being hurt ends its own combo.
       if (dealt > 0) t.combo.count = 0;
-      if (move.type === FIRE && t.major?.id === "freeze") t.major = undefined;
+      if (move.type === FIRE && t.statuses.has("freeze")) t.statuses.delete("freeze");
       // Life Orb: a share of max HP for every hit that dealt damage.
       const orb = c.held?.effect;
       if (orb?.trigger === "damage-mul" && orb.recoil && dealt > 0) hurt(c, Math.max(1, Math.floor(c.stats.hp * orb.recoil)));
@@ -458,7 +467,7 @@ export function createCombat(options: CombatOptions) {
     for (const e of move.effects) {
       if (t.hp === 0) return true;
       const chance = "chance" in e ? (e.chance ?? move.defaultChance) : 100;
-      if (e.kind === "status" && roll(chance) && inflict(t, e.status)) {
+      if (e.kind === "status" && buildUp(t, e.status, e.chance ?? move.defaultChance)) {
         emit({ kind: "status", attacker: c.entityId, target: t.entityId, move: move.id, status: e.status });
       } else if (e.kind === "stages" && e.target === "target" && roll(chance)) {
         const { stage, applied } = applyStage(t.stages[e.stat], e.delta);
@@ -643,10 +652,10 @@ export function createCombat(options: CombatOptions) {
       const d = Math.hypot(target.x - self.x, target.y - self.y);
       if (d > 0.01) dir = { x: (target.x - self.x) / d, y: (target.y - self.y) / d };
     }
-    const confusion = c.confusion && statusDef("confusion");
+    const confusion = c.statuses.has("confusion") ? statusDef("confusion") : undefined;
     const astray = confusion !== undefined && roll(confusion.misdirect ?? 0);
     if (astray) dir = rotate(dir, (rng.nextFloat() * 2 - 1) * (confusion.deviationDeg ?? 0));
-    const skip = majorDef(c)?.skipMove;
+    const skip = Math.max(0, ...activeDefs(c).map((d) => d.skipMove ?? 0));
     if (skip && rng.nextInt(100) < skip) {
       if (m.special) startCooldown(c, slot, m);
       emit({ kind: "failed", attacker: c.entityId, target: c.entityId, move: m.id });
@@ -746,8 +755,7 @@ export function createCombat(options: CombatOptions) {
       hp: c.hp,
       hpMax: c.stats.hp,
       owner: String(c.owner),
-      status: c.major?.id ?? "",
-      confused: c.confusion !== undefined,
+      status: [...c.statuses.keys()].join(","),
       casting: c.casting ? c.casting.slot + 1 : 0,
       used: c.used.count,
       usedMove: c.used.move,
@@ -788,6 +796,7 @@ export function createCombat(options: CombatOptions) {
       const move = c.moves[c.casting.slot]!;
       Object.assign(data, castData(castKit(move, msOf(c.casting.readyTick - c.casting.startTick)), c.casting.dir, lunge?.px ?? 0));
     }
+    for (const [id, filled] of c.buildup) data[`bld_${id}`] = filled;
     for (const k of STAGE_KEYS) if (c.stages[k] !== 0) data[`stg_${k}`] = c.stages[k];
     world.update({ ...e, data });
   }
@@ -826,8 +835,8 @@ export function createCombat(options: CombatOptions) {
         stats,
         hp: stats.hp,
         stages: zeroStages(),
-        major: undefined,
-        confusion: undefined,
+        statuses: new Map(),
+        buildup: new Map(),
         readyAt: [0, 0, 0, 0],
         cooldownLen: [0, 0, 0, 0],
         chain: { step: 0, at: 0 },
@@ -893,15 +902,11 @@ export function createCombat(options: CombatOptions) {
     /** Cures these statuses; false when it had none of them. */
     cure(id: number, statuses: readonly StatusId[]): boolean {
       const c = get(id);
-      const major = !!c.major && statuses.includes(c.major.id);
-      const confused = !!c.confusion && statuses.includes("confusion");
-      if (major) c.major = undefined;
-      if (confused) c.confusion = undefined;
-      return major || confused;
+      return statuses.filter((s) => c.statuses.delete(s)).length > 0;
     },
     hasStatus(id: number, statuses: readonly StatusId[]): boolean {
       const c = get(id);
-      return (!!c.major && statuses.includes(c.major.id)) || (!!c.confusion && statuses.includes("confusion"));
+      return statuses.some((s) => c.statuses.has(s));
     },
     /** Block C: an Ether ends the cooldown of one special (the longest wait), an Elixir of both; false when none was waiting. */
     restore(id: number, all: boolean): boolean {
@@ -937,15 +942,14 @@ export function createCombat(options: CombatOptions) {
       const all = [...combatants.values()];
       for (const c of all) {
         if (c.hp === 0) continue;
-        for (const key of ["major", "confusion"] as const) {
-          const state = c[key];
-          if (!state) continue;
+        for (const state of [...c.statuses.values()]) {
+          if (c.hp === 0) break;
           const { damage, ended } = tickStatus(statusDef(state.id), state, tick, c.stats.hp, rng);
           if (damage > 0) {
             hurt(c, damage);
             emit({ kind: "tick", attacker: c.entityId, target: c.entityId, move: 0, amount: damage, status: state.id });
           }
-          if (ended) c[key] = undefined;
+          if (ended) c.statuses.delete(state.id);
         }
         if (c.held?.effect.trigger === "regen" && c.hp > 0 && tick >= c.regenAt) {
           if (c.regenAt > 0 && c.hp < c.stats.hp) useHeld(c, restoreHp(c, Math.max(1, Math.floor(c.stats.hp * c.held.effect.fraction))));

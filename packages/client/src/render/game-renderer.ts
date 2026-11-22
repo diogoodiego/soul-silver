@@ -1,3 +1,4 @@
+import { statusesOf } from "@soulsilver/shared/combat";
 import { HOP_TICKS, tileAt, WARP_TICKS, type Entity, type HitEvent, type WorldMap } from "@soulsilver/shared/game";
 import { ANIMATION_FRAME_MS, MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { parseSpriteFile, type SpriteEmitter, type SpriteFrame, type SpriteSetFile } from "@soulsilver/shared/sprites";
@@ -463,8 +464,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
         particles.play(emittersAt(e.data["move"], "travel"), anchorOf(e.id), now, key, true);
       }
       if (e.kind !== "pokemon" || e.data["hp"] === 0) continue;
-      const statuses = [...(typeof e.data["status"] === "string" && e.data["status"] !== "" ? [e.data["status"]] : []), ...(e.data["confused"] === true ? ["confusion"] : [])];
-      for (const status of statuses) {
+      for (const status of statusesOf(e.data)) {
         const key = `${e.id}/status/${status}`;
         const share = STATUS_HEIGHT[status];
         wanted.add(key);

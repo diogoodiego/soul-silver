@@ -4,13 +4,13 @@ import type { Ball } from "./schemas.ts";
 
 // Gen 4 capture (spec 015, research R8–R9). Pure: the roll comes from the rng passed in.
 
-/** Sleep and freeze ×2; the other major statuses ×1.5. */
-const statusMultiplier = (status: StatusId | undefined): number => (status === "sleep" || status === "freeze" ? 2 : status && status !== "confusion" ? 1.5 : 1);
+/** Sleep and freeze ×2; the other statuses but confusion ×1.5; the best one counts. */
+const statusMultiplier = (statuses: readonly StatusId[]): number => Math.max(1, ...statuses.map((s) => (s === "sleep" || s === "freeze" ? 2 : s === "confusion" ? 1 : 1.5)));
 
 /** The modified catch rate `a`: 255 or more is a sure catch. */
-export function catchValue(input: { hpMax: number; hp: number; catchRate: number; ball: number; status?: StatusId | undefined }): number {
-  const { hpMax, hp, catchRate, ball, status } = input;
-  return Math.floor(Math.floor(Math.floor((3 * hpMax - 2 * hp) * catchRate * ball) / (3 * hpMax)) * statusMultiplier(status));
+export function catchValue(input: { hpMax: number; hp: number; catchRate: number; ball: number; statuses: readonly StatusId[] }): number {
+  const { hpMax, hp, catchRate, ball, statuses } = input;
+  return Math.floor(Math.floor(Math.floor((3 * hpMax - 2 * hp) * catchRate * ball) / (3 * hpMax)) * statusMultiplier(statuses));
 }
 
 /** Each of the four shake checks passes when a 16-bit roll is below this. */

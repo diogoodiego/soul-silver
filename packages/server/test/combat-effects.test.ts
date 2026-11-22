@@ -15,13 +15,13 @@ describe("statuses", () => {
     const { t, b } = setup([MOVES.willOWisp.id]);
     t.press(1, 1, east);
     t.step(10);
-    expect(t.combat.get(b)!.major?.id).toBe("burn");
+    expect(t.combat.get(b)!.statuses.has("burn")).toBe(true);
     expect(t.world.get(b)!.data.status).toBe("burn");
     t.step(170);
     const ticks = t.events.filter((e) => e.kind === "tick" && e.target === b);
     expect(ticks.length).toBe(4);
-    expect(ticks[0]!.amount).toBe(Math.floor(t.combat.get(b)!.stats.hp / 8));
-    expect(t.combat.get(b)!.major).toBeUndefined();
+    expect(ticks[0]!.amount).toBe(Math.floor(t.combat.get(b)!.stats.hp / 16));
+    expect(t.combat.get(b)!.statuses.size).toBe(0);
   });
 
   it("burn halves physical damage", () => {
@@ -49,20 +49,70 @@ describe("statuses", () => {
     expect(t.events.filter((e) => e.attacker === b)).toHaveLength(0);
   });
 
-  it("one major status at a time; confusion can sit beside it", () => {
+  it("statuses run side by side", () => {
     const { t, b } = setup([]);
     t.combat.inflict(b, "burn", 0);
     t.combat.inflict(b, "sleep", 0);
     t.combat.inflict(b, "confusion", 0);
-    expect(t.combat.get(b)!.major?.id).toBe("burn");
-    expect(t.combat.get(b)!.confusion).toBeDefined();
+    expect([...t.combat.get(b)!.statuses.keys()]).toEqual(["burn", "sleep", "confusion"]);
+    t.step();
+    expect(t.world.get(b)!.data.status).toBe("burn,sleep,confusion");
+  });
+
+  it("each hit fills the bar by the move's chance; full, it inflicts the status and empties", () => {
+    const t = combatSetup();
+    t.spawn("cyndaquil", [MOVES.ember.id], { x: 0, y: 0 }, 1, 20);
+    const b = t.spawn("sentret", [], { x: 20, y: 0 }, "wild", 90);
+    const ember = t.data.move(MOVES.ember.id)!;
+    ember.defaultChance = 40;
+    ember.accuracy = null;
+    const target = t.combat.get(b)!;
+    const hit = () => {
+      target.hp = target.stats.hp;
+      t.world.update({ ...t.world.get(b)!, x: 20, y: 0 });
+      t.press(1, 1, east);
+      t.step(10);
+    };
+    hit();
+    expect(target.buildup.get("burn")).toBe(40);
+    expect(t.world.get(b)!.data.bld_burn).toBe(40);
+    hit();
+    expect(target.statuses.has("burn")).toBe(false);
+    hit();
+    expect(target.statuses.has("burn")).toBe(true);
+    expect(target.buildup.has("burn")).toBe(false);
+    expect(t.events.filter((e) => e.kind === "status")).toHaveLength(1);
+    // Immune to burn while it burns, but another status still builds up.
+    ember.effects = [...ember.effects, { kind: "status", status: "poison", chance: 30 }];
+    hit();
+    expect(target.buildup.has("burn")).toBe(false);
+    expect(target.buildup.get("poison")).toBe(30);
+  });
+
+  it("an immune type builds nothing up", () => {
+    const t = combatSetup();
+    t.spawn("cyndaquil", [MOVES.ember.id], { x: 0, y: 0 }, 1, 20);
+    const b = t.spawn("cyndaquil", [], { x: 20, y: 0 }, "wild", 20);
+    t.press(1, 1, east);
+    t.step(10);
+    expect(t.combat.get(b)!.buildup.size).toBe(0);
+  });
+
+  it("no status lasts over 5 s, and tick damage keeps its count", () => {
+    for (const s of combatSetup().data.statuses.values()) expect(s.durationS.max).toBeLessThanOrEqual(5);
+    for (const [id, count] of [["burn", 4], ["poison", 5], ["toxic", 6]] as const) {
+      const { t, b } = setup([]);
+      t.combat.inflict(b, id, 0);
+      t.step(105);
+      expect(t.events.filter((e) => e.kind === "tick" && e.target === b)).toHaveLength(count);
+    }
   });
 
   it("type immunities hold (fire cannot burn)", () => {
     const t = combatSetup();
     const a = t.spawn("cyndaquil", [], { x: 0, y: 0 });
     t.combat.inflict(a, "burn", 0);
-    expect(t.combat.get(a)!.major).toBeUndefined();
+    expect(t.combat.get(a)!.statuses.size).toBe(0);
   });
 
   it("paralysis slows the target", () => {
@@ -90,11 +140,10 @@ describe("statuses", () => {
   it("a fire hit thaws a frozen target", () => {
     const { t, b } = setup([MOVES.ember.id]);
     t.combat.inflict(b, "freeze", 0);
-    expect(t.combat.get(b)!.major?.id).toBe("freeze");
+    expect(t.combat.get(b)!.statuses.has("freeze")).toBe(true);
     t.press(1, 1, east);
     t.step(10);
-    // Ember may burn it right after the thaw.
-    expect(t.combat.get(b)!.major?.id).not.toBe("freeze");
+    expect(t.combat.get(b)!.statuses.has("freeze")).toBe(false);
   });
 });
 

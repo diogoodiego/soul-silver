@@ -57,6 +57,7 @@ export const effect = z.discriminatedUnion("kind", [
     /** Fraction of the target's current HP (Super Fang). */
     targetHpFraction: fraction().optional(),
   }),
+  /** Fills the target's bar of that status by `chance`; full (100), the status sets in. */
   z.strictObject({ kind: z.literal("status"), status: z.enum(STATUS_IDS), chance }),
   z.strictObject({ kind: z.literal("stages"), target: z.enum(["self", "target"]), stat: z.enum(STAGE_KEYS), delta: int(-6, 6), chance }),
   z.strictObject({ kind: z.literal("heal"), fraction: fraction() }),
@@ -112,8 +113,6 @@ export type MoveParams = Omit<MoveMappingRecord, "id" | "archetype" | "effects">
 export const statusRecord = z
   .strictObject({
     id: z.enum(STATUS_IDS),
-    /** At most one major status at a time; confusion is the only minor one. */
-    major: z.boolean(),
     durationS: z.strictObject({ min: seconds(120), max: seconds(120) }),
     /** Period of tick damage and thaw checks. */
     intervalS: seconds(30).optional(),

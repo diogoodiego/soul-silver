@@ -69,9 +69,9 @@ describe("archetypes", () => {
   });
 
   it("target-debuff reaches along the aim", () => {
-    const { t, b } = duel(MOVES.sleepPowder.id, { x: 60, y: 0 });
+    const { t, b } = duel(MOVES.sleepPowder.id, { x: 60, y: 0 }, east, 10);
     expect(kinds(t, b)).toEqual(["status"]);
-    expect(t.combat.get(b)!.major?.id).toBe("sleep");
+    expect(t.combat.get(b)!.statuses.has("sleep")).toBe(true);
   });
 
   it("a field stays and catches who walks in", () => {
@@ -83,7 +83,7 @@ describe("archetypes", () => {
     expect(kinds(t, b)).toEqual([]);
     t.world.update({ ...t.world.get(b)!, y: 0 });
     t.step(2);
-    expect(t.combat.get(b)!.major?.id).toBe("poison");
+    expect(t.combat.get(b)!.statuses.has("poison")).toBe(true);
   });
 
   it("without aim, the move goes the way the user faces", () => {

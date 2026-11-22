@@ -340,8 +340,9 @@ export function createSession(options: SessionOptions): Session {
     }
     const c = combat?.get(wildId);
     if (!c) return;
-    const status = c.major?.id;
-    list[i] = { id: out.id, area: list[i]!.area, ...(c.hp < c.stats.hp ? { hp: c.hp } : {}), ...(status && status !== "confusion" ? { status } : {}) };
+    // shortcut: the save holds one status; a roamer with more keeps the first, until the save holds a list.
+    const status = [...c.statuses.keys()].find((s) => s !== "confusion");
+    list[i] = { id: out.id, area: list[i]!.area, ...(c.hp < c.stats.hp ? { hp: c.hp } : {}), ...(status ? { status } : {}) };
   }
   const wilds =
     options.wild && combat && options.combat

@@ -152,7 +152,7 @@ describe("items in combat (US1)", () => {
     g.combat.inflict(id, "poison", g.session.tick);
     g.send({ type: "use-item-combat", item: ANTIDOTE });
     g.step(30);
-    expect(g.combat.get(id)!.major).toBeUndefined();
+    expect(g.combat.get(id)!.statuses.size).toBe(0);
     expect(g.lastSave().bag).toEqual([]);
   });
 

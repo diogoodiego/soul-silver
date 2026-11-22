@@ -4,8 +4,10 @@
   // Block C: the mark around a CPU Pokémon (the project's own art): white while it charges a normal move, which can be
   // parried all along; red for a special, only dodged; broken for a moment once parried. And a combo's hit counter.
   // A boss (a wild legendary, the last Pokémon of a Gym Leader or the League) has its bar at the top of the screen instead.
+  import type { EntityData } from "@soulsilver/shared/game";
   import { t } from "../i18n";
   import HpBar from "../ui/HpBar.svelte";
+  import StatusBars from "./StatusBars.svelte";
   import blockArt from "../../../../art/Block.svg?inline";
   import normalMark from "../../../../art/Normal.svg?inline";
   import parryMark from "../../../../art/Parry.svg?inline";
@@ -19,14 +21,14 @@
     bosses = [],
   }: {
     /** HP bars over the foes (wild and other players'), in screen pixels; `scared` while a stat stage is lowered. */
-    bars: { key: string; x: number; y: number; fraction: number; scared: boolean }[];
+    bars: { key: string; x: number; y: number; fraction: number; scared: boolean; data: EntityData }[];
     /** Block C: a CPU Pokémon's mark, over the point at the bottom of the arc; `zoom` screen pixels per map pixel. */
     warnings?: { key: string; x: number; y: number; mark: "normal" | "special" | "parried"; zoom: number }[];
     /** Block C: hits in a row of a Pokémon's combo. */
     combos?: { key: string; x: number; y: number; count: number }[];
     /** Block C: the impact of a successful parry, centered on the point; `zoom` as above. */
     blocks?: { key: number; x: number; y: number; zoom: number }[];
-    bosses?: { key: string; name: string; level: number; hp: number; hpMax: number }[];
+    bosses?: { key: string; name: string; level: number; hp: number; hpMax: number; data: EntityData }[];
   } = $props();
 
   /** Each mark's art and its width on the map, in map pixels: all three are drawn at one scale (the normal arc, 179 wide, spans 36). */
@@ -41,14 +43,18 @@
       <div class="grid gap-1">
         <span class="text-center text-lg font-bold leading-none text-primary [text-shadow:0_1px_2px_#000]">{t("hud.boss", { name: b.name, level: b.level })}</span>
         <HpBar size="lg" fraction={b.hp / b.hpMax} role="meter" aria-label={t("hud.hp")} aria-valuemin={0} aria-valuemax={b.hpMax} aria-valuenow={b.hp} />
+        <StatusBars data={b.data} />
       </div>
     {/each}
   </div>
 {/if}
 {#each bars as b (b.key)}
   <span class="absolute w-14 -translate-x-1/2 -translate-y-full pointer-events-none z-1" style="left: {b.x}px; top: {b.y}px" aria-hidden="true">
-    <HpBar fraction={b.fraction} />
-    {#if b.scared}<span class="absolute left-full top-1/2 ml-1 -translate-y-1/2 text-sm leading-none">😨</span>{/if}
+    <StatusBars data={b.data} />
+    <span class="relative block">
+      <HpBar fraction={b.fraction} />
+      {#if b.scared}<span class="absolute left-full top-1/2 ml-1 -translate-y-1/2 text-sm leading-none">😨</span>{/if}
+    </span>
   </span>
 {/each}
 {#each warnings as w (w.key)}

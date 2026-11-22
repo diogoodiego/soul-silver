@@ -1,3 +1,4 @@
+import type { EntityData } from "../game/entity.ts";
 import type { Rng } from "../game/rng.ts";
 import type { StatusId, StatusRecord } from "./schemas.ts";
 
@@ -14,10 +15,15 @@ export interface StatusState {
   count: number;
 }
 
-export function canApply(def: StatusRecord, types: readonly number[], current: { major: StatusId | undefined; confused: boolean }): boolean {
-  if (types.some((t) => def.immuneTypes.includes(t))) return false;
-  return def.major ? current.major === undefined : !current.confused;
+export function canApply(def: StatusRecord, types: readonly number[], active: boolean): boolean {
+  return !active && !types.some((t) => def.immuneTypes.includes(t));
 }
+
+/** What an entity's bar of a status holds when the status sets in. */
+export const BUILDUP_FULL = 100;
+
+/** An entity's active statuses, as the server puts them in its data. */
+export const statusesOf = (data: EntityData): StatusId[] => (typeof data["status"] === "string" && data["status"] !== "" ? (data["status"].split(",") as StatusId[]) : []);
 
 export function startStatus(def: StatusRecord, tick: number, rng: Rng): StatusState {
   const min = toTicks(def.durationS.min);

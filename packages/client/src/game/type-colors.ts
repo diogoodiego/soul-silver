@@ -1,3 +1,4 @@
+import type { StatusId } from "@soulsilver/shared/combat";
 import type { TYPE_KEYS } from "@soulsilver/shared/game-data";
 
 /** Move button color per type (spec 017, FR-007), close to the original's type badges. */
@@ -20,6 +21,17 @@ export const TYPE_COLORS: Record<(typeof TYPE_KEYS)[number], string> = {
   ice: "#98d8d8",
   dragon: "#7038f8",
   dark: "#705848",
+};
+
+/** A status's bar and badge: its type's color where it has one. */
+export const STATUS_COLORS: Record<StatusId, string> = {
+  burn: TYPE_COLORS.fire,
+  poison: TYPE_COLORS.poison,
+  toxic: TYPE_COLORS.ghost,
+  paralysis: TYPE_COLORS.electric,
+  sleep: TYPE_COLORS.dark,
+  freeze: TYPE_COLORS.ice,
+  confusion: TYPE_COLORS.psychic,
 };
 
 /** HP bar color: green, yellow under half, red under a fifth. */

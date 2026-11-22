@@ -3,11 +3,10 @@ import { canApply, startStatus, tickStatus, type StatusState } from "../../src/c
 import type { StatusRecord } from "../../src/combat/schemas.ts";
 import { createRng } from "../../src/game/rng.ts";
 
-const burn: StatusRecord = { id: "burn", major: true, durationS: { min: 8, max: 8 }, intervalS: 2, tickDamage: 0.125, attackMul: 0.5, immuneTypes: [10] };
-const toxic: StatusRecord = { id: "toxic", major: true, durationS: { min: 12, max: 12 }, intervalS: 2, tickDamage: 1 / 16, toxic: true, immuneTypes: [3, 8] };
-const sleep: StatusRecord = { id: "sleep", major: true, durationS: { min: 2, max: 5 }, immobile: true, immuneTypes: [] };
-const freeze: StatusRecord = { id: "freeze", major: true, durationS: { min: 10, max: 10 }, intervalS: 1, thaw: 20, immobile: true, immuneTypes: [15] };
-const confusion: StatusRecord = { id: "confusion", major: false, durationS: { min: 3, max: 6 }, misdirect: 50, deviationDeg: 90, immuneTypes: [] };
+const burn: StatusRecord = { id: "burn", durationS: { min: 8, max: 8 }, intervalS: 2, tickDamage: 0.125, attackMul: 0.5, immuneTypes: [10] };
+const toxic: StatusRecord = { id: "toxic", durationS: { min: 12, max: 12 }, intervalS: 2, tickDamage: 1 / 16, toxic: true, immuneTypes: [3, 8] };
+const sleep: StatusRecord = { id: "sleep", durationS: { min: 2, max: 5 }, immobile: true, immuneTypes: [] };
+const freeze: StatusRecord = { id: "freeze", durationS: { min: 10, max: 10 }, intervalS: 1, thaw: 20, immobile: true, immuneTypes: [15] };
 
 function run(def: StatusRecord, state: StatusState, until: number, maxHp: number) {
   const rng = createRng(1);
@@ -22,16 +21,14 @@ function run(def: StatusRecord, state: StatusState, until: number, maxHp: number
 }
 
 describe("canApply", () => {
-  it("allows one major status at a time, and confusion beside it", () => {
-    expect(canApply(burn, [0], { major: undefined, confused: false })).toBe(true);
-    expect(canApply(sleep, [0], { major: "burn", confused: false })).toBe(false);
-    expect(canApply(confusion, [0], { major: "burn", confused: false })).toBe(true);
-    expect(canApply(confusion, [0], { major: undefined, confused: true })).toBe(false);
+  it("refuses a status already active", () => {
+    expect(canApply(burn, [0], false)).toBe(true);
+    expect(canApply(burn, [0], true)).toBe(false);
   });
 
   it("respects type immunities", () => {
-    expect(canApply(burn, [10, 2], { major: undefined, confused: false })).toBe(false);
-    expect(canApply(toxic, [12, 3], { major: undefined, confused: false })).toBe(false);
+    expect(canApply(burn, [10, 2], false)).toBe(false);
+    expect(canApply(toxic, [12, 3], false)).toBe(false);
   });
 });
 

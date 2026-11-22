@@ -156,7 +156,7 @@ export function createCaptures(options: CaptureOptions) {
       userLevel: (user !== undefined ? combat.get(user)?.level : undefined) ?? lead?.level ?? 1,
       fished: w.fished === true,
     });
-    const a = ball.always ? 255 : catchValue({ hpMax: c.stats.hp, hp: c.hp, catchRate: data.catchRate(w.species) ?? 255, ball: mult, status: c.major?.id });
+    const a = ball.always ? 255 : catchValue({ hpMax: c.stats.hp, hp: c.hp, catchRate: data.catchRate(w.species) ?? 255, ball: mult, statuses: [...c.statuses.keys()] });
     const { shakes, caught } = rollShakes(a, rng);
     w.capturing = true;
     // Holds still in the ball.

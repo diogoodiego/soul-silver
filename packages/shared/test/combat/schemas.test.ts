@@ -32,7 +32,7 @@ describe("combat schemas", () => {
     expect(
       parseCombatFile(
         "statuses",
-        envelope("statuses", [{ id: "burn", major: true, durationS: { min: 8, max: 8 }, intervalS: 2, tickDamage: 0.125, attackMul: 0.5, immuneTypes: [10] }]),
+        envelope("statuses", [{ id: "burn", durationS: { min: 8, max: 8 }, intervalS: 2, tickDamage: 0.125, attackMul: 0.5, immuneTypes: [10] }]),
         "s.json",
       ).ok,
     ).toBe(true);
@@ -45,7 +45,7 @@ describe("combat schemas", () => {
     ["a stage delta above 6", "moves", envelope("combat-moves", [{ id: 1, archetype: "x", effects: [{ kind: "stages", target: "self", stat: "attack", delta: 7 }] }]), "records.0.effects.0.delta"],
     ["a chance above 100", "moves", envelope("combat-moves", [{ id: 1, archetype: "x", effects: [{ kind: "status", status: "burn", chance: 101 }] }]), "records.0.effects.0.chance"],
     ["a negative radius", "moves", envelope("combat-moves", [{ id: 12, archetype: "x", hitbox: { shape: "circle", radiusPx: -1 }, effects: [] }]), "records.0.hitbox.radiusPx"],
-    ["max duration below min", "statuses", envelope("statuses", [{ id: "sleep", major: true, durationS: { min: 4, max: 2 }, immuneTypes: [] }]), "records.0.durationS.max"],
+    ["max duration below min", "statuses", envelope("statuses", [{ id: "sleep", durationS: { min: 4, max: 2 }, immuneTypes: [] }]), "records.0.durationS.max"],
     ["moves out of order", "moves", envelope("combat-moves", [{ id: 2, archetype: "x", effects: [] }, { id: 2, archetype: "x", effects: [] }]), "records.1.id"],
   ] as const)("rejects %s with the file and field path", (_, kind, value, path) => {
     const e = error(kind, value);

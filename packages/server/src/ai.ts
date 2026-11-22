@@ -85,7 +85,7 @@ export function createAi(options: AiOptions) {
       ready: tick >= (c.readyAt[slot] ?? 0),
       special: m.special,
       damages: has("damage"),
-      status: has("status"),
+      status: m.effects.find((e) => e.kind === "status")?.status,
       buff: m.effects.some((e) => e.kind === "stages" && e.target === "self" && e.delta > 0),
       debuff: m.effects.some((e) => e.kind === "stages" && e.target === "target" && e.delta < 0),
       heals: has("heal"),
@@ -94,10 +94,10 @@ export function createAi(options: AiOptions) {
 
   function opponentView(e: Entity): OpponentView {
     const c = combat.get(e.id);
-    if (!c) return { id: e.id, kind: "trainer", x: e.x, y: e.y, types: [], defense: 1, specialDefense: 1, hp: 1, hpMax: 1, hasStatus: false, casting: undefined };
+    if (!c) return { id: e.id, kind: "trainer", x: e.x, y: e.y, types: [], defense: 1, specialDefense: 1, hp: 1, hpMax: 1, statuses: [], casting: undefined };
     const m = c.casting && c.moves[c.casting.slot];
     const cast = c.casting && m && { dir: c.casting.dir, reachPx: reachPx(moveView(c, m, c.casting.slot)) + (c.casting.lunge?.px ?? 0), elapsedTicks: tick - c.casting.startTick, leftTicks: goesOffAt(c.casting) - tick, special: m.special };
-    return { id: e.id, kind: "pokemon", x: e.x, y: e.y, types: c.types, defense: c.stats.defense, specialDefense: c.stats.specialDefense, hp: c.hp, hpMax: c.stats.hp, hasStatus: c.major !== undefined, casting: cast };
+    return { id: e.id, kind: "pokemon", x: e.x, y: e.y, types: c.types, defense: c.stats.defense, specialDefense: c.stats.specialDefense, hp: c.hp, hpMax: c.stats.hp, statuses: [...c.statuses.keys()], casting: cast };
   }
 
   function envFor(e: Entity): AiEnv {
@@ -167,7 +167,6 @@ export function createAi(options: AiOptions) {
         if (c.threat.current !== undefined || c.threat.values.size > 0) c.threat = newThreat();
         return undefined;
       }
-      const major = me.major ? combatData.statuses.get(me.major.id) : undefined;
       const self: SelfView = {
         id,
         x: e.x,
@@ -178,7 +177,7 @@ export function createAi(options: AiOptions) {
         specialAttack: me.stats.specialAttack,
         hp: me.hp,
         hpMax: me.stats.hp,
-        immobile: major?.immobile === true,
+        immobile: [...me.statuses.keys()].some((s) => combatData.statuses.get(s)?.immobile),
         // A move failed on it (paralysis, flinch), or block C: it was parried.
         stunned: frame.hits.some((h) => h.kind === "failed" && h.attacker === id && h.target === id) || me.stunUntil > tick,
         casting: me.casting !== undefined,

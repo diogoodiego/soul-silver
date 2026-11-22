@@ -7,7 +7,8 @@
   import { hpColor } from "../game/type-colors";
   import { itemIcons, type Frame } from "../game/game-data";
   import PokemonIcon from "../game/PokemonIcon.svelte";
-  import { t, type MessageKey } from "../i18n";
+  import StatusBars from "../game/StatusBars.svelte";
+  import { t } from "../i18n";
   import HpBar from "../ui/HpBar.svelte";
 
   type Member = { species: number; nickname?: string | undefined; level: number; hp: number; hpMax: number; egg?: true | undefined; exp?: number | undefined; expLevel?: number | undefined; expNext?: number | undefined };
@@ -28,7 +29,6 @@
   } = $props();
 
   const num = (key: string) => Number(fight?.data[key] ?? 0);
-  const status = $derived(String(fight?.data["status"] ?? ""));
 
   const SLOTS = [0, 1, 2, 3, 4, 5] as const;
   const member = $derived(out === undefined ? undefined : party[out]);
@@ -57,8 +57,6 @@
       <div class="grid min-w-0 gap-1">
         <div class="flex min-w-0 items-baseline gap-2">
           <strong class="overflow-hidden text-ellipsis whitespace-nowrap">{lead.egg ? t("party.egg") : (lead.nickname ?? speciesName(lead.species))}</strong>
-          {#if fight && status}<span class="rounded-[3px] bg-[#7b1fa2] px-[0.3rem] text-xs">{t(`status.${status}` as MessageKey)}</span>{/if}
-          {#if fight?.data["confused"]}<span class="rounded-[3px] bg-[#7b1fa2] px-[0.3rem] text-xs">{t("status.confusion")}</span>{/if}
           <span class="ml-auto whitespace-nowrap text-xs opacity-80">{t("hud.level", { level: lead.level })}</span>
         </div>
         <HpBar fraction={fraction(lead)} role="meter" aria-label={t("hud.hp")} aria-valuemin={0} aria-valuemax={lead.hpMax} aria-valuenow={lead.hp} />
@@ -68,6 +66,7 @@
           </span>
         {/if}
         {#if fight}
+          <StatusBars data={fight.data} />
           <div class="flex items-center justify-end gap-2">
             <small class="whitespace-nowrap text-xs">{lead.hp} / {lead.hpMax}</small>
           </div>
