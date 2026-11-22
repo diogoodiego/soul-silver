@@ -1,7 +1,7 @@
 {
   "name": "@soulsilver/app",
   "productName": "SoulSilver Desktop",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "SoulSilver Desktop",
   "author": "SoulSilver Desktop",
   "private": true,
