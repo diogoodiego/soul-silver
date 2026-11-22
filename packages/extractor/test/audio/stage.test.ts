@@ -163,6 +163,6 @@ describe("audio stage", { timeout: 60_000 }, () => {
     const files = async (dir: string) => (await readdir(join(root, dir), { recursive: true })).filter((f) => f.includes(".")).sort();
     const names = await files("out");
     expect(await files("out2")).toEqual(names);
-    for (const file of names) expect(await readFile(join(root, "out2", file))).toEqual(await readFile(join(root, "out", file)));
+    for (const file of names) expect((await readFile(join(root, "out2", file))).equals(await readFile(join(root, "out", file)))).toBe(true);
   });
 });

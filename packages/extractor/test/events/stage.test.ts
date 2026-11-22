@@ -245,7 +245,7 @@ describe("events stage", () => {
     const names = await files(join(root, "out"));
     expect(names.length).toBeGreaterThan(5);
     expect(await files(second)).toEqual(names);
-    for (const file of names) expect(await readFile(join(second, file))).toEqual(await readFile(join(root, "out", file)));
+    for (const file of names) expect((await readFile(join(second, file))).equals(await readFile(join(root, "out", file)))).toBe(true);
   });
 
   it("declares the inputs it reads", () => {

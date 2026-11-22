@@ -101,7 +101,7 @@ async function fakeArchive(species: number): Promise<StageContext> {
   };
 }
 
-describe("sprites stage", { timeout: 30_000 }, () => {
+describe("sprites stage", () => {
   it("writes the battle atlas (species and forms), its json and a report with no failures", async () => {
     await fakeArchive(493);
     const ctx = await fakeArchive(493);

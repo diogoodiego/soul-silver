@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { GAME_DATA_FILES, type GameDataKind } from "@soulsilver/shared/game-data";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readManifest } from "../../src/pipeline/manifest.ts";
 import { syntheticInputs } from "../fixtures/game-data/builders.ts";
 import { memoryLogger, sandbox, type Sandbox } from "../pipeline/helpers.ts";
@@ -10,13 +10,13 @@ import { dataFilePath, extractSynthetic } from "./helpers.ts";
 
 let first: Sandbox;
 let second: Sandbox;
-beforeEach(async () => {
+beforeAll(async () => {
   first = await sandbox();
   second = await sandbox();
   await extractSynthetic(first, { inputs: syntheticInputs() });
   await extractSynthetic(second, { inputs: syntheticInputs() });
 });
-afterEach(async () => {
+afterAll(async () => {
   await first.cleanup();
   await second.cleanup();
 });

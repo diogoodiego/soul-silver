@@ -223,7 +223,7 @@ describe("mapsStage", () => {
       await run(other);
       const names = await files(out(box));
       expect(await files(out(other))).toEqual(names);
-      for (const name of names) expect(await readFile(out(other, name))).toEqual(await readFile(out(box, name)));
+      for (const name of names) expect((await readFile(out(other, name))).equals(await readFile(out(box, name)))).toBe(true);
     } finally {
       await other.cleanup();
     }
