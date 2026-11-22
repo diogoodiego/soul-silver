@@ -25,9 +25,8 @@
       }
     },
     "lockMovement": false,
-    "secondsPerPp": 0.5,
     "ppUp": {
-      "perLevel": 0.2,
+      "perLevel": 0.05,
       "max": 3
     },
     "repel": {

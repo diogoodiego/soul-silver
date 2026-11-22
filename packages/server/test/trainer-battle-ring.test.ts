@@ -25,7 +25,7 @@ describe("trainer battles in a ring", () => {
     expect(t.session.world.all().filter((e) => e.kind === "npc" && e.area === "60")).toHaveLength(1);
 
     t.knockOut();
-    t.step(3);
+    t.step(45);
     expect(t.of(a, "trainerBattleEnd")).toEqual([expect.objectContaining({ result: "won" })]);
     expect(t.session.world.get(id)).toMatchObject({ area: "60", ...before });
     expect(t.session.world.all().filter((e) => ringSource(e.area) !== undefined)).toEqual([]);
@@ -51,7 +51,7 @@ describe("trainer battles in a ring", () => {
     // The person talked to stands in for the trainer.
     expect(t.session.world.all().filter((e) => e.kind === "npc" && e.area === me.area)).toHaveLength(1);
     t.knockOut();
-    t.step(3);
+    t.step(45);
     expect(t.session.world.get(a.welcome!.entityId)).toMatchObject({ area: "60", x: at(0), y: at(1) });
     t.session.close("closed-by-host");
     expect(a.saves().at(-1)!.save).toMatchObject({ area: "60", vars: { "16385": 1 } });
@@ -95,7 +95,7 @@ describe("trainer battles in a ring", () => {
     const id = a.welcome!.entityId;
     const mine = t.session.world.all().find((e) => e.kind === "pokemon" && e.data["owner"] === String(a.welcome!.playerId))!;
     t.session.combat!.get(mine.id)!.hp = 0;
-    t.step(5);
+    t.step(45);
     expect(t.of(a, "trainerBattleEnd")).toEqual([expect.objectContaining({ result: "lost" })]);
     expect(t.session.world.get(id)).toMatchObject({ area: "99", x: at(3), y: at(3) });
   });

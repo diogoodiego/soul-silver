@@ -57,7 +57,8 @@ function game(party: PartyMember[], bag: { item: number; count: number }[]) {
     },
     step(n = 1, attack = false) {
       for (let i = 0; i < n; i++) {
-        if (attack && foe !== undefined) combat.input(foe, { move: { x: 0, y: 0 }, buttons: t.session.tick % 2 === 0 ? 1 : 0, aim: { x: -1, y: 0 } });
+        // Block C: normal moves have no cooldown; one blow a second keeps the companion standing.
+        if (attack && foe !== undefined) combat.input(foe, { move: { x: 0, y: 0 }, buttons: t.session.tick % 20 === 0 ? 1 : 0, aim: { x: -1, y: 0 } });
         t.session.step();
       }
     },
@@ -209,17 +210,15 @@ describe("held items (US3)", () => {
   });
 });
 
-describe("PP items on the action bar (US2, research R4)", () => {
-  it("an Ether in combat fills the action bar by its PP worth", () => {
-    const g = game([member(40)], [{ item: ETHER, count: 1 }]);
+describe("PP items on the cooldowns (US2, research R4, block C)", () => {
+  it("an Ether in combat ends a special's cooldown", () => {
+    const g = game([member(40, { moves: [MOVES.tackle.id, MOVES.hyperBeam.id] })], [{ item: ETHER, count: 1 }]);
     const id = g.fight();
     const c = g.combat.get(id)!;
-    c.gauge = 0;
+    c.readyAt[2] = 100_000;
     g.send({ type: "use-item-combat", item: ETHER });
     g.step(30);
-    // Left alone, 30 ticks would not fill it.
-    expect(g.combat.gaugeTicks(id)).toBeGreaterThan(30);
-    expect(c.gauge).toBe(1);
+    expect(c.readyAt[2]).toBeLessThan(100_000);
   });
 
   it("PP Up on a move raises its count to the limit, and the cooldown in combat follows", () => {
@@ -231,7 +230,8 @@ describe("PP items on the action bar (US2, research R4)", () => {
     expect(g.notice()).toBe("item-not-compatible");
     expect(g.msgs("party").at(-1)!.members[0]!.ppUps).toEqual([0, 3]);
     const id = g.fight();
-    expect(g.combat.get(id)!.cooldownMul).toEqual([1, 1 / 1.6]);
+    // PP Ups only shorten specials' cooldowns; Ember (a normal) keeps its multiplier anyway, in its slot.
+    expect(g.combat.get(id)!.cooldownMul).toEqual([1, 0.85, 1, 1]);
     expect(g.lastSave().bag).toEqual([{ item: PP_UP, count: 1 }]);
   });
 });

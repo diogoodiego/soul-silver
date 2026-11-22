@@ -11,7 +11,7 @@ describe("trainer lines", () => {
     t.untilStart(a);
     expect(t.of(a, "trainerSpotted")).toEqual([expect.objectContaining({ intro: "0728:10" })]);
     t.knockOut();
-    t.step(2);
+    t.step(45);
     expect(t.of(a, "trainerBattleEnd")).toEqual([expect.objectContaining({ result: "won", defeat: "0728:11" })]);
   });
 

@@ -10,7 +10,7 @@ export interface Replica {
 export const createReplica = (): Replica => ({ sent: new Map(), area: undefined });
 
 /** Builds this tick's state for one client and records it as sent. */
-export function replicate(replica: Replica, viewer: Entity, entities: Entity[], tick: number, lastInput: number): StateMessage {
+export function replicate(replica: Replica, viewer: Entity, entities: Entity[], tick: number, lastInput: number, lastPress: number): StateMessage {
   const full = replica.area !== viewer.area;
   if (full) {
     replica.sent.clear();
@@ -39,5 +39,5 @@ export function replicate(replica: Replica, viewer: Entity, entities: Entity[], 
       replica.sent.delete(id);
     }
   }
-  return { type: "state", tick, lastInput, full, spawned, changed, removed };
+  return { type: "state", tick, lastInput, lastPress, full, spawned, changed, removed };
 }

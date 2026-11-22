@@ -83,7 +83,6 @@ describe("held items in combat", () => {
       const t = combatSetup(9);
       const entity = t.world.add({ kind: "pokemon", area: "arena", x: 0, y: 0, level: 0, facing: "east", data: {} });
       t.combat.spawn(t.world, entity.id, { species: SPECIES.cyndaquil.id, level: 50, moves: [move], ...(item ? { held: item } : {}) }, 1);
-      t.combat.get(entity.id)!.gauge = 1;
       t.spawn("chikorita", [], { x: 20, y: 0 }, "wild", 50);
       t.press(entity.id, 1, east);
       t.step(30);
@@ -94,17 +93,16 @@ describe("held items in combat", () => {
     expect(damage(charcoal, MOVES.tackle.id)).toBe(damage(undefined, MOVES.tackle.id));
   });
 
-  it("PP Ups leave part of the action bar after the move: 1 − 1/(1 + 0.2 per use) (research R4)", () => {
+  it("PP Ups shorten a special's cooldown (research R4, block C)", () => {
     const t = combatSetup(1);
-    const plain = t.spawn("cyndaquil", [MOVES.tackle.id], { x: 0, y: 0 }, 1, 20);
+    const plain = t.spawn("cyndaquil", [MOVES.hyperBeam.id], { x: 0, y: 0 }, 1, 20);
     const entity = t.world.add({ kind: "pokemon", area: "arena", x: 0, y: 40, level: 0, facing: "east", data: {} });
-    t.combat.spawn(t.world, entity.id, { species: SPECIES.cyndaquil.id, level: 20, moves: [MOVES.tackle.id], cooldownMul: [1 / 1.6] }, 2);
-    t.combat.get(entity.id)!.gauge = 1;
-    t.press(plain, 1, east);
-    t.press(entity.id, 1, east);
-    t.step(10);
+    t.combat.spawn(t.world, entity.id, { species: SPECIES.cyndaquil.id, level: 20, moves: [MOVES.hyperBeam.id], cooldownMul: [0.85] }, 2);
+    t.hold(plain, 1 << 2);
+    t.hold(entity.id, 1 << 2);
+    t.step(20);
     expect([plain, entity.id].map((id) => t.combat.get(id)!.used.count)).toEqual([1, 1]);
-    // Same species and level: the bars fill alike, so the gap is what the PP Ups left.
-    expect(t.combat.get(entity.id)!.gauge - t.combat.get(plain)!.gauge).toBeCloseTo(1 - 1 / 1.6);
+    const length = (id: number) => t.combat.get(id)!.cooldownLen[2]!;
+    expect(length(entity.id)).toBe(Math.round(0.85 * length(plain)));
   });
 });

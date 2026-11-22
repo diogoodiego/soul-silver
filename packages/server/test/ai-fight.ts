@@ -36,7 +36,7 @@ export function startFight(o: FightOptions) {
   const rng = createRng(o.seed);
   const botRng = createRng(o.seed ^ 0x5eed);
   const world = createWorld();
-  const data = combatData();
+  const data = combatData("real");
   const ai = o.ai ?? buildAiData(BUNDLED_AI_CONTENT);
   const combat = createCombat({ data, rng, lookup });
   const runner = createAi({ data: ai, combat, combatData: data, world, lookup, rng, repel: o.repel });

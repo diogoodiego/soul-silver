@@ -2,11 +2,12 @@ import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import type { ArenaCombatant, ArenaSpec, ServerMessage } from "@soulsilver/shared/game";
 import { describe, expect, it } from "vitest";
 import { buildAiData, BUNDLED_AI_CONTENT } from "../src/ai-loader";
-import { ARENA_AREA } from "../src/arena";
+import { ARENA_AREA, LEADER_SPOT } from "../src/arena";
 import { BUNDLED_COMPANION_CONTENT, buildCompanionData } from "../src/companion-loader";
 import { createMemoryConnectionPair } from "../src/connection";
 import { buildTrainerData } from "../src/trainer-loader";
 import { combatData, MOVES, SPECIES } from "./combat-fixture";
+import { computeStats } from "@soulsilver/shared/combat";
 import { RING_SPOTS, type CollisionMap } from "@soulsilver/shared/game";
 import { flatWorld, setup } from "./harness";
 import { trainer } from "./trainer-fixture";
@@ -141,6 +142,145 @@ describe("dev arena", () => {
     expect(t.session.world.all().filter((e) => e.area === ARENA_AREA).length).toBeGreaterThanOrEqual(3);
     client.send({ type: "leave" });
     expect(t.session.world.all().filter((e) => e.area === ARENA_AREA)).toEqual([]);
+  });
+});
+
+describe("dev arena with a gym leader at the end", () => {
+  const FALKNER = 20;
+  // Synthetic team, unlike any override of the spec; trainer 7 says a line when it loses.
+  const leaderTeam = trainer(FALKNER, ["sentret", "chikorita"]).team.map((m) => ({ ...m, difficulty: 50, level: m.level + 6 }));
+  const withLeader = (line: boolean, over: Parameters<typeof setup>[0] = {}): Parameters<typeof setup>[0] => {
+    const records = [trainer(7, ["sentret"]), trainer(FALKNER, [], { team: leaderTeam })];
+    const messages = line ? [{ trainer: 7, kind: 1, text: "0728:71" }] : [];
+    return { trainers: buildTrainerData({ trainers: records, classes: [{ id: 5, prizeBase: 4, music: "trainer" }], messages, learnsets: [] }, buildAiData(BUNDLED_AI_CONTENT).profiles.map((p) => p.id)), ...over };
+  };
+  const trainerFirst: ArenaSpec = { trainer: { name: "Tester", character: "male" }, team: [{ ...cyndaquil, level: 60 }], foe: { kind: "trainer", trainer: 7, team: [chikorita] }, leader: FALKNER };
+  type T = ReturnType<typeof enter>;
+  const people = (t: T) => t.session.world.all().filter((e) => e.kind === "npc");
+  const started = (t: T) => t.got.flatMap((m) => (m.type === "trainerBattleStart" ? [m.trainerId] : []));
+  const foesOf = (t: T) => t.session.world.all().flatMap((e) => t.session.combat?.get(e.id) ?? []).filter((c) => c.owner === "trainer" || c.owner === "wild");
+  const knockOut = (t: T) => foesOf(t).forEach((c) => (c.hp = 0));
+
+  it("comes only once the trainer is beaten, with the story's team", () => {
+    const t = enter(withLeader(false), trainerFirst);
+    t.step(100);
+    expect(started(t)).toEqual([7]);
+    expect(people(t)).toEqual([]);
+    knockOut(t);
+    t.step(50);
+    expect(people(t).map((e) => [e.area, e.data["sprite"]])).toEqual([[ARENA_AREA, 352]]);
+    t.step(60);
+    expect(started(t)).toEqual([7, FALKNER]);
+    for (const [i, m] of leaderTeam.entries()) {
+      const c = foesOf(t)[0]!;
+      const last = i === leaderTeam.length - 1;
+      const own = computeStats(c.species === SPECIES.sentret.id ? SPECIES.sentret.baseStats : SPECIES.chikorita.baseStats, m.level, { ivs: { hp: 6, attack: 6, defense: 6, speed: 6, specialAttack: 6, specialDefense: 6 } }).hp;
+      // Its last one is the boss: a bar of its own and twice the HP.
+      expect([c.boss, c.hp, c.stats.hp]).toEqual([last, own * (last ? 2 : 1), own * (last ? 2 : 1)]);
+      expect(foesOf(t).map((c) => [c.species, c.level])).toEqual([[m.species, m.level]]);
+      knockOut(t);
+      t.step(50);
+    }
+    expect(t.got.filter((m) => m.type === "trainerBattleEnd" && m.result === "won")).toHaveLength(2);
+    t.step(200);
+    expect(started(t)).toEqual([7, FALKNER]);
+  });
+
+  it("waits for the beaten trainer's line to be closed", () => {
+    const t = enter(withLeader(true), trainerFirst);
+    t.step(100);
+    knockOut(t);
+    t.step(200);
+    expect(people(t)).toHaveLength(1);
+    expect(started(t)).toEqual([7]);
+    t.client.send({ type: "trainer-ready" });
+    t.step(60);
+    expect(started(t)).toEqual([7, FALKNER]);
+  });
+
+  it("comes once every wild foe is down, in the ring too", () => {
+    const grid: CollisionMap = { width: 20, height: 20, tiles: Array.from({ length: 400 }, () => ({ category: "free" as const, raw: 0 })) };
+    const t = enter(withLeader(false, { world: (id) => ({ ...flatWorld(grid)(id)!, areaType: "indoor" as const }) }), { ...wild("idle", [chikorita, chikorita]), ring: 52, leader: FALKNER });
+    const area = t.session.world.get(t.welcome!.entityId)!.area;
+    t.step(60);
+    foesOf(t)[0]!.hp = 0;
+    t.step(60);
+    expect(people(t)).toEqual([]);
+    knockOut(t);
+    t.step(100);
+    expect(people(t).map((e) => ({ area: e.area, x: e.x, y: e.y }))).toEqual([{ area, ...RING_SPOTS.trainer }]);
+    expect(started(t)).toEqual([FALKNER]);
+  });
+
+  it("does not come after a lost fight", () => {
+    const t = enter(withLeader(false), trainerFirst);
+    t.step(100);
+    const mine = t.session.world.all().find((e) => t.session.combat?.get(e.id)?.owner === t.welcome!.playerId)!;
+    t.session.combat!.get(mine.id)!.hp = 0;
+    t.step(400);
+    expect(t.got).toContainEqual(expect.objectContaining({ type: "trainerBattleEnd", result: "lost" }));
+    expect(started(t)).toEqual([7]);
+    expect(people(t)).toEqual([]);
+  });
+
+  it("refuses a leader who is not one or is not in the extraction, leaving nothing in the world", () => {
+    for (const leader of [7, 21]) {
+      const t = enter(withLeader(false), { ...wild("idle"), leader });
+      expect(t.got.find((m) => m.type === "reject")).toMatchObject({ code: "invalid-message", message: expect.stringMatching(String(leader)) });
+      expect(t.session.world.all()).toEqual([]);
+    }
+  });
+
+  it("leaves with the player", () => {
+    const t = setup(options(withLeader(false)));
+    t.connect("Host");
+    const [server, client] = createMemoryConnectionPair();
+    t.session.connect(server);
+    client.send({ type: "hello", protocolVersion: PROTOCOL_VERSION, save, arena: { ...wild("idle"), leader: FALKNER } });
+    for (const e of t.session.world.all()) {
+      const c = t.session.combat?.get(e.id);
+      if (c?.owner === "wild") c.hp = 0;
+    }
+    t.session.step();
+    expect(t.session.world.all().some((e) => e.kind === "npc" && e.area === ARENA_AREA)).toBe(true);
+    client.send({ type: "leave" });
+    expect(t.session.world.all().filter((e) => e.area === ARENA_AREA)).toEqual([]);
+  });
+});
+
+describe("dev arena with a legendary at the end", () => {
+  const RAIKOU = SPECIES.raikou.id;
+  const raikou = (t: ReturnType<typeof enter>) => t.session.world.all().filter((e) => e.data["species"] === RAIKOU);
+  const knockOut = (t: ReturnType<typeof enter>) => t.foes().forEach((e) => (t.session.combat!.get(e.id)!.hp = 0));
+
+  it("comes once every wild foe is down, at its level, where the leader would; only once", () => {
+    const t = enter({}, { ...wild("idle", [chikorita, chikorita]), legendary: RAIKOU });
+    t.step(60);
+    expect(raikou(t)).toEqual([]);
+    knockOut(t);
+    for (let i = 0; i < 100 && raikou(t).length === 0; i++) t.step(1);
+    expect(raikou(t)).toMatchObject([{ area: ARENA_AREA, data: { level: 40, owner: "wild", move1: MOVES.tackle.id } }]);
+    expect(Math.hypot(raikou(t)[0]!.x - LEADER_SPOT.x, raikou(t)[0]!.y - LEADER_SPOT.y)).toBeLessThan(16);
+    t.session.combat!.get(raikou(t)[0]!.id)!.hp = 0;
+    t.step(100);
+    expect(raikou(t)).toHaveLength(1);
+  });
+
+  it("comes after a beaten trainer, once the battle is over", () => {
+    const t = enter({}, { trainer: { name: "Tester", character: "male" }, team: [{ ...cyndaquil, level: 60 }], foe: { kind: "trainer", trainer: 7, team: [chikorita] }, legendary: RAIKOU });
+    t.step(100);
+    expect(raikou(t)).toEqual([]);
+    knockOut(t);
+    t.step(150);
+    expect(t.got).toContainEqual(expect.objectContaining({ type: "trainerBattleEnd", result: "won" }));
+    expect(raikou(t)).toHaveLength(1);
+  });
+
+  it("refuses a species that is not legendary, or not in the extraction", () => {
+    for (const legendary of [152, 249]) {
+      const t = enter({}, { ...wild("idle"), legendary });
+      expect(t.got.find((m) => m.type === "reject")).toMatchObject({ code: "invalid-message", message: expect.stringMatching(String(legendary)) });
+    }
   });
 });
 

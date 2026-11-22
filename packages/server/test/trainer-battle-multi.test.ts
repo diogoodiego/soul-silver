@@ -40,7 +40,7 @@ describe("a double battle beside an NPC trainer (MultiBattle)", () => {
     // The first trainer's next one comes out; the second trainer has none left.
     expect(species()).toEqual([SPECIES.rattata.id]);
     t.knockOut();
-    t.step(3);
+    t.step(45);
     expect(t.of(a, "trainerBattleEnd")).toEqual([expect.objectContaining({ result: "won" })]);
     expect(allies()).toEqual([]);
     const save = result();
@@ -53,7 +53,7 @@ describe("a double battle beside an NPC trainer (MultiBattle)", () => {
     const { t, a, allies, result } = multi();
     const mine = t.session.world.all().find((e) => e.kind === "pokemon" && e.data["trainerPic"] === 0 && e.data["owner"] === String(a.welcome!.playerId))!;
     t.session.combat!.get(mine.id)!.hp = 0;
-    t.step(2);
+    t.step(45);
     expect(t.of(a, "blackout")).toHaveLength(1);
     expect(t.of(a, "trainerBattleEnd")).toEqual([expect.objectContaining({ result: "lost" })]);
     expect(allies()).toEqual([]);

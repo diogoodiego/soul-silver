@@ -25,6 +25,7 @@ describe("held items in trainer battles", () => {
     const ally = t.session.world.all().find((e) => e.kind === "pokemon" && e.data["owner"] === String(a.welcome!.playerId) && e.data["species"] === 95)!;
     const c = t.session.combat!.get(ally.id)!;
     expect(c.held?.item).toBe(ORAN);
-    expect(c.cooldownMul[0]).toBeCloseTo(1 / 1.6);
+    // Block C: PP Max takes 15% off (only a special's cooldown uses it).
+    expect(c.cooldownMul[0]).toBeCloseTo(0.85);
   });
 });

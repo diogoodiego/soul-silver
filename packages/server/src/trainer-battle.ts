@@ -6,7 +6,7 @@ import { hpRestore, RING_RADIUS_PX, RING_SPOTS, ringArea, ringSource, tileAt, ty
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { canFight, type PartyMember, type Save } from "@soulsilver/shared/save";
 import type { HeldItem } from "@soulsilver/shared/items";
-import { chooseItem, chooseSwitch, prize, trainerProfile, type TrainerProfile } from "@soulsilver/shared/trainer";
+import { BOSS_TRAINERS, chooseItem, chooseSwitch, prize, trainerProfile, type TrainerProfile } from "@soulsilver/shared/trainer";
 import { wildMoves } from "@soulsilver/shared/wild";
 import { createAi } from "./ai";
 import type { AiData } from "./ai-loader";
@@ -76,6 +76,7 @@ interface Member {
   types: number[];
   hp: number;
   hpMax: number;
+  boss: boolean;
   held: HeldItem | undefined;
   /** Item 032.5: whose team, in a tag battle: 0 the first trainer, 1 the partner. */
   foe: number;
@@ -104,6 +105,8 @@ interface Battle {
   side: Point;
   /** Ticks of "!" and approach still to go; fighting once undefined. */
   fightAt: number | undefined;
+  /** Decided: how, and the tick a won one closes at (a lost one closes with the blackout). */
+  over: { result: "won" | "lost"; at: number } | undefined;
   /** Waiting for the player to close the challenge line, until this tick at most. */
   readyBy: number | undefined;
   team: Member[];
@@ -150,15 +153,15 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     return record ? hpRestore(record) : undefined;
   };
 
-  function memberOf(m: TrainerRecord["team"][number], foe = 0): Member {
+  function memberOf(m: TrainerRecord["team"][number], foe: number, boss: boolean): Member {
     const species = combatData.species(m.species);
     if (!species) throw new Error(`espécie ${m.species} não existe na extração`);
-    const moves = m.moves?.filter((id) => id > 0) ?? wildMoves(data.levelUp(m.species), m.level);
+    const moves = m.moves?.filter((id) => id > 0) ?? wildMoves(data.levelUp(m.species), m.level, (id) => combatData.move(id)?.special ?? false);
     // The original's IVs: the member's difficulty scaled from 0–255 to 0–31, the same for every stat.
     const iv = Math.floor((m.difficulty * 31) / 255);
     const stats: StatOptions = { ivs: { hp: iv, attack: iv, defense: iv, speed: iv, specialAttack: iv, specialDefense: iv } };
-    const hpMax = computeStats(species.baseStats, m.level, stats).hp;
-    return { species: m.species, level: m.level, moves, stats, types: [...species.types], hp: hpMax, hpMax, held: m.item === null ? undefined : options.held?.(m.item), foe };
+    const hpMax = Math.floor(computeStats(species.baseStats, m.level, stats).hp * (boss ? combatData.tuning.bossHpMul : 1));
+    return { species: m.species, level: m.level, moves, stats, types: [...species.types], hp: hpMax, hpMax, boss, held: m.item === null ? undefined : options.held?.(m.item), foe };
   }
 
   function hooksFor(b: Battle, entityId: number): AiHooks {
@@ -192,10 +195,10 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
   function sendOut(b: Battle, index: number): void {
     const m = b.team[index]!;
     const e = world.add({ kind: "pokemon", area: b.arena.area, x: b.side.x, y: b.side.y, level: 0, facing: facingOf({ x: b.arena.x - b.side.x, y: b.arena.y - b.side.y }), data: {} });
-    const c = combat.spawn(world, e.id, { species: m.species, level: m.level, moves: m.moves, stats: m.stats, held: m.held, trainerPic: b.trainer.class.id }, "trainer");
+    const c = combat.spawn(world, e.id, { species: m.species, level: m.level, moves: m.moves, stats: m.stats, held: m.held, trainerPic: b.trainer.class.id, boss: m.boss }, "trainer");
     c.hp = m.hp;
     combat.setBattle(e.id, b.id);
-    ai.add(e.id, { home: { x: b.arena.x, y: b.arena.y }, level: m.level, temperament: "aggressive", leashPx: b.arena.radiusPx, profile: b.skill, hooks: hooksFor(b, e.id) });
+    ai.add(e.id, { home: { x: b.arena.x, y: b.arena.y }, level: m.level, temperament: "aggressive", leashPx: b.arena.radiusPx, profile: b.skill, hooks: hooksFor(b, e.id), strategy: "trainer" });
     b.out.set(e.id, index);
     options.progression?.engage(b.fighter.playerId, e.id);
     options.broadcast(b.arena.area, { type: "trainerSendOut", battleId: b.id, slot: index, entityId: e.id });
@@ -244,7 +247,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     const c = combat.spawn(world, e.id, { species: m.species, level: m.level, moves: m.moves, stats: m.stats, held: m.held, trainerPic: a.trainer.class.id }, b.fighter.playerId);
     c.hp = m.hp;
     combat.setBattle(e.id, b.id);
-    ai.add(e.id, { home: { x: b.arena.x, y: b.arena.y }, level: m.level, temperament: "aggressive", leashPx: b.arena.radiusPx, profile: a.skill });
+    ai.add(e.id, { home: { x: b.arena.x, y: b.arena.y }, level: m.level, temperament: "aggressive", leashPx: b.arena.radiusPx, profile: a.skill, strategy: "trainer" });
     a.out = { index, entityId: e.id };
   }
 
@@ -352,7 +355,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     const lead = leadIndex(party);
     // Beside an ally trainer the player sends one Pokémon only.
     const allyIndex = b.trainer.doubleBattle && !b.npc ? party.findIndex((m, i) => i !== lead && canFight(m)) : -1;
-    const arena = { battle: b.id, x: b.arena.x, y: b.arena.y, radiusPx: b.arena.radiusPx, ally: allyIndex === -1 ? undefined : allyIndex };
+    const arena = { battle: b.id, x: b.arena.x, y: b.arena.y, radiusPx: b.arena.radiusPx, endTicks: toTicks(tuning.endS), ally: allyIndex === -1 ? undefined : allyIndex };
     if (!companions.enterBattle(b.fighter.playerId, arena, tick)) {
       options.log(`Player ${b.fighter.playerId}: trainer battle ${b.trainer.id} not started, no Pokémon could come out`);
       // Nothing came out, so there is no fight to leave.
@@ -384,9 +387,19 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     }
   }
 
+  /** A side has nobody left: the player is told, and the battle holds for endS. */
+  function decide(b: Battle, result: "won" | "lost"): void {
+    b.over = { result, at: tick + toTicks(tuning.endS) };
+    b.fighter.send({ type: "trainerBattleOver", battleId: b.id, result });
+  }
+
   function stepBattle(b: Battle): void {
     if (b.fightAt !== undefined) {
       if (tick >= b.fightAt && (b.readyBy === undefined || tick >= b.readyBy)) begin(b);
+      return;
+    }
+    if (companions.lostBattle(b.fighter.playerId)) {
+      if (!b.over) decide(b, "lost");
       return;
     }
     // The player's last Pokémon fainted: the companion rules already blacked them out.
@@ -401,7 +414,10 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
       if (!c) continue;
       m.hp = c.hp;
       if (c.hp === 0) {
+        // The last one lies on the field until the battle closes.
+        if (b.over) continue;
         options.progression?.faint(id, m.species, m.level, true);
+        if (b.team.every((t) => t.hp === 0)) continue;
         recall(b, id);
         const next = nextUp(b, m.foe);
         if (next !== undefined) b.queue.push({ index: next, at: tick + toTicks(tuning.sendOutS) });
@@ -446,7 +462,12 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
       else ai.drive(b.ally.entityId);
     }
     stepNpcAlly(b);
-    if (b.out.size === 0 && b.queue.length === 0 && nextUp(b) === undefined) end(b, "won");
+    if (b.over) {
+      if (tick >= b.over.at) end(b, "won");
+    } else if (b.team.every((t) => t.hp === 0)) {
+      companions.winBattle(b.fighter.playerId);
+      decide(b, "won");
+    }
   }
 
   /** Whether the trainer `npc`, looking the way it faces, sees `me` within its range in a straight line. */
@@ -462,7 +483,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
   }
 
   /** A trainer of the extraction and its team as members of side `foe`; undefined (logged) when it cannot fight. */
-  function teamOf(f: Fighter, trainerId: number, foe: number, override?: TrainerRecord["team"]): { trainer: TrainerRecord; team: Member[] } | undefined {
+  function teamOf(f: Fighter, trainerId: number, foe: number, override?: TrainerRecord["team"], ally = false): { trainer: TrainerRecord; team: Member[] } | undefined {
     const record = data.trainer(trainerId);
     const trainer = record && override ? { ...record, team: override } : record;
     if (!trainer) {
@@ -470,7 +491,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
       return undefined;
     }
     try {
-      return { trainer, team: trainer.team.map((m) => memberOf(m, foe)) };
+      return { trainer, team: trainer.team.map((m, i) => memberOf(m, foe, !ally && BOSS_TRAINERS.has(trainerId) && i === trainer.team.length - 1)) };
     } catch (error) {
       options.log(`Player ${f.playerId}: trainer ${trainerId} cannot fight: ${(error as Error).message}`);
       return undefined;
@@ -480,7 +501,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
   function prepare(f: Fighter, trainerId: number, override?: TrainerRecord["team"], partnerId = 0, allyId = 0): Battle | undefined {
     const first = teamOf(f, trainerId, 0, override);
     const second = partnerId ? teamOf(f, partnerId, 1) : undefined;
-    const ally = allyId ? teamOf(f, allyId, 0) : undefined;
+    const ally = allyId ? teamOf(f, allyId, 0, undefined, true) : undefined;
     if (!first || (partnerId && !second) || (allyId && !ally?.team.length)) return undefined;
     const { trainer } = first;
     const team = [...first.team, ...(second?.team ?? [])];
@@ -497,6 +518,7 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
       arena: { area: me.area, x: me.x, y: me.y, radiusPx },
       side: { x: me.x, y: me.y },
       fightAt: tick,
+      over: undefined,
       readyBy: undefined,
       team,
       out: new Map(),
@@ -549,10 +571,15 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     join(f: Fighter): void {
       fighters.set(f.playerId, f);
     },
-    /** Ends any battle without a winner: the trainer stays undefeated. */
+    /** Closes a decided battle now: the player is leaving, and the save must have how it ended. */
+    settle(playerId: number): void {
+      const b = battles.get(playerId);
+      if (b?.over) end(b, b.over.result);
+    },
+    /** Ends any battle: a decided one as it was, any other without a winner (the trainer stays undefeated). */
     leave(playerId: number): void {
       const b = battles.get(playerId);
-      if (b) end(b, "aborted");
+      if (b) end(b, b.over?.result ?? "aborted");
       fighters.delete(playerId);
     },
     /**
@@ -562,6 +589,8 @@ export function createTrainerBattles(options: TrainerBattleOptions) {
     startScripted(playerId: number, trainerId: number, partner: number, team?: TrainerRecord["team"], ally = 0): boolean {
       return start(playerId, trainerId, undefined, 0, team, partner, ally);
     },
+    /** A person challenges the player where it stands, with the trainer's own team (the dev arena's Gym Leader). */
+    challenge: (playerId: number, trainerId: number, npc: Entity): boolean => start(playerId, trainerId, npc, 0),
     /** The player talked to a person: a trainer not yet beaten challenges, a beaten one says its after line. False when it is not a trainer. */
     talk(playerId: number, npc: Entity): boolean {
       const f = fighters.get(playerId);

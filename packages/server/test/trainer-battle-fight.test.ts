@@ -20,9 +20,23 @@ describe("fighting the team", () => {
     expect(t.of(a, "trainerSendOut").map((m) => m.slot)).toEqual([0, 1]);
     expect(t.of(a, "trainerBattleEnd")).toEqual([]);
     t.knockOut();
-    t.step(2);
+    t.step(45);
     expect(t.of(a, "trainerBattleEnd")).toEqual([expect.objectContaining({ result: "won" })]);
     expect(t.foes()).toEqual([]);
+  });
+
+  it.each([
+    [245, true], // Will
+    [701, true], // Lance, rematch
+    [1, false],
+  ])("trainer %i's last Pokémon, and only it, is a boss: %s", (id, boss) => {
+    const t = arenaSetup({ npcs: [trainerNpc(0, 1, 5, id, FACING.north, 5)], trainers: [trainer(id, ["sentret", "rattata"])] });
+    t.untilStart(t.join());
+    const out = () => t.session.combat!.get(t.foes()[0]!.id)!.boss;
+    expect(out()).toBe(false);
+    t.knockOut();
+    t.step(30);
+    expect(out()).toBe(boss);
   });
 
   it("keeps the player's Pokémon inside the arena", () => {

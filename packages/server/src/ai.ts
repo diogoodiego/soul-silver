@@ -11,6 +11,7 @@ import {
   type AiHooks,
   type AiTick,
   type SkillProfile,
+  type Strategy,
   type Controller,
   type Decision,
   type MoveView,
@@ -24,7 +25,7 @@ import { insideMap, MOVE_SPEED_PX, tileAt, type AiDebugRow, type Entity, type Hi
 import { MAP_TILE_PX } from "@soulsilver/shared/maps";
 import type { Temperament } from "@soulsilver/shared/wild";
 import type { AiData } from "./ai-loader";
-import type { Combat, Combatant } from "./combat";
+import { goesOffAt, type Combat, type Combatant } from "./combat";
 import type { CombatData, CombatMove } from "./combat-loader";
 import type { World } from "./world";
 
@@ -53,7 +54,7 @@ function fights(me: Combatant, body: Entity, combat: Combat, repel = 0): boolean
   return other !== undefined && other.battle === me.battle && other.owner !== me.owner;
 }
 
-const WALKABLE = new Set(["free", "tallGrass"]);
+export const WALKABLE = new Set(["free", "tallGrass"]);
 const NOISE_EPS = 0.5;
 
 /** A trainer, or a Pokémon some player owns; never one in a cutscene (spec 021): the AI forgets its threat. */
@@ -64,15 +65,15 @@ export function createAi(options: AiOptions) {
   const { tuning } = data;
   const controllers = new Map<number, Controller>();
   const lastPos = new Map<number, Point>();
-  const minCastTicks = toTicks(tuning.cast.aiMinCastS);
   const dormantPx = tuning.performance.dormantTiles * MAP_TILE_PX;
   const log: Decision[] = [];
   let tick = 0;
   let frame: { bodies: Entity[]; noises: Map<string, NoiseEvent[]>; hits: HitEvent[] } = { bodies: [], noises: new Map(), hits: [] };
 
-  function moveView(c: Combatant, m: CombatMove): MoveView {
+  function moveView(c: Combatant, m: CombatMove, slot: number): MoveView {
     const has = (kind: string) => m.effects.some((e) => e.kind === kind);
     return {
+      slot,
       id: m.id,
       behavior: m.behavior,
       type: m.type,
@@ -81,7 +82,8 @@ export function createAi(options: AiOptions) {
       rangePx: m.rangePx,
       hitbox: m.hitbox,
       speedPx: m.speedPx,
-      ready: c.gauge >= 1,
+      ready: tick >= (c.readyAt[slot] ?? 0),
+      special: m.special,
       damages: has("damage"),
       status: has("status"),
       buff: m.effects.some((e) => e.kind === "stages" && e.target === "self" && e.delta > 0),
@@ -93,7 +95,8 @@ export function createAi(options: AiOptions) {
   function opponentView(e: Entity): OpponentView {
     const c = combat.get(e.id);
     if (!c) return { id: e.id, kind: "trainer", x: e.x, y: e.y, types: [], defense: 1, specialDefense: 1, hp: 1, hpMax: 1, hasStatus: false, casting: undefined };
-    const cast = c.casting && { dir: c.casting.dir, reachPx: reachPx(moveView(c, c.moves[c.casting.slot]!)), elapsedTicks: tick - c.casting.startTick };
+    const m = c.casting && c.moves[c.casting.slot];
+    const cast = c.casting && m && { dir: c.casting.dir, reachPx: reachPx(moveView(c, m, c.casting.slot)) + (c.casting.lunge?.px ?? 0), elapsedTicks: tick - c.casting.startTick, leftTicks: goesOffAt(c.casting) - tick, special: m.special };
     return { id: e.id, kind: "pokemon", x: e.x, y: e.y, types: c.types, defense: c.stats.defense, specialDefense: c.stats.specialDefense, hp: c.hp, hpMax: c.stats.hp, hasStatus: c.major !== undefined, casting: cast };
   }
 
@@ -111,7 +114,7 @@ export function createAi(options: AiOptions) {
     get: (id: number) => controllers.get(id),
     decisions: () => log,
     /** `profile` and `hooks` are a trainer's (spec 022); a wild Pokémon's profile comes from its level. */
-    add(entityId: number, o: { home: Point; level: number; temperament: Temperament; leashPx: number; facing?: Point; profile?: SkillProfile; hooks?: AiHooks }): Controller {
+    add(entityId: number, o: { home: Point; level: number; temperament: Temperament; leashPx: number; facing?: Point; profile?: SkillProfile; hooks?: AiHooks; strategy?: Strategy }): Controller {
       const c = createController({
         id: entityId,
         home: o.home,
@@ -122,6 +125,7 @@ export function createAi(options: AiOptions) {
         angry: data.temperaments.aggressive,
         tuning,
         look: o.facing,
+        strategy: o.strategy,
       });
       controllers.set(entityId, c);
       return c;
@@ -175,9 +179,10 @@ export function createAi(options: AiOptions) {
         hp: me.hp,
         hpMax: me.stats.hp,
         immobile: major?.immobile === true,
-        stunned: frame.hits.some((h) => h.kind === "failed" && h.attacker === id && h.target === id),
+        // A move failed on it (paralysis, flinch), or block C: it was parried.
+        stunned: frame.hits.some((h) => h.kind === "failed" && h.attacker === id && h.target === id) || me.stunUntil > tick,
         casting: me.casting !== undefined,
-        moves: me.moves.map((m) => moveView(me, m)),
+        moves: me.moves.flatMap((m, slot) => (m ? [moveView(me, m, slot)] : [])),
       };
       const hurtBy = new Map<number, number>();
       for (const h of frame.hits) if (h.kind === "hit" && h.target === id && h.attacker !== id) hurtBy.set(h.attacker, (hurtBy.get(h.attacker) ?? 0) + h.amount);
@@ -190,7 +195,7 @@ export function createAi(options: AiOptions) {
         hurtBy: [...hurtBy].map(([attacker, amount]) => ({ id: attacker, amount })),
       };
       const out = stepController(c, t, envFor(e));
-      combat.input(id, { ...out.input, minCastTicks });
+      combat.input(id, out.input);
       for (const d of out.decisions) {
         log.push(d);
         options.onDecision?.(d);

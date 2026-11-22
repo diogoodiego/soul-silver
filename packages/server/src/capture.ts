@@ -181,8 +181,9 @@ export function createCaptures(options: CaptureOptions) {
     const member: PartyMember = {
       species: w.species,
       level: c.level,
-      moves: c.moves.map((m) => m.id),
-      hp: c.hp,
+      moves: c.moves.flatMap((m) => (m ? [m.id] : [])),
+      // A boss's extra HP stays in the fight.
+      hp: c.boss ? Math.ceil(c.hp / combatData.tuning.bossHpMul) : c.hp,
       friendship: data.balls.balls[String(a.ball)]?.friendship ?? info?.baseFriendship ?? CATCH_FRIENDSHIP,
       experience: expForLevel(info?.growthRate ?? "medium-fast", c.level),
       ivs: { hp: iv(), attack: iv(), defense: iv(), speed: iv(), specialAttack: iv(), specialDefense: iv() },

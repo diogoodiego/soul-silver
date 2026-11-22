@@ -40,7 +40,7 @@ function sequence(script: unknown[], bag: { item: number; count: number }[] = []
   const win = () => {
     for (let i = 0; i < 60 && t.foes().length === 0; i++) t.step();
     t.knockOut();
-    t.step(3);
+    t.step(45);
   };
   return { t, a, mine, started, win };
 }
@@ -69,7 +69,7 @@ describe("trainer battles in a row (item 033.5)", () => {
     win();
     for (let i = 0; i < 60 && !mine(); i++) t.step();
     t.session.combat!.get(mine()!.id)!.hp = 0;
-    t.step(30);
+    t.step(70);
     expect(t.of(a, "blackout")).toHaveLength(1);
     expect(started()).toEqual([1, 2]);
     expect(t.of(a, "trainerBattleEnd").map((m) => m.result)).toEqual(["won", "lost"]);

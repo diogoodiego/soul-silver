@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createRng, type HitEvent } from "@soulsilver/shared/game";
+import { slotIndices, type CombatTuning } from "@soulsilver/shared/combat";
+import { BUTTON, createRng, type HitEvent } from "@soulsilver/shared/game";
 import { createCombat, type Owner } from "../src/combat";
 import { buildCombatData, type CombatContent, type ExtractedForCombat } from "../src/combat-loader";
 import { createWorld } from "../src/world";
@@ -47,6 +48,7 @@ export const MOVES = {
   willOWisp: { id: 261, type: 10, category: "status", power: 0, pp: 15 },
   supersonic: { id: 48, type: 0, category: "status", power: 0, pp: 20 },
   synthesis: { id: 235, type: 12, category: "status", power: 0, pp: 5 },
+  strength: { id: 70, type: 0, category: "physical", power: 80, pp: 15 },
   takeDown: { id: 36, type: 0, category: "physical", power: 90, pp: 20 },
   gigaDrain: { id: 202, type: 12, category: "special", power: 60, pp: 10 },
   haze: { id: 114, type: 15, category: "status", power: 0, pp: 30 },
@@ -72,25 +74,35 @@ export function extraction(content: CombatContent = readContent()): ExtractedFor
   };
 }
 
-/** The mechanics tests time moves by their archetypes' own casts, so the cast floor (minCastS, tested in combat-loader) is off. */
-export const combatData = () => {
-  const content = readContent() as CombatContent & { tuning: { value: object } };
-  return buildCombatData({ ...content, tuning: { ...content.tuning, value: { ...content.tuning.value, minCastS: 0 } } }, extraction());
+type Action = CombatTuning["action"];
+/**
+ * The mechanics tests time moves by their archetypes' own casts and read damage straight from the formula, so block C's
+ * casts, normal damage share, missed-first wait and leap time are off (they are tested on their own in combat-action.test.ts, with `"real"`),
+ * and so is the wait for late presses, which every test but combat-lag.test.ts leaves out.
+ */
+export const MECHANICS: Partial<Action> = { normalCastS: [0, 0, 0], normalMissCooldownS: 0, specialCastS: 0, normalDamageMul: 1, leapSpeedPx: 2048, lagMaxS: 0 };
+export const realAction = (): Action => (readContent().tuning as { value: { action: Action } }).value.action;
+
+export const combatData = (action: Partial<Action> | "real" = MECHANICS) => {
+  const content = readContent() as CombatContent & { tuning: { value: { action: Action } } };
+  const value = { ...content.tuning.value, action: { ...content.tuning.value.action, lagMaxS: 0, ...(action === "real" ? {} : action) } };
+  return buildCombatData({ ...content, tuning: { ...content.tuning, value } }, extraction());
 };
 
 /** A world with a combat simulation and helpers to drive it tick by tick. */
-export function combatSetup(seed = 1) {
+export function combatSetup(seed = 1, action: Partial<Action> | "real" = MECHANICS) {
   const world = createWorld();
-  const data = combatData();
+  const data = combatData(action);
   const combat = createCombat({ data, rng: createRng(seed), lookup: () => undefined });
   let tick = 0;
   const events: HitEvent[] = [];
+  /** Block C puts normals in slots 1–2 and specials in 3–4: `press(id, n)` means the nth move given to `spawn`. */
+  const slotsOf = new Map<number, (number | undefined)[]>();
 
   function spawn(species: keyof typeof SPECIES, moves: number[], at: { x: number; y: number }, owner: Owner = "wild", level = 10) {
     const entity = world.add({ kind: "pokemon", area: "arena", x: at.x, y: at.y, level: 0, facing: "east", data: {} });
     combat.spawn(world, entity.id, { species: SPECIES[species].id, level, moves }, owner);
-    // Ready to act at once, so move tests need not wait for the action bar (tested on its own in combat.test.ts).
-    combat.get(entity.id)!.gauge = 1;
+    slotsOf.set(entity.id, slotIndices(moves, (m) => data.move(m)!.special).slots);
     return entity.id;
   }
 
@@ -103,10 +115,19 @@ export function combatSetup(seed = 1) {
     get tick() {
       return tick;
     },
-    /** Presses move `slot` (1–4) this tick, aiming with `aim`. */
-    press(id: number, slot: number, aim?: { x: number; y: number }) {
-      combat.input(id, { move: { x: 0, y: 0 }, buttons: 1 << (slot - 1), ...(aim ? { aim } : {}) });
+    /** Presses the `n`th move given to `spawn` (1–4) this tick, aiming with `aim`. */
+    press(id: number, n: number, aim?: { x: number; y: number }) {
+      // Spawned straight through combat.spawn: the nth slot.
+      const slot = slotsOf.has(id) ? slotsOf.get(id)!.indexOf(n - 1) : n - 1;
+      combat.input(id, { move: { x: 0, y: 0 }, buttons: slot < 0 ? 0 : 1 << slot, ...(aim ? { aim } : {}) });
     },
+    /** Holds these buttons this tick (raw bits: slots 0–3, then BUTTON). */
+    hold(id: number, buttons: number, move = { x: 0, y: 0 }, aim?: { x: number; y: number }) {
+      combat.input(id, { move, buttons, ...(aim ? { aim } : {}) });
+    },
+    /** The slot (0–3) the nth move given to `spawn` went to. */
+    slotOf: (id: number, n: number) => slotsOf.get(id)!.indexOf(n - 1),
+    BUTTON,
     walk(id: number, move: { x: number; y: number }) {
       combat.input(id, { move, buttons: 0 });
     },

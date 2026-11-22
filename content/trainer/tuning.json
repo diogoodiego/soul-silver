@@ -11,6 +11,7 @@
     "challengeTimeoutS": 30,
     "itemUseS": 1.5,
     "sendOutS": 1,
+    "endS": 2,
     "ballRefusal": ["0197:859", "0197:860"]
   }
 }

@@ -43,6 +43,8 @@ interface State {
   lastArea: string;
   /** The last hit on the Pokémon out came from another player's: a blackout from it costs no money. */
   hitByPlayer: boolean;
+  /** A lost trainer battle: the tick of the blackout, the last Pokémon lying on the field until then. */
+  blackoutAt: number | undefined;
   /** In a trainer battle (spec 022): kept inside the arena, no recall, no disengage. */
   arena: Arena | undefined;
   /** Wild Pokémon that came inside this fight's circle: kept there until the fight ends. */
@@ -61,6 +63,10 @@ export interface Arena {
   ally?: number | undefined;
   /** Spec 028.5: a duel's arena; its last Pokémon down ends the duel here instead of a blackout. */
   onDefeat?: (() => void) | undefined;
+  /** A trainer battle holds this long once lost, before the blackout. */
+  endTicks?: number | undefined;
+  /** Already won: nothing faints anymore. */
+  won?: boolean;
 }
 
 export interface CompanionOptions {
@@ -236,6 +242,7 @@ export function createCompanions(options: CompanionOptions) {
     s.mode = "walk";
     s.arena = undefined;
     s.active = undefined;
+    s.blackoutAt = undefined;
     const rest = { ...t.data };
     delete rest["inCombat"];
     world.update({ ...t, data: rest });
@@ -262,21 +269,33 @@ export function createCompanions(options: CompanionOptions) {
   }
 
   function stepCombat(s: State, tick: number): void {
+    if (s.blackoutAt !== undefined) {
+      if (tick >= s.blackoutAt) blackout(s);
+      return;
+    }
     const party = s.trainer.progress.party;
     const c = s.companionId === undefined ? undefined : combat!.get(s.companionId);
+    // Poison or a late blow cannot turn a win into a blackout.
+    if (s.arena?.won && c?.hp === 0) c.hp = 1;
     keepHp(s);
     if (c && s.active !== undefined) {
       if (c.hp === 0) {
         // Back to the ball on its own; the player picks the next one or recalls to flee.
         const fainted = s.active;
         party[fainted]!.friendship = friendshipOnFaint(party[fainted]!.friendship);
-        removeCompanion(s);
         s.active = undefined;
         const canContinue = launchLead(s) !== undefined;
+        const endTicks = canContinue ? undefined : s.arena?.endTicks;
+        if (endTicks === undefined) removeCompanion(s);
         s.trainer.send({ type: "fainted", partyIndex: fainted, canContinue });
         if (!canContinue) {
           if (s.arena?.onDefeat) {
             s.arena.onDefeat();
+            return;
+          }
+          if (endTicks !== undefined) {
+            s.blackoutAt = tick + endTicks;
+            sendParty(s);
             return;
           }
           // Only Pokémon that cannot fight on the water are left: back on the water, no blackout.
@@ -353,7 +372,7 @@ export function createCompanions(options: CompanionOptions) {
       // HP from a save is a trust boundary: never above the maximum for the level.
       for (const m of trainer.progress.party) m.hp = Math.min(m.hp, hpMax(m));
       const t = world.get(trainer.entityId)!;
-      const s: State = { trainer, trail: [], companionId: undefined, mode: "walk", active: undefined, anchor: { x: 0, y: 0 }, swapReadyTick: 0, swapUntil: 0, lastThreatTick: 0, buttons: 0, lastArea: t.area, hitByPlayer: false, arena: undefined, pinned: new Set(), follower: undefined };
+      const s: State = { trainer, trail: [], companionId: undefined, mode: "walk", active: undefined, anchor: { x: 0, y: 0 }, swapReadyTick: 0, swapUntil: 0, lastThreatTick: 0, buttons: 0, lastArea: t.area, hitByPlayer: false, blackoutAt: undefined, arena: undefined, pinned: new Set(), follower: undefined };
       states.set(trainer.playerId, s);
       sendParty(s);
     },
@@ -403,7 +422,8 @@ export function createCompanions(options: CompanionOptions) {
         else endCombat(s);
         return true;
       }
-      if (input && s.companionId !== undefined && tick >= s.swapUntil) combat!.input(s.companionId, { move: input.move, buttons: input.buttons, aim: input.aim });
+      // A tick with no input (a late one) keeps what was held: letting go of the guard or pressing again is the player's.
+      if (s.companionId !== undefined && tick >= s.swapUntil) combat!.input(s.companionId, input ? { move: input.move, buttons: input.buttons, aim: input.aim, seen: input.seen } : { move: { x: 0, y: 0 }, buttons });
       return true;
     },
     /** Quick swap on the field: this member follows the trainer; ignored in combat and for one that cannot fight. */
@@ -418,7 +438,7 @@ export function createCompanions(options: CompanionOptions) {
     swap(playerId: number, index: number, tick: number): void {
       const s = states.get(playerId);
       const member = s?.trainer.progress.party[index];
-      if (!s || s.mode !== "combat" || !member || !canFight(member) || index === s.active || index === s.arena?.ally || tick < s.swapReadyTick) return;
+      if (!s || s.mode !== "combat" || s.blackoutAt !== undefined || !member || !canFight(member) || index === s.active || index === s.arena?.ally || tick < s.swapReadyTick) return;
       if (!mayLaunch(s, index)) return s.trainer.send({ type: "notice", code: "launch-refused" });
       keepHp(s);
       if (s.companionId !== undefined) combat!.remove(world, s.companionId);
@@ -437,10 +457,18 @@ export function createCompanions(options: CompanionOptions) {
       if (s.companionId !== undefined && combat?.has(s.companionId)) combat.setBattle(s.companionId, arena.battle);
       return true;
     },
-    /** The trainer battle is over: back to walking. */
+    /** The trainer battle is won and about to end. */
+    winBattle(playerId: number): void {
+      const arena = states.get(playerId)?.arena;
+      if (arena) arena.won = true;
+    },
+    /** The trainer battle is lost and about to end in a blackout. */
+    lostBattle: (playerId: number) => states.get(playerId)?.blackoutAt !== undefined,
+    /** The trainer battle is over: back to walking, or the blackout a lost one still owed. */
     leaveBattle(playerId: number): void {
       const s = states.get(playerId);
-      if (s?.arena && s.mode === "combat") endCombat(s);
+      if (s?.blackoutAt !== undefined) blackout(s);
+      else if (s?.arena && s.mode === "combat") endCombat(s);
       else if (s) s.arena = undefined;
     },
     /** After movement and combat: following, containment, fainting, blackout and the end of combat. */

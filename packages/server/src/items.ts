@@ -303,7 +303,7 @@ export function createItems(options: ItemsOptions) {
       combat!.cure(u.target, e.cures);
       combat!.heal(u.target, healHp(e.amount, c.stats.hp));
     } else if (e.archetype === "cure") combat!.cure(u.target, e.cures);
-    else if (e.archetype === "pp-ether") combat!.restore(u.target, e.pp, tuning.secondsPerPp);
+    else if (e.archetype === "pp-ether") combat!.restore(u.target, e.all);
     else if (e.archetype === "battle-stat") combat!.raise(u.target, e.stages);
     else if (e.archetype === "revive") {
       // shortcut: in combat the first fainted member is revived; pick one when the quick selector gets a party list.

@@ -15,15 +15,20 @@ describe("buildCombatData", () => {
     const ember = data.move(MOVES.ember.id)!;
     expect(ember.behavior).toBe("projectile");
     expect(ember.type).toBe(10);
-    // Seconds become ticks at 20 Hz: the projectile archetype's 0.15 s rises to the 0.5 s floor (tuning minCastS).
-    expect(ember.castTicks).toBe(10);
+    // Block C: a normal move takes the chain's cast in combat, and has no cooldown.
+    expect(ember.special).toBe(false);
+    expect([ember.castTicks, ember.cooldownTicks]).toEqual([0, 0]);
     expect(ember.effects).toContainEqual({ kind: "status", status: "burn" });
   });
 
-  it("raises every cast to the tuning's floor, instant moves too", () => {
-    const content = readContent() as { tuning: { value: object } };
-    const data = buildCombatData({ ...content, tuning: { ...content.tuning, value: { ...content.tuning.value, minCastS: 1 } } } as never, extraction());
-    for (const m of Object.values(MOVES)) expect(data.move(m.id)!.castTicks).toBeGreaterThanOrEqual(20);
+  it("gives specials (power 80 and up, status, fixed damage) a cast of at least 0.8 s and their cooldown (block C)", () => {
+    const data = buildCombatData(readContent(), extraction());
+    // Seconds become ticks at 20 Hz.
+    expect(data.move(MOVES.hyperBeam.id)).toMatchObject({ special: true, castTicks: 16, cooldownTicks: 240 });
+    expect(data.move(MOVES.takeDown.id)).toMatchObject({ special: true, cooldownTicks: 120 });
+    expect(data.move(MOVES.growl.id)).toMatchObject({ special: true, castTicks: 16, cooldownTicks: 100 });
+    expect(data.move(MOVES.tackle.id)!.special).toBe(false);
+    for (const m of Object.values(MOVES)) if (data.move(m.id)!.special) expect(data.move(m.id)!.castTicks).toBeGreaterThanOrEqual(16);
   });
 
   it("uses the generic archetype of the category for unmapped moves", () => {

@@ -61,6 +61,16 @@ describe("capture (US3)", () => {
     expect(save.pokedex.caught).toContain(species);
   });
 
+  it("a caught boss keeps its share of HP, without the boss's extra", () => {
+    const g = game({ saves: [{ bag: [{ item: MASTER, count: 1 }] }] });
+    g.run(2);
+    Object.assign(g.session.combat!.get(g.wild()!.id)!, { boss: true, hp: 13 });
+    g.throwAll([0]);
+    g.run(20 * 5);
+    g.session.close("closed-by-host");
+    expect(g.ps[0]!.saves().at(-1)!.save.party.at(-1)!.hp).toBe(7);
+  });
+
   it("sends a catch to the first free PC slot when the party is full (spec 023)", () => {
     const boxes = newBoxes();
     boxes[0]!.slots[0] = member();

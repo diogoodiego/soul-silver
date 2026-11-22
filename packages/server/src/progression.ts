@@ -1,4 +1,4 @@
-import type { Stats } from "@soulsilver/shared/combat";
+import { fitMoves, learnChoice, type Stats } from "@soulsilver/shared/combat";
 import type { ClientMessage, ServerMessage } from "@soulsilver/shared/game";
 import type { EvolutionRecord, ItemRecord, LearnsetRecord, MachineRecord, SpeciesRecord, TutorRecord } from "@soulsilver/shared/game-data";
 import { addEvs, expForLevel, expGain, friendshipOnLevelUp, levelFor, levelUpItems, memberStats } from "@soulsilver/shared/progression";
@@ -76,6 +76,8 @@ export interface ProgressionOptions {
   active(playerId: number): number | undefined;
   /** Sends the party again after a level or a species changed. */
   refresh(playerId: number): void;
+  /** Block C: whether a move is special (slots 3–4); without it, any move may replace any other. */
+  special?: ((move: number) => boolean) | undefined;
 }
 
 /** Spec 027: what an item used from the bag asks of progression. */
@@ -145,13 +147,21 @@ export function createProgression(options: ProgressionOptions) {
     return pending[0];
   }
 
+  /** Block C: a new move goes to a free slot of its class, or replaces one of the same class. */
+  function choiceFor(m: PartyMember, move: number): { free: boolean; replaceable: number[] } {
+    return options.special ? learnChoice(m.moves, move, options.special) : { free: m.moves.length < 4, replaceable: m.moves.map((_, i) => i) };
+  }
+
   function send(s: State, item: ProgressionItem): void {
     const m = s.learner.progress.party[item.member]!;
     if (item.kind === "level-up") {
       const stats = statsOf(m, m.species, item.level);
       const before = statsOf(m, m.species, item.level - 1);
       s.learner.send({ type: "progression", item, ...(stats && before ? { stats, gains: diff(stats, before) } : {}) });
-    } else if (item.kind === "learn") s.learner.send({ type: "progression", item, moves: [...m.moves] });
+    } else if (item.kind === "learn") {
+      const choice = choiceFor(m, item.move);
+      s.learner.send({ type: "progression", item, moves: [...m.moves], ...(choice.free || !options.special ? {} : { replaceable: choice.replaceable }) });
+    }
     else s.learner.send({ type: "progression", item });
     s.sent = true;
   }
@@ -168,15 +178,20 @@ export function createProgression(options: ProgressionOptions) {
         regrow(m, before);
         return true;
       }
-      case "learn":
-        if (m.moves.length < 4) {
+      case "learn": {
+        const choice = choiceFor(m, item.move);
+        if (choice.free) {
           if (answer.type !== "progression-ack") return false;
           m.moves.push(item.move);
+          // Normals first, then specials.
+          if (options.special) fitMoves(m, options.special);
           return true;
         }
         if (answer.type !== "learn-answer") return false;
+        if (answer.forget !== null && !choice.replaceable.includes(answer.forget)) return false;
         if (answer.forget !== null) m.moves[answer.forget] = item.move;
         return true;
+      }
       case "evolve": {
         if (answer.type !== "evolve-answer") return false;
         if (!answer.accept || !data.species(item.into)) return true;

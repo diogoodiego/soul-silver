@@ -40,52 +40,20 @@ describe("using a move", () => {
     expect(t.hp(b)).toBe(def.hp - hit.amount);
   });
 
-  it("starts on the press only, and waits for the action bar", () => {
+  it("starts on the press only: holding the button does not repeat the move", () => {
     const t = combatSetup();
     const a = t.spawn("cyndaquil", [tackle.id], { x: 0, y: 0 }, 1);
     t.spawn("sentret", [], { x: 20, y: 0 });
-    const fill = Math.ceil(t.combat.gaugeTicks(a));
-    // Held while the bar fills again: one use.
-    for (let i = 0; i < fill + 5; i++) {
+    for (let i = 0; i < 20; i++) {
       t.press(a, 1, east);
       t.step();
     }
     expect(t.events.filter((e) => e.kind === "hit")).toHaveLength(1);
-    // Released, then pressed again with the bar full: a second use.
+    // Released, then pressed again: a second use (block C: normal moves have no cooldown).
     t.step();
     t.press(a, 1, east);
     t.step(5);
     expect(t.events.filter((e) => e.kind === "hit")).toHaveLength(2);
-  });
-
-  it("ignores a press while the action bar fills", () => {
-    const t = combatSetup();
-    const a = t.spawn("cyndaquil", [tackle.id], { x: 0, y: 0 }, 1);
-    t.spawn("sentret", [], { x: 20, y: 0 });
-    t.press(a, 1, east);
-    t.step(3);
-    t.press(a, 1, east);
-    t.step(3);
-    expect(t.events.filter((e) => e.kind === "hit")).toHaveLength(1);
-    expect(t.world.get(a)!.data.gauge).toBeLessThan(100);
-  });
-
-  it("enters combat with an empty action bar that fills, then lets any move go", () => {
-    const t = combatSetup();
-    const a = t.spawn("cyndaquil", [tackle.id, MOVES.ember.id], { x: 0, y: 0 }, 1);
-    t.spawn("sentret", [], { x: 20, y: 0 });
-    const c = t.combat.get(a)!;
-    c.gauge = 0;
-    t.press(a, 2, east);
-    t.step(3);
-    expect(c.used.count).toBe(0);
-    t.step(Math.ceil(t.combat.gaugeTicks(a)));
-    expect(c.gauge).toBe(1);
-    expect(t.world.get(a)!.data.gauge).toBe(100);
-    t.press(a, 2, east);
-    t.step(5);
-    expect(c.used.move).toBe(MOVES.ember.id);
-    expect(c.gauge).toBeLessThan(0.5);
   });
 
   it("aims itself at the nearest foe", () => {
@@ -107,7 +75,7 @@ describe("using a move", () => {
   });
 
   it("keeps walking while a move charges, even a melee one (block H)", () => {
-    const t = combatSetup();
+    const t = combatSetup(1, "real");
     const a = t.spawn("cyndaquil", [tackle.id], { x: 100, y: 100 }, 1);
     expect(t.data.move(tackle.id)!.behavior).toBe("melee");
     t.combat.input(a, { move: { x: 0, y: 1 }, buttons: 1 });
@@ -143,14 +111,14 @@ describe("using a move", () => {
   });
 
   it("publishes the cast's area, length and type while it charges, then clears them", () => {
-    const t = combatSetup();
+    const t = combatSetup(1, "real");
     const a = t.spawn("cyndaquil", [ember.id], { x: 0, y: 0 }, 1);
     t.press(a, 1, east);
     t.step();
-    const castMs = t.data.move(ember.id)!.castTicks * 50;
-    expect(castMs).toBeGreaterThan(0);
+    // Block C: the first normal move of a chain charges 0.4 s.
+    const castMs = 400;
     expect(t.world.get(a)!.data).toMatchObject({ casting: 1, castMs, castType: ember.type, castShape: "rect", castOx: 0, castOy: 0, castSize: 172, castSpan: 12, castDx: 100, castDy: 0 });
-    t.step(5);
+    t.step(8);
     expect(t.world.get(a)!.data["castShape"]).toBeUndefined();
   });
 
@@ -211,7 +179,7 @@ describe("movement", () => {
     const fast = t.spawn("rattata", [tackle.id], { x: 0, y: 0 }, 1, 40);
     const slow = t.spawn("hoothoot", [tackle.id], { x: 0, y: 100 }, 1, 40);
     expect(t.combat.movePx(fast)).toBeGreaterThan(t.combat.movePx(slow));
-    expect(t.combat.gaugeTicks(fast)).toBeLessThan(t.combat.gaugeTicks(slow));
+    expect(t.combat.reflexTicks(fast)).toBeLessThan(t.combat.reflexTicks(slow));
     const { moveMinPx, moveMaxPx } = t.data.tuning.speed;
     for (const id of [fast, slow]) {
       expect(t.combat.movePx(id)).toBeGreaterThanOrEqual(moveMinPx / 20);

@@ -1,4 +1,4 @@
-import { createRoamer, roam, ROAMER_KNOCKED_OUT, ROAMER_LEVEL, ROAMER_SPECIES, ROAMER_STATE_VAR, timeOfDay, wildMoves, type Roamer } from "@soulsilver/shared/wild";
+import { createRoamer, LEGENDARIES, roam, ROAMER_KNOCKED_OUT, ROAMER_LEVEL, ROAMER_SPECIES, ROAMER_STATE_VAR, timeOfDay, wildMoves, type Roamer } from "@soulsilver/shared/wild";
 import { PROTOCOL_VERSION } from "@soulsilver/shared";
 import {
   BUTTON,
@@ -20,19 +20,21 @@ import {
   type RejectCode,
   type Rng,
   type ServerMessage,
+  type ArenaCombatant,
   type ArenaSpec,
   type WorldLookup,
   type TradeOffer,
 } from "@soulsilver/shared/game";
 import type { Decision } from "@soulsilver/shared/ai";
-import { TICKS_PER_S } from "@soulsilver/shared/combat";
+import { fitMoves, TICKS_PER_S, toTicks } from "@soulsilver/shared/combat";
+import { GYM_LEADERS } from "@soulsilver/shared/trainer";
 import { MAP_TILE_PX, type Direction } from "@soulsilver/shared/maps";
 import { npcOccupied } from "@soulsilver/shared/npc";
 import { leadIndex } from "@soulsilver/shared/companion";
 import { expForLevel, memberStats } from "@soulsilver/shared/progression";
 import { migrate, newBoxes, trainerIdFor, newCollection, newProgress, STORY_REV, storyUnstarted, type PartyMember, type Save } from "@soulsilver/shared/save";
 import { buildAiData, BUNDLED_AI_CONTENT, type AiData } from "./ai-loader";
-import { ARENA_AREA, ARENA_MAP, ARENA_SPAWN, arenaMember, foeSpot, trainerMember } from "./arena";
+import { ARENA_AREA, ARENA_MAP, ARENA_SPAWN, arenaMember, foeSpot, LEADER_SPOT, trainerMember } from "./arena";
 import { createCombat, type Combat } from "./combat";
 import type { CombatData } from "./combat-loader";
 import { createCaptures, type Catcher } from "./capture";
@@ -71,6 +73,9 @@ export const MAX_PLAYERS = 4;
 /** One input is applied per tick, at the rate the client sends them, so a backlog never drains by itself:
  * a burst after a stall would stay as a standing delay. Two absorb a tick of jitter. */
 const MAX_QUEUED_INPUTS = 2;
+/** Block C: the buttons a press message may carry, and how many presses wait at most. */
+const PRESS_BITS = 0b1111 | BUTTON.dash | BUTTON.guard;
+const MAX_PRESSES = 8;
 const TICK_MS = 50;
 /** 10 s at 20 Hz. */
 const DEFAULT_TIMEOUT_TICKS = 200;
@@ -177,6 +182,11 @@ interface Player {
   lastInputSeq: number;
   /** Sorted by seq. */
   queue: PlayerInput[];
+  /** Block C: presses sent ahead of the input `seq` that carries them, until that input is applied. */
+  presses: { id: number; seq: number; buttons: number; seen: number; applied: boolean }[];
+  /** The last press received and the last one applied. */
+  pressId: number;
+  lastPress: number;
   lastSeenTick: number;
   replica: Replica;
   token: string;
@@ -200,6 +210,8 @@ interface Player {
   gone: boolean;
   /** In the dev arena: its wild foes' entities (a trainer's battle keeps its own). Arena players never get saves. */
   arenaFoes: number[] | undefined;
+  /** The dev arena's Gym Leader or legendary still to fight: once `foe` is beaten, the tick it comes to the fight and the leader's person. */
+  arenaLeader?: { last: { trainer: number } | { legendary: number }; foe: ArenaSpec["foe"]; at?: number; npc?: number } | undefined;
   /** Asked for the AI debug overlay (spec 019). */
   debugAi: boolean;
   /** Party, money, badges and respawn point, changed in place by the companion rules; bag, Pokédex and PC boxes by capture. */
@@ -262,6 +274,8 @@ export function createSession(options: SessionOptions): Session {
   const time = createSessionClock(options.now ?? SUNDAY_NOON);
   const bands = options.wild?.spawn.timeBands ?? BUNDLED_TIME_BANDS;
   const fieldData = options.field ?? bundledFieldData();
+  /** Block C: normal or special, for the 2 + 2 move slots; nothing is special without combat data. */
+  const special = (m: number) => options.combat?.move(m)?.special ?? false;
   const combat = options.combat ? createCombat({ data: options.combat, rng, lookup: lookup, crossesWater: (species) => fieldData.locomotion(species) !== "terrestrial" }) : undefined;
   const companions = options.companion
     ? createCompanions({
@@ -295,7 +309,7 @@ export function createSession(options: SessionOptions): Session {
     : undefined;
   const progression: Progression | undefined =
     options.progression && companions
-      ? createProgression({ data: options.progression, inCombat: (id) => companions.inCombat(id), active: (id) => companions.active(id), refresh: (id) => companions.refresh(id) })
+      ? createProgression({ data: options.progression, inCombat: (id) => companions.inCombat(id), active: (id) => companions.active(id), refresh: (id) => companions.refresh(id), special: options.combat ? special : undefined })
       : undefined;
   const ai = options.ai ?? buildAiData(BUNDLED_AI_CONTENT);
   const aiDebugEvery = Math.max(1, Math.round(TICKS_PER_S / ai.tuning.debug.hz));
@@ -467,7 +481,7 @@ export function createSession(options: SessionOptions): Session {
         wildBattle: (playerId, species, level, at, shiny): boolean => {
           if (!wilds || !options.wild) return false;
           try {
-            statics.set(wilds.place(at.area, at.x, at.y, { species, level, moves: wildMoves(options.wild.levelUp(species), level) }, tick, shiny), playerId);
+            statics.set(wilds.place(at.area, at.x, at.y, { species, level, moves: wildMoves(options.wild.levelUp(species), level, special) }, tick, shiny), playerId);
             return true;
           } catch (error) {
             options.log(`Static encounter ${species} on map ${at.area} not spawned: ${(error as Error).message}`);
@@ -485,7 +499,7 @@ export function createSession(options: SessionOptions): Session {
                 },
                 spawn(area, x, y, species, level) {
                   try {
-                    wilds.place(area, x, y, { species, level, moves: wildMoves(options.wild!.levelUp(species), level) }, tick);
+                    wilds.place(area, x, y, { species, level, moves: wildMoves(options.wild!.levelUp(species), level, special) }, tick);
                     return true;
                   } catch (error) {
                     options.log(`Wild ${species} out of a rock or tree on map ${area} not spawned: ${(error as Error).message}`);
@@ -786,6 +800,9 @@ export function createSession(options: SessionOptions): Session {
       conn,
       lastInputSeq: -1,
       queue: [],
+      presses: [],
+      pressId: -1,
+      lastPress: -1,
       lastSeenTick: tick,
       replica: createReplica(),
       token,
@@ -831,6 +848,8 @@ export function createSession(options: SessionOptions): Session {
       const ratio = m && !m.gender ? options.progression?.species(m.species)?.gender?.raw : undefined;
       const gender = ratio === undefined ? undefined : rollGender(ratio, genderRng);
       if (m && gender) m.gender = gender;
+      // Block C: 2 normal + 2 special slots; saves from before keep the extra moves as forgotten.
+      if (m && options.combat) fitMoves(m, special);
     }
     players.set(id, player);
     const send = (msg: ServerMessage) => player.conn?.send(msg);
@@ -915,7 +934,7 @@ export function createSession(options: SessionOptions): Session {
       const species = ROAMER_SPECIES[r.id];
       if (r.area !== area || species === undefined) continue;
       try {
-        const wildId = wilds.placeInGrass(area, { species, level: ROAMER_LEVEL, moves: wildMoves(options.wild.levelUp(species), ROAMER_LEVEL) }, tick);
+        const wildId = wilds.placeInGrass(area, { species, level: ROAMER_LEVEL, moves: wildMoves(options.wild.levelUp(species), ROAMER_LEVEL, special) }, tick);
         if (wildId === undefined) continue;
         roamersOut.set(wildId, { playerId: p.id, id: r.id });
         const c = combat.get(wildId)!;
@@ -1044,6 +1063,7 @@ export function createSession(options: SessionOptions): Session {
       close("host-left");
       return;
     }
+    trainerBattles?.settle(p.id);
     sendSave(p);
     remove(p);
     p.conn?.close();
@@ -1088,8 +1108,27 @@ export function createSession(options: SessionOptions): Session {
     state = "closing";
     closeReason = reason;
     reserved.clear();
-    for (const p of players.values()) sendSave(p);
+    for (const p of players.values()) {
+      trainerBattles?.settle(p.id);
+      sendSave(p);
+    }
     if (![...players.values()].some((p) => p.pendingAck !== undefined)) finishClose();
+  }
+
+  /** Block C: this tick's input with the presses sent ahead of it, each held until the input that carries it. */
+  function withPresses(player: Player, input: PlayerInput | undefined): PlayerInput | undefined {
+    if (!input || player.presses.length === 0) return input;
+    let { buttons, seen } = input;
+    player.presses = player.presses.filter((p) => {
+      if (!p.applied || input.seq < p.seq) buttons |= p.buttons;
+      if (!p.applied) {
+        seen = p.seen;
+        player.lastPress = p.id;
+        p.applied = true;
+      }
+      return input.seq < p.seq;
+    });
+    return { ...input, buttons, ...(seen === undefined ? {} : { seen }) };
   }
 
   function enqueue(player: Player, input: PlayerInput): void {
@@ -1111,15 +1150,25 @@ export function createSession(options: SessionOptions): Session {
   }
 
   /** Handles a hello; returns the new player or undefined when it was refused. */
+  /** A legendary as the arena fights it: its level's moves. */
+  function legendaryOf(species: number): ArenaCombatant {
+    const level = LEGENDARIES.get(species)!;
+    return { species, level, moves: wildMoves(options.wild!.levelUp(species), level, special) };
+  }
+
   /** Why this arena cannot be built, checked before anything enters the world; undefined when it can. */
   function arenaProblem(spec: ArenaSpec): string | undefined {
     if (!combat || !options.combat || !options.devArena) return "A arena de teste está desligada neste servidor.";
     if (spec.ring !== undefined && options.world(String(spec.ring))?.areaType !== "indoor") return `Arena inválida: o mapa ${spec.ring} não é um lugar fechado da extração`;
     if (spec.foe.kind === "trainer" && !trainerBattles) return "Arena inválida: lutas de treinador precisam dos dados de treinadores e de scripts";
     if (spec.foe.kind === "trainer" && !options.trainers?.trainer(spec.foe.trainer)) return `Arena inválida: treinador ${spec.foe.trainer} não existe na extração`;
-    if (spec.foe.kind === "wild" && spec.foe.behavior === "ai" && !wilds) return "Arena inválida: selvagens com IA precisam dos dados de selvagens";
+    const leader = spec.leader !== undefined && trainerBattles && GYM_LEADERS.has(spec.leader) ? options.trainers?.trainer(spec.leader) : undefined;
+    if (spec.leader !== undefined && !leader) return `Arena inválida: o treinador ${spec.leader} não é um líder de ginásio da extração`;
+    const leaderTeam = (leader?.team ?? []).map((m) => ({ ...m, moves: (m.moves ?? []).filter((id) => id > 0) }));
+    if (spec.legendary !== undefined && !LEGENDARIES.has(spec.legendary)) return `Arena inválida: a espécie ${spec.legendary} não é um Pokémon lendário`;
+    if (((spec.foe.kind === "wild" && spec.foe.behavior === "ai") || spec.legendary !== undefined) && !wilds) return "Arena inválida: selvagens com IA precisam dos dados de selvagens";
     try {
-      for (const c of [...spec.team, ...spec.foe.team]) arenaMember(c, options.combat, options.progression);
+      for (const c of [...spec.team, ...spec.foe.team, ...leaderTeam, ...(spec.legendary !== undefined ? [legendaryOf(spec.legendary)] : [])]) arenaMember(c, options.combat, options.progression);
     } catch (error) {
       return `Arena inválida: ${(error as Error).message}`;
     }
@@ -1148,6 +1197,37 @@ export function createSession(options: SessionOptions): Session {
       combat!.spawn(world, e.id, c, "wild");
       return e.id;
     });
+  }
+
+  /** Each arena's Gym Leader or legendary, once the first foe is beaten: the leader appears, then challenges the player; the legendary attacks. */
+  function stepArenaLeaders(): void {
+    for (const p of players.values()) {
+      const next = p.arenaLeader;
+      if (!next) continue;
+      const { foe, last } = next;
+      const { area } = world.get(p.entityId)!;
+      const spot = ringSource(area) === undefined ? LEADER_SPOT : RING_SPOTS.trainer;
+      if (next.at === undefined) {
+        const beaten = foe.kind === "trainer" ? p.flags.has(options.trainers!.tuning.trainerFlagBase + foe.trainer) : p.arenaFoes!.every((id) => (combat?.get(id)?.hp ?? 0) === 0);
+        if (!beaten) continue;
+        if ("trainer" in last) {
+          next.npc = world.add({ kind: "npc", area, ...spot, level: 0, facing: "west", data: { sprite: GYM_LEADERS.get(last.trainer)!.sprite } }).id;
+          p.arenaFoes!.push(next.npc);
+        }
+        // The beaten trainer's line is on the player's screen: the fight waits for trainer-ready.
+        const t = options.trainers;
+        next.at = tick + (t ? toTicks(foe.kind === "trainer" && t.lines(foe.trainer).defeat ? t.tuning.challengeTimeoutS : t.tuning.alertS) : 0);
+      }
+      if (tick < next.at || busyOf(p.id)) continue;
+      if ("trainer" in last) {
+        if (trainerBattles?.challenge(p.id, last.trainer, world.get(next.npc!)!)) p.arenaLeader = undefined;
+        continue;
+      }
+      const id = wilds!.place(area, spot.x, spot.y, legendaryOf(last.legendary), tick);
+      wilds!.ai.enrage(id);
+      p.arenaFoes!.push(id);
+      p.arenaLeader = undefined;
+    }
   }
 
   function admit(conn: Connection, msg: { protocolVersion: number; save: unknown; resumeToken?: string | undefined; arena?: ArenaSpec | undefined }): { player: Player; resumed: boolean } | undefined {
@@ -1206,6 +1286,9 @@ export function createSession(options: SessionOptions): Session {
       // shortcut: arena joins are not recorded, so a replay of an arena session does not rebuild it; record them if arena replays matter.
       const player = add(save, conn, arenaSpawn!, options.newToken(), true);
       player.arenaFoes = spawnFoes(player, msg.arena.foe, arenaSpawn!.area);
+      const { leader, legendary, foe } = msg.arena;
+      const last = leader !== undefined ? { trainer: leader } : legendary !== undefined ? { legendary } : undefined;
+      if (last) player.arenaLeader = { last, foe };
       return { player, resumed: false };
     }
     // Spec 028.3: a save older than a trade this host still owes the player is replaced by the traded one.
@@ -1265,6 +1348,11 @@ export function createSession(options: SessionOptions): Session {
           // Players never aim: moves and balls aim themselves; a client's aim is ignored.
           enqueue(player, { seq: msg.seq, move: msg.move, run: msg.run, buttons: msg.buttons });
           return;
+        case "press":
+          if (msg.id <= player.pressId || player.presses.length >= MAX_PRESSES) return;
+          player.pressId = msg.id;
+          player.presses.push({ id: msg.id, seq: msg.seq, buttons: msg.buttons & PRESS_BITS, seen: msg.seen, applied: false });
+          return;
         case "swap":
           companions?.swap(player.id, msg.partyIndex, tick);
           return;
@@ -1288,6 +1376,7 @@ export function createSession(options: SessionOptions): Session {
           return;
         case "trainer-ready":
           trainerBattles?.ready(player.id);
+          if (player.arenaLeader?.at !== undefined) player.arenaLeader.at = tick;
           return;
         case "pc-move":
         case "pc-rename":
@@ -1533,7 +1622,7 @@ export function createSession(options: SessionOptions): Session {
     // Block H: the trainer card follows money, badges, the Pokédex and the Hall of Fame.
     for (const p of players.values()) sendCard(p);
     for (const p of players.values()) {
-      const input = p.queue.shift();
+      const input = withPresses(p, p.queue.shift());
       if (input) {
         p.lastInputSeq = input.seq;
         options.onRecord?.({ tick, kind: "input", playerId: p.id, input });
@@ -1585,6 +1674,7 @@ export function createSession(options: SessionOptions): Session {
     fishing.step(tick);
     companions?.step(tick);
     trainerBattles?.step(tick, hits);
+    stepArenaLeaders();
     wilds?.step(tick, hits);
     captures?.step(tick);
     items.step(tick, hits);
@@ -1604,7 +1694,7 @@ export function createSession(options: SessionOptions): Session {
     const entities = world.all();
     for (const p of players.values()) {
       const entity = world.get(p.entityId)!;
-      p.conn?.send(replicate(p.replica, entity, scripts ? entities.filter((e) => scripts.visible(p.id, e)).map((e) => scripts.view(p.id, e)) : entities, tick, p.lastInputSeq));
+      p.conn?.send(replicate(p.replica, entity, scripts ? entities.filter((e) => scripts.visible(p.id, e)).map((e) => scripts.view(p.id, e)) : entities, tick, p.lastInputSeq, p.lastPress));
       const seen = hits.filter((h) => world.get(h.target)?.area === entity.area);
       if (seen.length > 0) p.conn?.send({ type: "combat-event", tick, events: seen } satisfies ServerMessage);
       if (p.debugAi && wilds && tick % aiDebugEvery === 0) p.conn?.send({ type: "aiDebug", tick, ais: wilds.ai.debug(entity.area, entity, aiDebugRadiusPx) } satisfies ServerMessage);

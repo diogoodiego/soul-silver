@@ -24,7 +24,8 @@ export const ENCOUNTERS = [
 /** `content/wild` with some fields replaced. */
 export function wildContent(patch: { spawn?: object; temperaments?: object } = {}): WildContent {
   const copy = JSON.parse(JSON.stringify(BUNDLED_WILD_CONTENT)) as Record<string, { value: Record<string, unknown> }>;
-  Object.assign(copy["spawn"]!.value, patch.spawn);
+  // Nobody calls a pack unless the test asks: it would change the counts and the rolls.
+  Object.assign(copy["spawn"]!.value, { packCall: { chance: 0, count: 4 } }, patch.spawn);
   Object.assign(copy["temperaments"]!.value, patch.temperaments);
   return copy as unknown as WildContent;
 }

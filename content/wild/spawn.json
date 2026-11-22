@@ -15,6 +15,7 @@
     "faintedSeconds": 30,
     "leashTiles": 10,
     "shinyOdds": 8192,
+    "packCall": { "chance": 0.33, "count": 4 },
     "timeBands": { "morning": 4, "day": 10, "night": 20 },
     "turnSeconds": 5,
     "angryOnEscapeChance": 0.5,

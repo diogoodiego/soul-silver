@@ -18,7 +18,9 @@ describe("archetypes", () => {
   it("melee auto-aims at a foe in reach, and misses one out of reach", () => {
     expect(kinds(duel(MOVES.tackle.id, { x: 20, y: 0 }).t, 2)).toEqual(["hit"]);
     expect(kinds(duel(MOVES.tackle.id, { x: -20, y: 0 }).t, 2)).toEqual(["hit"]);
-    expect(kinds(duel(MOVES.tackle.id, { x: 60, y: 0 }).t, 2)).toEqual([]);
+    // Block C: a normal contact move leaps up to 48 px first, so 60 px away is reached; 100 px is not.
+    expect(kinds(duel(MOVES.tackle.id, { x: 60, y: 0 }).t, 2)).toEqual(["hit"]);
+    expect(kinds(duel(MOVES.tackle.id, { x: 100, y: 0 }).t, 2)).toEqual([]);
   });
 
   it("projectile travels, hits where aimed, and stops at its range", () => {
@@ -100,7 +102,7 @@ describe("generic archetypes", () => {
   it("unmapped moves of each category work without errors", () => {
     for (const move of [MOVES.unmappedPhysical, MOVES.unmappedSpecial, MOVES.unmappedStatus]) {
       const { t, b } = duel(move.id, { x: 20, y: 0 });
-      expect(t.combat.get(1)!.moves[0]!.archetype).toBe(`generic-${move.category}`);
+      expect(t.combat.get(1)!.moves.find((m) => m)!.archetype).toBe(`generic-${move.category}`);
       expect(kinds(t, b)).toEqual(move.category === "status" ? [] : ["hit"]);
     }
   });

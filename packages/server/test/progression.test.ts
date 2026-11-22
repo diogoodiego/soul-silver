@@ -39,11 +39,14 @@ const member = (species: number, level: number, extra: Partial<PartyMember> = {}
   ...extra,
 });
 
-function game(parties: PartyMember[][], pending: Save["pending"][] = []) {
+/** Block C: Leer (43) and Smokescreen (108) are status moves, so special; Tackle, Scratch, Quick Attack and Ember are normal. */
+const SPECIAL = (m: number) => m === 43 || m === 108;
+
+function game(parties: PartyMember[][], pending: Save["pending"][] = [], special?: (m: number) => boolean) {
   const fighting = new Set<number>();
   const active = new Map<number, number>();
   const refreshed: number[] = [];
-  const p = createProgression({ data: DATA, inCombat: (id) => fighting.has(id), active: (id) => active.get(id), refresh: (id) => refreshed.push(id) });
+  const p = createProgression({ data: DATA, inCombat: (id) => fighting.has(id), active: (id) => active.get(id), refresh: (id) => refreshed.push(id), special });
   const learners = parties.map((party, i): Learner & { got: ServerMessage[] } => {
     const got: ServerMessage[] = [];
     return { playerId: i + 1, progress: { party, pending: pending[i] ?? [], pokedex: { seen: [], caught: [] } }, send: (m) => got.push(m), got };
@@ -190,6 +193,47 @@ describe("a fifth move (US2)", () => {
       expect(g.learners[0]!.progress.party[0]!.moves).toEqual(moves);
       expect(g.learners[0]!.progress.pending).toEqual([]);
     }
+  });
+});
+
+describe("moves by class (block C)", () => {
+  /** A level 11 Cyndaquil about to reach 12 (Quick Attack, normal) or a level 12 one about to reach 13 (Leer, special). */
+  function learning(moves: number[], to: 12 | 13) {
+    const level = to - 1;
+    const g = game([[member(155, level, { experience: expForLevel("medium-slow", to) - 100, moves })]], [], SPECIAL);
+    g.fight(1, 0);
+    g.p.faint(100, 95, 10);
+    g.end(1);
+    g.p.answer(1, { type: "progression-ack" });
+    return { g, m: g.learners[0]!.progress.party[0]! };
+  }
+
+  it("adds a special to its free slot even with two normals known", () => {
+    const { g, m } = learning([33, 10], 13);
+    expect(g.msgs(0, "progression").at(-1)).toMatchObject({ item: { kind: "learn", move: 43 } });
+    expect(g.msgs(0, "progression").at(-1)!.replaceable).toBeUndefined();
+    g.p.answer(1, { type: "progression-ack" });
+    expect(m.moves).toEqual([33, 10, 43]);
+  });
+
+  it("a third normal may only replace one of the two normals", () => {
+    const { g, m } = learning([33, 10, 43, 108], 12);
+    expect(g.msgs(0, "progression").at(-1)).toMatchObject({ item: { kind: "learn", move: 98 }, replaceable: [0, 1] });
+    g.p.answer(1, { type: "learn-answer", forget: 2 }); // a special: refused, it still waits
+    expect(m.moves).toEqual([33, 10, 43, 108]);
+    expect(g.learners[0]!.progress.pending[0]).toMatchObject({ kind: "learn" });
+    g.p.answer(1, { type: "learn-answer", forget: 0 });
+    expect(m.moves).toEqual([98, 10, 43, 108]);
+  });
+
+  it("asks even with three moves when the class is full, and keeps normals first", () => {
+    const { g, m } = learning([33, 43, 10], 12);
+    expect(g.msgs(0, "progression").at(-1)).toMatchObject({ replaceable: [0, 2] });
+    g.p.answer(1, { type: "learn-answer", forget: null });
+    expect(m.moves).toEqual([33, 43, 10]);
+    const later = learning([33, 43], 12);
+    later.g.p.answer(1, { type: "progression-ack" });
+    expect(later.m.moves).toEqual([33, 98, 43]);
   });
 });
 

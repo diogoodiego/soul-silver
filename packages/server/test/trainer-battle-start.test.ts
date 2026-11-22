@@ -23,8 +23,8 @@ describe("starting a trainer battle", () => {
     // The arena lies toward the trainer, south of the player.
     expect(start!.arena.y).toBeGreaterThan(before.y);
     expect(t.foes()).toHaveLength(1);
-    // The trainer's sprite (its class) calls out the moves; its Pokémon enters with an empty action bar.
-    expect(t.foes()[0]!.data).toMatchObject({ trainerPic: 5, gauge: 0 });
+    // The trainer's sprite (its class) calls out the moves.
+    expect(t.foes()[0]!.data).toMatchObject({ trainerPic: 5 });
     // Knocked out of the arena, the trainer's Pokémon is put back on its edge.
     t.session.world.update({ ...t.foes()[0]!, x: start!.arena.x + 500 });
     t.step();
@@ -44,7 +44,7 @@ describe("starting a trainer battle", () => {
     t.step();
     expect(t.of(a, "trainerBattleStart")).toEqual([expect.objectContaining({ trainerId: 7 })]);
     t.knockOut();
-    t.step(3);
+    t.step(45);
     expect(t.of(a, "trainerBattleEnd")).toEqual([expect.objectContaining({ result: "won" })]);
     t.session.close("closed-by-host");
     expect(a.saves().at(-1)!.save.vars).toMatchObject({ "16385": 1 });
@@ -62,7 +62,7 @@ describe("starting a trainer battle", () => {
     t.idle(a, SCRIPT_TIMEOUT_TICKS + 10);
     expect(t.logs.filter((l) => l.includes("script timed out"))).toEqual([]);
     t.knockOut();
-    t.step(3);
+    t.step(45);
     t.session.close("closed-by-host");
     expect(a.saves().at(-1)!.save.vars).toMatchObject({ "16385": 1 });
   });

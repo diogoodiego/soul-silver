@@ -1,5 +1,8 @@
-import type { Entity, StateMessage, WorldMap } from "@soulsilver/shared/game";
+import { createRng, type Entity, type StateMessage, type WorldMap } from "@soulsilver/shared/game";
 import { describe, expect, it } from "vitest";
+import { createCombat } from "../src/combat";
+import { createWilds } from "../src/wild";
+import { createWorld } from "../src/world";
 import { combatData, SPECIES } from "./combat-fixture";
 import { setup } from "./harness";
 import { aiData, grassMap, px, wildData } from "./wild-fixture";
@@ -151,7 +154,7 @@ describe("temperaments (US2, driven by the spec 019 AI)", () => {
   it("knows only moves from its learnset", () => {
     const g = game();
     g.run(20 * 10);
-    for (const w of g.wilds()) expect(g.session.combat!.get(w.id)!.moves.map((m) => m.id)).toEqual([33]);
+    for (const w of g.wilds()) expect(g.session.combat!.get(w.id)!.moves.flatMap((m) => (m ? [m.id] : []))).toEqual([33]);
   });
 });
 
@@ -179,6 +182,59 @@ describe("shared (US4)", () => {
     const dex = g.ps[0]!.got.filter((m) => m.type === "pokedex").at(-1);
     const species = new Set(g.wilds().map((w) => w.data["species"]));
     expect(dex?.type === "pokedex" && dex.seen).toEqual(expect.arrayContaining([...species]));
+  });
+});
+
+describe("calling the pack", () => {
+  const start = (chance: number) => {
+    const g = game({ wild: wildData({ spawn: { defaultCap: 1, packCall: { chance, count: 4 } } }) });
+    g.run(5);
+    return g;
+  };
+  const wound = (g: ReturnType<typeof game>, id: number) => {
+    g.session.combat!.get(id)!.hp--;
+    g.run(1);
+  };
+
+  it("brings 4 more of its species and level, close by, in different walkable places", () => {
+    const g = start(1);
+    const caller = g.wilds()[0]!;
+    expect(g.wilds()).toHaveLength(1);
+    wound(g, caller.id);
+    const pack = g.wilds().filter((w) => w.id !== caller.id);
+    expect(pack).toHaveLength(4);
+    for (const w of pack) {
+      expect(w.data).toMatchObject({ species: caller.data["species"], level: caller.data["level"] });
+      expect(Math.hypot(w.x - caller.x, w.y - caller.y)).toBeLessThan(16 * 4);
+    }
+    expect(new Set(pack.map((w) => `${tileOf(w).x},${tileOf(w).y}`)).size).toBe(4);
+  });
+
+  it("calls once, and the called ones do not call", () => {
+    const g = start(1);
+    for (let round = 0; round < 2; round++) for (const w of g.wilds()) wound(g, w.id);
+    expect(g.wilds()).toHaveLength(5);
+  });
+
+  it("rolls once: one that did not call never does", () => {
+    const g = start(0);
+    const id = g.wilds()[0]!.id;
+    wound(g, id);
+    expect(g.session.combat!.get(id)).toBeDefined();
+    wound(g, id);
+    expect(g.wilds()).toHaveLength(1);
+  });
+
+  it("a Pokémon placed by a script does not call", () => {
+    const world = createWorld();
+    const data = combatData();
+    const rng = createRng(1);
+    const combat = createCombat({ data, rng, lookup });
+    const wilds = createWilds({ data: wildData({ spawn: { packCall: { chance: 1, count: 4 } } }), ai: aiData(), combat, combatData: data, lookup, world, rng, hour: () => 12, log: () => {} });
+    const id = wilds.place("bare", px(20), px(20), { species: SPECIES.sentret.id, level: 5, moves: [33] }, 0);
+    combat.get(id)!.hp--;
+    wilds.step(1);
+    expect(wilds.all()).toHaveLength(1);
   });
 });
 

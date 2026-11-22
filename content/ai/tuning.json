@@ -18,8 +18,8 @@
     "noise": { "walkTiles": 2, "runTiles": 6, "moveTiles": 8, "bearingErrorDeg": 30 },
     "perception": { "everyTicks": 4 },
     "performance": { "dormantTiles": 24, "budgetMsPerTick": 2 },
-    "states": { "idleWanderTiles": 3, "idlePauseS": 2, "alertS": 0.6, "returnIgnoreS": 3, "repositionS": 0.5, "angryAfterEscapeS": 20 },
-    "cast": { "aiMinCastS": 0.3 },
+    "states": { "idleWanderTiles": 3, "idlePauseS": 2, "alertS": 0.6, "returnIgnoreS": 3, "repositionS": 1, "angryAfterEscapeS": 20 },
+    "action": { "wildReactChance": 0.2, "wildSpecialChance": 0.3, "wildChainMax": 3, "trainerChain": 3, "reactLeadS": 0.15 },
     "debug": { "hz": 4, "radiusTiles": 20 }
   }
 }

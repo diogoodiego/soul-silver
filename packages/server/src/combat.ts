@@ -1,18 +1,26 @@
 import {
+  AIMED,
   applyStage,
   canApply,
+  castData,
+  castKit,
   computeDamage,
   computeStats,
+  CONTACT,
+  DODGE_PX,
+  DODGE_TICKS,
   effectiveness,
+  hitChance,
   overlaps,
+  packKit,
   rollCrit,
   rollRandom,
   segmentHits,
+  slotIndices,
   speedScale,
   stageMultiplier,
   STAGE_KEYS,
   startStatus,
-  telegraph,
   tickStatus,
   toTicks,
   type Body,
@@ -25,9 +33,10 @@ import {
   type Stats,
   type Weather,
 } from "@soulsilver/shared/combat";
-import { tileAt, type EntityData, type HitEvent, type Rng, type WorldLookup } from "@soulsilver/shared/game";
+import { BUTTON, tileAt, type EntityData, type HitEvent, type Rng, type WorldLookup } from "@soulsilver/shared/game";
 import type { Direction } from "@soulsilver/shared/maps";
-import { damageMul, restoreCooldown, thresholdHeal, type HeldItem } from "@soulsilver/shared/items";
+import { LEGENDARIES } from "@soulsilver/shared/wild";
+import { damageMul, thresholdHeal, type HeldItem } from "@soulsilver/shared/items";
 import type { CombatData, CombatMove } from "./combat-loader";
 import type { World } from "./world";
 
@@ -45,10 +54,12 @@ export interface CombatantSpec {
   stats?: StatOptions | undefined;
   /** Spec 027: the item it holds, resolved from the item data. */
   held?: HeldItem | undefined;
-  /** Spec 027: each slot's cooldown multiplier (PP Ups); 1 when omitted. A move used leaves 1 − mul of the action bar. */
+  /** Spec 027: each move's cooldown multiplier (PP Ups), in the order of `moves`; 1 when omitted. Block C: only specials have a cooldown. */
   cooldownMul?: number[] | undefined;
   /** Trainer sprite (a trainer class) shown calling out its moves; none for wild Pokémon. */
   trainerPic?: number | undefined;
+  /** The last Pokémon of a Gym Leader, Elite Four or Champion (BOSS_TRAINERS): bossHpMul times the HP and a bar of its own on screen. A wild legendary always is one. */
+  boss?: boolean | undefined;
 }
 
 /** Trainer classes 0 and 1 are the player characters, Ethan and Lyra. */
@@ -59,9 +70,35 @@ export interface CombatInput {
   /** Bits 0–3 are move slots 1–4. */
   buttons: number;
   aim?: Point | undefined;
-  /** The AI's floor on cast time (spec 019, FR-026): none of its moves comes out without a wind-up. */
-  minCastTicks?: number | undefined;
+  /** Block C: the tick on the player's screen when the buttons were pressed; this one when omitted. */
+  seen?: number | undefined;
 }
+
+/**
+ * Block C: a contact move, normal or special, charges aimed at its foe, then leaps `px` at it and goes off as it lands. A confused one gone `astray` keeps the wrong way it began with.
+ */
+interface Lunge {
+  astray: boolean;
+  px: number;
+  /** How long the leap takes, and once in the air what is left of it, in ticks. */
+  ticks: number;
+  left?: number;
+}
+
+interface Casting {
+  slot: number;
+  dir: Point;
+  startTick: number;
+  readyTick: number;
+  /** Block C: the first normal of a chain. */
+  opener: boolean;
+  /** Block C: who pressed the parry while it was cast; it only counts if the move then touches them. */
+  parriedBy: Set<number>;
+  lunge?: Lunge | undefined;
+}
+
+/** The tick a move being cast goes off: with a leap still to come, as it lands. */
+export const goesOffAt = ({ readyTick, lunge }: Casting): number => readyTick + (lunge && lunge.left === undefined ? Math.max(0, lunge.ticks - 1) : 0);
 
 export interface Combatant {
   entityId: number;
@@ -71,29 +108,71 @@ export interface Combatant {
   species: number;
   level: number;
   types: number[];
-  moves: CombatMove[];
+  /** Block C: slots 0–1 hold normal moves, 2–3 special ones; a slot with no move of its class is empty. */
+  moves: (CombatMove | undefined)[];
   stats: Stats;
   hp: number;
   stages: Record<StageKey, number>;
   major: StatusState | undefined;
   confusion: StatusState | undefined;
-  /** Action bar, 0 to 1: it fills at a rate set by Speed and, once full, lets one move go. */
-  gauge: number;
-  casting: { slot: number; dir: Point; startTick: number; readyTick: number } | undefined;
-  /** Last move used (executed), so clients can play its animation even when it hits nothing. */
-  used: { count: number; move: number; dir: Point; arc?: { radiusPx: number; angleDeg: number } | undefined };
+  /** Block C: the tick each slot can be used again (a normal waits only after missing the first of a chain), and how long its last cooldown was. */
+  readyAt: number[];
+  cooldownLen: number[];
+  /** Block C: the next normal of the chain (0–2) and the tick the last one began. */
+  chain: { step: number; at: number };
+  /** Block C: normal hits in a row (each one within the window of the last) and the tick of the last. */
+  combo: { count: number; at: number };
+  /** Block C: tick of the last parry press, the one the player saw, the end of its pose, whether the guard button is still held, and its cooldown. */
+  guard: { at: number; from: number; until: number; held: boolean; readyAt: number };
+  /** Block C: a dodge or a parry makes it untouchable, from the tick the player saw until this one. */
+  invulnFrom: number;
+  invulnUntil: number;
+  /** Block C: dodging (the afterimages) until this tick. */
+  dodgeUntil: number;
+  /** Block C: parried: it does nothing until this tick, or until it is hit. */
+  stunUntil: number;
+  /** Block C: tick it was last parried, for the clients' mark. */
+  parriedAt: number;
+  casting: Casting | undefined;
+  /** Last move used (executed), so clients can play its animation even when it hits nothing. `bonus` is the combo multiplier it left with, `parriedBy` who parries it on contact. */
+  used: { count: number; move: number; dir: Point; arc?: { radiusPx: number; angleDeg: number } | undefined; bonus: number; parriedBy: Set<number> };
   dashing: boolean;
-  /** Space dash: direction, ticks left and the tick it can be used again. */
+  /** Space dodge: direction, ticks left and the tick it can be used again. */
   evade: { dir: Point; left: number; readyAt: number };
   flashUntil: number;
   /** Buttons held on the previous tick: a move starts on the press. */
   buttons: number;
   /** Spec 027: the held item, until a consumable one acts. */
   held: HeldItem | undefined;
+  /** Each slot's cooldown multiplier (PP Ups). */
   cooldownMul: number[];
   trainerPic: number | undefined;
+  boss: boolean;
   /** Tick of the next Leftovers heal. */
   regenAt: number;
+}
+
+/**
+ * Block C: one use of a move: the combo multiplier it left with, the slot of a chain's first normal and, for the combo,
+ * whether it landed, once nothing of it is `open`.
+ */
+interface Use {
+  c: Combatant;
+  move: CombatMove;
+  opener: number | undefined;
+  bonus: number;
+  landed: boolean;
+  open: number;
+}
+
+/** Block C: a contact on a player's Pokémon, kept until the presses its player made before it can have arrived. */
+interface Contact {
+  use: Use;
+  t: Combatant;
+  from: Point;
+  dir: Point;
+  parriedBy: Set<number>;
+  at: number;
 }
 
 interface Active {
@@ -108,6 +187,9 @@ interface Active {
   travelled: number;
   until: number;
   hits: Map<number, number>;
+  use: Use;
+  /** Block C: who parries it on contact. */
+  parriedBy: Set<number>;
 }
 
 export interface CombatOptions {
@@ -124,14 +206,10 @@ const SOLID = new Set(["blocked", "water", "ledge"]);
 const TICKS_PER_S = 20;
 const FIRE = 10;
 const WATER = 11;
-/** Moves that aim themselves at the nearest foe; self-centred ones keep the input direction. */
-const AIMED = new Set(["melee", "projectile", "beam", "target-area", "dash", "target-debuff"]);
 const AUTO_AIM_MIN_PX = 64;
-/** Space dash: shortcut: fixed tuning, move to combat content JSON if it needs balancing. */
-const DASH_BIT = 1 << 4;
-const DASH_TICKS = 4;
-const DASH_PX_PER_TICK = 8;
-const DASH_COOLDOWN_TICKS = 20;
+const DASH_BIT = BUTTON.dash;
+/** Block C: tap to parry, hold to guard. */
+const GUARD_BIT = BUTTON.guard;
 const zeroStages =() => Object.fromEntries(STAGE_KEYS.map((k) => [k, 0])) as Record<StageKey, number>;
 
 const rotate = (d: Point, deg: number): Point => {
@@ -150,6 +228,9 @@ export function createCombat(options: CombatOptions) {
   const combatants = new Map<number, Combatant>();
   const inputs = new Map<number, CombatInput>();
   let actives: Active[] = [];
+  let contacts: Contact[] = [];
+  /** Normal moves that left lately: a press may still arrive that parries them. */
+  let launched: { c: Combatant; start: number; at: number; parriedBy: Set<number> }[] = [];
   let weather: { kind: Weather; until: number } | undefined;
   let world: World;
   let tick = 0;
@@ -180,8 +261,19 @@ export function createCombat(options: CombatOptions) {
     return Math.floor(c.stats.speed * stageMultiplier(c.stages.speed) * (majorDef(c)?.speedMul ?? 1) * held);
   }
   const movePx = (c: Combatant) => speedScale(tuning.speed, speedOf(c)).movePx / TICKS_PER_S;
-  /** Ticks for an empty action bar to fill at the combatant's current Speed. */
-  const gaugeTicks = (c: Combatant) => speedScale(tuning.speed, speedOf(c)).gaugeS * TICKS_PER_S;
+  const action = tuning.action;
+  /** Block C: how far back a press is judged, in ticks. */
+  const lagTicks = toTicks(action.lagMaxS);
+  /** Block C: ticks of the dodge and parry cooldowns at the combatant's current Speed. */
+  const reflexTicks = (c: Combatant) => toTicks(speedScale(tuning.speed, speedOf(c)).reflexS);
+  /** In the parry's pose, or guarding past it: standing still. */
+  const parrying = (c: Combatant) => tick < c.guard.until;
+  const guarding = (c: Combatant) => c.guard.held && !parrying(c);
+  const stunned = (c: Combatant) => tick < c.stunUntil;
+  const invulnerable = (c: Combatant) => tick < c.invulnUntil;
+  /** Combo bonus of the next move: its hits in a row, while the last one is recent. */
+  const comboNow = (c: Combatant) => (tick - c.combo.at <= toTicks(action.combo.windowS) ? c.combo.count : 0);
+  const comboMul = (c: Combatant) => 1 + comboNow(c) * action.combo.stepMul;
   const regenTicks = toTicks(options.regenS ?? 1);
 
   /** A held item acted: shown on screen; a consumable one is gone. */
@@ -287,25 +379,66 @@ export function createCombat(options: CombatOptions) {
     return v;
   }
 
-  /** Everything a move does to one target it reached. */
-  function hit(c: Combatant, t: Combatant, move: CombatMove, from: Point, dir: Point): void {
-    if (t.hp === 0 || pos(t).data["cutscene"] === true) return;
+  function untouchable(c: Combatant, from: number, until: number): void {
+    c.invulnFrom = invulnerable(c) ? Math.min(c.invulnFrom, from) : from;
+    c.invulnUntil = Math.max(c.invulnUntil, until);
+  }
+
+  /** Block C: `t` parried a normal move of `c`: nothing lands, `c` is stunned, knocked back from `t`, and `t` untouchable for a moment. */
+  function parried(c: Combatant, t: Combatant, move: CombatMove, dir: Point, at: number): void {
+    c.stunUntil = tick + toTicks(action.stunS);
+    c.parriedAt = tick;
+    c.casting = undefined;
+    c.combo.count = 0;
+    untouchable(t, at, tick + toTicks(action.parryInvulnS));
+    const v = push(c, pos(t), { x: -dir.x, y: -dir.y }, action.parryPushPx);
+    emit({ kind: "parried", attacker: c.entityId, target: t.entityId, move: move.id, push: v });
+  }
+
+  /**
+   * Everything a move does to one target it reached; true when it landed (not evaded, parried, missed or
+   * immune). Block C: `bonus` is the combo multiplier the move left with, `parriedBy` who parried it while it was cast,
+   * `at` the tick it touched.
+   */
+  function hit(c: Combatant, t: Combatant, move: CombatMove, from: Point, dir: Point, bonus: number, parriedBy: Set<number>, at: number): boolean {
+    if (t.hp === 0 || pos(t).data["cutscene"] === true) return false;
+    if (at >= t.invulnFrom && at < t.invulnUntil) {
+      emit({ kind: "evaded", attacker: c.entityId, target: t.entityId, move: move.id });
+      return false;
+    }
+    // One contact: a lingering field does not parry itself again.
+    if (parriedBy.delete(t.entityId)) {
+      parried(c, t, move, dir, at);
+      return false;
+    }
+    if (move.accuracy !== null && rng.nextInt(100) >= hitChance(move.accuracy, c.stages.accuracy - t.stages.evasion)) {
+      emit({ kind: "missed", attacker: c.entityId, target: t.entityId, move: move.id });
+      return false;
+    }
     const eff = effectiveness(data.typeChart, move.type, t.types);
     const damage = move.effects.find((e) => e.kind === "damage");
+    if (damage && eff === 0) {
+      emit({ kind: "immune", attacker: c.entityId, target: t.entityId, move: move.id, effectiveness: 0 });
+      return false;
+    }
+    // A blow ends the stun of a parried Pokémon, and that blow lands harder.
+    const wasStunned = stunned(t);
+    t.stunUntil = 0;
     if (damage) {
-      if (eff === 0) {
-        emit({ kind: "immune", attacker: c.entityId, target: t.entityId, move: move.id, effectiveness: 0 });
-        return;
-      }
+      const scale = bonus * (move.special ? 1 : action.normalDamageMul) * (wasStunned ? 1 + action.stunBonusMul : 1) * (!move.special && t.guard.held && t.guard.from <= at ? 1 - action.guardReduction : 1);
       let dealt = 0;
       for (let h = 0; h < move.hits && t.hp > 0; h++) {
-        const { amount, crit } = damageOf(c, t, move, damage, eff);
+        const raw = damageOf(c, t, move, damage, eff);
+        const { crit } = raw;
+        const amount = scale === 1 ? raw.amount : Math.max(1, Math.floor(raw.amount * scale));
         const done = Math.min(amount, t.hp);
         hurt(t, amount);
         dealt += done;
         const v = push(t, from, dir, tuning.knockbackPx);
         emit({ kind: "hit", attacker: c.entityId, target: t.entityId, move: move.id, amount: done, effectiveness: eff, crit, push: v });
       }
+      // Being hurt ends its own combo.
+      if (dealt > 0) t.combo.count = 0;
       if (move.type === FIRE && t.major?.id === "freeze") t.major = undefined;
       // Life Orb: a share of max HP for every hit that dealt damage.
       const orb = c.held?.effect;
@@ -315,7 +448,7 @@ export function createCombat(options: CombatOptions) {
           const amount = Math.max(1, Math.floor(dealt * e.fraction));
           hurt(c, amount);
           emit({ kind: "hit", attacker: c.entityId, target: c.entityId, move: move.id, amount });
-        } else if (e.kind === "drain" && dealt > 0) {
+        } else if (e.kind === "drain" && dealt > 0 && c.hp > 0) {
           const amount = Math.min(c.stats.hp - c.hp, Math.max(1, Math.floor(dealt * e.fraction)));
           c.hp += amount;
           emit({ kind: "heal", attacker: c.entityId, target: c.entityId, move: move.id, amount });
@@ -323,7 +456,7 @@ export function createCombat(options: CombatOptions) {
       }
     }
     for (const e of move.effects) {
-      if (t.hp === 0) return;
+      if (t.hp === 0) return true;
       const chance = "chance" in e ? (e.chance ?? move.defaultChance) : 100;
       if (e.kind === "status" && roll(chance) && inflict(t, e.status)) {
         emit({ kind: "status", attacker: c.entityId, target: t.entityId, move: move.id, status: e.status });
@@ -340,6 +473,27 @@ export function createCombat(options: CombatOptions) {
         t.stages = zeroStages();
       }
     }
+    return true;
+  }
+
+  /** Block C: a move reached `t`: it lands, at once or, on a player's Pokémon, when no press made before it can still arrive. */
+  function touch(use: Use, t: Combatant, from: Point, dir: Point, parriedBy: Set<number>): void {
+    if (lagTicks > 1 && typeof t.owner === "number") {
+      use.open++;
+      contacts.push({ use, t, from: { x: from.x, y: from.y }, dir, parriedBy, at: tick });
+    } else if (hit(use.c, t, use.move, from, dir, use.bonus, parriedBy, tick)) use.landed = true;
+  }
+  function landContacts(): void {
+    const due = contacts.filter((k) => tick >= k.at + lagTicks - 1);
+    contacts = contacts.filter((k) => tick < k.at + lagTicks - 1);
+    for (const { use, t, from, dir, parriedBy, at } of due) {
+      if (use.c.battle === t.battle && hit(use.c, t, use.move, from, dir, use.bonus, parriedBy, at)) use.landed = true;
+      close(use);
+    }
+  }
+  /** One part of a use is over; with the last, the combo counts it. */
+  function close(use: Use): void {
+    if (--use.open === 0) settle(use);
   }
 
   /** Effects on the user that do not need a target. */
@@ -362,22 +516,82 @@ export function createCombat(options: CombatOptions) {
     }
   }
 
-  function spawnShot(c: Combatant, kind: Active["kind"], move: CombatMove, at: Point, dir: Point, until: number): void {
+  function spawnShot(use: Use, kind: Active["kind"], at: Point, dir: Point, until: number): void {
+    const { c, move } = use;
     const self = pos(c);
     const entityId = kind === "dash" ? undefined : world.add({ kind: "projectile", area: self.area, x: at.x, y: at.y, level: self.level, facing: facingOf(dir), data: { move: move.id, caster: c.entityId, field: kind === "field" } }).id;
-    actives.push({ kind, caster: c, move, entityId, x: at.x, y: at.y, dir, travelled: 0, until, hits: new Map() });
+    actives.push({ kind, caster: c, move, entityId, x: at.x, y: at.y, dir, travelled: 0, until, hits: new Map(), use, parriedBy: c.used.parriedBy });
     if (kind === "dash") c.dashing = true;
   }
 
+  /**
+   * Block C: the combo after a normal move: one more when it reached someone, none when it reached nobody. Missing the
+   * first of a chain ends the chain, and that move waits.
+   */
+  function settle({ c, move, opener, landed }: Use): void {
+    if (move.special) return;
+    c.combo = { count: landed ? Math.min(action.combo.max, comboNow(c) + 1) : 0, at: tick };
+    if (landed || opener === undefined) return;
+    c.cooldownLen[opener] = toTicks(action.normalMissCooldownS);
+    c.readyAt[opener] = tick + c.cooldownLen[opener]!;
+    c.chain.step = 0;
+  }
+
+  /** Block C: a special's cooldown, shortened by PP Ups and, once, by a Leppa Berry. */
+  const msOf = (ticks: number) => (ticks * 1000) / TICKS_PER_S;
+
+  function startCooldown(c: Combatant, slot: number, move: CombatMove): void {
+    let ticks = Math.round(move.cooldownTicks * (c.cooldownMul[slot] ?? 1));
+    const leppa = c.held?.effect;
+    if (leppa?.trigger === "cooldown-restore") {
+      ticks = Math.max(0, ticks - toTicks(leppa.seconds));
+      useHeld(c);
+    }
+    c.readyAt[slot] = tick + ticks;
+    c.cooldownLen[slot] = ticks;
+  }
+
+  /**
+   * Block C: what the clients show over a CPU Pokémon: the class of the move it casts (none on self-buffs; a normal
+   * one can be parried all along), and for a moment that it was parried.
+   */
+  function castMark(c: Combatant): EntityData {
+    if (typeof c.owner !== "string") return {};
+    const move = c.casting && c.moves[c.casting.slot]!;
+    if (move && move.behavior !== "self-buff") return { castMark: move.special ? "special" : "normal" };
+    return tick - c.parriedAt < toTicks(action.parryMarkS) ? { castMark: "parried" } : {};
+  }
+
+  /**
+   * Block C: each normal move being cast, or that left lately, remembers who pressed the parry: from its first tick
+   * until it leaves, either when the press arrives or on the screen of whoever pressed it.
+   */
+  function recordParries(all: Combatant[]): void {
+    launched = launched.filter((l) => tick - l.at <= lagTicks);
+    const pressed = all.filter((t) => t.guard.at === tick);
+    if (pressed.length === 0) return;
+    const record = (c: Combatant, start: number, until: number, parriedBy: Set<number>) => {
+      const mine = foes(c);
+      for (const t of pressed) if ((tick < until || (t.guard.from >= start && t.guard.from < until)) && mine.includes(t)) parriedBy.add(t.entityId);
+    };
+    for (const c of all) if (c.casting && !c.moves[c.casting.slot]!.special) record(c, c.casting.startTick, c.casting.readyTick, c.casting.parriedBy);
+    for (const l of launched) record(l.c, l.start, l.at, l.parriedBy);
+  }
+
   function execute(c: Combatant): void {
-    const { slot, dir } = c.casting!;
+    const { slot, dir, parriedBy, startTick, opener } = c.casting!;
     c.casting = undefined;
     const move = c.moves[slot]!;
-    // PP Up leaves part of the bar; Quick Claw, by its chance, leaves half of it.
-    c.gauge = 1 - (c.cooldownMul[slot] ?? 1);
-    if (c.held?.effect.trigger === "quick" && roll(c.held.parameter)) c.gauge = Math.max(c.gauge, 0.5);
+    if (!move.special && lagTicks > 0) launched.push({ c, start: startTick, at: tick, parriedBy });
+    // The combo bonus goes with the move; a special spends it.
+    const bonus = comboMul(c);
+    if (move.special) {
+      startCooldown(c, slot, move);
+      c.combo.count = 0;
+    }
     const arc = move.behavior === "melee" && move.hitbox?.shape === "arc" ? move.hitbox : undefined;
-    c.used = { count: c.used.count + 1, move: move.id, dir, arc };
+    c.used = { count: c.used.count + 1, move: move.id, dir, arc, bonus, parriedBy };
+    const use: Use = { c, move, bonus, opener: opener ? slot : undefined, landed: false, open: 1 };
     selfEffects(c, move);
     const me = pos(c);
     const at = { x: me.x + dir.x * move.rangePx, y: me.y + dir.y * move.rangePx };
@@ -385,47 +599,98 @@ export function createCombat(options: CombatOptions) {
       case "self-buff":
         return;
       case "projectile":
-        spawnShot(c, "projectile", move, { x: me.x, y: me.y }, dir, Infinity);
+        spawnShot(use, "projectile", { x: me.x, y: me.y }, dir, Infinity);
         return;
       case "dash":
-        spawnShot(c, "dash", move, { x: me.x, y: me.y }, dir, Infinity);
+        spawnShot(use, "dash", { x: me.x, y: me.y }, dir, Infinity);
         return;
       case "field":
-        spawnShot(c, "field", move, at, dir, tick + move.durationTicks);
+        spawnShot(use, "field", at, dir, tick + move.durationTicks);
         return;
       default: {
         // Instant shapes: from the user, or at the aimed point for target-area.
         const origin = move.behavior === "target-area" ? at : me;
-        for (const t of foes(c)) if (overlaps(move.hitbox!, origin, dir, body(t))) hit(c, t, move, me, dir);
+        for (const t of foes(c)) if (overlaps(move.hitbox!, origin, dir, body(t))) touch(use, t, me, dir, parriedBy);
+        close(use);
       }
     }
   }
 
-  function begin(c: Combatant, slot: number, aim: Point | undefined, minCastTicks = 0): void {
-    if (c.gauge < 1) return;
+  /** The next normal's place in its chain. */
+  const chainStep = (c: Combatant) => (c.chain.step >= action.normalCastS.length || tick - c.chain.at > toTicks(action.combo.windowS) ? 0 : c.chain.step);
+
+  /** Block C: cast ticks of a normal move: the chain's step (0.4, 0.2, 0.2 s), from the start again after the third or a pause. */
+  function normalCast(c: Combatant): number {
+    c.chain.step = chainStep(c);
+    // Quick Claw, by its chance: the first of a chain comes out as fast as the next ones.
+    const quick = c.chain.step === 0 && c.held?.effect.trigger === "quick" && roll(c.held.parameter);
+    const s = action.normalCastS[quick ? 1 : c.chain.step]!;
+    c.chain = { step: c.chain.step + 1, at: tick };
+    return toTicks(s);
+  }
+
+  function begin(c: Combatant, slot: number, aim: Point | undefined): void {
+    const m = c.moves[slot]!;
+    if (tick < (c.readyAt[slot] ?? 0)) return;
     const self = pos(c);
     const len = aim ? Math.hypot(aim.x, aim.y) : 0;
     let dir = len > 0.01 ? { x: aim!.x / len, y: aim!.y / len } : VECTORS[self.facing];
-    // No aim (every player): the nearest foe anywhere on the map; an aim (the AI) is only corrected in reach.
-    const reach = aim ? Math.max(c.moves[slot]!.rangePx, AUTO_AIM_MIN_PX) : Infinity;
-    const target = AIMED.has(c.moves[slot]!.behavior) ? nearestFoe(c, reach) : undefined;
+    // No aim (every player) or a leap: the nearest foe anywhere on the map; an aim (the AI) is only corrected in reach.
+    const contact = CONTACT.has(m.behavior);
+    const reach = aim && !contact ? Math.max(m.rangePx, AUTO_AIM_MIN_PX) : Infinity;
+    const target = AIMED.has(m.behavior) ? nearestFoe(c, reach) : undefined;
     if (target) {
       const d = Math.hypot(target.x - self.x, target.y - self.y);
       if (d > 0.01) dir = { x: (target.x - self.x) / d, y: (target.y - self.y) / d };
     }
     const confusion = c.confusion && statusDef("confusion");
-    if (confusion && roll(confusion.misdirect ?? 0)) dir = rotate(dir, (rng.nextFloat() * 2 - 1) * (confusion.deviationDeg ?? 0));
-    if (c.stages.accuracy < 0) dir = rotate(dir, (rng.nextFloat() * 2 - 1) * -c.stages.accuracy * tuning.accuracyDeviationDeg);
+    const astray = confusion !== undefined && roll(confusion.misdirect ?? 0);
+    if (astray) dir = rotate(dir, (rng.nextFloat() * 2 - 1) * (confusion.deviationDeg ?? 0));
     const skip = majorDef(c)?.skipMove;
     if (skip && rng.nextInt(100) < skip) {
-      c.gauge = 0;
-      emit({ kind: "failed", attacker: c.entityId, target: c.entityId, move: c.moves[slot]!.id });
+      if (m.special) startCooldown(c, slot, m);
+      emit({ kind: "failed", attacker: c.entityId, target: c.entityId, move: m.id });
       return;
     }
     world.update({ ...self, facing: facingOf(dir) });
-    const castTicks = Math.max(c.moves[slot]!.castTicks, minCastTicks);
-    c.casting = { slot, dir, startTick: tick, readyTick: tick + castTicks };
-    if (castTicks === 0) execute(c);
+    const castTicks = m.special ? m.castTicks : normalCast(c);
+    c.casting = { slot, dir, startTick: tick, readyTick: tick + castTicks, opener: !m.special && c.chain.step === 1, parriedBy: new Set(), lunge: contact ? { astray, px: 0, ticks: 0 } : undefined };
+    if (castTicks === 0 && !contact) execute(c);
+  }
+
+  /** Block C: the guard button pressed: a player's cast is a feint (dropped, no cooldown), unless it already leapt; then the parry's pose, which recordParries takes to the moves being cast. */
+  function guard(c: Combatant, seen: number): void {
+    if (c.casting) {
+      if (typeof c.owner !== "number" || c.casting.lunge?.left !== undefined) return;
+      c.casting = undefined;
+    }
+    if (tick < c.guard.readyAt || c.evade.left > 0) return;
+    c.guard = { at: tick, from: seen, until: tick + toTicks(action.parryPoseS), held: true, readyAt: c.guard.readyAt };
+  }
+
+  /** One tick of a contact move: the aim while it charges, then the leap, up to touching the foe (with none, the way it aims). */
+  function lungeStep(c: Combatant): void {
+    const k = c.casting!;
+    const l = k.lunge!;
+    if (l.left === undefined) {
+      const me = pos(c);
+      const foe = nearestFoe(c, Infinity);
+      const gap = foe ? Math.hypot(foe.x - me.x, foe.y - me.y) : Infinity;
+      if (foe && gap > 0.01 && !l.astray) {
+        k.dir = { x: (foe.x - me.x) / gap, y: (foe.y - me.y) / gap };
+        world.update({ ...me, facing: facingOf(k.dir) });
+      }
+      l.px = Math.max(0, Math.min(action.leapMaxPx, gap - 2 * tuning.bodyRadiusPx));
+      l.ticks = Math.ceil((l.px * TICKS_PER_S) / action.leapSpeedPx);
+      if (tick < k.readyTick) return;
+      // It goes off the tick it lands; until then it can be parried.
+      k.readyTick = goesOffAt(k);
+      l.left = l.ticks;
+    }
+    if (l.left === 0) return;
+    l.left--;
+    const px = l.px / l.ticks;
+    shift(c.entityId, k.dir.x * px, k.dir.y * px);
   }
 
   function move(c: Combatant, input: Point): void {
@@ -443,7 +708,7 @@ export function createCombat(options: CombatOptions) {
         if ((a.hits.get(t.entityId) ?? 0) >= a.move.hits) continue;
         if (overlaps(a.move.hitbox!, a, a.dir, body(t))) {
           a.hits.set(t.entityId, (a.hits.get(t.entityId) ?? 0) + 1);
-          hit(c, t, a.move, a, a.dir);
+          touch(a.use, t, a, a.dir, a.parriedBy);
         }
       }
       return true;
@@ -460,9 +725,10 @@ export function createCombat(options: CombatOptions) {
     a.x = to.x;
     a.y = to.y;
     a.travelled += step;
-    const target = foes(c).find((t) => segmentHits(from, to, radius, body(t)));
+    // Block C: it goes through a dodging Pokémon.
+    const target = foes(c).find((t) => !invulnerable(t) && segmentHits(from, to, radius, body(t)));
     if (target) {
-      hit(c, target, a.move, to, a.dir);
+      touch(a.use, target, to, a.dir, a.parriedBy);
       return false;
     }
     if (a.entityId !== undefined) world.update({ ...world.get(a.entityId)!, x: a.x, y: a.y });
@@ -472,6 +738,8 @@ export function createCombat(options: CombatOptions) {
   function sync(c: Combatant): void {
     const e = world.get(c.entityId);
     if (!e) return;
+    const lunge = c.casting?.lunge;
+    const leaping = lunge?.left !== undefined;
     const data: EntityData = {
       species: c.species,
       level: c.level,
@@ -488,30 +756,37 @@ export function createCombat(options: CombatOptions) {
       // Melee arcs: the client draws the reach the hit used.
       ...(c.used.arc ? { usedReach: c.used.arc.radiusPx, usedArc: c.used.arc.angleDeg } : {}),
       flash: tick < c.flashUntil,
-      gauge: Math.floor(c.gauge * 100),
+      // Block C: what the clients draw (afterimages, the white glow, the stun) and the HUD's cooldowns, in ms.
+      ...(tick < c.dodgeUntil ? { dodge: true } : {}),
+      ...(parrying(c) ? { parry: true } : guarding(c) ? { guard: true } : {}),
+      ...(stunned(c) ? { stun: true } : {}),
+      ...castMark(c),
+      // In the air: the share of the leap done.
+      ...(lunge?.left !== undefined ? { leap: Math.round((1 - lunge.left / lunge.ticks) * 100) / 100 } : {}),
+      // For the prediction of whoever drives it: the rest of a leap, or the ticks until it starts, and the rest of a dodge.
+      ...(lunge?.left !== undefined ? { leapLeft: lunge.left, leapDx: (c.casting!.dir.x * lunge.px) / lunge.ticks, leapDy: (c.casting!.dir.y * lunge.px) / lunge.ticks } : lunge ? { lungeIn: c.casting!.readyTick - tick } : {}),
+      ...(c.evade.left > 0 ? { evade: c.evade.left, evDx: Math.round(c.evade.dir.x * 100), evDy: Math.round(c.evade.dir.y * 100) } : {}),
+      ...(comboNow(c) > 0 ? { combo: comboNow(c) } : {}),
+      reflexMs: msOf(reflexTicks(c)),
+      cdDodge: msOf(Math.max(0, c.evade.readyAt - tick)),
+      cdGuard: msOf(c.guard.held ? 0 : Math.max(0, c.guard.readyAt - tick)),
+      ...(c.boss ? { boss: true } : {}),
       ...(c.trainerPic !== undefined ? { trainerPic: c.trainerPic } : {}),
       // Shiny wild Pokémon (spec 015) keep their palette.
       ...(e.data["shiny"] === true ? { shiny: true } : {}),
       // Out of reach during its trainer's cutscene (spec 021); the session sets and clears it.
       ...(e.data["cutscene"] === true ? { cutscene: true } : {}),
     };
-    c.moves.forEach((m, i) => (data[`move${i + 1}`] = m.id));
-    if (c.casting) {
-      // Block H: the area the cast will cover, its length and its type's colour, for the clients' charge.
+    c.moves.forEach((m, i) => {
+      if (!m) return;
+      data[`move${i + 1}`] = m.id;
+      if (typeof c.owner === "number") data[`kit${i + 1}`] = packKit(castKit(m, msOf(m.special ? m.castTicks : toTicks(action.normalCastS[chainStep(c)]!))));
+      if (m.special || c.readyAt[i]! > tick) Object.assign(data, { [`cd${i + 1}`]: msOf(Math.max(0, (c.readyAt[i] ?? 0) - tick)), [`cdFull${i + 1}`]: msOf(c.cooldownLen[i] ?? m.cooldownTicks) });
+    });
+    if (c.casting && !leaping) {
+      // Block H: the area the cast will cover, its length and its type's colour, for the clients' charge (a contact move's, from where it would land).
       const move = c.moves[c.casting.slot]!;
-      const { dir } = c.casting;
-      const area = telegraph(move, dir);
-      Object.assign(data, {
-        castMs: ((c.casting.readyTick - c.casting.startTick) * 1000) / TICKS_PER_S,
-        castType: move.type,
-        castShape: area.shape,
-        castOx: Math.round(area.ox),
-        castOy: Math.round(area.oy),
-        castSize: area.size,
-        castSpan: area.span,
-        castDx: Math.round(dir.x * 100),
-        castDy: Math.round(dir.y * 100),
-      });
+      Object.assign(data, castData(castKit(move, msOf(c.casting.readyTick - c.casting.startTick)), c.casting.dir, lunge?.px ?? 0));
     }
     for (const k of STAGE_KEYS) if (c.stages[k] !== 0) data[`stg_${k}`] = c.stages[k];
     world.update({ ...e, data });
@@ -528,12 +803,18 @@ export function createCombat(options: CombatOptions) {
       world = w;
       const species = data.species(spec.species);
       if (!species) throw new Error(`Espécie ${spec.species} não existe na extração`);
-      const moves = spec.moves.map((id) => {
+      const known = spec.moves.map((id) => {
         const m = data.move(id);
         if (!m) throw new Error(`Golpe ${id} não existe na extração`);
         return m;
       });
+      // Block C: normals in slots 0–1, specials in 2–3; PP Ups follow their move.
+      const { slots } = slotIndices(known, (m) => m.special);
+      const moves = slots.map((i) => (i === undefined ? undefined : known[i]));
+      const cooldownMul = slots.map((i) => (i === undefined ? 1 : (spec.cooldownMul?.[i] ?? 1)));
       const stats = computeStats(species.baseStats, spec.level, spec.stats);
+      const boss = spec.boss ?? (owner === "wild" && LEGENDARIES.has(spec.species));
+      if (boss) stats.hp = Math.floor(stats.hp * tuning.bossHpMul);
       const c: Combatant = {
         entityId,
         owner,
@@ -547,16 +828,26 @@ export function createCombat(options: CombatOptions) {
         stages: zeroStages(),
         major: undefined,
         confusion: undefined,
-        gauge: 0,
+        readyAt: [0, 0, 0, 0],
+        cooldownLen: [0, 0, 0, 0],
+        chain: { step: 0, at: 0 },
+        combo: { count: 0, at: 0 },
+        guard: { at: -1, from: -1, until: 0, held: false, readyAt: 0 },
+        invulnFrom: 0,
+        invulnUntil: 0,
+        dodgeUntil: 0,
+        stunUntil: 0,
+        parriedAt: -Infinity,
         casting: undefined,
-        used: { count: 0, move: 0, dir: { x: 0, y: 0 } },
+        used: { count: 0, move: 0, dir: { x: 0, y: 0 }, bonus: 1, parriedBy: new Set() },
         dashing: false,
         evade: { dir: { x: 0, y: 0 }, left: 0, readyAt: 0 },
         flashUntil: 0,
         buttons: 0,
         held: spec.held,
-        cooldownMul: spec.cooldownMul ?? [],
+        cooldownMul,
         trainerPic: spec.trainerPic,
+        boss,
         regenAt: 0,
       };
       combatants.set(entityId, c);
@@ -567,6 +858,10 @@ export function createCombat(options: CombatOptions) {
       combatants.delete(entityId);
       for (const a of actives) if (a.caster.entityId === entityId && a.entityId !== undefined) w.remove(a.entityId);
       actives = actives.filter((a) => a.caster.entityId !== entityId);
+      launched = launched.filter((l) => l.c.entityId !== entityId);
+      const gone = contacts.filter((k) => k.t.entityId === entityId);
+      contacts = contacts.filter((k) => k.t.entityId !== entityId && k.use.c.entityId !== entityId);
+      for (const k of gone) close(k.use);
     },
     get: (id: number): Combatant | undefined => combatants.get(id),
     has: (id: number) => combatants.has(id),
@@ -608,12 +903,12 @@ export function createCombat(options: CombatOptions) {
       const c = get(id);
       return (!!c.major && statuses.includes(c.major.id)) || (!!c.confusion && statuses.includes("confusion"));
     },
-    /** An Ether or Elixir (research R4): `pp` worth of the action bar; false when it was already full. */
-    restore(id: number, pp: number | "full", secondsPerPp: number): boolean {
+    /** Block C: an Ether ends the cooldown of one special (the longest wait), an Elixir of both; false when none was waiting. */
+    restore(id: number, all: boolean): boolean {
       const c = get(id);
-      if (c.gauge >= 1) return false;
-      const total = gaugeTicks(c);
-      c.gauge = 1 - restoreCooldown((1 - c.gauge) * total, pp, secondsPerPp, TICKS_PER_S) / total;
+      const waiting = [2, 3].filter((s) => c.readyAt[s]! > tick).sort((a, b) => c.readyAt[b]! - c.readyAt[a]!);
+      if (waiting.length === 0) return false;
+      for (const s of all ? waiting : waiting.slice(0, 1)) c.readyAt[s] = tick;
       return true;
     },
     /** X items and Dire Hit: stat stages up, as a self-buff would; false when none moved. */
@@ -632,7 +927,8 @@ export function createCombat(options: CombatOptions) {
     },
     /** Pixels per tick for the combatant's current Speed. */
     movePx: (id: number) => movePx(get(id)),
-    gaugeTicks: (id: number) => gaugeTicks(get(id)),
+    /** Block C: ticks of the dodge and parry cooldowns at its current Speed. */
+    reflexTicks: (id: number) => reflexTicks(get(id)),
     /** One tick: statuses, inputs and movement, casts, moves in flight; returns what happened. */
     step(now: number, w: World): HitEvent[] {
       world = w;
@@ -655,43 +951,57 @@ export function createCombat(options: CombatOptions) {
           if (c.regenAt > 0 && c.hp < c.stats.hp) useHeld(c, restoreHp(c, Math.max(1, Math.floor(c.stats.hp * c.held.effect.fraction))));
           c.regenAt = tick + regenTicks;
         }
-        // Leppa Berry: an empty action bar gets `seconds` of it back at once.
-        const leppa = c.held?.effect;
-        if (leppa?.trigger === "cooldown-restore" && c.gauge === 0 && c.used.count > 0) {
-          const total = gaugeTicks(c);
-          c.gauge = 1 - restoreCooldown(total, leppa.seconds, 1, TICKS_PER_S) / total;
-          useHeld(c);
-        }
-        if (!c.casting) c.gauge = Math.min(1, c.gauge + 1 / gaugeTicks(c));
       }
       for (const c of all) {
         const input = inputs.get(c.entityId);
-        const pressed = (input?.buttons ?? 0) & ~c.buttons;
-        c.buttons = input?.buttons ?? 0;
+        const held = input?.buttons ?? 0;
+        const pressed = held & ~c.buttons;
+        const seen = Math.max(tick - lagTicks, Math.min(tick, input?.seen ?? tick));
+        c.buttons = held;
+        // Block C: letting go of the guard starts its cooldown, once the parry's pose is over.
+        if (c.guard.held && !(held & GUARD_BIT)) {
+          c.guard.held = false;
+          c.guard.readyAt = Math.max(tick, c.guard.until) + reflexTicks(c);
+        }
         if (c.hp === 0 || immobile(c) || c.dashing) continue;
+        // Parried: nothing at all until the stun ends or a blow lands.
+        if (stunned(c)) {
+          c.casting = undefined;
+          continue;
+        }
+        if (pressed & GUARD_BIT) guard(c, seen);
+        // Parrying or guarding, it stands still and does nothing else.
+        if (parrying(c) || guarding(c)) continue;
         if (pressed & DASH_BIT && !c.casting && c.evade.left === 0 && tick >= c.evade.readyAt) {
           const m = input?.move ?? { x: 0, y: 0 };
           const len = Math.hypot(m.x, m.y);
           const dir = len > 0.1 ? { x: m.x / len, y: m.y / len } : VECTORS[pos(c).facing];
-          c.evade = { dir, left: DASH_TICKS, readyAt: tick + DASH_COOLDOWN_TICKS };
+          const invuln = toTicks(action.dodgeInvulnS);
+          c.evade = { dir, left: DODGE_TICKS, readyAt: tick + invuln + reflexTicks(c) };
+          untouchable(c, seen, tick + invuln);
+          c.dodgeUntil = tick + invuln;
         }
         if (c.evade.left > 0) {
           c.evade.left--;
-          shift(c.entityId, c.evade.dir.x * DASH_PX_PER_TICK, c.evade.dir.y * DASH_PX_PER_TICK, facingOf(c.evade.dir));
+          shift(c.entityId, c.evade.dir.x * DODGE_PX, c.evade.dir.y * DODGE_PX, facingOf(c.evade.dir));
           continue;
         }
         if (!c.casting) {
           const slot = [0, 1, 2, 3].find((s) => pressed & (1 << s) && c.moves[s]);
-          if (slot !== undefined) begin(c, slot, input?.aim, input?.minCastTicks);
+          if (slot !== undefined) begin(c, slot, input?.aim);
         }
-        // Block H: no move roots its user while it charges; the area keeps the aim it began with.
-        if (input) move(c, input.move);
+        // Block H: no move roots its user while it charges; the area keeps the aim it began with, but a contact one's (block C).
+        if (c.casting?.lunge) lungeStep(c);
+        if (input && c.casting?.lunge?.left === undefined) move(c, input.move);
       }
+      recordParries(all);
+      landContacts();
       for (const c of all) if (c.casting && tick >= c.casting.readyTick && c.hp > 0) execute(c);
       actives = actives.filter((a) => {
         const alive = stepActive(a);
         if (!alive) {
           if (a.kind === "dash") a.caster.dashing = false;
+          close(a.use);
           if (a.entityId !== undefined) world.remove(a.entityId);
         }
         return alive;

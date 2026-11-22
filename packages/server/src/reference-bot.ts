@@ -10,23 +10,34 @@ export interface BotSide {
   c: Combatant;
 }
 
-/** Closes in, uses its strongest ready move, sidesteps half the casts it sees. */
+/** Ticks before a foe's cast leaves when the bot reacts: inside both the dodge's and the parry's reach. */
+const REACT_TICKS = 6;
+
+/**
+ * Closes in, uses its strongest ready move (specials first, then normals in a chain), and answers half the casts it
+ * sees: a special by dodging, a normal by dodging or parrying (block C).
+ */
 export function createReferenceBot(rng: Rng) {
-  let dodgedCast = -1;
+  let answeredCast = -1;
   return (me: BotSide, foe: BotSide, tick: number): Required<Pick<CombatInput, "move" | "buttons" | "aim">> => {
     const d = Math.hypot(foe.x - me.x, foe.y - me.y) || 1;
     const dir = { x: (foe.x - me.x) / d, y: (foe.y - me.y) / d };
     let move = d > 20 ? dir : { x: 0, y: 0 };
     let buttons = 0;
-    if (foe.c.casting && foe.c.casting.startTick !== dodgedCast) {
-      dodgedCast = foe.c.casting.startTick;
+    const cast = foe.c.casting;
+    if (cast && cast.startTick !== answeredCast && cast.readyTick - tick <= REACT_TICKS) {
+      answeredCast = cast.startTick;
       if (rng.nextFloat() < 0.5) {
-        buttons |= BUTTON.dash;
-        move = { x: -dir.y, y: dir.x };
+        const special = foe.c.moves[cast.slot]?.special ?? true;
+        if (special || rng.nextFloat() < 0.5) {
+          buttons |= BUTTON.dash;
+          move = { x: -dir.y, y: dir.x };
+        } else buttons |= BUTTON.guard;
+        return { move, buttons, aim: dir };
       }
     }
-    const ready = me.c.gauge >= 1 ? me.c.moves.map((m, slot) => ({ m, slot })) : [];
-    const best = ready.sort((a, b) => b.m.power - a.m.power)[0];
+    const ready = me.c.moves.flatMap((m, slot) => (m && tick >= (me.c.readyAt[slot] ?? 0) ? [{ m, slot }] : []));
+    const best = ready.sort((a, b) => Number(b.m.special) - Number(a.m.special) || b.m.power - a.m.power)[0];
     if (best && !me.c.casting && tick % 2 === 0 && d <= reachPx(best.m as unknown as MoveView) + 8) buttons |= 1 << best.slot;
     return { move, buttons, aim: dir };
   };

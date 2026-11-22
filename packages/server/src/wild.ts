@@ -1,11 +1,11 @@
 import type { Decision } from "@soulsilver/shared/ai";
 import { toTicks, type Point } from "@soulsilver/shared/combat";
-import { surfable, type Entity, type HitEvent, type Rng, type WorldLookup } from "@soulsilver/shared/game";
+import { insideMap, surfable, tileAt, type Entity, type HitEvent, type Rng, type WorldLookup } from "@soulsilver/shared/game";
 import { MAP_TILE_PX } from "@soulsilver/shared/maps";
-import { pickCell, rollLevel, rollShiny, rollSlot, timeOfDay, wildMoves, zoneCells, type Cell } from "@soulsilver/shared/wild";
+import { cellsAround, pickCell, rollLevel, rollShiny, rollSlot, timeOfDay, wildMoves, zoneCells, type Cell } from "@soulsilver/shared/wild";
 import type { EncounterSlot } from "@soulsilver/shared/events";
 import { pickCatch, type Rod } from "@soulsilver/shared/field";
-import { createAi } from "./ai";
+import { createAi, WALKABLE } from "./ai";
 import type { AiData } from "./ai-loader";
 import type { Combat } from "./combat";
 import type { CombatData } from "./combat-loader";
@@ -25,6 +25,8 @@ export interface Wild {
   water: boolean;
   /** Spec 027: hooked with a rod (Lure Ball). */
   fished?: boolean | undefined;
+  /** It may still call its pack: a map's own spawn, until its one roll. */
+  mayCall: boolean;
   /** Inside a ball's shakes: the AI is paused. */
   capturing: boolean;
   lastHp: number;
@@ -69,6 +71,8 @@ export interface WildOptions {
 export function createWilds(options: WildOptions) {
   const { data, combat, lookup, world, rng } = options;
   const { spawn: rules } = data;
+  /** Block C: wild Pokémon know the last two moves of each class. */
+  const special = (m: number) => options.combatData.move(m)?.special ?? false;
   const ai = createAi({ data: options.ai, combat, combatData: options.combatData, world, lookup, rng, onDecision: options.onDecision, repel: options.repel });
   const wilds = new Map<number, Wild>();
   /** By `${kind}:${map}`: the grass (or cave floor), and the water while someone surfs (spec 025). */
@@ -138,9 +142,29 @@ export function createWilds(options: WildOptions) {
     const x = cell.x * MAP_TILE_PX + MAP_TILE_PX / 2;
     const y = cell.y * MAP_TILE_PX + MAP_TILE_PX / 2;
     try {
-      add(area, x, y, { species: slot.species, level, moves: wildMoves(data.levelUp(slot.species), level) }, shiny, tick, kind === "water");
+      const id = add(area, x, y, { species: slot.species, level, moves: wildMoves(data.levelUp(slot.species), level, special) }, shiny, tick, kind === "water");
+      wilds.get(id)!.mayCall = true;
     } catch (error) {
       options.log(`Wild ${slot.species} on map ${area} not spawned: ${(error as Error).message}`);
+    }
+  }
+
+  /** The caller's pack: its species and level around it, out for blood; in a tight spot, on top of it. */
+  function callPack(w: Wild, e: Entity, level: number, tick: number): void {
+    const px = (n: number) => n * MAP_TILE_PX + MAP_TILE_PX / 2;
+    const from = { x: Math.floor(e.x / MAP_TILE_PX), y: Math.floor(e.y / MAP_TILE_PX) };
+    const map = lookup(e.area);
+    const cells = cellsAround(from, rules.packCall.count, ({ x, y }) => {
+      const tile = map && insideMap(map, px(x), px(y)) ? tileAt(lookup, e.area, e.level, px(x), px(y)) : undefined;
+      return w.water ? surfable(tile) : WALKABLE.has(tile?.category ?? "");
+    });
+    for (let i = 0; i < rules.packCall.count; i++) {
+      const cell = cells[i] ?? from;
+      try {
+        ai.enrage(add(e.area, px(cell.x), px(cell.y), { species: w.species, level, moves: wildMoves(data.levelUp(w.species), level, special) }, rollShiny(rules.shinyOdds, rng), tick, w.water));
+      } catch (error) {
+        options.log(`Wild ${w.species} called on map ${e.area} not spawned: ${(error as Error).message}`);
+      }
     }
   }
 
@@ -149,7 +173,7 @@ export function createWilds(options: WildOptions) {
     const e = world.add({ kind: "pokemon", area, x, y, level: 0, facing: "south", data: shiny ? { shiny: true } : {} });
     try {
       const c = combat.spawn(world, e.id, spec, "wild");
-      wilds.set(e.id, { entityId: e.id, species: spec.species, shiny, origin: { x, y }, water, ...(fished ? { fished } : {}), capturing: false, lastHp: c.hp, lastNearTick: tick, engagedTick: undefined, faintedTick: undefined });
+      wilds.set(e.id, { entityId: e.id, species: spec.species, shiny, origin: { x, y }, water, ...(fished ? { fished } : {}), mayCall: false, capturing: false, lastHp: c.hp, lastNearTick: tick, engagedTick: undefined, faintedTick: undefined });
       const temperament = data.temperaments.species[String(spec.species)] ?? data.temperaments.default;
       ai.add(e.id, { home: { x, y }, level: spec.level, temperament, leashPx: rules.leashTiles * MAP_TILE_PX });
     } catch (error) {
@@ -193,7 +217,7 @@ export function createWilds(options: WildOptions) {
       const slot = pickCatch(table.slots, rng, night ? table.nightFish : undefined, rod);
       const level = rollLevel(slot, rng);
       try {
-        return add(area, x, y, { species: slot.species, level, moves: wildMoves(data.levelUp(slot.species), level) }, rollShiny(rules.shinyOdds, rng), tick, true, true);
+        return add(area, x, y, { species: slot.species, level, moves: wildMoves(data.levelUp(slot.species), level, special) }, rollShiny(rules.shinyOdds, rng), tick, true, true);
       } catch (error) {
         options.log(`Wild ${slot.species} hooked on map ${area} not spawned: ${(error as Error).message}`);
         return undefined;
@@ -249,6 +273,10 @@ export function createWilds(options: WildOptions) {
           continue;
         }
         const alert = ai.drive(w.entityId)?.alert === true;
+        if (w.mayCall && (hurt || ai.get(w.entityId)?.fightStart !== undefined)) {
+          w.mayCall = false;
+          if (rng.nextFloat() < rules.packCall.chance) callPack(w, e, c.level, tick);
+        }
         // The "!" bubble; the client plays the cry when this turns on (spec 018, research R8).
         if (alert !== (e.data["alert"] === true)) {
           const data = { ...e.data };

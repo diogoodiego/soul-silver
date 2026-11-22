@@ -30,6 +30,9 @@ export const ARENA_SPAWN = { area: ARENA_AREA, x: center(4), y: center(8), level
 /** Where the n-th wild foe stands: east of the player, in columns of three. */
 export const foeSpot = (n: number) => ({ x: center(12 + Math.floor(n / 3) * 3), y: center(6 + (n % 3) * 2) });
 
+/** Where the Gym Leader stands in the open field: as far from the player's start as a ring's trainer is. */
+export const LEADER_SPOT = { x: center(14), y: center(8) };
+
 /** A party member at full HP from an arena entry; throws on a species or move the extraction lacks. */
 export function arenaMember(c: ArenaCombatant, combat: CombatData, progression?: ProgressionData): PartyMember {
   const species = combat.species(c.species);

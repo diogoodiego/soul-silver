@@ -17,7 +17,7 @@ describe("end of a trainer battle", () => {
     t.knockOut();
     t.step(30);
     t.knockOut();
-    t.step(2);
+    t.step(45);
     expect(t.of(a, "trainerBattleEnd")).toEqual([expect.objectContaining({ result: "won", prize: 64 })]);
     t.step(40);
     expect(t.of(a, "trainerSpotted")).toHaveLength(1);
@@ -31,7 +31,7 @@ describe("end of a trainer battle", () => {
     const { t, a } = spotted();
     const mine = t.session.world.all().find((e) => e.kind === "pokemon" && e.data["owner"] === String(a.welcome!.playerId))!;
     t.session.combat!.get(mine.id)!.hp = 0;
-    t.step(2);
+    t.step(45);
     expect(t.of(a, "blackout")).toHaveLength(1);
     expect(t.of(a, "trainerBattleEnd")).toEqual([expect.objectContaining({ result: "lost" })]);
     expect(t.foes()).toEqual([]);

@@ -1,7 +1,8 @@
 import {
   BEHAVIOR_SHAPES,
-  baseCooldownS,
+  isSpecial,
   parseCombatFile,
+  specialCooldownS,
   STATUS_IDS,
   toTicks,
   type ArchetypeRecord,
@@ -32,7 +33,8 @@ export interface CombatContent {
 
 /** The parts of the extracted game data combat reads. */
 export interface ExtractedForCombat {
-  moves: (Pick<MoveRecord, "id" | "type" | "category" | "power" | "pp"> & { effect: Pick<MoveRecord["effect"], "chance"> })[];
+  /** Block C: `accuracy` null or absent never misses. */
+  moves: (Pick<MoveRecord, "id" | "type" | "category" | "power" | "pp"> & Partial<Pick<MoveRecord, "accuracy">> & { effect: Pick<MoveRecord["effect"], "chance"> })[];
   species: Pick<SpeciesRecord, "id" | "baseStats" | "types">[];
   typeChart: Pick<TypeChartRecord, "id" | "against">[];
 }
@@ -48,9 +50,13 @@ export interface CombatMove {
   power: number;
   /** Chance used by effects that do not set their own: the original effect chance, 100 when it is 0. */
   defaultChance: number;
+  /** Block C: the original accuracy in percent; null never misses. */
+  accuracy: number | null;
   rangePx: number;
   hitbox: Hitbox | undefined;
+  /** Block C: a special's cast (at least specialCastS); normal moves take the chain's cast instead. */
   castTicks: number;
+  /** Block C: a special's cooldown; 0 for normal moves. */
   cooldownTicks: number;
   speedPx: number;
   hits: number;
@@ -58,6 +64,8 @@ export interface CombatMove {
   rooted: boolean;
   critStage: number;
   effects: Effect[];
+  /** Block C: power 80 and up, status, fixed or variable damage; otherwise normal. */
+  special: boolean;
 }
 
 export interface CombatData {
@@ -126,6 +134,7 @@ export function buildCombatData(content: CombatContent, extracted: ExtractedForC
     const effects: Effect[] = mapping?.effects ?? (original.power > 0 ? [{ kind: "damage" }] : []);
     const damage = effects.find((e) => e.kind === "damage");
     const power = damage?.power ?? original.power;
+    const special = isSpecial(original, damage !== undefined && (damage.fixed !== undefined || damage.level === true || damage.targetHpFraction !== undefined));
     return {
       id,
       archetype: archetype.id,
@@ -136,14 +145,16 @@ export function buildCombatData(content: CombatContent, extracted: ExtractedForC
       defaultChance: original.effect.chance || 100,
       rangePx: p.rangePx ?? 0,
       hitbox: p.hitbox,
-      castTicks: toTicks(Math.max(p.castS ?? 0, tuning.minCastS)),
-      cooldownTicks: toTicks(p.cooldownS ?? baseCooldownS(tuning.cooldown, power, original.pp)),
+      accuracy: original.accuracy ?? null,
+      castTicks: special ? toTicks(Math.max(p.castS ?? 0, tuning.action.specialCastS)) : 0,
+      cooldownTicks: special ? toTicks(p.cooldownS ?? specialCooldownS(tuning.action.specialCooldown, original.power)) : 0,
       speedPx: p.speedPx ?? 0,
       hits: p.hits ?? 1,
       durationTicks: toTicks(p.durationS ?? 0),
       rooted: p.rooted ?? false,
       critStage: p.critStage ?? 0,
       effects,
+      special,
     };
   }
 
