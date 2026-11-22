@@ -23,6 +23,8 @@ const FIRE = 10;
 const GRASS = 12;
 
 export const move = (patch: Partial<MoveView> & Pick<MoveView, "id">): MoveView => ({
+  slot: 0,
+  special: false,
   behavior: "melee",
   type: NORMAL,
   category: "physical",
@@ -40,7 +42,7 @@ export const move = (patch: Partial<MoveView> & Pick<MoveView, "id">): MoveView 
 });
 
 export const TACKLE = move({ id: 33, power: 35 });
-export const EMBER = move({ id: 52, behavior: "projectile", type: FIRE, category: "special", power: 40, rangePx: 96, hitbox: { shape: "circle", radiusPx: 6 }, speedPx: 160 });
+export const EMBER = move({ id: 52, slot: 1, behavior: "projectile", type: FIRE, category: "special", power: 40, rangePx: 96, hitbox: { shape: "circle", radiusPx: 6 }, speedPx: 160 });
 
 export const self = (patch: Partial<SelfView> = {}): SelfView => ({
   id: 1,

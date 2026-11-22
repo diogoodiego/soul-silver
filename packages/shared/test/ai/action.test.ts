@@ -49,8 +49,8 @@ describe("action layer (US1)", () => {
   });
 
   it("sees a cast coming at it", () => {
-    expect(threatened({ x: 50, y: 0 }, { x: 0, y: 0, cast: { dir: { x: 1, y: 0 }, reachPx: 60, elapsedTicks: 3 } }, 8)).toBe(true);
-    expect(threatened({ x: 0, y: 50 }, { x: 0, y: 0, cast: { dir: { x: 1, y: 0 }, reachPx: 60, elapsedTicks: 3 } }, 8)).toBe(false);
-    expect(threatened({ x: 100, y: 0 }, { x: 0, y: 0, cast: { dir: { x: 1, y: 0 }, reachPx: 60, elapsedTicks: 3 } }, 8)).toBe(false);
+    expect(threatened({ x: 50, y: 0 }, { x: 0, y: 0, cast: { dir: { x: 1, y: 0 }, reachPx: 60, elapsedTicks: 3, leftTicks: 5, special: false } }, 8)).toBe(true);
+    expect(threatened({ x: 0, y: 50 }, { x: 0, y: 0, cast: { dir: { x: 1, y: 0 }, reachPx: 60, elapsedTicks: 3, leftTicks: 5, special: false } }, 8)).toBe(false);
+    expect(threatened({ x: 100, y: 0 }, { x: 0, y: 0, cast: { dir: { x: 1, y: 0 }, reachPx: 60, elapsedTicks: 3, leftTicks: 5, special: false } }, 8)).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PLAYER_NAME_MAX } from "./game/limits";
 import { ACTIONS, DEFAULT_KEYS, RESERVED_KEYS, type Bindings } from "./input/bindings";
 
 // Per-PC settings (spec 017, data-model.md). The file never blocks startup: a missing or
@@ -36,6 +37,24 @@ const visual = z.strictObject({
 // An action added later takes its default key, so older settings keep their bindings.
 const bindings = z.strictObject(Object.fromEntries(ACTIONS.map((a) => [a, keys.default(() => [...DEFAULT_KEYS[a]])])) as Record<keyof Bindings, z.ZodDefault<typeof keys>>);
 
+/** A team member in the arena's menu: its 4 move slots (block C), 0 for an empty one. */
+const arenaTeam = z.array(z.strictObject({ species: z.number().int().min(1), level: z.number().int().min(1).max(100), moves: z.array(z.number().int().min(0)).length(4) })).min(1).max(6);
+const arena = z.strictObject({
+  name: z.string().min(1).max(PLAYER_NAME_MAX),
+  character: z.enum(["male", "female"]),
+  mine: arenaTeam,
+  foeKind: z.enum(["wild", "trainer"]),
+  behavior: z.enum(["ai", "idle"]),
+  trainerId: z.number().int().min(1),
+  theirs: arenaTeam,
+  /** Absent: the open field. */
+  ring: z.number().int().min(0).optional(),
+  /** Absent: no Gym Leader. */
+  leader: z.number().int().min(1).optional(),
+  /** Absent: no legendary. */
+  legendary: z.number().int().min(1).optional(),
+});
+
 const fields = {
   firewallNoticeSeen: z.boolean(),
   window: windowSize,
@@ -57,6 +76,8 @@ const fields = {
   roomPassword: z.string().max(64),
   /** R.3: where invites learn this PC's public address; empty sends none (only LAN and IPv6 candidates). */
   stunServer: z.string().max(200).regex(/^(stuns?:\S+)?$/, "use stun: ou stuns:"),
+  /** The test arena's menu as it was left; null before the first time. */
+  arena: arena.nullable(),
 };
 
 export type AppSettings = { [K in keyof typeof fields]: z.infer<(typeof fields)[K]> };
@@ -75,6 +96,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   audio: { master: 80, music: 80, effects: 80, muteUnfocused: false },
   roomPassword: "",
   stunServer: "stun:stun.l.google.com:19302",
+  arena: null,
 };
 
 /** Any JSON to full settings, field by field. */
@@ -88,6 +110,9 @@ export function readSettings(raw: unknown): AppSettings {
   // E became the next-Pokémon key: settings from before it that still interact on E interact on Space now.
   const saved = obj["bindings"];
   if (typeof saved === "object" && saved !== null && !("swapNext" in saved) && out.bindings.interact.length === 1 && out.bindings.interact[0] === "KeyE") out.bindings.interact = [...DEFAULT_KEYS.interact];
+  // Block H moved the moves from 1–4 to J/K/L/I: settings still on the whole old set take the new keys.
+  const MOVES = ["move1", "move2", "move3", "move4"] as const;
+  if (MOVES.every((a, i) => out.bindings[a].length === 1 && out.bindings[a][0] === `Digit${i + 1}`)) for (const a of MOVES) out.bindings[a] = [...DEFAULT_KEYS[a]];
   // One key, one job: Escape used to open the menu too, so backing out of a screen opened the phone.
   const { menu, cancel } = out.bindings;
   if (cancel.includes("Escape") && menu.includes("Escape")) {

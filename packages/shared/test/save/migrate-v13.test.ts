@@ -35,7 +35,7 @@ const v12 = {
   ...newItemState(),
   daycare: [{ mon: member, steps: 40 }],
 };
-const v13 = (over: object = {}) => ({ ...v12, schemaVersion: 21, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-11-13T12:00:00.000Z"), daycareEgg: false, eggWalk: 0, photos: [], ...over });
+const v13 = (over: object = {}) => ({ ...v12, schemaVersion: 22, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-11-13T12:00:00.000Z"), daycareEgg: false, eggWalk: 0, photos: [], ...over });
 
 describe("save v13", () => {
   it("is version 13 or later", () => {

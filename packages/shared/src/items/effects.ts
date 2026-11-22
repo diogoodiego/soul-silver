@@ -96,11 +96,5 @@ export function healHp(amount: HealAmount, max: number): number {
   return amount;
 }
 
-/** PP Up as cooldown (research R4): the base cooldown is divided by 1 + perLevel × uses. */
-export const ppUpCooldownMul = (uses: number, perLevel: number) => 1 / (1 + perLevel * uses);
-
-/** Ticks of cooldown left after an Ether-style restore of `pp` (each worth `secondsPerPp`). */
-export function restoreCooldown(leftTicks: number, pp: number | "full", secondsPerPp: number, ticksPerS: number): number {
-  if (pp === "full") return 0;
-  return Math.max(0, leftTicks - Math.round(pp * secondsPerPp * ticksPerS));
-}
+/** PP Up as cooldown (research R4, block C): a special's cooldown shrinks by perLevel per use (PP Up −5%, PP Max −15%). */
+export const ppUpCooldownMul = (uses: number, perLevel: number) => Math.max(0, 1 - perLevel * uses);

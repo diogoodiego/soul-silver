@@ -54,6 +54,8 @@ export const trainerTuning = z.strictObject({
   itemUseS: z.number().min(0).max(10),
   /** The next Pokémon comes out this long after one faints, or after a switch is decided. */
   sendOutS: z.number().min(0).max(10),
+  /** A decided battle holds this long before it closes, so the player sees how it ended. */
+  endS: z.number().min(0).max(10),
   /** The original's lines when a ball is thrown in a trainer battle, as "bank:line" text ids. */
   ballRefusal: z.array(z.string().regex(/^\d{4}:\d+$/)).min(1),
 });

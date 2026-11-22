@@ -38,6 +38,8 @@ export const spawnRules = z.strictObject({
   leashTiles: tiles(),
   /** One in this many spawns is shiny. */
   shinyOdds: int(1, 65536),
+  /** Once, as its fight starts, a spawned one may call this many more of its species. */
+  packCall: z.strictObject({ chance: z.number().min(0).max(1), count: int(0, 16) }),
   /** First hour of each band. */
   timeBands: z.strictObject({ morning: hour(), day: hour(), night: hour() }),
   /** One battle "turn" for the Quick and Timer Balls. */

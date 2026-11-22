@@ -1,4 +1,4 @@
-import { createController, stepController, type Controller } from "../../src/ai/controller.ts";
+import { createController, stepController, type Controller, type Strategy } from "../../src/ai/controller.ts";
 import type { TemperamentRules } from "../../src/ai/schemas.ts";
 import type { AiEnv, AiInput, AiTick, OpponentView, Point, SelfView } from "../../src/ai/view.ts";
 import { env as makeEnv, profile, self as makeSelf, TEMPERAMENTS, TUNING } from "./fixtures.ts";
@@ -18,6 +18,8 @@ export interface Scenario {
   opponents?: (tick: number, me: SelfView) => OpponentView[];
   /** Extra tick fields (hurtBy, noises) at a tick. */
   extra?: (tick: number, me: SelfView) => Partial<AiTick>;
+  /** Block C: "wild" when omitted. */
+  strategy?: Strategy;
 }
 
 export function simulate(s: Scenario) {
@@ -33,6 +35,7 @@ export function simulate(s: Scenario) {
     angry: TEMPERAMENTS.aggressive,
     tuning: TUNING,
     look: { x: 1, y: 0 },
+    strategy: s.strategy,
   });
   const states: string[] = [];
   const inputs: AiInput[] = [];

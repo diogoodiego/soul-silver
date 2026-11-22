@@ -78,7 +78,7 @@ const params = {
   rangePx: px().optional(),
   hitbox: hitbox.optional(),
   castS: seconds(5).optional(),
-  /** Replaces the cooldown derived from power and PP. */
+  /** Block C: replaces a special move's cooldown from its power. */
   cooldownS: seconds(60).optional(),
   /** Projectile and dash speed, per second. */
   speedPx: px().optional(),
@@ -139,20 +139,53 @@ export const statusRecord = z
 export type StatusRecord = z.infer<typeof statusRecord>;
 
 export const combatTuning = z.strictObject({
-  /** cooldownS = clamp(a + b·power/100 + c·(35/pp − 1), min, max) (research R5). */
-  cooldown: z.strictObject({ a: z.number(), b: z.number(), c: z.number(), min: seconds(60), max: seconds(60), statusPower: int(0, 255) }),
-  /** Speed stat between low and high maps linearly to the move speed range and to the action bar fill time, slow to fast. */
-  speed: z.strictObject({ low: int(1, 999), high: int(1, 999), moveMinPx: px(), moveMaxPx: px(), gaugeSlowS: seconds(60), gaugeFastS: seconds(60) }),
+  /** Speed stat between low and high maps linearly to the move speed range and to the dodge and parry cooldown, slow to fast. */
+  speed: z.strictObject({ low: int(1, 999), high: int(1, 999), moveMinPx: px(), moveMaxPx: px(), reflexSlowS: seconds(60), reflexFastS: seconds(60) }),
   /** 1/n chance of a critical hit for crit stages 0 to 4. */
   critChances: z.array(int(1, 64)).length(5),
+  /** HP of a boss (a wild legendary, the last Pokémon of one of BOSS_TRAINERS), times its own. */
+  bossHpMul: z.number().min(1).max(10),
   knockbackPx: px(),
   flashS: seconds(5),
   /** Radius of every combatant's body. */
   bodyRadiusPx: px(),
-  /** Aim error per lowered accuracy stage. */
-  accuracyDeviationDeg: z.number().min(0).max(90),
-  /** Block H: no move comes out faster, so its area and charge are seen and can be dodged. */
-  minCastS: seconds(5),
+  /** Block C (docs/roadmap/combate.md): normal and special moves, combos, dodge, parry and guard. */
+  action: z.strictObject({
+    /** Casts of the 1st, 2nd and 3rd normal move of a chain; after the 3rd it starts over. */
+    normalCastS: z.array(seconds(5)).length(3),
+    /** The first of a chain waits this long when it reaches nobody. */
+    normalMissCooldownS: seconds(10),
+    /** No special comes out faster (charge moves keep a longer cast of their own). */
+    specialCastS: seconds(5),
+    /** baseS + (power − 80)·perPowerS, at most maxS; status, fixed and variable damage take baseS. */
+    specialCooldown: z.strictObject({ baseS: seconds(60), perPowerS: z.number().min(0).max(1), maxS: seconds(60) }),
+    /** Damage of normal moves, as a share of the formula's. */
+    normalDamageMul: fraction(),
+    /** Farthest a contact move leaps at its target once charged, and how fast (px per second). */
+    leapMaxPx: px(),
+    leapSpeedPx: int(1, 2048),
+    /** Hits within windowS of the last one add stepMul damage each, up to max of them. */
+    combo: z.strictObject({ windowS: seconds(10), stepMul: fraction(), max: int(0, 100) }),
+    dodgeInvulnS: seconds(5),
+    /** The parry's pose: standing still, white. A normal move is parried by a press while it is cast, whatever the pose's length. */
+    parryPoseS: seconds(5),
+    /** How long the clients mark a Pokémon as parried. */
+    parryMarkS: seconds(5),
+    /** A parried attacker is stunned this long, or until hit; that hit deals stunBonusMul more. */
+    stunS: seconds(10),
+    stunBonusMul: fraction(),
+    /** How far the parried attacker is knocked back, away from the parrier. */
+    parryPushPx: px(),
+    /** Invulnerable after a parry, so a second attacker cannot punish it at once. */
+    parryInvulnS: seconds(5),
+    /**
+     * Parry, guard and dodge are judged by what the player's screen showed, at most this long ago; a contact on a
+     * player's Pokémon waits for presses that may still arrive. 0 judges them as they arrive.
+     */
+    lagMaxS: seconds(1),
+    /** Share of a normal move's damage the guard takes away; specials go through. */
+    guardReduction: fraction(),
+  }),
 });
 export type CombatTuning = z.infer<typeof combatTuning>;
 

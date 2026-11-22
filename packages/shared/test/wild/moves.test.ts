@@ -28,3 +28,17 @@ describe("wildMoves", () => {
     expect(wildMoves([], 10)).toEqual([33]);
   });
 });
+
+describe("wildMoves by class (block C)", () => {
+  // 28 Sand Attack and 45 Growl are status (special), 16 Gust and 33 Tackle normal, 98 Quick Attack normal, 18 Whirlwind status.
+  const special = (m: number) => [28, 45, 18].includes(m);
+
+  it("keeps the last two of each class, normals first", () => {
+    expect(wildMoves(learnset, 13, special)).toEqual([16, 98, 45, 28]);
+    expect(wildMoves(learnset, 20, special)).toEqual([16, 98, 28, 18]);
+  });
+
+  it("leaves a class empty when it learnt none", () => {
+    expect(wildMoves(learnset, 4, (m) => m === 28)).toEqual([33, 45]);
+  });
+});

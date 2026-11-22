@@ -41,11 +41,11 @@ const v20 = {
 
 describe("save v21", () => {
   it("is the current version", () => {
-    expect(SAVE_SCHEMA_VERSION).toBe(21);
+    expect(SAVE_SCHEMA_VERSION).toBeGreaterThanOrEqual(21);
   });
 
   it("gives a v20 save the PC's clock", () => {
-    expect(migrate(structuredClone(v20))).toEqual({ ok: true, save: { ...v20, schemaVersion: 21, clockOffsetMs: 0 } });
+    expect(migrate(structuredClone(v20))).toEqual({ ok: true, save: { ...v20, schemaVersion: SAVE_SCHEMA_VERSION, clockOffsetMs: 0 } });
   });
 
   it.each([
@@ -53,6 +53,6 @@ describe("save v21", () => {
     ["more than a day behind", -86_400_000],
     ["a fraction", 0.5],
   ])("refuses an offset %s", (_, clockOffsetMs) => {
-    expect(saveSchema.safeParse({ ...v20, schemaVersion: 21, clockOffsetMs }).success).toBe(false);
+    expect(saveSchema.safeParse({ ...v20, schemaVersion: SAVE_SCHEMA_VERSION, clockOffsetMs }).success).toBe(false);
   });
 });

@@ -32,7 +32,7 @@ const v9 = {
   storyRev: 1,
 };
 
-const v10 = (phone: unknown) => ({ ...v9, schemaVersion: 21, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-10-24T12:00:00.000Z"), daycare: [], daycareEgg: false, eggWalk: 0, photos: [], phone, ...newItemState() });
+const v10 = (phone: unknown) => ({ ...v9, schemaVersion: 22, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-10-24T12:00:00.000Z"), daycare: [], daycareEgg: false, eggWalk: 0, photos: [], phone, ...newItemState() });
 
 describe("save v10", () => {
   it("gives a v9 save an empty phone and leaves the rest alone", () => {

@@ -5,7 +5,7 @@ import { PLAYER_NAME_MAX } from "../game/limits.ts";
 // A player's save (spec 012, contracts/save-file.md). Progress fields (flags, party, items) join
 // in later features, each with a migration.
 
-export const SAVE_SCHEMA_VERSION = 21;
+export const SAVE_SCHEMA_VERSION = 22;
 
 /**
  * Block H: the trainer card's ID, 0 to 65535, from the player's name and a save's timestamp (FNV-1a folded to 16 bits).
@@ -73,6 +73,8 @@ export const partyMember = z.strictObject({
   trade: z.number().int().min(0).max(255).optional(),
   /** Item 030.10: it holds the mail the trainer of this in-game trade wrote (Kenya's Spearow); absent for no such mail. */
   mail: z.number().int().min(0).max(255).optional(),
+  /** Block C: moves it lost when its moves were fitted to 2 normal + 2 special slots, for a Move Reminder; absent is none. */
+  forgottenMoves: z.array(z.number().int().nonnegative()).max(64).optional(),
 });
 export type PartyMember = z.infer<typeof partyMember>;
 

@@ -32,8 +32,8 @@ export function reachPx(m: MoveView): number {
 export function scoreMoves(self: SelfView, target: OpponentView, ctx: ScoreContext): MoveScore[] {
   const { score: k } = ctx.tuning;
   const out: MoveScore[] = [];
-  self.moves.forEach((m, slot) => {
-    if (!m.ready) return;
+  for (const m of self.moves) {
+    if (!m.ready) continue;
     const eff = ctx.effectiveness(m.type, target.types);
     // What the AI believes: full knowledge sees the real multiplier, none sees neutral.
     const seen = 1 + (eff - 1) * ctx.profile.typeKnowledge;
@@ -63,8 +63,8 @@ export function scoreMoves(self: SelfView, target: OpponentView, ctx: ScoreConte
     if ((m.buff || m.debuff) && (ctx.fightS < k.buffEarlyS || ctx.safe)) utility += k.buffUsefulness;
     if (m.heals && self.hp / self.hpMax < k.healHpFraction) utility += k.healUsefulness;
     const total = seen === 0 ? k.immuneScore : Math.max(k.immuneScore, damage * hit + utility);
-    out.push({ slot, move: m.id, damage, hit, utility, score: total });
-  });
+    out.push({ slot: m.slot, move: m.id, damage, hit, utility, score: total });
+  }
   return out;
 }
 

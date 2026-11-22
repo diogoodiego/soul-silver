@@ -1,4 +1,5 @@
 export * from "./capture.ts";
+export * from "./legendaries.ts";
 export * from "./moves.ts";
 export * from "./pokedex.ts";
 export * from "./schemas.ts";

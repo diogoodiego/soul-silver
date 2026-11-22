@@ -37,6 +37,21 @@ export function zoneCells(map: WorldMap): Cell[] {
   return cells;
 }
 
+/** The closest cells one can reach from `from` through open ones, at most `count`; never `from` itself. */
+export function cellsAround(from: Cell, count: number, open: (c: Cell) => boolean): Cell[] {
+  const queue = [from];
+  const seen = new Set([`${from.x},${from.y}`]);
+  for (let i = 0; i < queue.length && queue.length <= count; i++) {
+    const { x, y } = queue[i]!;
+    for (const c of [{ x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 }]) {
+      if (seen.has(`${c.x},${c.y}`) || !open(c)) continue;
+      seen.add(`${c.x},${c.y}`);
+      queue.push(c);
+    }
+  }
+  return queue.slice(1, count + 1);
+}
+
 /** A random zone cell outside every player's screen plus the margin; undefined after maxTries misses. */
 export function pickCell(
   cells: readonly Cell[],

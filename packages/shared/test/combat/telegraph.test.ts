@@ -1,7 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { telegraph } from "../../src/combat/telegraph.ts";
+import { castData, castKit, packKit, telegraph, unpackKit } from "../../src/combat/telegraph.ts";
 
 const RIGHT = { x: 1, y: 0 };
+
+describe("cast kit (block C: what a client needs to show a cast before the server does)", () => {
+  const melee = { behavior: "melee", rangePx: 0, hitbox: { shape: "arc", radiusPx: 28, angleDeg: 100 }, type: 3 } as const;
+  const thunder = { behavior: "target-area", rangePx: 96, hitbox: { shape: "circle", radiusPx: 24 }, type: 13 } as const;
+
+  it("says what it aims at and whether it leaps", () => {
+    expect(castKit(melee, 400)).toMatchObject({ aim: "foe", leap: true, castMs: 400, type: 3, shape: "arc", size: 28, span: 100, ahead: 0 });
+    expect(castKit(thunder, 800)).toMatchObject({ aim: "foe", leap: false, ahead: 96 });
+    expect(castKit({ ...thunder, behavior: "field" }, 800)).toMatchObject({ aim: "facing", leap: false });
+  });
+
+  it("survives the trip as text; anything else is no kit", () => {
+    for (const kit of [castKit(melee, 400), castKit(thunder, 800)]) expect(unpackKit(packKit(kit))).toEqual(kit);
+    for (const bad of [undefined, 3, "", "melee", "cone|1|2|3|4|5|foe|1", "arc|x|2|3|4|5|foe|1"]) expect(unpackKit(bad)).toBeUndefined();
+  });
+
+  it("gives the fields the clients draw, as the telegraph would, past the leap", () => {
+    const dir = { x: 0, y: 1 };
+    const area = telegraph(thunder, dir);
+    expect(castData(castKit(thunder, 800), dir, 0)).toEqual({ castMs: 800, castType: 13, castShape: area.shape, castOx: area.ox, castOy: area.oy, castSize: area.size, castSpan: area.span, castDx: 0, castDy: 100 });
+    expect(castData(castKit(melee, 400), dir, 44)).toMatchObject({ castOx: 0, castOy: 44 });
+  });
+});
 
 describe("telegraph", () => {
   it("draws a self-area move as a circle around the user", () => {

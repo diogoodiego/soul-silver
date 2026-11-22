@@ -20,7 +20,8 @@ describe("profile by level (US3)", () => {
     const v = profile("veteran");
     expect(n.reactionS).toBeGreaterThan(v.reactionS);
     expect(n.aimErrorDeg).toBeGreaterThan(v.aimErrorDeg);
-    expect(n.dodgeChance).toBeLessThan(0.05);
+    // Block C: trainers of a better profile dodge and parry more often (wild Pokémon use one chance for all).
+    expect(n.reactChance).toBeLessThan(v.reactChance);
   });
 
   it("fails clearly for a level outside the table or a missing profile", () => {

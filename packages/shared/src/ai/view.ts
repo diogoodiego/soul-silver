@@ -11,6 +11,8 @@ export interface Point {
 }
 
 export interface MoveView {
+  /** Block C: its slot (0–1 normal, 2–3 special); empty slots have no view. */
+  slot: number;
   id: number;
   behavior: Behavior;
   type: number;
@@ -20,8 +22,10 @@ export interface MoveView {
   hitbox: Hitbox | undefined;
   /** Projectile and dash speed, px per second. */
   speedPx: number;
-  /** The action bar is full. */
+  /** Block C: off cooldown (a normal move's: only after missing the first of a chain). */
   ready: boolean;
+  /** Block C: a special (cooldown, red warning: only dodged). */
+  special: boolean;
   damages: boolean;
   /** Inflicts a status on the target. */
   status: boolean;
@@ -54,6 +58,9 @@ export interface CastView {
   reachPx: number;
   /** Ticks since it began; the AI reacts only after its reaction time. */
   elapsedTicks: number;
+  /** Block C: ticks until it lands, and whether it is a special (red: it cannot be parried). */
+  leftTicks: number;
+  special: boolean;
 }
 
 export interface OpponentView extends Point {

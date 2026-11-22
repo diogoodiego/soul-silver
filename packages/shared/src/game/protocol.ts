@@ -38,11 +38,13 @@ export const playerInput = z.strictObject({
   buttons: count(),
   /** Aim in the world plane, each axis in [-1, 1]; absent or zero means the way the entity faces. */
   aim: z.strictObject({ x: z.number().min(-1).max(1), y: z.number().min(-1).max(1) }).optional(),
+  /** Block C: the server tick the player's screen showed at a press applied with this input; the server fills it in. */
+  seen: count().optional(),
 });
 export type PlayerInput = z.infer<typeof playerInput>;
 
 /** Input buttons past the move slots (specs 013, 014 and 015, contracts/game-protocol-v7.md). */
-export const BUTTON = { dash: 1 << 4, combat: 1 << 5, recall: 1 << 6, interact: 1 << 7, throw: 1 << 8 } as const;
+export const BUTTON = { dash: 1 << 4, combat: 1 << 5, recall: 1 << 6, interact: 1 << 7, throw: 1 << 8, guard: 1 << 9 } as const;
 
 /** A combatant of the dev arena (spec 013, contracts/game-protocol-v5.md). */
 export const arenaCombatant = z.strictObject({
@@ -65,7 +67,11 @@ export const arenaSpec = z.strictObject({
   ]),
   /** Protocol 39: an indoor map whose ring (item V.3) the arena is fought in; absent, the open field. */
   ring: count().optional(),
-});
+  /** Protocol 45: a Gym Leader (GYM_LEADERS), with the story's team, who comes once `foe` is beaten. */
+  leader: count().optional(),
+  /** Protocol 48: a legendary's species (LEGENDARIES), in the leader's place. */
+  legendary: count().optional(),
+}).refine((a) => a.leader === undefined || a.legendary === undefined, "a arena termina com um líder ou um lendário, não os dois");
 export type ArenaSpec = z.infer<typeof arenaSpec>;
 
 /** A party index or a PC box slot (spec 023); a party index past the end withdraws to the end. */
@@ -109,6 +115,11 @@ export const clientMessage = z.discriminatedUnion("type", [
   }),
   z.strictObject({ type: z.literal("save-ack"), rev: count() }),
   playerInput.extend({ type: z.literal("input") }),
+  /**
+   * Block C: combat buttons pressed just now, ahead of the input stream. They count as held from the next tick until
+   * the input `seq`, which carries them too; `seen` is the last state the player had on screen.
+   */
+  z.strictObject({ type: z.literal("press"), id: count(), seq: count(), buttons: count(), seen: count() }),
   z.strictObject({ type: z.literal("leave") }),
   /** Quick swap in combat (spec 014); ignored on cooldown, fainted, already out or outside combat. */
   z.strictObject({ type: z.literal("swap"), partyIndex: z.number().int().min(0).max(5) }),
@@ -251,8 +262,11 @@ export type NoticeCode = (typeof NOTICE_CODES)[number];
 export const CLOSE_REASONS =["host-left", "closed-by-host"] as const;
 export type CloseReason = (typeof CLOSE_REASONS)[number];
 
-/** "held" (spec 027): a held item acted; `item` says which, `amount` is the HP it gave back. */
-export const HIT_KINDS = ["hit", "immune", "tick", "heal", "status", "stages", "failed", "held"] as const;
+/**
+ * "held" (spec 027): a held item acted; `item` says which, `amount` is the HP it gave back. Block C: "missed" (the accuracy roll
+ * failed), "evaded" (the target was invulnerable) and "parried" (the target parried a normal move; the attacker is stunned).
+ */
+export const HIT_KINDS = ["hit", "immune", "tick", "heal", "status", "stages", "failed", "held", "missed", "evaded", "parried"] as const;
 export type HitKind = (typeof HIT_KINDS)[number];
 
 /** Something combat did, for the feedback (spec 013, data-model.md). */
@@ -398,6 +412,8 @@ export const serverMessage = z.discriminatedUnion("type", [
     tick: count(),
     /** Last input seq applied for this client; -1 before any. */
     lastInput: z.number().int().min(-1),
+    /** Block C: last press id applied; -1 before any. */
+    lastPress: z.number().int().min(-1),
     full: z.boolean(),
     spawned: z.array(entity),
     changed: z.array(entityDelta),
@@ -465,7 +481,7 @@ export const serverMessage = z.discriminatedUnion("type", [
    * The head of the progression queue, only out of combat. A level-up carries the new stats and the gains;
    * a learn carries the moves known now (four means the player picks one to forget).
    */
-  z.strictObject({ type: z.literal("progression"), item: progressionItem, stats: battleStats.optional(), gains: battleStats.optional(), moves: z.array(count()).max(4).optional() }),
+  z.strictObject({ type: z.literal("progression"), item: progressionItem, stats: battleStats.optional(), gains: battleStats.optional(), moves: z.array(count()).max(4).optional(), replaceable: z.array(z.number().int().min(0).max(3)).max(4).optional() }),
   /** A script waits for this client (spec 020); answered with script-answer and the same id. */
   z.strictObject({ type: z.literal("script"), id: count(), request: scriptRequest }),
   z.strictObject({ type: z.literal("script-event"), event: scriptEvent }),
@@ -501,6 +517,8 @@ export const serverMessage = z.discriminatedUnion("type", [
   }),
   z.strictObject({ type: z.literal("trainerSendOut"), battleId: count(), slot: z.number().int().min(0).max(5), entityId: count() }),
   z.strictObject({ type: z.literal("trainerItem"), battleId: count(), item: count(), target: count() }),
+  /** Protocol 47: a side has nobody left; only to the player who fights. trainerBattleEnd follows after endS. */
+  z.strictObject({ type: z.literal("trainerBattleOver"), battleId: count(), result: z.enum(["won", "lost"]) }),
   /** `prize` and the trainer's `defeat` line (a text id) only to the player who won. */
   z.strictObject({ type: z.literal("trainerBattleEnd"), battleId: count(), result: z.enum(["won", "lost", "aborted"]), prize: count().optional(), defeat: textId.optional() }),
   /**

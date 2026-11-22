@@ -37,7 +37,7 @@ const v18 = {
   eggWalk: 0,
   photos: [],
 };
-const v19 = (over: object = {}) => ({ ...v18, schemaVersion: 21, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-11-17T12:00:00.000Z"), ...over });
+const v19 = (over: object = {}) => ({ ...v18, schemaVersion: 22, clockOffsetMs: 0, trainerId: trainerIdFor("Gold", "2026-11-17T12:00:00.000Z"), ...over });
 const entry = { at: "2026-11-17T12:00:00.000Z", party: [{ species: 157, level: 60, nickname: "Fogo" }, { species: 16, level: 55 }] };
 
 describe("save v19", () => {

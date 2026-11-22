@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { env, EMBER, foe, px, TACKLE } from "./fixtures.ts";
+import { AI_BUTTONS } from "../../src/ai/controller.ts";
+import { BUTTON } from "../../src/game/protocol.ts";
+import { env, EMBER, foe, move, px, TACKLE } from "./fixtures.ts";
 import { simulate } from "./sim.ts";
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -176,14 +178,132 @@ describe("states (US4)", () => {
     expect(s.states.length).toBeGreaterThan(1);
   });
 
-  it("steps aside from a cast it sees coming", () => {
-    const s = simulate({
-      profileId: "veteran",
-      self: { x: px(10), y: px(10) },
-      opponents: (tick) => [foe({ x: px(13), y: px(10), casting: tick > 30 ? { dir: { x: -1, y: 0 }, reachPx: 80, elapsedTicks: tick - 30 } : undefined })],
-    });
-    s.c.profile = { ...s.c.profile, dodgeChance: 1 };
+});
+
+describe("block C: reactions and strategies (C.7)", () => {
+  const DASH = BUTTON.dash;
+  const GUARD = BUTTON.guard;
+  const HYPER = move({ id: 63, slot: 2, special: true, behavior: "beam", category: "special", power: 150, hitbox: { shape: "capsule", lengthPx: 128, widthPx: 12 } });
+  /** A foe 3 tiles east that casts every 20 ticks for 10 ticks, aimed at the AI. */
+  const caster = (special: boolean) => (tick: number, me: { x: number; y: number }) => {
+    const at = { x: px(13), y: px(10) };
+    const d = Math.hypot(me.x - at.x, me.y - at.y) || 1;
+    const casting = tick > 40 && tick % 20 < 10 ? { dir: { x: (me.x - at.x) / d, y: (me.y - at.y) / d }, reachPx: 500, elapsedTicks: tick % 20, leftTicks: 10 - (tick % 20), special } : undefined;
+    return [foe({ ...at, casting })];
+  };
+  const presses = (inputs: { buttons: number }[], bit: number) => inputs.filter((i, k) => i.buttons & bit && !((inputs[k - 1]?.buttons ?? 0) & bit)).length;
+
+  it("presses the same dash and guard bits as the players", () => {
+    expect(AI_BUTTONS).toEqual({ dash: BUTTON.dash, guard: BUTTON.guard });
+  });
+
+  it("dodges a move just before it lands", () => {
+    const s = simulate({ self: { x: px(10), y: px(10) }, opponents: caster(true) });
+    s.c.tuning = { ...s.c.tuning, action: { ...s.c.tuning.action, wildReactChance: 1 } };
     s.run(60);
-    expect(s.states).toContain("reposition");
+    const first = s.inputs.findIndex((i) => i.buttons & DASH);
+    // The cast from tick 41 lands at 50; the dodge goes off reactLeadS (3 ticks) before.
+    expect(first).toBe(47);
+  });
+
+  it("parries at any moment of the cast, never after it left", () => {
+    const at = new Set<number>();
+    for (let seed = 1; seed <= 5; seed++) {
+      const s = simulate({ env: env(seed), self: { x: px(10), y: px(10) }, opponents: caster(false) });
+      s.c.tuning = { ...s.c.tuning, action: { ...s.c.tuning.action, wildReactChance: 1 } };
+      s.run(600).inputs.forEach((i, k, all) => {
+        if (i.buttons & GUARD && !((all[k - 1]?.buttons ?? 0) & GUARD)) at.add(k % 20);
+      });
+    }
+    // Casts run from tick 0 of every 20 and leave on tick 10.
+    expect([...at].filter((k) => k >= 10)).toEqual([]);
+    expect(at.size).toBeGreaterThan(4);
+  });
+
+  it("backing off, it raises its guard only as the move leaves: it guards, it does not parry", () => {
+    // As caster, but with the tick the move leaves on (no time left) visible, as on the server.
+    const leaving = (tick: number, me: { x: number; y: number }) => {
+      const at = { x: px(13), y: px(10) };
+      const d = Math.hypot(me.x - at.x, me.y - at.y) || 1;
+      const k = tick % 20;
+      return [foe({ ...at, casting: tick > 40 && k <= 10 ? { dir: { x: (me.x - at.x) / d, y: (me.y - at.y) / d }, reachPx: 500, elapsedTicks: k, leftTicks: 10 - k, special: false } : undefined })];
+    };
+    const s = simulate({ strategy: "trainer", self: { x: px(10), y: px(10) }, opponents: leaving });
+    s.c.tuning = { ...s.c.tuning, states: { ...s.c.tuning.states, repositionS: 100 } };
+    s.c.profile = { ...s.c.profile, reactChance: 0 };
+    while (s.c.state !== "combat" && s.inputs.length < 100) s.run(1);
+    s.c.state = "reposition";
+    const from = s.inputs.length;
+    s.run(60);
+    const guards = s.inputs.flatMap((i, k) => (k >= from && i.buttons & GUARD ? [k % 20] : []));
+    expect(guards.length).toBeGreaterThan(0);
+    expect(guards.filter((k) => k !== 10)).toEqual([]);
+  });
+
+  it("only dodges a special (red), and dodges or parries a normal", () => {
+    const run = (special: boolean, seed: number) => {
+      const s = simulate({ env: env(seed), self: { x: px(10), y: px(10) }, opponents: caster(special) });
+      s.c.tuning = { ...s.c.tuning, action: { ...s.c.tuning.action, wildReactChance: 1 } };
+      return s.run(400).inputs;
+    };
+    const red = Array.from({ length: 5 }, (_, i) => run(true, i + 1));
+    expect(red.every((inputs) => presses(inputs, GUARD) === 0 && presses(inputs, DASH) > 0)).toBe(true);
+    const white = Array.from({ length: 5 }, (_, i) => run(false, i + 1));
+    expect(white.reduce((n, inputs) => n + presses(inputs, GUARD), 0)).toBeGreaterThan(0);
+    expect(white.reduce((n, inputs) => n + presses(inputs, DASH), 0)).toBeGreaterThan(0);
+  });
+
+  it("reacts by its chance: 20% for wild Pokémon, by the profile for trainers' (veteran 60%)", () => {
+    // Over many seeds: one seed's rate swings by 0.05. The trainer's 0.6 measures about 0.5 here.
+    const rate = (strategy: "wild" | "trainer") => {
+      const seeds = [1, 2, 3, 4, 5, 6, 7, 8];
+      const runs = seeds.map((seed) => simulate({ strategy, env: env(seed), self: { x: px(10), y: px(10) }, opponents: caster(true) }).run(40 + 20 * 100));
+      return runs.reduce((n, s) => n + presses(s.inputs, DASH), 0) / (100 * seeds.length);
+    };
+    const wild = rate("wild");
+    const trainer = rate("trainer");
+    expect(wild).toBeGreaterThan(0.12);
+    expect(wild).toBeLessThan(0.28);
+    expect(trainer).toBeGreaterThan(0.45);
+    expect(trainer).toBeLessThan(0.7);
+  });
+
+  it("a trainer's Pokémon chains 3 normals, then backs off for 1 s, guarding when hurt", () => {
+    let hurting = false;
+    const s = simulate({ strategy: "trainer", self: { x: px(10), y: px(10) }, opponents: () => [foe({ x: px(12), y: px(10) })], extra: () => (hurting ? { hurtBy: [{ id: 2, amount: 1 }] } : {}) });
+    while (s.c.state !== "reposition" && s.inputs.length < 400) s.run(1);
+    expect(s.inputs.filter((i) => i.buttons & 0b1111).length).toBe(3);
+    const since = s.inputs.length;
+    s.run(5);
+    expect(s.inputs.slice(since).every((i) => (i.buttons & 0b1111) === 0 && (i.move.x !== 0 || i.move.y !== 0))).toBe(true);
+    hurting = true;
+    s.run(3);
+    expect(s.inputs.at(-1)).toMatchObject({ buttons: GUARD, move: { x: 0, y: 0 } });
+    hurting = false;
+    while (s.c.state === "reposition" && s.inputs.length < since + 100) s.run(1);
+    // Backed off for repositionS (1 s, 20 ticks), then back to the fight.
+    expect(s.inputs.length - since).toBe(20);
+    expect(s.c.state).toBe("combat");
+  });
+
+  it("a trainer's Pokémon uses a ready special first", () => {
+    const s = simulate({ strategy: "trainer", self: { x: px(10), y: px(10), moves: [TACKLE, HYPER] }, opponents: () => [foe({ x: px(12), y: px(10) })] }).run(80);
+    const first = s.inputs.find((i) => i.buttons & 0b1111)!;
+    expect(first.buttons).toBe(1 << 2);
+  });
+
+  it("a wild one uses a ready special only now and then, chaining normals otherwise", () => {
+    const s = simulate({ self: { x: px(10), y: px(10), moves: [TACKLE, HYPER] }, opponents: () => [foe({ x: px(12), y: px(10) })] }).run(20 * 60);
+    const special = presses(s.inputs, 1 << 2);
+    const normal = presses(s.inputs, 1);
+    expect(special).toBeGreaterThan(0);
+    expect(special / (special + normal)).toBeLessThan(0.5);
+  });
+
+  it("never feints: no guard or dodge while it casts", () => {
+    const s = simulate({ self: { x: px(10), y: px(10), casting: true }, opponents: caster(false) });
+    s.c.tuning = { ...s.c.tuning, action: { ...s.c.tuning.action, wildReactChance: 1 } };
+    s.run(200);
+    expect(s.inputs.every((i) => (i.buttons & (DASH | GUARD)) === 0)).toBe(true);
   });
 });

@@ -17,7 +17,7 @@ describe("ai data", () => {
     ["sightAngleDeg", 0],
     ["sightAngleDeg", 361],
     ["typeKnowledge", 1.5],
-    ["dodgeChance", -0.1],
+    ["reactChance", -0.1],
     ["leadFactor", 2],
     ["temperature", 0],
   ])("rejects %s = %s with its path", (field, value) => {

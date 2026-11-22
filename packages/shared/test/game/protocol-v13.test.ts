@@ -54,6 +54,6 @@ describe("protocol v13", () => {
 
   it("knows NPC entities", () => {
     const npc = { id: 9, kind: "npc", area: "60", x: 8, y: 8, level: 0, facing: "south", data: { sprite: 148, person: 0 } };
-    expect(serverMessage.safeParse({ type: "state", tick: 1, lastInput: -1, full: true, spawned: [npc], changed: [], removed: [] }).success).toBe(true);
+    expect(serverMessage.safeParse({ type: "state", tick: 1, lastInput: -1, lastPress: -1, full: true, spawned: [npc], changed: [], removed: [] }).success).toBe(true);
   });
 });

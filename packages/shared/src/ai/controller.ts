@@ -6,6 +6,13 @@ import { pickWeighted, reachPx, scoreMoves } from "./scoring.ts";
 import { addDamage, chooseTarget, decayThreat, forget, newThreat, type ThreatTable } from "./threat.ts";
 import type { AiEnv, AiHooks, AiInput, AiTick, Decision, MoveScore, Point } from "./view.ts";
 
+/** Block C: BUTTON.dash and BUTTON.guard (game/protocol imports this module, so they are repeated here; a test keeps them equal). */
+export const AI_BUTTONS = { dash: 1 << 4, guard: 1 << 9 } as const;
+const BUTTON = AI_BUTTONS;
+
+/** Block C: wild Pokémon chain 1–3 normals on impulse; trainers' chain 3, back off and use every ready special. */
+export type Strategy = "wild" | "trainer";
+
 // The combat AI controller (spec 019): perceive, decide in a state machine, act through the same
 // input a player sends. Pure: the server feeds it an AiTick and hands the input to combat.
 
@@ -39,9 +46,16 @@ export interface ControllerOptions {
   tuning: AiTuning;
   hooks?: AiHooks | undefined;
   look?: Point | undefined;
+  /** Block C: "wild" when omitted. */
+  strategy?: Strategy | undefined;
 }
 
 export interface Controller extends Required<Omit<ControllerOptions, "look" | "hooks">> {
+  /** Block C: normals left in the current chain; back off once it is done (trainers). */
+  chain: number;
+  retreat: boolean;
+  /** Block C: a dodge (or a parry) timed to the move it answers. */
+  react: { at: number; parry: boolean; dir: Point } | undefined;
   hooks: AiHooks;
   state: AiStateName;
   since: number;
@@ -75,6 +89,10 @@ export function createController(o: ControllerOptions): Controller {
     angry: o.angry,
     tuning: o.tuning,
     hooks: o.hooks ?? {},
+    strategy: o.strategy ?? "wild",
+    chain: 0,
+    retreat: false,
+    react: undefined,
     state: "idle",
     since: 0,
     senses: newSenses(o.look ?? { x: 0, y: 1 }),
@@ -225,21 +243,46 @@ export function stepController(c: Controller, t: AiTick, env: AiEnv): StepResult
         break;
       }
       c.fightStart ??= tick;
+      // Block C: a visible cast that will reach it: once per cast, by its chance, a dodge (the only answer to a
+      // special) just before the move leaves, or a parry at any moment of the cast.
+      const coming = t.opponents.filter((o) => o.casting && c.senses.visible.has(o.id) && threatened(self, { ...o, cast: o.casting }, BODY_PX));
+      for (const o of coming) {
+        const cast = o.casting!;
+        if (c.dodged.get(o.id) === tick - cast.elapsedTicks) continue;
+        c.dodged.set(o.id, tick - cast.elapsedTicks);
+        if (env.rng.nextFloat() >= (c.strategy === "trainer" ? profile.reactChance : k.action.wildReactChance)) continue;
+        const parry = !cast.special && env.rng.nextInt(2) === 0;
+        const wait = parry ? env.rng.nextInt(Math.max(1, cast.leftTicks)) : Math.max(0, cast.leftTicks - ticks(k.action.reactLeadS));
+        c.react = { at: tick + wait, parry, dir: rotate(cast.dir, env.rng.nextInt(2) === 0 ? 90 : -90) };
+      }
+      if (c.react && tick >= c.react.at) {
+        const r = c.react;
+        c.react = undefined;
+        if (!self.casting) {
+          input.buttons = r.parry ? BUTTON.guard : BUTTON.dash;
+          if (!r.parry) input.move = eightWay(walk(r.dir));
+          // It dodges sideways but keeps its eyes on the target.
+          c.senses.look = toward(self, mem);
+          return { input, alert: false, decisions };
+        }
+      }
+      // A trainer's chain is over: it backs off.
+      if (c.retreat && !self.casting) {
+        c.retreat = false;
+        c.dodgeDir = toward(mem, self);
+        enter("reposition");
+      }
       if (c.state === "reposition") {
         if (tick - c.since >= ticks(k.states.repositionS)) enter("combat");
-        else input.move = walk(c.dodgeDir);
-        break;
-      }
-      // A visible cast that will reach it: maybe step aside, once per cast, after its reaction time.
-      const incoming = t.opponents.find((o) => o.casting && c.senses.visible.has(o.id) && o.casting.elapsedTicks >= ticks(profile.reactionS) && c.dodged.get(o.id) !== tick - o.casting.elapsedTicks && threatened(self, { ...o, cast: o.casting }, BODY_PX));
-      if (incoming?.casting) {
-        c.dodged.set(incoming.id, tick - incoming.casting.elapsedTicks);
-        if (env.rng.nextFloat() < profile.dodgeChance) {
-          c.dodgeDir = rotate(incoming.casting.dir, env.rng.nextInt(2) === 0 ? 90 : -90);
-          enter("reposition");
-          input.move = walk(c.dodgeDir);
-          break;
+        // Under attack, it stands and guards instead: only as the move leaves, as a press before would parry it.
+        else if (hurt || coming.some((o) => !o.casting!.special && o.casting!.leftTicks <= 0)) input.buttons = BUTTON.guard;
+        else {
+          // It backs off facing the target.
+          input.move = eightWay(walk(c.dodgeDir));
+          c.senses.look = toward(self, mem);
+          return { input, alert: false, decisions };
         }
+        break;
       }
       const range = preferredRange(self.moves);
       if (c.state === "approach") {
@@ -269,13 +312,13 @@ export function stepController(c: Controller, t: AiTick, env: AiEnv): StepResult
           safe: d > k.score.buffSafeTiles * TILE,
         });
         if (scores.length > 0) {
-          const pick = pickWeighted(scores, profile.temperature, env.rng);
+          const pick = choose(c, self.moves, scores, env);
           c.pending = pick.slot;
           c.lastDecision = log(scores, pick.slot);
         }
         c.strafe = env.rng.nextInt(2) === 0 ? 1 : -1;
       }
-      const m = c.pending === undefined ? undefined : self.moves[c.pending];
+      const m = c.pending === undefined ? undefined : self.moves.find((x) => x.slot === c.pending);
       if (c.pending !== undefined && !m?.ready) c.pending = undefined;
       const reach = m ? reachPx(m) + BODY_PX : range.px;
       if (d > Math.min(reach, range.px * 1.2 + BODY_PX) && d > reach * 0.9) input.move = walk(toward(self, mem));
@@ -285,6 +328,12 @@ export function stepController(c: Controller, t: AiTick, env: AiEnv): StepResult
         input.aim = aimAt(self, mem, mem.velocity, profile.leadFactor, m.speedPx, profile.aimErrorDeg, env.rng);
         input.buttons = 1 << c.pending;
         c.pending = undefined;
+        // Block C: a chain goes on at once; a trainer backs off after its last normal.
+        if (!m.special && c.chain > 0) {
+          c.chain--;
+          if (c.chain > 0) c.nextDecision = tick + 1;
+          else if (c.strategy === "trainer") c.retreat = true;
+        }
       } else if (mem) input.aim = toward(self, mem);
       break;
     }
@@ -317,6 +366,22 @@ export function stepController(c: Controller, t: AiTick, env: AiEnv): StepResult
   // Searching the last place it saw the target: looks around.
   if (c.state === "approach" && mem && target !== undefined && !c.senses.visible.has(target) && dist(self, mem) < TILE && tick % 10 === 0) c.senses.look = rotate(c.senses.look, 90);
   return { input, alert: c.state === "alert", decisions };
+}
+
+/**
+ * Block C: a trainer's Pokémon takes its best ready special (one worth more than a blocked move); a wild one only by
+ * its chance. Otherwise a normal, starting a chain when none is under way.
+ */
+function choose(c: Controller, moves: AiTick["self"]["moves"], scores: MoveScore[], env: AiEnv): MoveScore {
+  const k = c.tuning;
+  const special = (s: MoveScore) => moves.find((m) => m.slot === s.slot)?.special === true;
+  const specials = scores.filter((s) => special(s) && s.score > k.score.immuneScore);
+  const normals = scores.filter((s) => !special(s));
+  if (normals.length === 0) return pickWeighted(scores, c.profile.temperature, env.rng);
+  if (specials.length > 0 && c.strategy === "trainer") return specials.reduce((a, b) => (b.score > a.score ? b : a));
+  if (specials.length > 0 && env.rng.nextFloat() < k.action.wildSpecialChance) return pickWeighted(specials, c.profile.temperature, env.rng);
+  if (c.chain === 0) c.chain = c.strategy === "trainer" ? k.action.trainerChain : 1 + env.rng.nextInt(k.action.wildChainMax);
+  return pickWeighted(normals, c.profile.temperature, env.rng);
 }
 
 /** Idle: short walks and pauses near home, never onto water, ledges or edges. */

@@ -50,4 +50,10 @@ describe("pickUser", () => {
     expect(pickUser(party, 15)).toBe(1);
     expect(pickUser(party, 99, 0)).toBeUndefined();
   });
+
+  it("counts a field move set aside when the moves were fitted to 2 + 2 slots (block C)", () => {
+    const party = [{ moves: [33] }, { moves: [33, 57], forgottenMoves: [19, 70] }];
+    expect(pickUser(party, 19)).toBe(1);
+    expect(pickUser(party, 70, 1)).toBe(1);
+  });
 });

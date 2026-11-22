@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ItemRecord } from "../../src/game-data/items.ts";
-import { ppUpCooldownMul, restoreCooldown, useEffectOf, type ItemEffects } from "../../src/items/index.ts";
+import { ppUpCooldownMul, useEffectOf, type ItemEffects } from "../../src/items/index.ts";
 
 // Spec 027, US1/US2/US4: what an item does, read from the extracted party-use bytes (item_data: ItemPartyParam)
 // and, where those bytes say nothing, from content/items/effects.json.
@@ -81,17 +81,10 @@ describe("use effects", () => {
   });
 });
 
-describe("PP as cooldown (research R4)", () => {
-  it("PP Up divides the base cooldown by 1 + 0.2 per use", () => {
-    expect(ppUpCooldownMul(0, 0.2)).toBe(1);
-    expect(ppUpCooldownMul(1, 0.2)).toBeCloseTo(1 / 1.2);
-    expect(ppUpCooldownMul(3, 0.2)).toBeCloseTo(1 / 1.6);
-  });
-
-  it("an Ether takes PP × seconds off the wait left; a full restore clears it", () => {
-    expect(restoreCooldown(100, 10, 0.5, 20)).toBe(0);
-    expect(restoreCooldown(100, 2, 0.5, 20)).toBe(80);
-    expect(restoreCooldown(100, "full", 0.5, 20)).toBe(0);
-    expect(restoreCooldown(0, 10, 0.5, 20)).toBe(0);
+describe("PP as cooldown (research R4, block C)", () => {
+  it("PP Up takes 5% off a special's cooldown per use: −5% for one, −15% at PP Max", () => {
+    expect(ppUpCooldownMul(0, 0.05)).toBe(1);
+    expect(ppUpCooldownMul(1, 0.05)).toBeCloseTo(0.95);
+    expect(ppUpCooldownMul(3, 0.05)).toBeCloseTo(0.85);
   });
 });

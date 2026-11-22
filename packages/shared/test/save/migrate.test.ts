@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { migrate } from "../../src/save/migrate.ts";
 import { v7 } from "./v7.ts";
-import { newBoxes, newItemState, saveSchema } from "../../src/save/schema.ts";
+import { newBoxes, newItemState, SAVE_SCHEMA_VERSION, saveSchema } from "../../src/save/schema.ts";
 
 const v1 = {
   schemaVersion: 1,
@@ -60,7 +60,7 @@ describe("migrate", () => {
   });
 
   it("refuses a save newer than the app", () => {
-    expect(migrate({ ...v1, schemaVersion: 22 })).toMatchObject({ ok: false, code: "save-too-new" });
+    expect(migrate({ ...v1, schemaVersion: SAVE_SCHEMA_VERSION + 1 })).toMatchObject({ ok: false, code: "save-too-new" });
   });
 
   it("fails when a step is missing", () => {

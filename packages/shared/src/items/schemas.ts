@@ -71,9 +71,7 @@ export const itemTuning = z.strictObject({
   combat: z.strictObject({ heal: timing, revive: timing, cure: timing, "pp-ether": timing, "battle-stat": timing }),
   /** Whether the Pokémon stands still while its trainer uses an item. */
   lockMovement: z.boolean(),
-  /** A restored PP is worth this many seconds of cooldown; full restores clear it. */
-  secondsPerPp: z.number().positive().max(10),
-  /** PP Up: the base cooldown is divided by 1 + perLevel × uses (original +20% PP per use). */
+  /** PP Up (block C): a special's cooldown shrinks by perLevel per use. */
   ppUp: z.strictObject({ perLevel: z.number().positive().max(1), max: int(1, 3) }),
   /** Repel item id → its duration in steps, and the time of one step on foot (research R9). */
   repel: z.strictObject({ steps: z.record(itemId(), int(1, 1000)), stepS: z.number().positive().max(2), density: fraction() }),

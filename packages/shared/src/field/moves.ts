@@ -1,11 +1,14 @@
 import type { FieldMoveRule, FieldMovesRules, FieldObstacle } from "./schemas.ts";
 
-type Member = { moves: readonly number[] };
+type Member = { moves: readonly number[]; forgottenMoves?: readonly number[] | undefined };
+
+/** Block C: a field move counts when it is in a slot or among the moves fitting 2 + 2 slots set aside. */
+const knows = (m: Member | undefined, move: number) => !!m && (m.moves.includes(move) || (m.forgottenMoves?.includes(move) ?? false));
 
 /** Who uses a field move: the companion when it knows it (FR-004), else the first member who does, as GetPartySlotWithMove. */
 export function pickUser(party: readonly Member[], move: number, companion?: number): number | undefined {
-  if (companion !== undefined && party[companion]?.moves.includes(move)) return companion;
-  const i = party.findIndex((m) => m.moves.includes(move));
+  if (companion !== undefined && knows(party[companion], move)) return companion;
+  const i = party.findIndex((m) => knows(m, move));
   return i === -1 ? undefined : i;
 }
 

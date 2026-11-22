@@ -17,7 +17,8 @@ export const skillProfile = z.strictObject({
   aimErrorDeg: z.number().min(0).max(180),
   leadFactor: fraction(),
   typeKnowledge: fraction(),
-  dodgeChance: fraction(),
+  /** Block C: chance that a trainer's Pokémon dodges or parries a move it sees coming (wild ones use action.wildReactChance). */
+  reactChance: fraction(),
   decisionIntervalS: z.number().min(0.1).max(10),
   temperature: positive(),
   sightTiles: tiles(),
@@ -92,8 +93,14 @@ export const aiTuning = z.strictObject({
   noise: z.strictObject({ walkTiles: tiles(), runTiles: tiles(), moveTiles: tiles(), bearingErrorDeg: z.number().min(0).max(180) }),
   perception: z.strictObject({ everyTicks: int(1, 20) }),
   performance: z.strictObject({ dormantTiles: tiles(), budgetMsPerTick: positive() }),
+  /** repositionS: block C, how long a trainer's Pokémon backs off after its chain. */
   states: z.strictObject({ idleWanderTiles: tiles(), idlePauseS: seconds(), alertS: seconds(), returnIgnoreS: seconds(), repositionS: seconds(), angryAfterEscapeS: seconds() }),
-  cast: z.strictObject({ aiMinCastS: z.number().min(0).max(5) }),
+  /**
+   * Block C (docs/roadmap/combate.md): wild Pokémon react to a move they can dodge or parry this often, use a ready
+   * special this often, and chain 1 to wildChainMax normals; trainers chain trainerChain, then back off. Dodges go
+   * off reactLeadS before the move leaves, parries at any moment of its cast.
+   */
+  action: z.strictObject({ wildReactChance: fraction(), wildSpecialChance: fraction(), wildChainMax: int(1, 10), trainerChain: int(1, 10), reactLeadS: seconds() }),
   debug: z.strictObject({ hz: z.number().min(1).max(20), radiusTiles: tiles() }),
 });
 export type AiTuning = z.infer<typeof aiTuning>;

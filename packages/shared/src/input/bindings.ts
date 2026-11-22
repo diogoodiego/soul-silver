@@ -4,10 +4,10 @@
 
 export const DIRECTIONS = ["up", "down", "left", "right"] as const;
 const MENU_ACTIONS = ["confirm", "cancel", "tabPrev", "tabNext"] as const;
-const MAP_ACTIONS = ["menu", "run", "dash", "move1", "move2", "move3", "move4", "combat", "recall", "interact", "picker", "swapNext", "throw", "nextBall", "rod", "items"] as const;
+const MAP_ACTIONS = ["menu", "run", "dash", "guard", "move1", "move2", "move3", "move4", "combat", "recall", "interact", "picker", "swapNext", "throw", "nextBall", "rod", "items"] as const;
 /** Map actions that only act out of combat, and ones that only act in it: one key may serve one of each. */
-const FIELD_ONLY: readonly string[] = ["interact"];
-const COMBAT_ONLY: readonly string[] = ["dash", "move1", "move2", "move3", "move4"];
+const FIELD_ONLY: readonly string[] = ["interact", "run"];
+const COMBAT_ONLY: readonly string[] = ["dash", "guard", "move1", "move2", "move3", "move4"];
 
 export const ACTIONS = [...DIRECTIONS, ...MENU_ACTIONS, ...MAP_ACTIONS] as const;
 export type Action = (typeof ACTIONS)[number];
@@ -34,6 +34,8 @@ export const DEFAULT_KEYS: Readonly<Bindings> = {
   menu: ["Tab"],
   run: ["ShiftLeft", "ShiftRight"],
   dash: ["Space"],
+  /** Block C: tap to parry, hold to guard; pressed while a move charges, a feint. */
+  guard: ["KeyH"],
   move1: ["KeyJ"],
   move2: ["KeyK"],
   move3: ["KeyL"],
@@ -63,6 +65,8 @@ export const PAD_BUTTONS: Readonly<Record<Action, number>> = {
   menu: 9,
   run: 1,
   dash: 4,
+  /** Block C: B, which only runs on the map (running does nothing in combat). */
+  guard: 1,
   move1: 0,
   move2: 2,
   move3: 3,

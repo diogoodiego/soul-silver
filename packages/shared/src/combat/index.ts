@@ -1,3 +1,4 @@
+export * from "./classes.ts";
 export * from "./cooldown.ts";
 export * from "./damage.ts";
 export * from "./hitbox.ts";
