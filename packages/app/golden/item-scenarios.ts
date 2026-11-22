@@ -108,10 +108,13 @@ const member = (species: number, level: number): PartyMember => {
       }
       case "pp-ether": {
         const id = fight();
-        g.press(1);
-        g.step(10);
+        // Block C: the first special (slot 3) goes on cooldown, and the Ether or Elixir ends it.
+        g.press(1 << 2);
+        g.step(20);
         g.send({ type: "use-item-combat", item }, 40);
-        if (id === undefined || Number(g.session.world.get(id)?.data["gauge"] ?? 0) !== 100) failed = "a barra de ação não encheu";
+        const cd = id === undefined ? undefined : g.session.world.get(id)?.data["cd3"];
+        if (cd === undefined) failed = "o Pokémon não tem golpe especial";
+        else if (Number(cd) !== 0) failed = "o cooldown do especial não zerou";
         break;
       }
       case "battle-stat": {

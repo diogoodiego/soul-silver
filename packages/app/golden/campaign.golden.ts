@@ -148,10 +148,10 @@ function pilot(from?: Save) {
         c.client.send({ type: "phoneAnswer", callId: m.callId, ...(m.choices ? { choice: 0 } : {}) });
       } else if (m.type === "progression") {
         if (m.item.kind === "evolve") c.client.send({ type: "evolve-answer", accept: true });
-        else if (m.item.kind === "learn" && (m.moves?.length ?? 0) >= 4) {
-          // Forgets the weakest move when the new one hits harder, as a player would.
+        else if (m.item.kind === "learn" && m.replaceable) {
+          // Block C: forgets the weakest move of the same class when the new one hits harder, as a player would.
           const power = (id: number) => data.combat?.move(id)?.power ?? 0;
-          const weakest = m.moves!.reduce((w, id, i) => (power(id) < power(m.moves![w]!) ? i : w), 0);
+          const weakest = m.replaceable.reduce((w, i) => (power(m.moves![i]!) < power(m.moves![w]!) ? i : w), m.replaceable[0]!);
           c.client.send({ type: "learn-answer", forget: power(m.item.move) > power(m.moves![weakest]!) ? weakest : null });
         } else c.client.send({ type: "progression-ack" });
       } else if (m.type === "save") c.save = m.save;
@@ -183,6 +183,7 @@ function pilot(from?: Save) {
   /** One tick, as both clients: the first moves and fights trainer battles with the spec 019 bot, the second stands still. */
   function tick(move: Direction | null = null, buttons = 0): void {
     potionIfLow();
+    swapIfFainted();
     const fight = hold ? undefined : botInput();
     client.send({ type: "input", seq: ++one.seq, move: fight?.move ?? (move ? VECTORS[move] : { x: 0, y: 0 }), run: false, buttons: fight?.buttons ?? buttons });
     two.client.send({ type: "input", seq: ++two.seq, move: { x: 0, y: 0 }, run: false, buttons: 0 });
@@ -196,6 +197,15 @@ function pilot(from?: Save) {
 
   /** Whether the first player's Pokémon is out fighting (a trainer battle or a wild one). */
   const inCombat = () => session.world.all().some((e) => e.kind === "pokemon" && session.combat?.get(e.id)?.owner === welcome.playerId);
+
+  /** Block C: fights last longer and a Pokémon can faint; as a player would, the next one that can fight comes out. */
+  let swapAt = 0;
+  function swapIfFainted(): void {
+    if (!fighting || steps < swapAt || session.world.all().some((e) => e.kind === "pokemon" && session.combat?.get(e.id)?.owner === welcome.playerId && session.combat.get(e.id)!.hp > 0)) return;
+    // The server ignores a member that cannot fight: each try takes the next slot.
+    client.send({ type: "swap", partyIndex: Math.floor(steps / 10) % 6 });
+    swapAt = steps + 10;
+  }
 
   /** Tick before which no Potion is tried again, so one refused use is not repeated every tick. */
   let potionAt = 0;

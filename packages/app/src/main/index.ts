@@ -343,7 +343,8 @@ if (!app.requestSingleInstanceLock()) {
     void settings.get().then(applyWindow);
     handle(IpcChannel.SettingsSet, async (patch) => {
       const next = await settings.set(patch);
-      applyWindow(next);
+      // Only when asked: other settings (the arena's menu) save on their own and must not undo a resize by hand.
+      if (typeof patch === "object" && patch !== null && ("window" in patch || "fullscreen" in patch)) applyWindow(next);
       return next;
     });
     handle(IpcChannel.AppQuit, () => {
