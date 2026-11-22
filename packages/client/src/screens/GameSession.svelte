@@ -16,7 +16,8 @@
   import type { MenuPage } from "../game/menu-page";
   import MovePanel from "../game/MovePanel.svelte";
   import TrainerCall from "../game/TrainerCall.svelte";
-  import NpcActions, { NPC_KEYS } from "../hud/NpcActions.svelte";
+  import NpcActions from "../hud/NpcActions.svelte";
+  import { NPC_KEYS } from "../hud/npc-keys";
   import OnlinePanel from "../game/OnlinePanel.svelte";
   import TradePanel from "../game/TradePanel.svelte";
   import DuelPanel from "../game/DuelPanel.svelte";
@@ -972,11 +973,11 @@
       const nextBars = foes.filter((e) => e.data["boss"] !== true).map((e) => ({ key: `hp-${e.id}`, ...over(e), fraction: Number(e.data["hp"]) / Number(e.data["hpMax"]), scared: lowered(e) }));
       if (nextBars.length > 0 || bars.length > 0) bars = nextBars;
       // Block C: the server marks the casts to warn about (CPU Pokémon, not self-buffs) and counts the combos.
-      const nextWarnings = fighting
+      const nextWarnings: typeof warnings = fighting
         ? shown.flatMap((e) => {
             // The newest state: the 100 ms the others are shown late would eat the parry window.
             const mark = (game.latest(e.id) ?? e.data)["castMark"];
-            return e.kind === "pokemon" && e.data["hp"] !== 0 && (mark === "normal" || mark === "special" || mark === "parried") ? [{ key: `warn-${e.id}`, ...around(e), mark: mark as "normal" | "special" | "parried" }] : [];
+            return e.kind === "pokemon" && e.data["hp"] !== 0 && (mark === "normal" || mark === "special" || mark === "parried") ? [{ key: `warn-${e.id}`, ...around(e), mark }] : [];
           })
         : [];
       if (nextWarnings.length > 0 || warnings.length > 0) warnings = nextWarnings;

@@ -281,7 +281,7 @@ export function createGameRenderer(host: HTMLElement, world: ClientWorld, log: (
     if (phase.done) return endSummon(e.id);
     actor.sprite.visible &&= phase.visible;
     actor.sprite.scale.setScalar(phase.scale);
-    const map = (actor.sprite.material as MeshBasicMaterial).map;
+    const map = actor.sprite.material.map;
     if (phase.red && map && actor.sprite.material !== markerMaterial) actor.sprite.material = tinted(map, 0xff3030);
     actor.caster.visible = false;
     // The beam leaves the nearest trainer on the map: the companion keeps by its own.

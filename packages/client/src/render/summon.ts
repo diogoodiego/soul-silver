@@ -64,7 +64,7 @@ export function createBeam(scene: Scene) {
       for (const m of [glow, core]) {
         m.removeFromParent();
         m.geometry.dispose();
-        (m.material as MeshBasicMaterial).dispose();
+        m.material.dispose();
       }
     },
   };

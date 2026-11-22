@@ -1,4 +1,4 @@
-import { CylinderGeometry, Group, Mesh, MeshPhongMaterial, SphereGeometry, type Material } from "three";
+import { type BufferGeometry, CylinderGeometry, Group, Mesh, MeshPhongMaterial, SphereGeometry, type Material } from "three";
 
 // The Poké Ball, procedural, from the developer's technical drawing (millimetres): a Ø50 sphere 52 tall,
 // red top shell and white bottom shell split by a black band, a Ø16 button on the front (+Z) and the hinge
@@ -84,7 +84,7 @@ export function createPokeBall(): PokeBall {
     button,
     dispose() {
       root.traverse((o) => {
-        if (o instanceof Mesh) o.geometry.dispose();
+        if (o instanceof Mesh) (o.geometry as BufferGeometry).dispose();
       });
       for (const m of [red, white, black, button]) m.dispose();
       root.removeFromParent();

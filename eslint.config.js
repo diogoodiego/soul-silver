@@ -60,7 +60,7 @@ export default ts.config(
     },
   },
   {
-    files: ["**/*.js"],
+    files: ["**/*.{js,cjs}"],
     ...ts.configs.disableTypeChecked,
   },
 );

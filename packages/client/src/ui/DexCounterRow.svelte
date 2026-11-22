@@ -21,10 +21,8 @@
 </script>
 
 <DexRow {label} adjustable onclick={() => onChange(Math.min(max, count + 1))} {onfocus}>
-  {#snippet children()}
-    <span class="inline-flex items-center gap-4">
-      <span>{price}</span>
-      <span class={["inline-flex w-[6ch] justify-between", count === 0 && "opacity-40"]}><span aria-hidden="true">‹</span>{count}<span aria-hidden="true">›</span></span>
-    </span>
-  {/snippet}
+  <span class="inline-flex items-center gap-4">
+    <span>{price}</span>
+    <span class={["inline-flex w-[6ch] justify-between", count === 0 && "opacity-40"]}><span aria-hidden="true">‹</span>{count}<span aria-hidden="true">›</span></span>
+  </span>
 </DexRow>

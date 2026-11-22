@@ -4,6 +4,7 @@
   // sends every line. The server decides; a refusal comes back as `refused`. The tabs (Q/E, LB/RB) buy or sell.
   import type { Action } from "@soulsilver/shared/input";
   import { onMount, tick } from "svelte";
+  import { SvelteMap } from "svelte/reactivity";
   import type { ServerMessage } from "@soulsilver/shared/game";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
@@ -49,7 +50,7 @@
     { id: "sell", label: t("shop.sellTitle") },
   ] as const;
   const selling = $derived(shop.mode === "sell");
-  let cart = $state(new Map<number, number>());
+  const cart = new SvelteMap<number, number>();
   /** The row the pad is on, for left and right. */
   let focused = $state<number | undefined>();
   const owned = (item: number) => bag.find((b) => b.item === item)?.count ?? 0;
@@ -57,20 +58,18 @@
   const maxOf = (item: number) => cartMax(cart, shop.stock, item, { mode: shop.mode, money: shop.money, owned: owned(item) });
 
   function setCount(item: number, count: number): void {
-    const next = new Map(cart);
-    if (count > 0) next.set(item, count);
-    else next.delete(item);
-    cart = next;
+    if (count > 0) cart.set(item, count);
+    else cart.delete(item);
   }
 
   function setMode(mode: "buy" | "sell"): void {
-    cart = new Map();
+    cart.clear();
     if (mode !== shop.mode) onMode(mode);
   }
 
   function confirm(): void {
     for (const [item, qty] of cart) onConfirm(item, qty);
-    cart = new Map();
+    cart.clear();
   }
 
   let list: HTMLElement;

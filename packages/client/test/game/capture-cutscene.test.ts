@@ -21,7 +21,7 @@ describe("capture cutscene timeline", () => {
   it("from the result: bounce, open, absorb, close, dim, one shake each, the result, then the band closes", () => {
     const start = HIT_MS + 300;
     expect(cutscenePhase(start + 1, start, 2, SHAKE)).toMatchObject({ name: "bounce" });
-    const names = AFTER_HIT.map(([name], i) => cutscenePhase(start + AFTER_HIT.slice(0, i).reduce((s, [, ms]) => s + ms, 0) + 1, start, 2, SHAKE).name);
+    const names = AFTER_HIT.map((_, i) => cutscenePhase(start + AFTER_HIT.slice(0, i).reduce((s, [, ms]) => s + ms, 0) + 1, start, 2, SHAKE).name);
     expect(names).toEqual(AFTER_HIT.map(([name]) => name));
     const shaking = cutscenePhase(start + sequence + SHAKE + 1, start, 2, SHAKE);
     expect(shaking).toMatchObject({ name: "shake", ms: SHAKE + 1 });

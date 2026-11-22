@@ -178,12 +178,10 @@
         {#each rows as row (row.id)}
           {@const view = row.view}
           <DexRow label={row.label} value={row.value} pressed={view?.kind === "toggle" ? view.on : undefined} adjustable={row.adjust !== undefined} onclick={() => (row.activate ? row.activate() : row.adjust?.(1))} onfocus={() => (focused = row.id)}>
-            {#snippet children()}
-              {#if view?.kind === "toggle"}<Checkbox checked={view.on} />
-              {:else if view?.kind === "bar"}<SlantBar value={view.level} cells={view.cells} />
-              {:else if view?.kind === "tabs"}<SegmentedTabs options={view.options} current={view.current} />
-              {:else}{row.value}{/if}
-            {/snippet}
+            {#if view?.kind === "toggle"}<Checkbox checked={view.on} />
+            {:else if view?.kind === "bar"}<SlantBar value={view.level} cells={view.cells} />
+            {:else if view?.kind === "tabs"}<SegmentedTabs options={view.options} current={view.current} />
+            {:else}{row.value}{/if}
           </DexRow>
         {/each}
         {#if tab === "game"}
@@ -197,7 +195,7 @@
                 autocomplete="off"
                 spellcheck="false"
                 onfocus={() => (focused = field.id)}
-                onchange={(event) => void saveSettings(field.id === "roomPassword" ? { roomPassword: event.currentTarget.value } : { stunServer: event.currentTarget.value.trim() })}
+                onchange={(event: Event & { currentTarget: HTMLInputElement }) => void saveSettings(field.id === "roomPassword" ? { roomPassword: event.currentTarget.value } : { stunServer: event.currentTarget.value.trim() })}
               />
             {/each}
             {#if !onRescue}

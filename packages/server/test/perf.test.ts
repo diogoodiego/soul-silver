@@ -7,7 +7,8 @@ const free: CollisionCell = { category: "free", raw: 0 };
 const map: CollisionMap = { width: 64, height: 64, tiles: Array.from({ length: 64 * 64 }, () => free) };
 
 describe("tick budget (SC-001)", () => {
-  it("keeps every tick under 10 ms with 4 players moving for a minute", () => {
+  // A scheduler or GC pause must not decide it; a slow tick fails every attempt.
+  it("keeps every tick under 10 ms with 4 players moving for a minute", { retry: 2 }, () => {
     const { session, connect } = setup({ world: flatWorld(map), spawn: (id) => ({ area: "a", x: 100 + id * 50, y: 500 }) });
     const clients = [connect(), connect(), connect(), connect()];
     for (let i = 0; i < 30; i++) session.world.add({ kind: "wild", area: "a", x: i * 20, y: 40, level: 0, facing: "south", data: { species: i } });

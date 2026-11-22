@@ -5,7 +5,7 @@
 </script>
 
 <span class="inline-flex items-center gap-0.5 align-middle" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value}>
-  {#each { length: cells } as _, i (i)}
+  {#each { length: cells }, i (i)}
     <span class={["h-3 w-1.5 -skew-x-[20deg] border border-solid border-current", i < filled ? "bg-current" : "opacity-40"]}></span>
   {/each}
   <span class="ml-2 inline-block w-[4ch] text-right">{value}%</span>

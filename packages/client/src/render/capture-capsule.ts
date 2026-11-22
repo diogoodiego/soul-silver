@@ -1,4 +1,4 @@
-import { CapsuleGeometry, ConeGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, TorusGeometry } from "three";
+import { type BufferGeometry, CapsuleGeometry, ConeGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, TorusGeometry } from "three";
 
 // The capture capsule: an original 3D catching device drawn in place of a wild Pokémon while a capture
 // plays (spec 015). An upright pill with silver caps, a glowing ring at its waist and three fins at its base.
@@ -50,7 +50,7 @@ export function createCapsule(): Capsule {
     dispose() {
       root.traverse((o) => {
         if (o instanceof Mesh) {
-          o.geometry.dispose();
+          (o.geometry as BufferGeometry).dispose();
           (o.material as MeshBasicMaterial).dispose();
         }
       });

@@ -25,7 +25,7 @@ describe("invite codes", () => {
 
   it("survives invisible characters, quotes and text around the code", async () => {
     const code = await encodeInvite({ kind: "offer", sdp });
-    const pasted = `Aqui: "﻿${code.slice(0, 30)}​${code.slice(30)} ".`;
+    const pasted = `Aqui: "\uFEFF${code.slice(0, 30)}\u200B${code.slice(30)}\u00A0".`;
     expect(await decodeInvite(pasted)).toEqual({ kind: "offer", sdp });
   });
 

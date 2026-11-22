@@ -296,7 +296,7 @@
       cancelAnimationFrame(frame);
       ball.dispose();
       scene.traverse((o) => {
-        if (o instanceof Mesh || o instanceof Points) o.geometry.dispose();
+        if (o instanceof Mesh || o instanceof Points) (o.geometry as BufferGeometry).dispose();
       });
       monMaterial.map?.dispose();
       for (const m of [groundMaterial, beamMaterial, monMaterial, dotsMaterial]) m.dispose();

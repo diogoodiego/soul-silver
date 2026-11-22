@@ -226,7 +226,7 @@ describe("dev arena with a gym leader at the end", () => {
   it("refuses a leader who is not one or is not in the extraction, leaving nothing in the world", () => {
     for (const leader of [7, 21]) {
       const t = enter(withLeader(false), { ...wild("idle"), leader });
-      expect(t.got.find((m) => m.type === "reject")).toMatchObject({ code: "invalid-message", message: expect.stringMatching(String(leader)) });
+      expect(t.got.find((m) => m.type === "reject")).toMatchObject({ code: "invalid-message", message: expect.stringMatching(String(leader)) as string });
       expect(t.session.world.all()).toEqual([]);
     }
   });
@@ -279,7 +279,7 @@ describe("dev arena with a legendary at the end", () => {
   it("refuses a species that is not legendary, or not in the extraction", () => {
     for (const legendary of [152, 249]) {
       const t = enter({}, { ...wild("idle"), legendary });
-      expect(t.got.find((m) => m.type === "reject")).toMatchObject({ code: "invalid-message", message: expect.stringMatching(String(legendary)) });
+      expect(t.got.find((m) => m.type === "reject")).toMatchObject({ code: "invalid-message", message: expect.stringMatching(String(legendary)) as string });
     }
   });
 });

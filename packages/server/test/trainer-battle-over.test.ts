@@ -98,7 +98,7 @@ describe("a decided trainer battle", () => {
     t.session.close("closed-by-host");
     const save = a.saves().at(-1)!.save;
     expect(save.money).toBeLessThan(1000);
-    expect(save.party[0].hp).toBeGreaterThan(0);
+    expect(save.party[0]!.hp).toBeGreaterThan(0);
     expect(save.flags).not.toContain(FLAG_BASE + 1);
   });
 

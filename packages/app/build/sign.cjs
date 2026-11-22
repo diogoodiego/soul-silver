@@ -3,6 +3,7 @@
 // With a code signing certificate, set WIN_SIGN_COMMAND to the signer's command line, with {file}
 // where the file path goes (CodeSignTool for SSL.com eSigner, jsign, signtool...). Secrets stay in
 // other environment variables that the command reads. See README, "Assinatura de código".
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- electron-builder loads the hook as CommonJS
 const { execSync } = require("node:child_process");
 
 exports.default = async function sign(configuration) {

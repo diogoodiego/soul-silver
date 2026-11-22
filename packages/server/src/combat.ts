@@ -533,7 +533,7 @@ export function createCombat(options: CombatOptions) {
     c.combo = { count: landed ? Math.min(action.combo.max, comboNow(c) + 1) : 0, at: tick };
     if (landed || opener === undefined) return;
     c.cooldownLen[opener] = toTicks(action.normalMissCooldownS);
-    c.readyAt[opener] = tick + c.cooldownLen[opener]!;
+    c.readyAt[opener] = tick + c.cooldownLen[opener];
     c.chain.step = 0;
   }
 
