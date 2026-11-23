@@ -75,7 +75,8 @@ describe("hosting a room", () => {
   });
 
   it("drops a guest that leaves, before and after connecting", async () => {
-    const room = host();
+    // A long open timeout: the guest must still be "connecting" when checked, however slow the timers run.
+    const room = host({ timing: { heartbeatMs: 30, openMs: 5000, connectMs: 500, retryMs: [5, 5], roomLostMs: 1000 } });
     await settle();
     rtc.connects = false;
     const pending = findRoom({ lobbyUrl: BASE, code: "K7P2QX", playerName: "Lyra", appVersion: "0.5.3", protocolVersion: 49, sockets: lobby.sockets_, peers: rtc.factory, fetcher: lobby.fetch });
