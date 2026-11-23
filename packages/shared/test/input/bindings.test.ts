@@ -90,7 +90,7 @@ describe("rebindPad", () => {
   const free = ACTIONS.filter((a) => !(DIRECTIONS as readonly string[]).includes(a));
 
   it("swaps with the action on the new button, and leaves the other context alone", () => {
-    expect(rebindPad(PAD_BUTTONS, "combat", 7)).toEqual({ pad: { ...PAD_BUTTONS, combat: 7, recall: 6 }, swapped: ["recall"] });
+    expect(rebindPad(PAD_BUTTONS, "combat", 4)).toEqual({ pad: { ...PAD_BUTTONS, combat: 4, recall: 6 }, swapped: ["recall"] });
     expect(rebindPad(PAD_BUTTONS, "tabNext", 7)).toEqual({ pad: { ...PAD_BUTTONS, tabNext: 7 }, swapped: [] });
   });
 

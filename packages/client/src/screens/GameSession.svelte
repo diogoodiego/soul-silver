@@ -1408,13 +1408,14 @@
   {#if status === "playing"}
     <!-- Block H: the HUD corners. The moves float over the team only in a fight. -->
     <Minimap map={hereMap} level={hereLevel} entities={miniEntities} selfId={selfEntity} encounters={hereEncounters} {dex} {speciesName} />
-    <!-- One column, stacked bottom-up so nothing overlaps: the trainer's call-out, the moves, the team. -->
+    {#if hudSelf}
+      <!-- The moves HUD, laid out like the pad, centered at the bottom. -->
+      <div class="pointer-events-none absolute bottom-4 left-1/2 z-2 -translate-x-1/2"><MovePanel self={hudSelf} lead={party[leadIndex(party) ?? -1]} {moveName} moveType={(id: number) => types.get(id)} /></div>
+    {/if}
+    <!-- One column, stacked bottom-up so nothing overlaps: the trainer's call-out and the team. -->
     <div class="pointer-events-none absolute bottom-4 left-4 z-2 grid w-[17rem] justify-items-start gap-2">
       {#if moveCall && (hudSelf || play.arena)}
         {#key moveCall.key}<TrainerCall pic={moveCall.pic} move={moveCall.move} />{/key}
-      {/if}
-      {#if hudSelf}
-        <div class="w-full"><MovePanel self={hudSelf} lead={party[leadIndex(party) ?? -1]} {moveName} moveType={(id: number) => types.get(id)} /></div>
       {/if}
       <PartyStrip {party} {out} fight={hudSelf} {speciesName}>
         {#snippet beside()}<BallPicker {balls} selected={selectedBall} {itemName} onStep={stepBall} />{/snippet}

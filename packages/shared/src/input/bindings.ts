@@ -66,16 +66,17 @@ export const PAD_BUTTONS: Readonly<PadBindings> = {
   tabNext: 5,
   menu: 9,
   run: 1,
-  dash: 4,
+  /** The moves HUD: A dodges, B blocks, X/Y the two skills, RB/RT the two specials. */
+  dash: 0,
   /** Block C: B, which only runs on the map (running does nothing in combat). */
   guard: 1,
-  move1: 0,
-  move2: 2,
-  move3: 3,
-  move4: 5,
+  move1: 2,
+  move2: 3,
+  move3: 5,
+  move4: 7,
   combat: 6,
-  recall: 7,
-  /** A, with move 1: the server reads interact only walking and the moves only in combat. */
+  recall: 4,
+  /** A, with the dodge: the server reads interact only walking and the moves only in combat. */
   interact: 0,
   picker: 8,
   /** D-pad down: free on the map, where the left stick walks. */

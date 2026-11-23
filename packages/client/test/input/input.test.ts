@@ -48,11 +48,11 @@ describe("moveButtons", () => {
     expect(moveButtons(new Set(["KeyW"]), () => false)).toBe(0);
   });
 
-  it("maps pad A, X, Y and RB to moves 1–4", () => {
+  it("maps pad X, Y, RB and RT to moves 1–4 and A to the dash", () => {
     const pad = (down: number[]) => (i: number) => down.includes(i);
-    expect(moveButtons(new Set(), pad([0]))).toBe(0b0001 | BUTTON.interact); // A also interacts on the map
-    expect(moveButtons(new Set(), pad([2, 3]))).toBe(0b0110);
-    expect(moveButtons(new Set(), pad([5]))).toBe(0b1000);
+    expect(moveButtons(new Set(), pad([0]))).toBe(BUTTON.dash | BUTTON.interact); // A also interacts on the map
+    expect(moveButtons(new Set(), pad([2, 3]))).toBe(0b0011);
+    expect(moveButtons(new Set(), pad([5, 7]))).toBe(0b1100);
     // B runs on the map; block C: in combat it is the guard (tap to parry, hold to guard).
     expect(moveButtons(new Set(), pad([1]))).toBe(BUTTON.guard);
   });
@@ -61,10 +61,10 @@ describe("moveButtons", () => {
     expect(moveButtons(new Set(["KeyH"]), () => false)).toBe(BUTTON.guard);
   });
 
-  it("maps the companion actions to their bits: F/LT combat, R/RT recall, A interact", () => {
+  it("maps the companion actions to their bits: F/LT combat, R/LB recall, A interact", () => {
     expect(moveButtons(new Set(["KeyF"]), () => false)).toBe(BUTTON.combat);
-    expect(moveButtons(new Set(), (i) => i === 7)).toBe(BUTTON.recall);
-    expect(moveButtons(new Set(), (i) => i === 6 || i === 0)).toBe(BUTTON.interact | BUTTON.combat | 0b0001);
+    expect(moveButtons(new Set(), (i) => i === 4)).toBe(BUTTON.recall);
+    expect(moveButtons(new Set(), (i) => i === 6 || i === 0)).toBe(BUTTON.interact | BUTTON.combat | BUTTON.dash);
     // The quick swap (Q previous, E next) is the client's own: no bit.
     expect(moveButtons(new Set(["KeyQ", "KeyE"]), () => false)).toBe(0);
   });
@@ -75,9 +75,9 @@ describe("moveButtons", () => {
     expect(moveButtons(new Set(["KeyB"]), (i) => i === 15)).toBe(0);
   });
 
-  it("maps Space to dash and interact (the server reads each in its own mode), pad LB to dash only", () => {
+  it("maps Space to dash and interact (the server reads each in its own mode), pad A the same", () => {
     expect(moveButtons(new Set(["Space"]), () => false)).toBe(BUTTON.dash | BUTTON.interact);
-    expect(moveButtons(new Set(), (i) => i === 4)).toBe(0b10000);
+    expect(moveButtons(new Set(), (i) => i === 0)).toBe(BUTTON.dash | BUTTON.interact);
   });
 });
 
@@ -94,8 +94,8 @@ describe("bindings (spec 017)", () => {
     expect(keyboardVector(new Set(["KeyW"]), bindings)).toEqual({ x: 0, y: 0 });
   });
 
-  it("puts interact on A with move 1: the server reads each in its own mode (walk, combat)", () => {
-    expect(moveButtons(new Set(), (i) => i === 0)).toBe(BUTTON.interact | 0b0001);
+  it("puts interact on A with the dash: the server reads each in its own mode (walk, combat)", () => {
+    expect(moveButtons(new Set(), (i) => i === 0)).toBe(BUTTON.interact | BUTTON.dash);
     expect(moveButtons(new Set(), (i) => i === 12)).toBe(0);
   });
 });
@@ -104,7 +104,7 @@ describe("pad buttons", () => {
   it("follow a remapped button and drop the old one", () => {
     const pad = { ...PAD_BUTTONS, recall: 12 };
     expect(moveButtons(new Set(), (i) => i === 12, DEFAULT_KEYS, pad)).toBe(BUTTON.recall);
-    expect(moveButtons(new Set(), (i) => i === 7, DEFAULT_KEYS, pad)).toBe(0);
+    expect(moveButtons(new Set(), (i) => i === 4, DEFAULT_KEYS, pad)).toBe(0);
   });
 
   it("capture the first press after the confirm is released, and give it on its release", () => {
