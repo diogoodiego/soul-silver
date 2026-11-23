@@ -50,7 +50,7 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] R.2 IPv6 direto (guia em `docs/multiplayer-internet.md`)
 - [x] R.3 Convite WebRTC (código copiado, sem servidor próprio)
 - [x] R.4 Verificação do bloco R (roteiro manual pendente em `.evidence/R/roteiro.md`)
-- [x] R.5 Abrir a porta no roteador por UPnP (roteiro manual pendente em `.evidence/R/roteiro.md`, seção 4)
+- [x] R.5 Abrir a porta no roteador por UPnP (removido em 2026-11-23: não funcionava na prática; as salas online do bloco O substituem)
 - [x] 033.1 Torre de Rádio
 - [x] 033.2 Ice Path
 - [x] 033.3 Blackthorn e Dragon's Den
@@ -174,7 +174,6 @@ assunto, ou quando o desenvolvedor pedir.
 - O.7: roteiro manual em `.evidence/O/roteiro.md` (publicar, sala pública, amigo em 4G, queda e reconexão, tráfego no TURN) a cargo do desenvolvedor; `npm run golden` não rodou no ambiente do agente (sem ROM), e o teste de IPv6 do `app` falha lá por falta de IPv6 (não é do bloco).
 - O.4: conexão WebRTC real das salas não testada (vitest não tem WebRTC; testes com servidor de salas e WebRTC falsos); a sala não limita convidados por senha antes do WebRTC (a senha é conferida pelo `ws-listener`, como no R.1).
 - R.4: `scripts-perf` também falha às vezes na suíte cheia e passa isolado (como `perf`/`trainer-perf`); não é do bloco R.
-- R.5: UPnP com roteador real não testado (roteiro manual, seção 4); só IPv4 e TCP; sem NAT-PMP/PCP; se o app morrer sem fechar, a porta fica aberta até 1 h (ou até reiniciar o roteador, nos que só aceitam mapeamento permanente).
 - 031.7: comparação com as páginas 6–20 do detonado pendente (sem capturas; verificação só no servidor); roteiro manual em `.evidence/031/roteiro-manual.md`.
 - Partículas de status (medidas com a ROM): a confusão de verdade, em laço, ainda solta uns 200 ícones pequenos; em espécies de sprite 64x64 a queimadura fica quase toda atrás do corpo. O meio da curva de escala dos emissores não é extraído (o cliente assume 0,8 quando ela começa e termina em 0); extrair muda o schema.
 
@@ -232,7 +231,7 @@ Só o que muda o rumo de itens futuros, uma linha cada.
 - Seal Case é `save.seals` (id 1–80 → 1–99; nomes do banco 16 em runtime); a tela de Ball Capsule parte dele.
 - Verificação só pelo servidor (golden, sondas, harness): não abrir o app nem fazer capturas (pedido do desenvolvedor).
 - V.3: luta de treinador em mapa `indoor` vai para a área `ring:<mapa>:<batalha>` (18×18, só o lutador); scripts e roamers ignoram a ida e a volta; o save guarda a posição de antes.
-- R.5: abrir para a internet é opcional e explícito (botão no painel Online), nunca automático ao hospedar; o mapeamento UPnP vive e morre com a porta do host (`unlisten`).
+- R.5 removido (2026-11-23): sem UPnP; para jogar pela internet, salas online (bloco O), IPv6 direto, convite WebRTC ou VPN de rede local.
 - Bloco H: todo golpe leva ao menos 0,5 s de preparo (`minCastS` em `content/combat/tuning.json`), para a área e a carga serem vistas e desviadas; os testes de mecânica usam `minCastS: 0` (`combatData()`).
 - Bloco H: nenhum golpe prende o Pokémon durante o preparo (o campo `rooted` das archetypes ficou sem uso); a direção do golpe é a do início do preparo (menos a dos de contato, bloco C).
 - Bloco C (ajuste): golpe de contato (`melee`/`dash`), normal ou especial, carrega mirando o adversário (andando, se quiser), pula no fim do preparo (`leapMaxPx`, `leapSpeedPx`) e sai ao pousar (`casting.lunge`, `goesOffAt`). O dado `leap` da entidade serve à previsão e ao arco do pulo; `MECHANICS` (fixture) usa pulo instantâneo.

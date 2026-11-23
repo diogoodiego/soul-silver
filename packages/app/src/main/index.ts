@@ -12,7 +12,6 @@ import { createAssetsController } from "./assets-controller";
 import { ASSETS_SCHEME, resolveAssetPath } from "./assets-protocol";
 import { isAllowedNavigation, permissionRequestHandler, windowOpenHandler } from "./navigation-guard";
 import { createDiscovery, localAddresses } from "./discovery";
-import { openPort, type PortMapping } from "./upnp";
 import { createPeerRemote } from "./peer-remote";
 import { createRemoteClient } from "./remote-connection";
 import { createSaveStore } from "./save-store";
@@ -233,25 +232,13 @@ if (!app.requestSingleInstanceLock()) {
         peerRemote.close();
       },
     };
-    // R.5: the port being hosted, and its router mapping once opened to the internet; the mapping goes with the port.
-    let hostPort: number | undefined;
-    let internet: PortMapping | undefined;
-    let internetClosed: Promise<void> = Promise.resolve();
-    const closeInternet = () => {
-      if (internet) internetClosed = internet.close();
-      internet = undefined;
-    };
     const play = createSessionController({
       saves,
       // R.1: the room password from the settings each time the port opens.
       server: {
         ...serverHost,
-        listen: async () => (hostPort = await serverHost.listen((await settings.get()).roomPassword)),
-        unlisten: () => {
-          hostPort = undefined;
-          closeInternet();
-          serverHost.unlisten();
-        },
+        listen: async () => serverHost.listen((await settings.get()).roomPassword),
+        unlisten: () => serverHost.unlisten(),
       },
       remote,
       discovery: createDiscovery({ localProtocolVersion: PROTOCOL_VERSION, appVersion: app.getVersion(), log: lanLog }),
@@ -306,24 +293,6 @@ if (!app.requestSingleInstanceLock()) {
     handle(IpcChannel.SessionOpenLan, async () => {
       const result = await play.openToLan();
       return result.ok ? { ok: true, addresses: localAddresses(result.port) } : result;
-    });
-    handle(IpcChannel.SessionOpenInternet, async () => {
-      const port = hostPort;
-      if (port === undefined) return { ok: false, reason: "Abra a partida na rede primeiro." };
-      if (internet) return { ok: true, address: internet.address };
-      try {
-        const mapping = await openPort(port);
-        // The session ended (or moved port) while the router answered.
-        if (hostPort !== port) {
-          void mapping.close();
-          return { ok: false, reason: "A partida terminou." };
-        }
-        internet = mapping;
-        return { ok: true, address: mapping.address };
-      } catch (error) {
-        lanLog(`UPnP: ${(error as Error).message}`);
-        return { ok: false, reason: (error as Error).message };
-      }
     });
     handle(IpcChannel.SessionJoin, (arg) => {
       const { slot, address, password } = fields(arg);
@@ -380,7 +349,6 @@ if (!app.requestSingleInstanceLock()) {
       event.preventDefault();
       void play
         .shutdown()
-        .then(() => internetClosed)
         .finally(() => {
           serverHost.stop();
           void assets.shutdown();

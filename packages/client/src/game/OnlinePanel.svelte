@@ -51,19 +51,6 @@
   let duelLevel = $state<DuelRules["level"]>("current");
   let duelTeam = $state(3);
 
-  // R.5: opening the hosted port on the router (UPnP), so friends outside the LAN join by the public address.
-  let internetAddress = $state<string | undefined>();
-  let internetError = $state<string | undefined>();
-  let openingInternet = $state(false);
-  async function openInternet(): Promise<void> {
-    openingInternet = true;
-    internetError = undefined;
-    const result = await window.soulSilver.openToInternet();
-    openingInternet = false;
-    if (result.ok) internetAddress = result.address;
-    else internetError = result.reason;
-  }
-
   let sessions = $state<SessionListing[]>([]);
   let typed = $state("");
   const valid = $derived(parseAddress(typed) !== undefined);
@@ -123,16 +110,6 @@
     <p class="m-0">{t("online.addresses", { addresses: addresses.join(", ") })}</p>
   {/if}
   {#if mode === "host"}
-    <section class="grid gap-2">
-      <h3 class="m-0 text-base">{t("online.internet")}</h3>
-      {#if internetAddress}
-        <p class="m-0" role="status">{t("online.internetAddress", { address: internetAddress })}</p>
-      {:else}
-        <small class="text-secondary">{t("online.internetNote")}</small>
-        <Button class="justify-self-start" disabled={openingInternet} onclick={() => void openInternet()}>{openingInternet ? t("online.internetOpening") : t("online.internetOpen")}</Button>
-      {/if}
-      {#if internetError}<p class="m-0 text-danger" role="alert">{internetError}</p>{/if}
-    </section>
     <RoomHost hostName={players.find((p) => p.id === me)?.name ?? t("online.host")} players={players.length} />
     <InviteHost />
   {/if}
