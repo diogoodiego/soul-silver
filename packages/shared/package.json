@@ -21,7 +21,7 @@
     "./progression": "./src/progression/index.ts",
     "./input": "./src/input/index.ts",
     "./script": "./src/script/index.ts",
-      "./npc": "./src/npc/index.ts",
+    "./npc": "./src/npc/index.ts",
     "./field": "./src/field/index.ts",
     "./time": "./src/time/index.ts",
     "./phone": "./src/phone/index.ts",
@@ -30,7 +30,8 @@
     "./pc": "./src/pc/index.ts",
     "./economy": "./src/economy/index.ts",
     "./items": "./src/items/index.ts",
-    "./daycare": "./src/daycare/index.ts"
+    "./daycare": "./src/daycare/index.ts",
+    "./lobby": "./src/lobby/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

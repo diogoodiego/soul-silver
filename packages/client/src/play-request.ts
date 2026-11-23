@@ -10,6 +10,8 @@ export interface PlayRequest {
   hosting?: boolean;
   /** Set when joining a host; used to reconnect. */
   address?: string;
+  /** O.6: the online room the guest came in by (address is then PEER_ADDRESS); reconnects through it. */
+  room?: { code: string; playerName: string };
   /** The dev arena (spec 013): local, on a throwaway arenaSave, so nothing is saved. */
   arena?: ArenaSpec;
 }

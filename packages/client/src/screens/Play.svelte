@@ -39,14 +39,14 @@
     step = "mode";
   }
 
-  async function begin(start: (slot: number) => Promise<SessionResult>, address?: string, hosting = false): Promise<void> {
+  async function begin(start: (slot: number) => Promise<SessionResult>, address?: string, hosting = false, room?: PlayRequest["room"]): Promise<void> {
     if (slot === undefined || busy) return;
     busy = true;
     error = undefined;
     const at = slot;
     const result = await start(at);
     busy = false;
-    if (result.ok) onPlay({ save: result.save, slot: at, ...(address ? { address } : {}), ...(hosting ? { hosting } : {}) });
+    if (result.ok) onPlay({ save: result.save, slot: at, ...(address ? { address } : {}), ...(hosting ? { hosting } : {}), ...(room ? { room } : {}) });
     else error = result.reason;
   }
 
@@ -108,7 +108,7 @@
     <div class="absolute right-12 bottom-6"><KeyHints {hints} /></div>
   </section>
 {:else if step === "join"}
-  <JoinGame {busy} {error} onJoin={(address: string, password: string) => void begin((s) => api.joinSession(s, address, password), address)} onBack={() => (step = "mode")} />
+  <JoinGame {busy} {error} playerName={chosen?.status === "ok" ? chosen.name : ""} onJoin={(address: string, password: string, room?: PlayRequest["room"]) => void begin((s) => api.joinSession(s, address, password), address, false, room)} onBack={() => (step = "mode")} />
 {:else}
   <FirewallNotice onContinue={() => void firewallAccepted()} onBack={() => (step = "mode")} />
 {/if}

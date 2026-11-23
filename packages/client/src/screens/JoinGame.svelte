@@ -1,17 +1,36 @@
 <script lang="ts">
   // Play, step 3 — Join: sessions found on the LAN, or an address typed in (spec 012 US5, spec 017 US2).
   import Button from "../ui/Button.svelte";
-  import { PEER_ADDRESS } from "@soulsilver/shared";
+  import { PEER_ADDRESS, PROTOCOL_VERSION } from "@soulsilver/shared";
+  import { formatRoomCode, type RoomSummary } from "@soulsilver/shared/lobby";
   import { parseAddress, type SessionListing } from "@soulsilver/shared/lan";
   import { onDestroy, onMount } from "svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
   import { answerInvite, bridge, type GuestAnswer } from "../net/peer";
   import { handToMain } from "../net/peer-link";
+  import { listRooms } from "../net/lobby";
+  import { enterRoom, findRoom } from "../net/room-guest";
   import { settings } from "../settings";
 
-  /** `password`: R.1, the room password typed below; empty when none. `address` is PEER_ADDRESS for an invite (R.3). */
-  let { onJoin, onBack, error, busy }: { onJoin: (address: string, password: string) => void; onBack: () => void; error: string | undefined; busy: boolean } = $props();
+  /**
+   * `password`: R.1, the room password typed below; empty when none. `address` is PEER_ADDRESS for an invite (R.3)
+   * and for an online room (O.5), which also passes `room` so the session can reconnect through it (O.6).
+   */
+  let {
+    onJoin,
+    onBack,
+    error,
+    busy,
+    playerName,
+  }: {
+    onJoin: (address: string, password: string, room?: { code: string; playerName: string }) => void;
+    onBack: () => void;
+    error: string | undefined;
+    busy: boolean;
+    /** The chosen save's trainer, as the host sees the guest arrive. */
+    playerName: string;
+  } = $props();
 
   let sessions = $state<SessionListing[]>([]);
   let address = $state("");
@@ -53,6 +72,55 @@
     copied = true;
   }
 
+  // O.5: online rooms, from the public list or by code.
+  const ROOMS_REFRESH_MS = 10_000;
+  let rooms = $state<RoomSummary[] | undefined>();
+  let roomsError = $state<string | undefined>();
+  let roomCode = $state("");
+  let entering = $state(false);
+  let roomError = $state<string | undefined>();
+
+  async function refreshRooms(): Promise<void> {
+    try {
+      rooms = await listRooms($settings.lobbyServer, PROTOCOL_VERSION);
+      roomsError = undefined;
+    } catch (e) {
+      roomsError = (e as Error).message;
+    }
+  }
+
+  async function enter(code: string): Promise<void> {
+    if (entering) return;
+    entering = true;
+    roomError = undefined;
+    const appVersion = await window.soulSilver.getAppVersion();
+    const name = playerName.trim() || t("rooms.guest");
+    let joinedCode = code;
+    const result = await enterRoom({
+      find: () => findRoom({ lobbyUrl: $settings.lobbyServer, code, playerName: name, appVersion, protocolVersion: PROTOCOL_VERSION }),
+      password,
+      handOver: (joined) => {
+        joinedCode = joined.room.code;
+        const { port1, port2 } = new MessageChannel();
+        bridge(joined.channel, port1, joined.close);
+        handToMain(port2);
+      },
+      joinSession: (typed) => {
+        // Play runs joinSession and shows its failure (a wrong password, say) as `error`.
+        onJoin(PEER_ADDRESS, typed, { code: joinedCode, playerName: name });
+        return Promise.resolve({ ok: true as const });
+      },
+    });
+    entering = false;
+    if (!result.ok) roomError = result.reason;
+  }
+
+  onMount(() => {
+    void refreshRooms();
+    const timer = setInterval(() => void refreshRooms(), ROOMS_REFRESH_MS);
+    return () => clearInterval(timer);
+  });
+
   // Leaving the screen before the host answered drops the half-made connection; a joined one is the session's now.
   onDestroy(() => {
     if (answering) answer?.cancel();
@@ -88,6 +156,34 @@
       </li>
     {/each}
   </ul>
+
+  <h3>{t("rooms.title")}</h3>
+  {#if rooms === undefined && !roomsError}<p role="status">{t("rooms.loading")}</p>{/if}
+  {#if roomsError}<p class="text-danger">{roomsError}</p>{/if}
+  {#if rooms && rooms.length === 0}<p class="text-secondary">{t("rooms.empty")}</p>{/if}
+  <ul class="list-none p-0 grid gap-[0.4rem] max-w-[40rem]">
+    {#each rooms ?? [] as r (r.code)}
+      <li class="flex gap-[0.6rem] items-center">
+        <Button disabled={busy || entering || r.players >= r.maxPlayers} onclick={() => void enter(r.code)}>
+          {t("rooms.entry", { name: r.roomName, host: r.hostName, players: r.players, max: r.maxPlayers })}
+        </Button>
+        {#if r.hasPassword}<span class="text-xs text-secondary" title={t("rooms.locked")}>{t("rooms.locked")}</span>{/if}
+      </li>
+    {/each}
+  </ul>
+  <form class="flex flex-wrap gap-2 items-end mb-2"
+    onsubmit={(event) => {
+      event.preventDefault();
+      if (roomCode.trim() !== "") void enter(roomCode);
+    }}
+  >
+    <label class="grid gap-1">
+      {t("rooms.byCode")}
+      <input bind:value={roomCode} placeholder={formatRoomCode("K7P2QX")} maxlength="9" autocomplete="off" spellcheck="false" aria-label={t("rooms.code")} />
+    </label>
+    <Button type="submit" disabled={roomCode.trim() === "" || busy || entering}>{entering ? t("rooms.entering") : t("rooms.enter")}</Button>
+  </form>
+  {#if roomError}<p class="text-danger" role="alert">{roomError}</p>{/if}
 
   <h3>{t("join.byAddress")}</h3>
   <form class="flex flex-wrap gap-2 items-end mb-2"

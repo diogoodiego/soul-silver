@@ -4,6 +4,7 @@
   import Button from "../ui/Button.svelte";
   import { STEP_1_EFFECTS, TEXT_SPEEDS, UI_SCALES, VISUAL_EFFECTS, VISUAL_QUALITIES, WINDOW_SIZES } from "@soulsilver/shared";
   import { type Action, ACTIONS, PAD_ACTIONS } from "@soulsilver/shared/input";
+  import { DEFAULT_LOBBY_URL, DEFAULT_STUN } from "@soulsilver/shared/lobby";
   import { onMount, tick } from "svelte";
   import { t } from "../i18n";
   import { menu } from "../input/menu";
@@ -193,16 +194,16 @@
         {/each}
         {#if tab === "game"}
           <div class="grid gap-3 px-3 pt-2">
-            {#each [{ id: "roomPassword", max: 64, placeholder: "" }, { id: "stunServer", max: 200, placeholder: "stun:stun.l.google.com:19302" }] as field (field.id)}
+            {#each [{ id: "roomPassword", max: 64, placeholder: "" }, { id: "stunServer", max: 200, placeholder: DEFAULT_STUN }, { id: "lobbyServer", max: 200, placeholder: DEFAULT_LOBBY_URL }] as const as field (field.id)}
               <TextField
-                label={t(`settings.${field.id}` as Parameters<typeof t>[0])}
-                value={field.id === "roomPassword" ? $settings.roomPassword : $settings.stunServer}
+                label={t(`settings.${field.id}`)}
+                value={$settings[field.id]}
                 maxlength={field.max}
                 placeholder={field.placeholder}
                 autocomplete="off"
                 spellcheck="false"
                 onfocus={() => (focused = field.id)}
-                onchange={(event: Event & { currentTarget: HTMLInputElement }) => void saveSettings(field.id === "roomPassword" ? { roomPassword: event.currentTarget.value } : { stunServer: event.currentTarget.value.trim() })}
+                onchange={(event: Event & { currentTarget: HTMLInputElement }) => void saveSettings(field.id === "roomPassword" ? { roomPassword: event.currentTarget.value } : field.id === "stunServer" ? { stunServer: event.currentTarget.value.trim() } : { lobbyServer: event.currentTarget.value.trim() || DEFAULT_LOBBY_URL })}
               />
             {/each}
             {#if !onRescue}

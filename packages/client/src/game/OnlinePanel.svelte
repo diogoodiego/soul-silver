@@ -3,16 +3,19 @@
   // leaving for another session (found on the LAN or typed in).
   import Button from "../ui/Button.svelte";
   import { parseAddress, type SessionListing } from "@soulsilver/shared/lan";
+  import { formatRoomCode } from "@soulsilver/shared/lobby";
   import type { DuelRules } from "@soulsilver/shared/game";
   import { onMount } from "svelte";
   import { t } from "../i18n";
   import InviteHost from "./InviteHost.svelte";
+  import RoomHost from "./RoomHost.svelte";
 
   let {
     mode,
     players,
     me,
     address,
+    room,
     addresses,
     busy,
     doing = {},
@@ -29,6 +32,8 @@
     me: number | undefined;
     /** The host this guest is connected to. */
     address: string | undefined;
+    /** O.6: the room this guest came in by, shown instead of the invite address. */
+    room?: string | undefined;
     /** Where friends join, once this PC opened its session to the LAN. */
     addresses: string[];
     busy: boolean;
@@ -73,7 +78,7 @@
 
 <div class="grid content-start gap-4 p-4 overflow-y-auto text-primary">
   <p class="m-0 text-secondary">
-    {#if mode === "solo"}{t("online.solo")}{:else if mode === "host"}{t("online.hosting")}{:else if mode === "guest"}{t("online.guest", { address: address ?? "" })}{:else}{t("online.arena")}{/if}
+    {#if mode === "solo"}{t("online.solo")}{:else if mode === "host"}{t("online.hosting")}{:else if mode === "guest"}{room ? t("online.guestRoom", { code: formatRoomCode(room) }) : t("online.guest", { address: address ?? "" })}{:else}{t("online.arena")}{/if}
   </p>
 
   <section class="grid gap-2">
@@ -128,6 +133,7 @@
       {/if}
       {#if internetError}<p class="m-0 text-danger" role="alert">{internetError}</p>{/if}
     </section>
+    <RoomHost hostName={players.find((p) => p.id === me)?.name ?? t("online.host")} players={players.length} />
     <InviteHost />
   {/if}
 

@@ -300,6 +300,39 @@ no lugar de "Editor desconhecido". Depois de passar a assinar, não volte a publ
 assinatura: se `publisherName` for configurado no `electron-builder.yml`, o atualizador recusa
 versões assinadas por outro editor ou sem assinatura.
 
+## Servidor de salas
+
+O jogo online por salas (bloco O) usa um servidor pequeno na Cloudflare, o Worker `soulsilver-lobby`,
+no pacote `packages/lobby`. Ele só apresenta os jogadores: guarda o código e os dados da sala (nome,
+anfitrião, jogadores, se tem senha) e repassa as mensagens de conexão do WebRTC entre o anfitrião e
+cada convidado. Nenhum dado do jogo passa por ele, e nada fica guardado depois que a sala fecha. O
+endereço do jogador só é guardado como hash, por 10 minutos, para limitar a 3 salas por endereço.
+
+Endereço: `https://soulsilver-lobby.diogo-soul-silver.workers.dev` (padrão do app em
+`packages/shared/src/lobby/defaults.ts`; dá para trocar nas Configurações).
+
+Quando a conexão direta não abre (4G, CGNAT), o servidor entrega credenciais temporárias do TURN da
+Cloudflare (2 horas). A chave do TURN fica só no servidor, nunca no app.
+
+**Publicar:** é automático. Um push no `main` que mude `packages/lobby/` ou `packages/shared/src/lobby/`
+roda o workflow `.github/workflows/lobby.yml`, que testa e publica. Para publicar sem mudar nada, abra
+**Actions → Lobby → Run workflow**. Secrets usados (GitHub → Settings → Secrets and variables → Actions):
+
+| Secret | Para quê |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Publicar o Worker (permissão "Edit Cloudflare Workers"). |
+| `CLOUDFLARE_ACCOUNT_ID` | A conta onde o Worker fica. |
+| `CLOUDFLARE_TURN_KEY_ID` | Opcional. ID da chave TURN (Realtime → TURN Server). Sem ele, só STUN. |
+| `CLOUDFLARE_TURN_KEY_API_TOKEN` | Opcional. Token da chave TURN. |
+
+**Rodar localmente:** `npm run dev -w @soulsilver/lobby` sobe o servidor em `http://127.0.0.1:8787`
+(estado em `packages/lobby/.wrangler/`, ignorado pelo git). Testes: `npx vitest run --project lobby`
+(rodam no runtime da Cloudflare, localmente).
+
+**Ver os logs ao vivo:** `npx wrangler tail soulsilver-lobby` dentro de `packages/lobby`, depois de
+`npx wrangler login`. Os logs também aparecem no painel da Cloudflare, em Workers & Pages →
+soulsilver-lobby → Logs.
+
 ## Problemas comuns
 
 - **`npm install` falha com `EBADENGINE`**: a versão do Node não é a 24. Instale o Node 24 LTS

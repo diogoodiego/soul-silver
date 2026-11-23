@@ -1,6 +1,10 @@
 <script lang="ts">
   // The screen flow (spec 017): first run → title → main menu → play (save → mode → match) or arena → game.
-  import type { AssetsState, UpdateState } from "@soulsilver/shared";
+  import { PEER_ADDRESS, PROTOCOL_VERSION, type AssetsState, type UpdateState } from "@soulsilver/shared";
+  import { bridge } from "./net/peer";
+  import { handToMain } from "./net/peer-link";
+  import { findRoom } from "./net/room-guest";
+  import { reconnectViaRoom } from "./net/room-reconnect";
   import { onMount } from "svelte";
   import FirstRun from "./screens/FirstRun.svelte";
   import GameSession from "./screens/GameSession.svelte";
@@ -71,7 +75,24 @@
 
   async function reconnect(): Promise<string | undefined> {
     if (!play?.address || play.slot === undefined) return t("game.noAddress");
-    const result = await window.soulSilver.joinSession(play.slot, play.address);
+    const slot = play.slot;
+    const room = play.room;
+    // O.6: in by room: join the room again and redo the WebRTC exchange, then rejoin as before.
+    const result = room
+      ? await reconnectViaRoom({
+          join: async () => {
+            const version = await window.soulSilver.getAppVersion();
+            const found = await findRoom({ lobbyUrl: $settings.lobbyServer, code: room.code, playerName: room.playerName, appVersion: version, protocolVersion: PROTOCOL_VERSION });
+            return found.connect();
+          },
+          handOver: (joined) => {
+            const { port1, port2 } = new MessageChannel();
+            bridge(joined.channel, port1, joined.close);
+            handToMain(port2);
+          },
+          joinSession: () => window.soulSilver.joinSession(slot, PEER_ADDRESS),
+        })
+      : await window.soulSilver.joinSession(slot, play.address);
     if (!result.ok) return result.reason;
     play = { ...play, save: result.save };
     attempt++;

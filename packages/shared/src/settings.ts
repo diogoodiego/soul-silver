@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PLAYER_NAME_MAX } from "./game/limits";
 import { ACTIONS, DEFAULT_KEYS, PAD_BUTTONS, RESERVED_KEYS, type Bindings } from "./input/bindings";
+import { DEFAULT_LOBBY_URL, DEFAULT_STUN } from "./lobby/defaults";
 
 // Per-PC settings (spec 017, data-model.md). The file never blocks startup: a missing or
 // invalid field falls back to its default on its own.
@@ -80,6 +81,8 @@ const fields = {
   roomPassword: z.string().max(64),
   /** R.3: where invites learn this PC's public address; empty sends none (only LAN and IPv6 candidates). */
   stunServer: z.string().max(200).regex(/^(stuns?:\S+)?$/, "use stun: ou stuns:"),
+  /** O.4: the room server (online rooms); http(s) only. */
+  lobbyServer: z.string().max(200).regex(/^https?:\/\/[^\s/]+(\/\S*)?$/, "use http:// ou https://"),
   /** The test arena's menu as it was left; null before the first time. */
   arena: arena.nullable(),
 };
@@ -100,7 +103,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   pad: { ...PAD_BUTTONS },
   audio: { master: 80, music: 80, effects: 80, muteUnfocused: false },
   roomPassword: "",
-  stunServer: "stun:stun.l.google.com:19302",
+  stunServer: DEFAULT_STUN,
+  lobbyServer: DEFAULT_LOBBY_URL,
   arena: null,
 };
 
@@ -112,6 +116,8 @@ export function readSettings(raw: unknown): AppSettings {
     const parsed = fields[key].safeParse(obj[key]);
     if (parsed.success) (out as Record<string, unknown>)[key] = parsed.data;
   }
+  // O.4: the STUN default moved from Google's to Cloudflare's; settings that never changed it follow.
+  if (out.stunServer === "stun:stun.l.google.com:19302") out.stunServer = DEFAULT_STUN;
   // E became the next-Pokémon key: settings from before it that still interact on E interact on Space now.
   const saved = obj["bindings"];
   if (typeof saved === "object" && saved !== null && !("swapNext" in saved) && out.bindings.interact.length === 1 && out.bindings.interact[0] === "KeyE") out.bindings.interact = [...DEFAULT_KEYS.interact];

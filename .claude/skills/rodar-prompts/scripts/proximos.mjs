@@ -17,14 +17,15 @@ if (!m) {
 const start = m[1];
 
 const dir = join(root, "docs/roadmap");
-const files = readdirSync(dir).filter((f) => /^marco-\d+\.md$/u.test(f))
-  .sort((a, b) => Number(a.match(/\d+/u)[0]) - Number(b.match(/\d+/u)[0]));
+const rank = (f) => (/^marco-\d+\.md$/u.test(f) ? Number(f.match(/\d+/u)[0]) : 1000);
+const files = readdirSync(dir).filter((f) => f.endsWith(".md")).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 
 const items = [];
 for (const f of files) {
   const text = read(join(dir, f));
   const re = /^### (\S+) (.+)\n([\s\S]*?)(?=^### |^## |(?![\s\S]))/gmu;
   for (const it of text.matchAll(re)) {
+    if (!/^[A-Z0-9]+\.\d+$/u.test(it[1])) continue; // only item IDs (030.7, O.1), not rule headings
     items.push({ id: it[1], title: it[2].trim(), file: f, prompt: it[3].trim() });
   }
 }

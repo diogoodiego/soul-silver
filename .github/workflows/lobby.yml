@@ -1,0 +1,60 @@
+name: Lobby
+
+# O.2: publishes the room server (packages/lobby) to Cloudflare as the Worker `soulsilver-lobby`.
+# Secrets (GitHub → Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   required, to publish
+#   CLOUDFLARE_TURN_KEY_ID, CLOUDFLARE_TURN_KEY_API_TOKEN   optional; without them the server hands out STUN only
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/lobby/**"
+      - "packages/shared/src/lobby/**"
+      - ".github/workflows/lobby.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: lobby-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      TURN_KEY_ID: ${{ secrets.CLOUDFLARE_TURN_KEY_ID }}
+      TURN_KEY_API_TOKEN: ${{ secrets.CLOUDFLARE_TURN_KEY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Test
+        run: npx vitest run --project lobby --project shared packages/lobby packages/shared/test/lobby
+      - name: Publish with TURN
+        if: env.TURN_KEY_ID != '' && env.TURN_KEY_API_TOKEN != ''
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/lobby
+          command: deploy
+          secrets: |
+            TURN_KEY_ID
+            TURN_KEY_API_TOKEN
+      - name: Publish without TURN
+        if: env.TURN_KEY_ID == '' || env.TURN_KEY_API_TOKEN == ''
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/lobby
+          command: deploy
+      - name: TURN warning
+        if: env.TURN_KEY_ID == '' || env.TURN_KEY_API_TOKEN == ''
+        run: echo "::warning::CLOUDFLARE_TURN_KEY_ID or CLOUDFLARE_TURN_KEY_API_TOKEN is missing; the room server hands out STUN only (no relay for 4G/CGNAT)."
+      - name: Check
+        run: curl --fail --silent --show-error "https://soulsilver-lobby.diogo-soul-silver.workers.dev/rooms?protocol=0"

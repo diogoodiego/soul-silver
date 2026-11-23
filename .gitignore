@@ -15,3 +15,7 @@ assets/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Wrangler local state (wrangler dev, Miniflare)
+.wrangler/
+.dev.vars*

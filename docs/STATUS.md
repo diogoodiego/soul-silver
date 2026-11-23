@@ -65,6 +65,13 @@ M4.0 a 030.7 commitados em `90850df`; a partir daí, um commit por item.
 - [x] 034.4 Lance, Hall da Fama e retorno
 - [x] H Tela única com HUD e Pokédex-celular (avulso; roteiro manual pendente em `.evidence/H/roteiro.md`)
 - [x] C.1–C.9 Combate de ação (avulso, bloco C em `docs/roadmap/combate.md`; roteiro manual pendente em `.evidence/C/roteiro.md`)
+- [x] O.1 Servidor de salas (`packages/lobby`, mensagens em `packages/shared/src/lobby/`)
+- [x] O.2 Publicação do servidor de salas (`.github/workflows/lobby.yml`, endereço padrão em `packages/shared/src/lobby/defaults.ts`)
+- [x] O.3 Credenciais TURN (`packages/lobby/src/turn.ts`; sem os secrets, só STUN)
+- [x] O.4 Hospedar sala online no app (`net/room-host.ts`, `net/room-store.ts`, `game/RoomHost.svelte`)
+- [x] O.5 Entrar por código e lista de salas (`net/room-guest.ts`, `screens/JoinGame.svelte`)
+- [x] O.6 Reconexão pela sala (`net/room-reconnect.ts`, `App.svelte`)
+- [x] O.7 Verificação do bloco O (roteiro em `.evidence/O/roteiro.md`; teste com o amigo e `npm run golden` a cargo do desenvolvedor)
 - [ ] 034.5–034.6 Balanceamento e verificação
 - [ ] 034.7 Pendências dos blocos 033 e 034 (lista no roadmap)
 
@@ -160,10 +167,12 @@ assunto, ou quando o desenvolvedor pedir.
 - R.1: o painel Online dentro do jogo não tem campo de senha; ao trocar de sessão por ali, só vale uma senha já usada antes com aquele host.
 - R.1: a lista de partidas da LAN não indica quais pedem senha.
 - R.2: conexão real por IPv6 entre duas casas não testada (roteiro manual no R.4); o rótulo "IP do anfitrião" e o placeholder seguem só com exemplo IPv4.
-- R.3: conexão WebRTC real não testada (vitest não tem WebRTC; roteiro manual no R.4); NAT simétrico (4G) não conecta, sem TURN.
-- R.3: convidado por convite não reconecta (o botão de reconectar falha com mensagem; precisa de convite novo) e o painel Online mostra "convite" como endereço.
-- R.3: o STUN padrão é o público do Google, que vê o IP de quem gera convite; trocável ou vazio nas Configurações.
+- R.3: conexão WebRTC real não testada (vitest não tem WebRTC; roteiro manual no R.4); pelo convite, NAT simétrico (4G) não conecta, sem TURN (pela sala do bloco O, conecta pelo TURN).
+- R.3: convidado por convite não reconecta (o botão de reconectar falha com mensagem; precisa de convite novo) e o painel Online mostra "convite" como endereço. Resolvido para quem entra por sala (O.6).
+- O.4: o STUN padrão passou a ser o da Cloudflare (quem ainda tinha o do Google passa para ele); continua trocável ou vazio nas Configurações.
 - R.4: roteiro manual em `.evidence/R/roteiro.md` (senha na LAN, IPv6 entre casas, convite WebRTC, 4G) a cargo do desenvolvedor.
+- O.7: roteiro manual em `.evidence/O/roteiro.md` (publicar, sala pública, amigo em 4G, queda e reconexão, tráfego no TURN) a cargo do desenvolvedor; `npm run golden` não rodou no ambiente do agente (sem ROM), e o teste de IPv6 do `app` falha lá por falta de IPv6 (não é do bloco).
+- O.4: conexão WebRTC real das salas não testada (vitest não tem WebRTC; testes com servidor de salas e WebRTC falsos); a sala não limita convidados por senha antes do WebRTC (a senha é conferida pelo `ws-listener`, como no R.1).
 - R.4: `scripts-perf` também falha às vezes na suíte cheia e passa isolado (como `perf`/`trainer-perf`); não é do bloco R.
 - R.5: UPnP com roteador real não testado (roteiro manual, seção 4); só IPv4 e TCP; sem NAT-PMP/PCP; se o app morrer sem fechar, a porta fica aberta até 1 h (ou até reiniciar o roteador, nos que só aceitam mapeamento permanente).
 - 031.7: comparação com as páginas 6–20 do detonado pendente (sem capturas; verificação só no servidor); roteiro manual em `.evidence/031/roteiro-manual.md`.
@@ -173,6 +182,10 @@ assunto, ou quando o desenvolvedor pedir.
 
 Só o que muda o rumo de itens futuros, uma linha cada.
 
+- Bloco O (2026-11-22): servidor de salas próprio na Cloudflare (Worker com Durable Objects, `soulsilver-lobby`), com código de sala e lista pública, e TURN da Cloudflare como fallback; substitui a decisão do bloco R "sem relay". Subdomínio `workers.dev`: `diogo-soul-silver` (endereço `https://soulsilver-lobby.diogo-soul-silver.workers.dev`). Dependências aprovadas só no pacote `lobby`: `wrangler`, `@cloudflare/workers-types`, `@cloudflare/vitest-plugin` (novo nome do `vitest-pool-workers`, aceita o vitest 5).
+- O.1: os testes do `lobby` rodam no workerd pelo `npm test` da raiz (projeto `lobby`); `wrangler dev` grava estado em `.wrangler/` (ignorado).
+- Bloco O: o anfitrião retoma a sala pelo `GET /host/<código>` com `resume` e o token de anfitrião; passados 45 s fora, cria sala nova (código novo). `GET /rooms/<código>` responde a sala (pública ou não) para o convidado checar versão e senha antes de entrar. A sala não fica ociosa enquanto o anfitrião informa mais de 1 jogador.
+- Bloco O: o convidado sai do servidor de salas assim que o DataChannel abre; reconexão (O.6) refaz `join` e a troca de sinais pela mesma sala por até 2 min; o protocolo do jogo não mudou.
 - Bloco C: o combate passa a ser normais (<80, sem cooldown, combo) + especiais (≥80, status e dano fixo, com cooldown), com parry, esquiva e defesa no lugar da barra de ação; regras em `docs/roadmap/combate.md`; o 034.5 balanceia sobre ele.
 - Bloco C: slots 0–1 normais e 2–3 especiais são montados no spawn do combate (`slotIndices`); o save guarda a lista compacta, encaixada em 2 + 2 na entrada (`fitMoves`), e o excedente vai para `forgottenMoves`.
 - Bloco C: um HM em `forgottenMoves` continua valendo no campo (`pickUser`); em combate só os slots contam.

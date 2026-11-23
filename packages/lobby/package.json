@@ -1,0 +1,19 @@
+{
+  "name": "@soulsilver/lobby",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@soulsilver/shared": "*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.9.0",
+    "@cloudflare/workers-types": "^5.20261122.2",
+    "wrangler": "^4.166.0"
+  }
+}

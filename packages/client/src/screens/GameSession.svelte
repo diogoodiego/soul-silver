@@ -7,7 +7,8 @@
   import { BUTTON, PLAYER_NAME_MAX, surfable, talkTile, tileAt, type CutsceneActor, type NpcAction, type CutsceneStep, type Entity, type PcSlot, type ServerMessage, type TickMetrics, type TradeOffer, type DuelRules, type WorldMap } from "@soulsilver/shared/game";
   import { POCKET_KEYS, type ItemRecord } from "@soulsilver/shared/game-data";
   import { formatText, parseTextId, screenText, textVariables } from "@soulsilver/shared/text";
-  import { onMount, untrack } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
+  import { closeHostedRoom } from "../net/room-store";
   import { SvelteMap } from "svelte/reactivity";
   import { audio, createAudioReactions } from "../audio";
   import { leadIndex } from "@soulsilver/shared/companion";
@@ -110,6 +111,8 @@
   let doing = $state<Record<string, string>>({});
   let me = $state<number | undefined>();
   let mode = $state<"solo" | "host" | "guest" | "arena">(untrack(() => (play.arena ? "arena" : play.address ? "guest" : play.hosting ? "host" : "solo")));
+  // O.4: the online room ends with the session (another session, the menu, a reconnect of a guest).
+  onDestroy(closeHostedRoom);
   let addresses = $state<string[]>([]);
   let onlineBusy = $state(false);
   let onlineError = $state<string | undefined>();
@@ -1195,7 +1198,7 @@
 </script>
 
 {#snippet onlinePanel()}
-  <OnlinePanel {mode} {players} {doing} {me} address={play.address} {addresses} busy={onlineBusy || status !== "playing"} error={switchingTo ? t("online.switching") : onlineError} onOpen={() => void openLan()} onJoin={joinOther} onTrade={(to: number) => window.soulSilver.sendGame({ type: "trade-propose", to })} onDuel={(to: number, rules: DuelRules) => window.soulSilver.sendGame({ type: "duel-invite", to, rules })} />
+  <OnlinePanel {mode} {players} {doing} {me} address={play.address} room={play.room?.code} {addresses} busy={onlineBusy || status !== "playing"} error={switchingTo ? t("online.switching") : onlineError} onOpen={() => void openLan()} onJoin={joinOther} onTrade={(to: number) => window.soulSilver.sendGame({ type: "trade-propose", to })} onDuel={(to: number, rules: DuelRules) => window.soulSilver.sendGame({ type: "duel-invite", to, rules })} />
 {/snippet}
 
 {#snippet phoneApp(p: MenuPage)}
